@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Loader2 } from "lucide-react";
 
 type Segment = "ALL" | "NEW" | "SILVER" | "GOLD" | "DIAMOND";
 
@@ -30,25 +27,29 @@ const segmentColors: Record<string, string> = {
   DIAMOND: "bg-accent/15 text-accent border border-accent/30",
 };
 
-const customers = [
-  { id: 1, name: "Nguyễn Văn A", phone: "0901234567", email: "a@email.com", segment: "DIAMOND", dept: "Phòng KD1", sale: "Trần Hải" },
-  { id: 2, name: "Trần Thị B", phone: "0912345678", email: "b@email.com", segment: "GOLD", dept: "Phòng KD2", sale: "Lê Mai" },
-  { id: 3, name: "Lê Hoàng C", phone: "0923456789", email: "c@email.com", segment: "SILVER", dept: "Phòng KD1", sale: "Trần Hải" },
-  { id: 4, name: "Phạm Minh D", phone: "0934567890", email: "d@email.com", segment: "NEW", dept: "Phòng KD3", sale: "Nguyễn Lan" },
-  { id: 5, name: "Hoàng Thị E", phone: "0945678901", email: "e@email.com", segment: "GOLD", dept: "Phòng KD2", sale: "Lê Mai" },
-  { id: 6, name: "Vũ Đức F", phone: "0956789012", email: "f@email.com", segment: "NEW", dept: "Phòng KD1", sale: "Trần Hải" },
-  { id: 7, name: "Đặng Thị G", phone: "0967890123", email: "g@email.com", segment: "DIAMOND", dept: "Phòng KD3", sale: "Nguyễn Lan" },
-  { id: 8, name: "Bùi Văn H", phone: "0978901234", email: "h@email.com", segment: "SILVER", dept: "Phòng KD2", sale: "Lê Mai" },
-];
-
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
 
+  const { data: customers = [], isLoading } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, full_name, phone, email, segment, department_id, assigned_sale_id")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const filtered = customers.filter((c) => {
     const matchSegment = filter === "ALL" || c.segment === filter;
-    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) || c.email.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchSearch = !search || 
+      c.full_name.toLowerCase().includes(q) ||
+      (c.phone?.includes(search)) ||
+      (c.email?.toLowerCase().includes(q));
     return matchSegment && matchSearch;
   });
 
@@ -80,44 +81,42 @@ export default function Customers() {
             </div>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm kiếm..."
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <Input placeholder="Tìm kiếm..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tên khách hàng</TableHead>
-                <TableHead>Điện thoại</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phân khúc</TableHead>
-                <TableHead>Phòng KD</TableHead>
-                <TableHead>Sale phụ trách</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((c) => (
-                <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell>{c.phone}</TableCell>
-                  <TableCell>{c.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={segmentColors[c.segment]}>
-                      {c.segment}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{c.dept}</TableCell>
-                  <TableCell>{c.sale}</TableCell>
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên khách hàng</TableHead>
+                  <TableHead>Điện thoại</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phân khúc</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((c) => (
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell className="font-medium">{c.full_name}</TableCell>
+                    <TableCell>{c.phone ?? "—"}</TableCell>
+                    <TableCell>{c.email ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={segmentColors[c.segment ?? "NEW"]}>
+                        {c.segment ?? "NEW"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
