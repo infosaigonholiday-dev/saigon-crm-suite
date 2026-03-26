@@ -6,13 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Loader2, User, Phone, Mail, MapPin, Calendar, Building } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Edit, Loader2, Phone, Mail, MapPin, Calendar, Building, User, Trash2 } from "lucide-react";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { EmployeeSalaryTab } from "@/components/employees/EmployeeSalaryTab";
 import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
 import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab";
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
+import { toast } from "sonner";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -21,10 +27,21 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   RESIGNED: { label: "Đã nghỉ", className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
+const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | null }) => (
+  <div className="flex items-start gap-3">
+    <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium">{value || "—"}</p>
+    </div>
+  </div>
+);
+
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],
@@ -40,6 +57,24 @@ export default function EmployeeDetail() {
     },
   });
 
+  const handleSoftDelete = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("employees")
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Đã xóa nhân viên");
+      navigate("/nhan-su");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi xóa nhân viên");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -49,16 +84,6 @@ export default function EmployeeDetail() {
   }
 
   const st = statusLabels[employee.status ?? "ACTIVE"] ?? statusLabels.ACTIVE;
-
-  const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | null }) => (
-    <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value || "—"}</p>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -73,9 +98,38 @@ export default function EmployeeDetail() {
           </div>
           <p className="text-sm text-muted-foreground">{employee.employee_code} • {employee.position ?? "Chưa có chức vụ"}</p>
         </div>
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Edit className="h-4 w-4 mr-2" />Sửa
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Edit className="h-4 w-4 mr-2" />Sửa
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4 mr-2" />Xóa
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Xác nhận xóa nhân viên</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Bạn có chắc muốn xóa nhân viên <strong>{employee.full_name}</strong>?
+                  Dữ liệu sẽ bị ẩn khỏi hệ thống nhưng vẫn lưu trong database để đối soát.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleSoftDelete}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                  Xóa nhân viên
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       <Tabs defaultValue="info">
@@ -142,7 +196,14 @@ export default function EmployeeDetail() {
         </TabsContent>
 
         <TabsContent value="role" className="mt-4">
-          <EmployeeRoleTab employeeId={id!} profileId={employee.profile_id} />
+          <EmployeeRoleTab
+            employeeId={id!}
+            profileId={employee.profile_id}
+            employeeName={employee.full_name}
+            employeeEmail={employee.email}
+            departmentId={employee.department_id}
+            onProfileLinked={() => refetch()}
+          />
         </TabsContent>
       </Tabs>
 
