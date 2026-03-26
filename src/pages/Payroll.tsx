@@ -35,7 +35,7 @@ export default function Payroll() {
         .select("*, employees(full_name, employee_code, departments(name))")
         .eq("month", parseInt(month))
         .eq("year", parseInt(year))
-        .order("employees(full_name)");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },

@@ -97,19 +97,29 @@ function validate(form: Record<string, string>): ValidationErrors {
   return errors;
 }
 
+const defaultForm = {
+  full_name: "", gender: "", date_of_birth: "", id_card: "",
+  phone: "", email: "", address: "",
+  employee_code: "", department_id: "", position: "", level: "",
+  employment_type: "FULLTIME", status: "PROBATION",
+  hire_date: "", probation_end_date: "", contract_expiry: "",
+  bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
+  emergency_contact: "",
+};
+
 export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }: Props) {
   const isEdit = !!employeeId;
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [form, setForm] = useState({
-    full_name: "", gender: "", date_of_birth: "", id_card: "",
-    phone: "", email: "", address: "",
-    employee_code: "", department_id: "", position: "", level: "",
-    employment_type: "FULLTIME", status: "PROBATION",
-    hire_date: "", probation_end_date: "", contract_expiry: "",
-    bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
-    emergency_contact: "",
-  });
+  const [form, setForm] = useState({ ...defaultForm });
+
+  // Reset form when opening for new employee
+  useEffect(() => {
+    if (open && !isEdit) {
+      setForm({ ...defaultForm });
+      setErrors({});
+    }
+  }, [open, isEdit]);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
