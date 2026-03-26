@@ -1,100 +1,38 @@
 
+Mình làm được, và đúng là đã bị lặp do cách xử lý trước đó “đổi qua đổi lại” giữa policy và trigger.
 
-## Sửa lỗi bảo mật hệ thống
+## Vì sao bị lặp lệnh
+1. Hệ thống quét bảo mật dùng rule tĩnh, ưu tiên nhìn vào `WITH CHECK` của policy.
+2. Trong khi đó bản gần nhất lại chuyển trọng tâm sang trigger `prevent_role_change` + `profiles_self_update` chỉ còn `WITH CHECK (auth.uid() = id)`.
+3. Kết quả: trigger thực tế đã chặn đổi `role`, nhưng scanner vẫn cảnh báo “escalation” → lại đề xuất chạy lệnh tương tự nhiều lần.
 
-### Tổng quan
+## Kế hoạch chốt dứt điểm (1 vòng, không lặp)
+1. **Chốt policy `profiles_self_update` theo đúng rule scanner**
+   - Giữ trigger `enforce_role_immutability` (defense-in-depth).
+   - Cập nhật lại `profiles_self_update` để có `WITH CHECK` khóa `role` không đổi.
+2. **Quét bảo mật lại 1 lần duy nhất** sau khi cập nhật policy.
+3. **Nếu còn cảnh báo escalation do scanner không hiểu trigger**:
+   - Không đổi policy qua lại nữa.
+   - Giữ cấu hình hiện tại và đánh dấu finding với lý do kỹ thuật rõ ràng (trigger đang enforce server-side).
+4. **Xử lý cảnh báo còn lại (không liên quan RLS/policy)**:
+   - `Leaked Password Protection Disabled` cần bật trong Supabase Auth settings (thao tác cấu hình, không phải SQL).
 
-Có 3 nhóm lỗi bảo mật cần xử lý, sắp xếp theo mức độ nghiêm trọng:
-
-### 1. CRITICAL — Leo thang quyền qua profiles_self policy
-
-**Vấn đề**: Policy `profiles_self` cho phép ALL commands (bao gồm UPDATE) trên row của chính user → user có thể tự đổi `role` thành `ADMIN`.
-
-**Giải pháp**: Xóa policy cũ, tạo 2 policy mới:
-- `profiles_self_read`: cho phép SELECT trên row của mình
-- `profiles_self_update`: cho phép UPDATE trên row của mình nhưng **chặn thay đổi cột `role`** bằng `WITH CHECK` kiểm tra `role` không đổi
-
+## Technical details
+- Trạng thái hiện tại đã xác minh:
+  - `profiles` có các policy: `profiles_admin_all`, `profiles_self_read`, `profiles_self_update`.
+  - Trigger `enforce_role_immutability` đang tồn tại và hoạt động.
+  - RLS đã bật trên các bảng trọng yếu (`profiles`, `employees`, `budget_plans`, ...).
+- SQL chốt cho `profiles_self_update`:
 ```sql
-DROP POLICY IF EXISTS "profiles_self" ON profiles;
-
-CREATE POLICY "profiles_self_read" ON profiles
-  FOR SELECT TO authenticated
-  USING (auth.uid() = id);
-
+DROP POLICY IF EXISTS "profiles_self_update" ON profiles;
 CREATE POLICY "profiles_self_update" ON profiles
   FOR UPDATE TO authenticated
   USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id AND role = (SELECT role FROM profiles WHERE id = auth.uid()));
+  WITH CHECK (
+    auth.uid() = id
+    AND role = (SELECT p.role FROM profiles p WHERE p.id = auth.uid())
+  );
 ```
-
-### 2. HIGH — Nhiều bảng chưa bật RLS
-
-**Các bảng cần bật RLS và thêm policy** (chỉ cho phép ADMIN/role phù hợp truy cập):
-
-| Bảng | Ai được truy cập |
-|------|-----------------|
-| departments | Tất cả authenticated (read), ADMIN (write) |
-| accounts_payable | ADMIN, KETOAN, DIRECTOR |
-| accounts_receivable | ADMIN, KETOAN, DIRECTOR |
-| invoices | ADMIN, KETOAN, DIRECTOR + creator |
-| payments | ADMIN, KETOAN, DIRECTOR + creator |
-| budget_plans | ADMIN, KETOAN, DIRECTOR |
-| cashflow_monthly | ADMIN, KETOAN, DIRECTOR |
-| profit_loss_monthly | ADMIN, KETOAN, DIRECTOR |
-| revenue_records | ADMIN, KETOAN, DIRECTOR |
-| cost_records | ADMIN, KETOAN, DIRECTOR |
-| tax_records | ADMIN, KETOAN, DIRECTOR |
-| commission_rules | ADMIN, HCNS, DIRECTOR |
-| commission_records | ADMIN, HCNS, DIRECTOR + own |
-| employee_salaries | ADMIN, HCNS, DIRECTOR |
-| insurance_records | ADMIN, HCNS, DIRECTOR |
-| salary_structures | ADMIN, HCNS, DIRECTOR |
-| leave_policies | Tất cả authenticated (read), ADMIN/HCNS (write) |
-| leave_requests | ADMIN, HCNS + own |
-| overtime_records | ADMIN, HCNS + own |
-| office_expenses | ADMIN, KETOAN, DIRECTOR |
-| business_travel | ADMIN, HCNS + own |
-| benefits_policies | Tất cả authenticated (read), ADMIN/HCNS (write) |
-| career_paths | Tất cả authenticated (read), ADMIN/HCNS (write) |
-| quotes | ADMIN, DIRECTOR + creator |
-| contracts | ADMIN, DIRECTOR + creator |
-| leads sources | Tất cả authenticated (read), ADMIN (write) |
-| customer_tags | Theo customer RLS |
-| customer_segment_rules | ADMIN, DIRECTOR |
-| data_assignments | ADMIN, DIEUHAN, DIRECTOR |
-| documents | ADMIN + uploader |
-| app_settings | ADMIN (all), others (read) |
-| user_preferences | Own row only |
-| audit_logs | Giữ nguyên (đã có) |
-
-### 3. INFO — Bảng bật RLS nhưng chưa có policy
-
-Sẽ được xử lý cùng bước 2.
-
-### Thực hiện
-
-Tạo **1 migration** duy nhất chứa tất cả các lệnh:
-1. Drop + tạo lại `profiles_self` policies
-2. `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` cho tất cả bảng chưa bật
-3. `CREATE POLICY` cho từng bảng theo bảng phân quyền trên
-
-Sử dụng helper function `has_role` (security definer) để tránh recursive RLS trên profiles:
-
-```sql
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role text)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$ SELECT EXISTS (SELECT 1 FROM profiles WHERE id = _user_id AND role = _role) $$;
-```
-
-Và một hàm `has_any_role` cho nhiều role:
-
-```sql
-CREATE OR REPLACE FUNCTION public.has_any_role(_user_id uuid, _roles text[])
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$ SELECT EXISTS (SELECT 1 FROM profiles WHERE id = _user_id AND role = ANY(_roles)) $$;
-```
-
-Tổng cộng: **1 migration file** với khoảng 25+ bảng được bảo vệ.
-
+- Lý do giữ cả 2 lớp:
+  - **Policy** để scanner pass và chặn ở lớp RLS.
+  - **Trigger** để chặn chắc chắn ở lớp DB ngay cả khi policy bị nới lỏng về sau.
