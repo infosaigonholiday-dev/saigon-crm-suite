@@ -1,31 +1,17 @@
 
 
-## Fix lỗi bảo mật còn lại
+## Fix form "Thêm nhân viên" - 2 lỗi
 
-### Finding 1: profiles_self_update (CRITICAL)
-**Vấn đề**: Policy hiện tại dùng `auth.jwt() ->> 'role'` = `'authenticated'` (PostgreSQL role), không phải app role → user có thể đổi role thành `'authenticated'` hoặc bất kỳ giá trị nào.
+### Lỗi 1: Không nhập liên tục được (input mất focus)
+**Nguyên nhân**: Component `Field` được khai báo **bên trong** function `EmployeeFormDialog`. Mỗi lần state thay đổi (gõ ký tự) → React tạo lại `Field` mới → input mất focus.
 
-**Fix**: Đổi WITH CHECK sang subquery đúng cách như scanner đề xuất:
-```sql
-DROP POLICY IF EXISTS "profiles_self_update" ON profiles;
-CREATE POLICY "profiles_self_update" ON profiles
-  FOR UPDATE TO authenticated
-  USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND role = (SELECT p.role FROM profiles p WHERE p.id = auth.uid())
-  );
-```
+**Fix**: Di chuyển `Field` ra ngoài component `EmployeeFormDialog` thành một component riêng biệt ở top-level.
 
-Kết hợp với trigger `enforce_role_immutability` đã có → defense-in-depth.
+### Lỗi 2: Mã nhân viên và Phòng ban không thấy
+**Nguyên nhân**: 2 trường này nằm trong tab "Công việc" (tab 2), user mở dialog chỉ thấy tab "Cá nhân" (tab 1).
 
-### Finding 2: Leaked Password Protection
-Không fix bằng SQL. Cần bật thủ công tại:
-**Supabase Dashboard → Authentication → Settings → Enable Leaked Password Protection**
+**Fix**: Chuyển "Mã nhân viên" (với nút Tự động) và "Phòng ban" lên tab "Cá nhân" — đây là thông tin cơ bản cần nhập ngay khi thêm nhân viên.
 
-### Tóm tắt
-| # | Hành động | Loại |
-|---|-----------|------|
-| 1 | Sửa policy `profiles_self_update` dùng subquery thay `auth.jwt()` | Migration SQL |
-| 2 | Bật Leaked Password Protection | Thủ công trên Dashboard |
+### File thay đổi
+- `src/components/employees/EmployeeFormDialog.tsx`
 
