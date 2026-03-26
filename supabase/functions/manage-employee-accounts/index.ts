@@ -175,17 +175,66 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reset_password") {
-      const { user_id } = payload;
-      if (!user_id) {
-        return new Response(JSON.stringify({ error: "Thiếu user_id" }), {
+      const { user_id, email } = payload;
+      if (!user_id && !email) {
+        return new Response(JSON.stringify({ error: "Thiếu user_id hoặc email" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const { error: resetError } = await adminClient.auth.admin.updateUserById(user_id, {
+      let targetUserId: string | null = user_id ?? null;
+
+      if (!targetUserId && email) {
+        const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+
+        if (usersError) {
+          return new Response(JSON.stringify({ error: usersError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const matchedUser = usersData.users.find(
+          (u) => u.email?.toLowerCase() === String(email).toLowerCase()
+        );
+
+        if (!matchedUser) {
+          return new Response(JSON.stringify({ error: "Không tìm thấy tài khoản auth tương ứng" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        targetUserId = matchedUser.id;
+      }
+
+      let { error: resetError } = await adminClient.auth.admin.updateUserById(targetUserId!, {
         password: DEFAULT_PASSWORD,
       });
+
+      if (resetError?.message?.includes("User not found") && email) {
+        const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+
+        if (!usersError) {
+          const matchedUser = usersData.users.find(
+            (u) => u.email?.toLowerCase() === String(email).toLowerCase()
+          );
+          if (matchedUser) {
+            targetUserId = matchedUser.id;
+            const fallbackResult = await adminClient.auth.admin.updateUserById(targetUserId, {
+              password: DEFAULT_PASSWORD,
+            });
+            resetError = fallbackResult.error;
+          }
+        }
+      }
 
       if (resetError) {
         return new Response(JSON.stringify({ error: resetError.message }), {
@@ -203,7 +252,7 @@ Deno.serve(async (req) => {
     if (action === "reset_all_passwords") {
       const { data: allProfiles } = await adminClient
         .from("profiles")
-        .select("id")
+        .select("id, email")
         .neq("id", callerId);
 
       if (!allProfiles || allProfiles.length === 0) {
@@ -213,15 +262,44 @@ Deno.serve(async (req) => {
         );
       }
 
+      const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+
+      if (usersError) {
+        return new Response(JSON.stringify({ error: usersError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const authUserByEmail = new Map(
+        usersData.users
+          .filter((u) => !!u.email)
+          .map((u) => [u.email!.toLowerCase(), u.id])
+      );
+
       let resetCount = 0;
       const errors: string[] = [];
 
       for (const profile of allProfiles) {
-        const { error: resetErr } = await adminClient.auth.admin.updateUserById(profile.id, {
+        let { error: resetErr } = await adminClient.auth.admin.updateUserById(profile.id, {
           password: DEFAULT_PASSWORD,
         });
+
+        if (resetErr?.message?.includes("User not found") && profile.email) {
+          const fallbackUserId = authUserByEmail.get(profile.email.toLowerCase());
+          if (fallbackUserId) {
+            const fallbackResult = await adminClient.auth.admin.updateUserById(fallbackUserId, {
+              password: DEFAULT_PASSWORD,
+            });
+            resetErr = fallbackResult.error;
+          }
+        }
+
         if (resetErr) {
-          errors.push(`${profile.id}: ${resetErr.message}`);
+          errors.push(`${profile.email ?? profile.id}: ${resetErr.message}`);
         } else {
           resetCount++;
         }
