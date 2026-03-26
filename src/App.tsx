@@ -14,6 +14,7 @@ import Employees from "./pages/Employees";
 import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import ComingSoon from "./pages/ComingSoon";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
