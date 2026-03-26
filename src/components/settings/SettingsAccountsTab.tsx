@@ -51,7 +51,7 @@ export function SettingsAccountsTab() {
   async function loadProfiles() {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, role, is_active, department_id, departments(name)")
+      .select("id, email, full_name, role, is_active, department_id, departments!profiles_department_id_fkey(name)")
       .order("created_at", { ascending: false });
     if (data) setProfiles(data as unknown as Profile[]);
   }
