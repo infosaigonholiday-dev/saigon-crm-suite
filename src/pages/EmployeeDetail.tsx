@@ -12,6 +12,7 @@ import { EmployeeSalaryTab } from "@/components/employees/EmployeeSalaryTab";
 import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
 import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab";
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
+import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -84,6 +85,7 @@ export default function EmployeeDetail() {
           <TabsTrigger value="leave">Nghỉ phép</TabsTrigger>
           <TabsTrigger value="overtime">Tăng ca</TabsTrigger>
           <TabsTrigger value="insurance">Bảo hiểm</TabsTrigger>
+          <TabsTrigger value="role">Phân quyền</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -137,6 +139,10 @@ export default function EmployeeDetail() {
 
         <TabsContent value="insurance" className="mt-4">
           <EmployeeInsuranceTab employeeId={id!} />
+        </TabsContent>
+
+        <TabsContent value="role" className="mt-4">
+          <EmployeeRoleTab employeeId={id!} profileId={employee.profile_id} />
         </TabsContent>
       </Tabs>
 

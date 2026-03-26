@@ -36,10 +36,10 @@ const genderOptions = [
 ];
 
 const employmentTypes = [
-  { value: "FULL_TIME", label: "Chính thức" },
+  { value: "FULLTIME", label: "Chính thức" },
   { value: "PROBATION", label: "Thử việc" },
   { value: "INTERN", label: "Thực tập" },
-  { value: "PART_TIME", label: "Bán thời gian" },
+  { value: "PARTTIME", label: "Bán thời gian" },
   { value: "CONTRACT", label: "Hợp đồng" },
 ];
 
@@ -58,7 +58,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
     full_name: "", gender: "", date_of_birth: "", id_card: "",
     phone: "", email: "", address: "",
     employee_code: "", department_id: "", position: "", level: "",
-    employment_type: "FULL_TIME", status: "PROBATION",
+    employment_type: "FULLTIME", status: "PROBATION",
     hire_date: "", probation_end_date: "", contract_expiry: "",
     bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
     emergency_contact: "",
@@ -92,7 +92,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           department_id: data.department_id ?? "",
           position: data.position ?? "",
           level: data.level ?? "",
-          employment_type: data.employment_type ?? "FULL_TIME",
+          employment_type: data.employment_type ?? "FULLTIME",
           status: data.status ?? "PROBATION",
           hire_date: data.hire_date ?? "",
           probation_end_date: data.probation_end_date ?? "",
