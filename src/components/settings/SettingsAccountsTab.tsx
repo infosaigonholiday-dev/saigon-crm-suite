@@ -12,10 +12,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound } from "lucide-react";
 
 const ROLES = [
   "ADMIN", "DIRECTOR", "DIEUHAN", "HCNS",
@@ -39,6 +43,10 @@ export function SettingsAccountsTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [resettingAll, setResettingAll] = useState(false);
+  const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC",
   });
@@ -108,13 +116,53 @@ export function SettingsAccountsTab() {
     }
   }
 
+  async function handleResetPassword(userId: string) {
+    setResettingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action: "reset_password", user_id: userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data.message || "Đã reset mật khẩu thành công");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi reset mật khẩu");
+    } finally {
+      setResettingId(null);
+      setConfirmResetId(null);
+    }
+  }
+
+  async function handleResetAllPasswords() {
+    setResettingAll(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action: "reset_all_passwords" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data.message || "Đã reset tất cả mật khẩu");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi reset mật khẩu");
+    } finally {
+      setResettingAll(false);
+      setConfirmResetAll(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Quản lý tài khoản nhân viên</h2>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Thêm tài khoản
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setConfirmResetAll(true)} disabled={resettingAll}>
+            {resettingAll && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+            <KeyRound className="h-4 w-4 mr-1" /> Reset tất cả MK
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Thêm tài khoản
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-lg">
@@ -126,7 +174,7 @@ export function SettingsAccountsTab() {
               <TableHead>Phòng ban</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="w-[100px]">Thao tác</TableHead>
+              <TableHead className="w-[120px]">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -143,11 +191,18 @@ export function SettingsAccountsTab() {
                 </TableCell>
                 <TableCell>
                   {p.id !== user?.id && (
-                    <Button variant="ghost" size="icon" disabled={togglingId === p.id} onClick={() => handleToggleActive(p)}
-                      title={p.is_active ? "Vô hiệu hóa" : "Kích hoạt"}>
-                      {togglingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
-                        p.is_active ? <ShieldOff className="h-4 w-4 text-destructive" /> : <ShieldCheck className="h-4 w-4 text-primary" />}
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" disabled={resettingId === p.id}
+                        onClick={() => setConfirmResetId(p.id)} title="Reset mật khẩu">
+                        {resettingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                          <KeyRound className="h-4 w-4 text-amber-600" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" disabled={togglingId === p.id} onClick={() => handleToggleActive(p)}
+                        title={p.is_active ? "Vô hiệu hóa" : "Kích hoạt"}>
+                        {togglingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                          p.is_active ? <ShieldOff className="h-4 w-4 text-destructive" /> : <ShieldCheck className="h-4 w-4 text-primary" />}
+                      </Button>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>
@@ -161,6 +216,7 @@ export function SettingsAccountsTab() {
         </Table>
       </div>
 
+      {/* Dialog tạo tài khoản */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -204,6 +260,42 @@ export function SettingsAccountsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog xác nhận reset từng TK */}
+      <AlertDialog open={!!confirmResetId} onOpenChange={(open) => !open && setConfirmResetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset mật khẩu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Mật khẩu tài khoản này sẽ được reset về mặc định: <strong>sgh123456</strong>. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmResetId && handleResetPassword(confirmResetId)}>
+              Xác nhận reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog xác nhận reset tất cả */}
+      <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset tất cả mật khẩu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu về mặc định: <strong>sgh123456</strong>. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetAllPasswords}>
+              Xác nhận reset tất cả
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
