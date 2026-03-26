@@ -1,39 +1,63 @@
 
 
-## Vấn đề hiện tại
+## Cải thiện toàn diện Module Nhân sự & Cài đặt
 
-Mật khẩu tạm thời được tạo ngẫu nhiên và chỉ hiện 60 giây trên màn hình admin. Thực tế rất khó sử dụng vì:
-- Admin dễ bỏ lỡ, không kịp ghi lại
-- Không có cách nào xem lại sau 60s
-- Nhân viên không biết mật khẩu để đăng nhập
+### 1. Trang Cài đặt — Thêm tabs quản lý
 
-## Giải pháp
+**File: `src/pages/Settings.tsx`** — Refactor thành Tabs layout:
 
-Dùng mật khẩu mặc định `sgh123456` cho tất cả tài khoản mới. Sau khi đăng nhập lần đầu, nhân viên tự đổi mật khẩu. Đồng thời thêm tính năng "Quên mật khẩu" và trang đặt lại mật khẩu.
+- **Tab "Tài khoản"**: Giữ nguyên code quản lý tài khoản hiện tại
+- **Tab "Phòng ban"**: CRUD phòng ban (table `departments`) — thêm/sửa/xóa với dialog form (tên, mã, manager)
+- **Tab "Cấp bậc"**: CRUD cấp bậc/chức danh — sử dụng bảng `app_settings` với key `levels` hoặc hardcode danh sách quản lý trong state (vì DB không có bảng riêng). Sẽ lưu vào `app_settings` với key=`employee_levels`, value=JSON array
+- **Tab "Quyền hạn"**: Hiển thị bảng tất cả roles với mô tả chi tiết quyền (read-only reference table, không cần DB mới)
 
-### Thay đổi cụ thể
+### 2. Danh sách Nhân sự — Cải thiện UX
+
+**File: `src/pages/Employees.tsx`**:
+
+- Thêm Avatar circle (initials từ tên) bên cạnh cột Họ tên
+- Thêm Badge cấp bậc (level) bên cạnh tên
+- Thêm cột action cuối với icon buttons Sửa (mở EmployeeFormDialog) + Xóa (AlertDialog confirm → soft delete)
+- Fix hiển thị phone/email: đã đúng logic, chỉ hiện "—" khi null — giữ nguyên
+
+### 3. Form Thêm nhân viên — Tab Công việc
+
+**File: `src/components/employees/EmployeeFormDialog.tsx`**:
+
+- Đổi field "Cấp bậc" từ Input → Select dropdown, lấy danh sách từ `app_settings` (key=`employee_levels`)
+- Thêm field "Role hệ thống" (Select dropdown roleOptions) trong form — chỉ hiện khi tạo mới (không edit)
+- Thêm field "Email đăng nhập" — khi có email + role, sau khi insert employee thành công → tự động gọi edge function tạo tài khoản và liên kết
+
+### 4. Chi tiết nhân viên — Tab Phân quyền
+
+**File: `src/components/employees/EmployeeRoleTab.tsx`**:
+
+- Thêm toggle bật/tắt tài khoản (gọi edge function activate/deactivate) khi profile đã tồn tại
+- Giữ nguyên các tính năng hiện có (đổi role, gửi reset email)
+
+### 5. UX tổng thể
+
+- Dialog animation: thêm `className="animate-scale-in"` cho DialogContent (đã có keyframes trong tailwind config)
+- Confirmation dialog xóa nhân viên: dùng AlertDialog (đã có trong EmployeeDetail, thêm vào list view)
+- Toast: đã có sonner toast khắp nơi — giữ nguyên
+- Responsive: kiểm tra và đảm bảo grid cols responsive
+
+### 6. Database — Lưu danh sách cấp bậc
+
+Insert 1 record vào `app_settings`:
+```sql
+INSERT INTO app_settings (key, value, description)
+VALUES ('employee_levels', '["Intern","Junior","Senior","Lead","Manager","Director"]', 'Danh sách cấp bậc nhân viên')
+ON CONFLICT (key) DO NOTHING;
+```
+
+### Files thay đổi
 
 | File | Thay đổi |
 |------|----------|
-| `supabase/functions/manage-employee-accounts/index.ts` | Bỏ `generatePassword()`, dùng mật khẩu cố định `sgh123456`. Trả về message thông báo thay vì `temp_password` |
-| `src/components/employees/EmployeeRoleTab.tsx` | Bỏ logic hiển thị mật khẩu tạm 60s + countdown. Thay bằng thông báo đơn giản "Tài khoản đã tạo, mật khẩu mặc định: sgh123456". Thêm nút "Gửi email đặt lại mật khẩu" khi profile đã tồn tại |
-| `src/pages/Login.tsx` | Thêm link/dialog "Quên mật khẩu" gọi `supabase.auth.resetPasswordForEmail()` |
-| `src/pages/ResetPassword.tsx` | **Tạo mới** — Trang đặt mật khẩu mới khi nhận link từ email |
-| `src/App.tsx` | Thêm route `/reset-password` (public) |
-
-### Flow sau khi triển khai
-
-```text
-Admin tạo tài khoản NV → Mật khẩu mặc định: sgh123456
-                        → Thông báo cho NV biết mật khẩu
-NV đăng nhập lần đầu   → Dùng sgh123456
-NV đổi mật khẩu        → Quên mật khẩu ở Login → Nhập email → Nhận link
-                        → /reset-password → Đặt mật khẩu mới
-```
-
-### Lưu ý bảo mật
-
-- Mật khẩu mặc định `sgh123456` chỉ là giải pháp nội bộ, phù hợp cho công ty nhỏ
-- Nhân viên nên được yêu cầu đổi mật khẩu ngay sau lần đăng nhập đầu tiên
-- Tính năng "Quên mật khẩu" cho phép reset qua email bất kỳ lúc nào
+| `src/pages/Settings.tsx` | Refactor thành Tabs: Tài khoản, Phòng ban, Cấp bậc, Quyền hạn |
+| `src/pages/Employees.tsx` | Avatar, level badge, action buttons (sửa/xóa) trên mỗi hàng |
+| `src/components/employees/EmployeeFormDialog.tsx` | Level dropdown, thêm field Role + Email đăng nhập khi tạo mới |
+| `src/components/employees/EmployeeRoleTab.tsx` | Toggle active/inactive tài khoản |
+| SQL insert | Thêm `employee_levels` vào `app_settings` |
 
