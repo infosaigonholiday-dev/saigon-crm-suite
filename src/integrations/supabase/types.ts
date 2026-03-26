@@ -2499,7 +2499,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_department_id: { Args: never; Returns: string }
       get_my_employee_id: { Args: never; Returns: string }
+      get_my_role: { Args: never; Returns: string }
       has_any_role: {
         Args: { _roles: string[]; _user_id: string }
         Returns: boolean
