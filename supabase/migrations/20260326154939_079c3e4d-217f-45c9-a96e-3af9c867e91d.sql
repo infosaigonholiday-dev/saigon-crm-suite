@@ -1,0 +1,1 @@
+INSERT INTO app_settings (key, value, description) VALUES ('employee_levels', '["Intern","Junior","Senior","Lead","Manager","Director"]', 'Danh sách cấp bậc nhân viên') ON CONFLICT (key) DO NOTHING;

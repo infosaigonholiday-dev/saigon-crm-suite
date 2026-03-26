@@ -53,6 +53,21 @@ const statusOptions = [
   { value: "ON_LEAVE", label: "Nghỉ phép" },
 ];
 
+const roleOptions = [
+  { value: "SALE_DOMESTIC", label: "Sale Nội địa" },
+  { value: "SALE_INBOUND", label: "Sale Inbound" },
+  { value: "SALE_OUTBOUND", label: "Sale Outbound" },
+  { value: "HCNS", label: "Nhân sự (HCNS)" },
+  { value: "KETOAN", label: "Kế toán" },
+  { value: "MANAGER", label: "Trưởng phòng" },
+  { value: "DIEUHAN", label: "Điều hành" },
+  { value: "TOUR", label: "Hướng dẫn viên" },
+  { value: "MKT", label: "Marketing" },
+  { value: "INTERN", label: "Thực tập sinh" },
+  { value: "DIRECTOR", label: "Giám đốc" },
+  { value: "ADMIN", label: "Admin" },
+];
+
 interface ValidationErrors {
   full_name?: string;
   phone?: string;
@@ -63,37 +78,21 @@ interface ValidationErrors {
 
 function validate(form: Record<string, string>): ValidationErrors {
   const errors: ValidationErrors = {};
-
-  if (!form.full_name || form.full_name.trim().length < 2) {
-    errors.full_name = "Họ tên phải có ít nhất 2 ký tự";
-  }
-
-  if (form.phone && !/^0\d{9}$/.test(form.phone)) {
-    errors.phone = "Số điện thoại phải 10 số, bắt đầu bằng 0";
-  }
-
-  if (form.id_card && !/^\d{12}$/.test(form.id_card)) {
-    errors.id_card = "CCCD phải đúng 12 chữ số";
-  }
-
+  if (!form.full_name || form.full_name.trim().length < 2) errors.full_name = "Họ tên phải có ít nhất 2 ký tự";
+  if (form.phone && !/^0\d{9}$/.test(form.phone)) errors.phone = "Số điện thoại phải 10 số, bắt đầu bằng 0";
+  if (form.id_card && !/^\d{12}$/.test(form.id_card)) errors.id_card = "CCCD phải đúng 12 chữ số";
   if (form.date_of_birth) {
     const dob = new Date(form.date_of_birth);
     const min18 = new Date();
     min18.setFullYear(min18.getFullYear() - 18);
-    if (dob > min18) {
-      errors.date_of_birth = "Nhân viên phải đủ 18 tuổi";
-    }
+    if (dob > min18) errors.date_of_birth = "Nhân viên phải đủ 18 tuổi";
   }
-
   if (form.hire_date) {
     const hireDate = new Date(form.hire_date);
     const max30 = new Date();
     max30.setDate(max30.getDate() + 30);
-    if (hireDate > max30) {
-      errors.hire_date = "Ngày vào làm không được quá 30 ngày trong tương lai";
-    }
+    if (hireDate > max30) errors.hire_date = "Ngày vào làm không được quá 30 ngày trong tương lai";
   }
-
   return errors;
 }
 
@@ -105,6 +104,7 @@ const defaultForm = {
   hire_date: "", probation_end_date: "", contract_expiry: "",
   bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
   emergency_contact: "",
+  login_email: "", system_role: "SALE_DOMESTIC",
 };
 
 export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }: Props) {
@@ -113,7 +113,6 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [form, setForm] = useState({ ...defaultForm });
 
-  // Reset form when opening for new employee
   useEffect(() => {
     if (open && !isEdit) {
       setForm({ ...defaultForm });
@@ -129,6 +128,14 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
     },
   });
 
+  const { data: levels = [] } = useQuery({
+    queryKey: ["employee-levels"],
+    queryFn: async () => {
+      const { data } = await supabase.from("app_settings").select("value").eq("key", "employee_levels").single();
+      try { return JSON.parse(data?.value || "[]") as string[]; } catch { return []; }
+    },
+  });
+
   useQuery({
     queryKey: ["employee-edit", employeeId],
     enabled: isEdit && open,
@@ -137,27 +144,17 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
       if (error) throw error;
       if (data) {
         setForm({
-          full_name: data.full_name ?? "",
-          gender: data.gender ?? "",
-          date_of_birth: data.date_of_birth ?? "",
-          id_card: data.id_card ?? "",
-          phone: data.phone ?? "",
-          email: data.email ?? "",
-          address: data.address ?? "",
-          employee_code: data.employee_code ?? "",
-          department_id: data.department_id ?? "",
-          position: data.position ?? "",
-          level: data.level ?? "",
-          employment_type: data.employment_type ?? "FULLTIME",
-          status: data.status ?? "PROBATION",
-          hire_date: data.hire_date ?? "",
-          probation_end_date: data.probation_end_date ?? "",
+          full_name: data.full_name ?? "", gender: data.gender ?? "", date_of_birth: data.date_of_birth ?? "",
+          id_card: data.id_card ?? "", phone: data.phone ?? "", email: data.email ?? "", address: data.address ?? "",
+          employee_code: data.employee_code ?? "", department_id: data.department_id ?? "",
+          position: data.position ?? "", level: data.level ?? "",
+          employment_type: data.employment_type ?? "FULLTIME", status: data.status ?? "PROBATION",
+          hire_date: data.hire_date ?? "", probation_end_date: data.probation_end_date ?? "",
           contract_expiry: data.contract_expiry ?? "",
-          bank_account: data.bank_account ?? "",
-          bank_name: data.bank_name ?? "",
-          bank_branch: data.bank_branch ?? "",
-          tax_code: data.tax_code ?? "",
+          bank_account: data.bank_account ?? "", bank_name: data.bank_name ?? "",
+          bank_branch: data.bank_branch ?? "", tax_code: data.tax_code ?? "",
           emergency_contact: data.emergency_contact ?? "",
+          login_email: "", system_role: "SALE_DOMESTIC",
         });
       }
       return data;
@@ -166,9 +163,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
 
   const update = (key: string, value: string) => {
     setForm(f => ({ ...f, [key]: value }));
-    if (errors[key as keyof ValidationErrors]) {
-      setErrors(e => ({ ...e, [key]: undefined }));
-    }
+    if (errors[key as keyof ValidationErrors]) setErrors(e => ({ ...e, [key]: undefined }));
   };
 
   async function handleSave() {
@@ -210,9 +205,30 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
         if (error) throw error;
         toast.success("Cập nhật thành công");
       } else {
-        const { data: emp, error } = await supabase.from("employees").insert(payload).select("id, hire_date").single();
+        const { data: emp, error } = await supabase.from("employees").insert(payload).select("id").single();
         if (error) throw error;
         toast.success("Thêm nhân viên thành công");
+
+        // Auto-create account if login_email provided
+        if (form.login_email.trim()) {
+          try {
+            const { data: accData, error: accError } = await supabase.functions.invoke("manage-employee-accounts", {
+              body: {
+                action: "create",
+                email: form.login_email.trim(),
+                full_name: form.full_name.trim(),
+                role: form.system_role,
+                department_id: form.department_id || null,
+                employee_id: emp.id,
+              },
+            });
+            if (accError) throw accError;
+            if (accData?.error) throw new Error(accData.error);
+            toast.success("Đã tạo tài khoản đăng nhập (MK: sgh123456)");
+          } catch (accErr: any) {
+            toast.error(`Tạo tài khoản lỗi: ${accErr.message}`);
+          }
+        }
       }
       onSuccess();
     } catch (err: any) {
@@ -290,7 +306,12 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 <Input value={form.position} onChange={e => update("position", e.target.value)} />
               </Field>
               <Field label="Cấp bậc">
-                <Input value={form.level} onChange={e => update("level", e.target.value)} placeholder="Junior, Senior, Lead..." />
+                <Select value={form.level} onValueChange={v => update("level", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn cấp bậc" /></SelectTrigger>
+                  <SelectContent>
+                    {levels.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Loại nhân sự">
                 <Select value={form.employment_type} onValueChange={v => update("employment_type", v)}>
@@ -318,6 +339,26 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 <Input type="date" value={form.contract_expiry} onChange={e => update("contract_expiry", e.target.value)} />
               </Field>
             </div>
+
+            {!isEdit && (
+              <div className="border-t pt-4 mt-4 space-y-4">
+                <p className="text-sm font-medium text-foreground">Tạo tài khoản đăng nhập (tùy chọn)</p>
+                <p className="text-xs text-muted-foreground">Nếu nhập email đăng nhập, hệ thống sẽ tự động tạo tài khoản với mật khẩu mặc định: sgh123456</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Email đăng nhập">
+                    <Input type="email" value={form.login_email} onChange={e => update("login_email", e.target.value)} placeholder="email@company.com" />
+                  </Field>
+                  <Field label="Role hệ thống">
+                    <Select value={form.system_role} onValueChange={v => update("system_role", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="bank" className="space-y-4 mt-4">
