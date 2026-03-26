@@ -11,6 +11,9 @@ import Leads from "./pages/Leads";
 import Bookings from "./pages/Bookings";
 import Payments from "./pages/Payments";
 import Employees from "./pages/Employees";
+import EmployeeDetail from "./pages/EmployeeDetail";
+import LeaveManagement from "./pages/LeaveManagement";
+import Payroll from "./pages/Payroll";
 import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import ComingSoon from "./pages/ComingSoon";
@@ -46,6 +49,9 @@ function ProtectedRoutes() {
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
         <Route path="/thanh-toan" element={<Payments />} />
         <Route path="/nhan-su" element={<Employees />} />
+        <Route path="/nhan-su/:id" element={<EmployeeDetail />} />
+        <Route path="/nghi-phep" element={<LeaveManagement />} />
+        <Route path="/bang-luong" element={<Payroll />} />
         <Route path="/tai-chinh" element={<Finance />} />
         <Route path="/cai-dat" element={<Settings />} />
       </Route>

@@ -9,6 +9,8 @@ import {
   UserCog,
   BarChart3,
   Settings,
+  CalendarOff,
+  Banknote,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -17,6 +19,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,7 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const menuItems = [
+const crmItems = [
   { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Khách hàng", url: "/khach-hang", icon: Users },
   { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList },
@@ -32,7 +35,15 @@ const menuItems = [
   { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays },
   { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature },
   { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign },
+];
+
+const hrItems = [
   { title: "Nhân sự", url: "/nhan-su", icon: UserCog },
+  { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff },
+  { title: "Bảng lương", url: "/bang-luong", icon: Banknote },
+];
+
+const otherItems = [
   { title: "Tài chính", url: "/tai-chinh", icon: BarChart3 },
   { title: "Cài đặt", url: "/cai-dat", icon: Settings },
 ];
@@ -41,6 +52,25 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+
+  const renderItems = (items: typeof crmItems) =>
+    items.map((item) => (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton asChild isActive={
+          item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
+        }>
+          <NavLink
+            to={item.url}
+            end={item.url === "/"}
+            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+          >
+            <item.icon className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    ));
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -63,24 +93,23 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Kinh doanh</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <SidebarMenu>{renderItems(crmItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Nhân sự</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(hrItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(otherItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
