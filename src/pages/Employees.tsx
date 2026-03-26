@@ -24,10 +24,10 @@ const statusLabels: Record<string, { label: string; className: string }> = {
 };
 
 const employmentTypes: Record<string, string> = {
-  FULL_TIME: "Chính thức",
+  FULLTIME: "Chính thức",
   PROBATION: "Thử việc",
   INTERN: "Thực tập",
-  PART_TIME: "Bán thời gian",
+  PARTTIME: "Bán thời gian",
   CONTRACT: "Hợp đồng",
 };
 
