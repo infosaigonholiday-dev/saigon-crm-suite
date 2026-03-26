@@ -1,45 +1,39 @@
 
 
-## Fix: Infinite recursion in profiles RLS policies
+## Vấn đề hiện tại
 
-### Nguyên nhân
+Mật khẩu tạm thời được tạo ngẫu nhiên và chỉ hiện 60 giây trên màn hình admin. Thực tế rất khó sử dụng vì:
+- Admin dễ bỏ lỡ, không kịp ghi lại
+- Không có cách nào xem lại sau 60s
+- Nhân viên không biết mật khẩu để đăng nhập
 
-2 policy trên bảng `profiles` đang query lại chính bảng `profiles`:
+## Giải pháp
 
-1. **`profiles_admin_all`**: `EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND ...)` → vòng lặp
-2. **`profiles_self_update`**: `WITH CHECK` cũng query `SELECT p.role FROM profiles p WHERE p.id = auth.uid()` → vòng lặp
+Dùng mật khẩu mặc định `sgh123456` cho tất cả tài khoản mới. Sau khi đăng nhập lần đầu, nhân viên tự đổi mật khẩu. Đồng thời thêm tính năng "Quên mật khẩu" và trang đặt lại mật khẩu.
 
-### Giải pháp
-
-Thay thế các subquery bằng security definer functions đã có sẵn: `has_any_role()` và `has_role()`. Các function này có `SECURITY DEFINER` nên bypass RLS, không gây recursion.
-
-### SQL Migration
-
-```sql
--- 1. Fix profiles_admin_all: dùng has_any_role thay vì subquery
-DROP POLICY IF EXISTS profiles_admin_all ON profiles;
-CREATE POLICY profiles_admin_all ON profiles
-  FOR ALL TO authenticated
-  USING (has_any_role(auth.uid(), ARRAY['ADMIN','SUPER_ADMIN','HR_MANAGER','HCNS']))
-  WITH CHECK (has_any_role(auth.uid(), ARRAY['ADMIN','SUPER_ADMIN','HR_MANAGER','HCNS']));
-
--- 2. Fix profiles_self_update: bỏ subquery check role/dept/employee_id
---    Giữ nguyên chỉ cho phép user update chính mình
---    Trigger prevent_role_change() đã bảo vệ việc tự đổi role
-DROP POLICY IF EXISTS profiles_self_update ON profiles;
-CREATE POLICY profiles_self_update ON profiles
-  FOR UPDATE TO authenticated
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
-```
-
-**Lưu ý**: `prevent_role_change()` trigger đã có sẵn — chỉ ADMIN mới đổi được role. Nên không cần kiểm tra role trong WITH CHECK nữa, tránh recursion.
-
-### Files thay đổi
+### Thay đổi cụ thể
 
 | File | Thay đổi |
 |------|----------|
-| SQL migration | Fix 2 RLS policies trên profiles |
+| `supabase/functions/manage-employee-accounts/index.ts` | Bỏ `generatePassword()`, dùng mật khẩu cố định `sgh123456`. Trả về message thông báo thay vì `temp_password` |
+| `src/components/employees/EmployeeRoleTab.tsx` | Bỏ logic hiển thị mật khẩu tạm 60s + countdown. Thay bằng thông báo đơn giản "Tài khoản đã tạo, mật khẩu mặc định: sgh123456". Thêm nút "Gửi email đặt lại mật khẩu" khi profile đã tồn tại |
+| `src/pages/Login.tsx` | Thêm link/dialog "Quên mật khẩu" gọi `supabase.auth.resetPasswordForEmail()` |
+| `src/pages/ResetPassword.tsx` | **Tạo mới** — Trang đặt mật khẩu mới khi nhận link từ email |
+| `src/App.tsx` | Thêm route `/reset-password` (public) |
 
-Không cần sửa code frontend.
+### Flow sau khi triển khai
+
+```text
+Admin tạo tài khoản NV → Mật khẩu mặc định: sgh123456
+                        → Thông báo cho NV biết mật khẩu
+NV đăng nhập lần đầu   → Dùng sgh123456
+NV đổi mật khẩu        → Quên mật khẩu ở Login → Nhập email → Nhận link
+                        → /reset-password → Đặt mật khẩu mới
+```
+
+### Lưu ý bảo mật
+
+- Mật khẩu mặc định `sgh123456` chỉ là giải pháp nội bộ, phù hợp cho công ty nhỏ
+- Nhân viên nên được yêu cầu đổi mật khẩu ngay sau lần đăng nhập đầu tiên
+- Tính năng "Quên mật khẩu" cho phép reset qua email bất kỳ lúc nào
 
