@@ -1,28 +1,26 @@
 
 
-## Fix: Ambiguous relationship error in SettingsAccountsTab
+## Fix: Quên mật khẩu — thông báo thành công rồi quay về login
 
-### Problem
-The query `profiles.select("... departments(name)")` fails with HTTP 300 because there are two foreign keys between `profiles` and `departments`:
-1. `profiles.department_id → departments.id` (profiles_department_id_fkey)
-2. `departments.manager_id → profiles.id` (fk_dept_manager)
+### Hiện tại
+Sau gửi email thành công, dialog đóng ngay + toast nhỏ → người dùng dễ bỏ lỡ thông báo.
 
-PostgREST cannot determine which relationship to use.
+### Thay đổi
 
-### Fix
-In `src/components/settings/SettingsAccountsTab.tsx` line 54, change:
-```
-departments(name)
-```
-to:
-```
-departments!profiles_department_id_fkey(name)
-```
+**File: `src/pages/Login.tsx`**
 
-This explicitly tells PostgREST to use the `department_id` foreign key.
+- Thêm state `forgotSent` (boolean)
+- Sau gửi email thành công: set `forgotSent = true`, hiện màn hình xác nhận **trong dialog** (icon CheckCircle + "Đã gửi email thành công! Kiểm tra hộp thư để đặt lại mật khẩu.")
+- Tự động đóng dialog sau **3 giây** và quay về form đăng nhập
+- Khi dialog đóng (onOpenChange): reset `forgotSent` và `forgotEmail`
 
-### File changed
-| File | Change |
-|------|--------|
-| `src/components/settings/SettingsAccountsTab.tsx` | Line 54: disambiguate the departments join |
+**File: `src/pages/ResetPassword.tsx`**
+
+- Thêm timeout 8 giây cho trạng thái loading → nếu hết hạn hiện "Liên kết không hợp lệ" + nút "Quay về đăng nhập" (navigate `/login`)
+- Sau đổi MK thành công: nút "Đăng nhập ngay" (navigate `/login`)
+
+| File | Thay đổi |
+|------|----------|
+| `src/pages/Login.tsx` | Dialog quên MK: hiện xác nhận 3s rồi tự đóng |
+| `src/pages/ResetPassword.tsx` | Timeout 8s + nút quay về login |
 
