@@ -1250,6 +1250,7 @@ export type Database = {
           contract_expiry: string | null
           created_at: string | null
           date_of_birth: string | null
+          deleted_at: string | null
           department_id: string | null
           dependants_count: number | null
           email: string | null
@@ -1279,6 +1280,7 @@ export type Database = {
           contract_expiry?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          deleted_at?: string | null
           department_id?: string | null
           dependants_count?: number | null
           email?: string | null
@@ -1308,6 +1310,7 @@ export type Database = {
           contract_expiry?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          deleted_at?: string | null
           department_id?: string | null
           dependants_count?: number | null
           email?: string | null

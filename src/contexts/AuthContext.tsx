@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AuthContextType {
   session: Session | null;
@@ -24,9 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setLoading(false);
+
+        if (event === "SIGNED_OUT") {
+          toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
+          window.location.href = "/login";
+        }
+
+        if (event === "TOKEN_REFRESHED" && !session) {
+          toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+          window.location.href = "/login";
+        }
       }
     );
 
