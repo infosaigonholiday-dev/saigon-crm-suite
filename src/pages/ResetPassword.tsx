@@ -17,20 +17,27 @@ export default function ResetPassword() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const [expired, setExpired] = useState(false);
+
   useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
       }
     });
 
-    // Also check if we already have a session (user clicked link and was auto-logged in)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setReady(true);
     });
 
-    return () => subscription.unsubscribe();
+    const timeout = setTimeout(() => {
+      setExpired(true);
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -61,8 +68,8 @@ export default function ResetPassword() {
             <CheckCircle className="h-12 w-12 text-success mx-auto" />
             <h2 className="text-lg font-semibold">Đổi mật khẩu thành công!</h2>
             <p className="text-sm text-muted-foreground">Bạn có thể đăng nhập với mật khẩu mới.</p>
-            <Button className="w-full" onClick={() => navigate("/")}>
-              Về trang chính
+            <Button className="w-full" onClick={() => navigate("/login")}>
+              Đăng nhập ngay
             </Button>
           </CardContent>
         </Card>
@@ -71,6 +78,24 @@ export default function ResetPassword() {
   }
 
   if (!ready) {
+    if (expired) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-sm">
+            <CardContent className="pt-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                <span className="text-destructive text-xl">✕</span>
+              </div>
+              <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
+              <p className="text-sm text-muted-foreground">Liên kết đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.</p>
+              <Button className="w-full" onClick={() => navigate("/login")}>
+                Quay về đăng nhập
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">

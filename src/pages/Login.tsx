@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,6 +19,16 @@ export default function Login() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+
+  useEffect(() => {
+    if (forgotSent) {
+      const timer = setTimeout(() => {
+        setForgotOpen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [forgotSent]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +50,7 @@ export default function Login() {
     if (error) {
       toast({ title: "Lỗi", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Đã gửi email", description: "Vui lòng kiểm tra hộp thư để đặt lại mật khẩu." });
-      setForgotOpen(false);
-      setForgotEmail("");
+      setForgotSent(true);
     }
     setForgotLoading(false);
   };
@@ -99,29 +106,48 @@ export default function Login() {
         </CardContent>
       </Card>
 
-      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+      <Dialog open={forgotOpen} onOpenChange={(open) => {
+        setForgotOpen(open);
+        if (!open) {
+          setForgotSent(false);
+          setForgotEmail("");
+        }
+      }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Quên mật khẩu</DialogTitle>
-            <DialogDescription>Nhập email để nhận liên kết đặt lại mật khẩu</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleForgotPassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="forgot-email">Email</Label>
-              <Input
-                id="forgot-email"
-                type="email"
-                placeholder="email@company.com"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                required
-              />
+          {forgotSent ? (
+            <div className="text-center space-y-4 py-4">
+              <CheckCircle className="h-12 w-12 text-primary mx-auto" />
+              <h3 className="text-lg font-semibold">Đã gửi email thành công!</h3>
+              <p className="text-sm text-muted-foreground">
+                Kiểm tra hộp thư (kể cả Spam) để đặt lại mật khẩu.
+              </p>
+              <p className="text-xs text-muted-foreground">Tự động đóng sau 3 giây...</p>
             </div>
-            <Button type="submit" className="w-full" disabled={forgotLoading}>
-              {forgotLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Gửi liên kết
-            </Button>
-          </form>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Quên mật khẩu</DialogTitle>
+                <DialogDescription>Nhập email để nhận liên kết đặt lại mật khẩu</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="email@company.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={forgotLoading}>
+                  {forgotLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Gửi liên kết
+                </Button>
+              </form>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
