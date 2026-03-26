@@ -22,6 +22,13 @@ interface Props {
   employeeId?: string;
 }
 
+const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs font-medium">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
+    {children}
+  </div>
+);
+
 const genderOptions = [
   { value: "MALE", label: "Nam" },
   { value: "FEMALE", label: "Nữ" },
@@ -157,12 +164,6 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
     }
   }
 
-  const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
-      {children}
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,6 +184,20 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
             <div className="grid grid-cols-2 gap-4">
               <Field label="Họ tên" required>
                 <Input value={form.full_name} onChange={e => update("full_name", e.target.value)} />
+              </Field>
+              <Field label="Mã nhân viên" required>
+                <div className="flex gap-2">
+                  <Input value={form.employee_code} onChange={e => update("employee_code", e.target.value)} />
+                  {!isEdit && <Button type="button" variant="outline" size="sm" onClick={generateCode}>Tự động</Button>}
+                </div>
+              </Field>
+              <Field label="Phòng ban">
+                <Select value={form.department_id} onValueChange={v => update("department_id", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                  <SelectContent>
+                    {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Giới tính">
                 <Select value={form.gender} onValueChange={v => update("gender", v)}>
@@ -215,20 +230,6 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
 
           <TabsContent value="work" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Mã nhân viên" required>
-                <div className="flex gap-2">
-                  <Input value={form.employee_code} onChange={e => update("employee_code", e.target.value)} />
-                  {!isEdit && <Button type="button" variant="outline" size="sm" onClick={generateCode}>Tự động</Button>}
-                </div>
-              </Field>
-              <Field label="Phòng ban">
-                <Select value={form.department_id} onValueChange={v => update("department_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
-                  <SelectContent>
-                    {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
               <Field label="Chức vụ">
                 <Input value={form.position} onChange={e => update("position", e.target.value)} />
               </Field>
