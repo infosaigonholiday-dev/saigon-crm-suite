@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -113,7 +116,7 @@ export default function Login() {
         <DialogContent className="max-w-sm">
           {forgotSent ? (
             <div className="text-center space-y-4 py-4">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              <CheckCircle className="h-12 w-12 text-primary mx-auto" />
               <h3 className="text-lg font-semibold">Đã gửi email thành công!</h3>
               <p className="text-sm text-muted-foreground">
                 Kiểm tra hộp thư (kể cả Spam) để đặt lại mật khẩu.
