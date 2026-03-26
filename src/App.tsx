@@ -14,6 +14,7 @@ import Employees from "./pages/Employees";
 import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import ComingSoon from "./pages/ComingSoon";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -46,7 +47,7 @@ function ProtectedRoutes() {
         <Route path="/thanh-toan" element={<Payments />} />
         <Route path="/nhan-su" element={<Employees />} />
         <Route path="/tai-chinh" element={<Finance />} />
-        <Route path="/cai-dat" element={<ComingSoon title="Cài đặt" />} />
+        <Route path="/cai-dat" element={<Settings />} />
       </Route>
     </Routes>
   );
