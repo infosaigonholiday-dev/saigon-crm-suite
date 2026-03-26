@@ -47,7 +47,7 @@ function ProtectedRoutes() {
         <Route path="/thanh-toan" element={<Payments />} />
         <Route path="/nhan-su" element={<Employees />} />
         <Route path="/tai-chinh" element={<Finance />} />
-        <Route path="/cai-dat" element={<ComingSoon title="Cài đặt" />} />
+        <Route path="/cai-dat" element={<Settings />} />
       </Route>
     </Routes>
   );
