@@ -7,33 +7,7 @@ const corsHeaders = {
 };
 
 const ALLOWED_ROLES = ["ADMIN", "HCNS", "HR_MANAGER", "DIRECTOR", "SUPER_ADMIN"];
-
-function generatePassword(length = 12): string {
-  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const lower = "abcdefghijklmnopqrstuvwxyz";
-  const digits = "0123456789";
-  const special = "!@#$%&*";
-  const all = upper + lower + digits + special;
-
-  let password = [
-    upper[Math.floor(Math.random() * upper.length)],
-    lower[Math.floor(Math.random() * lower.length)],
-    digits[Math.floor(Math.random() * digits.length)],
-    special[Math.floor(Math.random() * special.length)],
-  ];
-
-  for (let i = password.length; i < length; i++) {
-    password.push(all[Math.floor(Math.random() * all.length)]);
-  }
-
-  // Shuffle
-  for (let i = password.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [password[i], password[j]] = [password[j], password[i]];
-  }
-
-  return password.join("");
-}
+const DEFAULT_PASSWORD = "sgh123456";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -96,7 +70,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const tempPassword = generatePassword(12);
+      const tempPassword = DEFAULT_PASSWORD;
       let createdUserId: string | null = null;
 
       try {
@@ -150,8 +124,7 @@ Deno.serve(async (req) => {
           JSON.stringify({
             success: true,
             user_id: createdUserId,
-            temp_password: tempPassword,
-            message: `Tài khoản đã được tạo thành công cho ${email}`,
+            message: `Tài khoản đã được tạo thành công cho ${email}. Mật khẩu mặc định: sgh123456`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

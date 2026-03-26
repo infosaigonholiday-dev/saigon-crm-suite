@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Shield, Mail, UserCheck, Copy, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, Mail, UserCheck, KeyRound } from "lucide-react";
 
 interface Props {
   employeeId: string;
@@ -43,27 +43,15 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
-
-  // Create account form state
   const [creating, setCreating] = useState(false);
   const [newEmail, setNewEmail] = useState(employeeEmail || "");
   const [newRole, setNewRole] = useState("SALE_DOMESTIC");
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(0);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
     if (employeeEmail && !newEmail) setNewEmail(employeeEmail);
   }, [employeeEmail]);
-
-  // Countdown timer for password visibility
-  useEffect(() => {
-    if (countdown <= 0) {
-      if (tempPassword && countdown === 0) setTempPassword(null);
-      return;
-    }
-    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown, tempPassword]);
 
   const { data: currentUserProfile } = useQuery({
     queryKey: ["my-profile-role"],
@@ -108,12 +96,10 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
           employee_id: employeeId,
         },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setTempPassword(data.temp_password);
-      setCountdown(60);
+      setAccountCreated(true);
       toast.success(data.message || "Tạo tài khoản thành công");
       onProfileLinked?.();
     } catch (err: any) {
@@ -123,12 +109,20 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
     }
   };
 
-  const copyPassword = useCallback(() => {
-    if (tempPassword) {
-      navigator.clipboard.writeText(tempPassword);
-      toast.success("Đã sao chép mật khẩu");
+  const handleSendResetEmail = async (email: string) => {
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success(`Đã gửi email đặt lại mật khẩu đến ${email}`);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi gửi email");
+    } finally {
+      setSendingReset(false);
     }
-  }, [tempPassword]);
+  };
 
   const handleSaveRole = async () => {
     if (!profileId || !selectedRole) return;
@@ -152,24 +146,21 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   if (!profileId) {
     return (
       <div className="space-y-4">
-        {tempPassword && countdown > 0 ? (
-          <Card className="border-warning/50">
+        {accountCreated ? (
+          <Card className="border-success/50">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                Mật khẩu tạm thời
+                <UserCheck className="h-4 w-4 text-success" />
+                Tài khoản đã được tạo
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Ghi lại mật khẩu này ngay. Sau <span className="font-bold text-warning">{countdown}s</span> sẽ bị ẩn và không thể xem lại.
+                Tài khoản đã tạo thành công. Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
               </p>
-              <div className="flex gap-2">
-                <Input value={tempPassword} readOnly className="font-mono" />
-                <Button variant="outline" size="icon" onClick={copyPassword}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Vui lòng thông báo cho nhân viên đăng nhập và đổi mật khẩu qua chức năng "Quên mật khẩu".
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -183,6 +174,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Nhân viên chưa có tài khoản đăng nhập. Tạo tài khoản để phân quyền truy cập hệ thống.
+                Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -258,6 +250,19 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
               <Badge variant="secondary">{currentRoleLabel}</Badge>
             </div>
           </div>
+          {isManager && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSendResetEmail(profile.email)}
+                disabled={sendingReset}
+              >
+                {sendingReset ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <KeyRound className="h-4 w-4 mr-1" />}
+                Gửi email đặt lại mật khẩu
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
