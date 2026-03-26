@@ -230,20 +230,6 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
 
           <TabsContent value="work" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Mã nhân viên" required>
-                <div className="flex gap-2">
-                  <Input value={form.employee_code} onChange={e => update("employee_code", e.target.value)} />
-                  {!isEdit && <Button type="button" variant="outline" size="sm" onClick={generateCode}>Tự động</Button>}
-                </div>
-              </Field>
-              <Field label="Phòng ban">
-                <Select value={form.department_id} onValueChange={v => update("department_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
-                  <SelectContent>
-                    {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
               <Field label="Chức vụ">
                 <Input value={form.position} onChange={e => update("position", e.target.value)} />
               </Field>
