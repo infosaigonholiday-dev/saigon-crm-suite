@@ -1,26 +1,28 @@
 
 
-## Fix: Quên mật khẩu — thông báo thành công rồi quay về login
-
-### Hiện tại
-Sau gửi email thành công, dialog đóng ngay + toast nhỏ → người dùng dễ bỏ lỡ thông báo.
+## Thêm tính năng Reset MK + Reset tất cả TK hiện tại
 
 ### Thay đổi
 
-**File: `src/pages/Login.tsx`**
+**1. Edge Function `supabase/functions/manage-employee-accounts/index.ts`**
 
-- Thêm state `forgotSent` (boolean)
-- Sau gửi email thành công: set `forgotSent = true`, hiện màn hình xác nhận **trong dialog** (icon CheckCircle + "Đã gửi email thành công! Kiểm tra hộp thư để đặt lại mật khẩu.")
-- Tự động đóng dialog sau **3 giây** và quay về form đăng nhập
-- Khi dialog đóng (onOpenChange): reset `forgotSent` và `forgotEmail`
+Thêm 2 action mới:
 
-**File: `src/pages/ResetPassword.tsx`**
+- `reset_password`: nhận `user_id`, gọi `adminClient.auth.admin.updateUserById(user_id, { password: DEFAULT_PASSWORD })` → reset 1 tài khoản về `sgh123456`
+- `reset_all_passwords`: lấy toàn bộ profiles (trừ caller), loop qua từng user gọi `updateUserById` reset về `sgh123456`, trả về số lượng đã reset
 
-- Thêm timeout 8 giây cho trạng thái loading → nếu hết hạn hiện "Liên kết không hợp lệ" + nút "Quay về đăng nhập" (navigate `/login`)
-- Sau đổi MK thành công: nút "Đăng nhập ngay" (navigate `/login`)
+**2. UI `src/components/settings/SettingsAccountsTab.tsx`**
+
+- Import thêm `KeyRound` từ lucide-react, import `AlertDialog` components
+- Thêm nút icon `KeyRound` trên mỗi hàng (cạnh nút vô hiệu hóa) — reset từng người, có AlertDialog xác nhận
+- Thêm nút "Reset tất cả MK" ở header (cạnh "Thêm tài khoản"), có AlertDialog xác nhận
+- State mới: `resettingId`, `resettingAll`, `confirmResetId`, `confirmResetAll`
+- Toast thông báo kết quả
+
+**3. Sau khi deploy xong** — gọi edge function với action `reset_all_passwords` để reset MK tất cả TK nhân viên đã tạo về `sgh123456` ngay lập tức.
 
 | File | Thay đổi |
 |------|----------|
-| `src/pages/Login.tsx` | Dialog quên MK: hiện xác nhận 3s rồi tự đóng |
-| `src/pages/ResetPassword.tsx` | Timeout 8s + nút quay về login |
+| `supabase/functions/manage-employee-accounts/index.ts` | Thêm action `reset_password` + `reset_all_passwords` |
+| `src/components/settings/SettingsAccountsTab.tsx` | Nút reset từng TK + reset tất cả + AlertDialog confirm |
 
