@@ -174,6 +174,70 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "reset_password") {
+      const { user_id } = payload;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "Thiếu user_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: resetError } = await adminClient.auth.admin.updateUserById(user_id, {
+        password: DEFAULT_PASSWORD,
+      });
+
+      if (resetError) {
+        return new Response(JSON.stringify({ error: resetError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Đã reset mật khẩu về mặc định (${DEFAULT_PASSWORD})` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "reset_all_passwords") {
+      const { data: allProfiles } = await adminClient
+        .from("profiles")
+        .select("id")
+        .neq("id", callerId);
+
+      if (!allProfiles || allProfiles.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "Không có tài khoản nào để reset", count: 0 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let resetCount = 0;
+      const errors: string[] = [];
+
+      for (const profile of allProfiles) {
+        const { error: resetErr } = await adminClient.auth.admin.updateUserById(profile.id, {
+          password: DEFAULT_PASSWORD,
+        });
+        if (resetErr) {
+          errors.push(`${profile.id}: ${resetErr.message}`);
+        } else {
+          resetCount++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định (${DEFAULT_PASSWORD})`,
+          count: resetCount,
+          errors: errors.length > 0 ? errors : undefined,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
