@@ -22,6 +22,13 @@ interface Props {
   employeeId?: string;
 }
 
+const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs font-medium">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
+    {children}
+  </div>
+);
+
 const genderOptions = [
   { value: "MALE", label: "Nam" },
   { value: "FEMALE", label: "Nữ" },
@@ -157,12 +164,6 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
     }
   }
 
-  const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
-      {children}
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
