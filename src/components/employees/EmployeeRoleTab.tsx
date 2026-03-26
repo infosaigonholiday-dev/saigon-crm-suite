@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -48,6 +49,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   const [newRole, setNewRole] = useState("SALE_DOMESTIC");
   const [accountCreated, setAccountCreated] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
 
   useEffect(() => {
     if (employeeEmail && !newEmail) setNewEmail(employeeEmail);
@@ -80,25 +82,14 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   });
 
   const handleCreateAccount = async () => {
-    if (!newEmail.trim()) {
-      toast.error("Vui lòng nhập email");
-      return;
-    }
+    if (!newEmail.trim()) { toast.error("Vui lòng nhập email"); return; }
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
-        body: {
-          action: "create",
-          email: newEmail.trim(),
-          full_name: employeeName || "Nhân viên",
-          role: newRole,
-          department_id: departmentId || null,
-          employee_id: employeeId,
-        },
+        body: { action: "create", email: newEmail.trim(), full_name: employeeName || "Nhân viên", role: newRole, department_id: departmentId || null, employee_id: employeeId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       setAccountCreated(true);
       toast.success(data.message || "Tạo tài khoản thành công");
       onProfileLinked?.();
@@ -112,9 +103,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   const handleSendResetEmail = async (email: string) => {
     setSendingReset(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
       if (error) throw error;
       toast.success(`Đã gửi email đặt lại mật khẩu đến ${email}`);
     } catch (err: any) {
@@ -128,10 +117,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
     if (!profileId || !selectedRole) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: selectedRole })
-        .eq("id", profileId);
+      const { error } = await supabase.from("profiles").update({ role: selectedRole }).eq("id", profileId);
       if (error) throw error;
       toast.success("Cập nhật quyền thành công");
       refetch();
@@ -139,6 +125,25 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
       toast.error(err.message || "Lỗi cập nhật quyền");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    if (!profileId || !profile) return;
+    setTogglingActive(true);
+    try {
+      const action = profile.is_active ? "deactivate" : "activate";
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action, user_id: profileId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(profile.is_active ? "Đã vô hiệu hóa tài khoản" : "Đã kích hoạt tài khoản");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi cập nhật trạng thái");
+    } finally {
+      setTogglingActive(false);
     }
   };
 
@@ -173,18 +178,12 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Nhân viên chưa có tài khoản đăng nhập. Tạo tài khoản để phân quyền truy cập hệ thống.
-                Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
+                Nhân viên chưa có tài khoản đăng nhập. Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Email đăng nhập</Label>
-                  <Input
-                    type="email"
-                    value={newEmail}
-                    onChange={e => setNewEmail(e.target.value)}
-                    placeholder="email@company.com"
-                  />
+                  <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@company.com" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Quyền hệ thống</Label>
@@ -212,13 +211,8 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
     );
   }
 
-  if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  }
-
-  if (!profile) {
-    return <Card><CardContent className="py-8 text-center text-muted-foreground">Không tìm thấy thông tin tài khoản</CardContent></Card>;
-  }
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (!profile) return <Card><CardContent className="py-8 text-center text-muted-foreground">Không tìm thấy thông tin tài khoản</CardContent></Card>;
 
   const currentRoleLabel = roleOptions.find(r => r.value === profile.role)?.label ?? profile.role;
 
@@ -234,14 +228,22 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
               <p className="text-sm font-medium">{profile.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-xs text-muted-foreground">Trạng thái</p>
-              <Badge variant="outline" className={profile.is_active ? "bg-success/15 text-success border-success/30" : "bg-destructive/10 text-destructive border-destructive/20"}>
-                {profile.is_active ? "Đang hoạt động" : "Bị khóa"}
-              </Badge>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Trạng thái tài khoản</p>
+                <Badge variant="outline" className={profile.is_active ? "bg-success/15 text-success border-success/30" : "bg-destructive/10 text-destructive border-destructive/20"}>
+                  {profile.is_active ? "Đang hoạt động" : "Bị khóa"}
+                </Badge>
+              </div>
             </div>
+            {isManager && (
+              <div className="flex items-center gap-2">
+                {togglingActive && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Switch checked={profile.is_active} onCheckedChange={handleToggleActive} disabled={togglingActive} />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -252,12 +254,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
           </div>
           {isManager && (
             <div className="pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleSendResetEmail(profile.email)}
-                disabled={sendingReset}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleSendResetEmail(profile.email)} disabled={sendingReset}>
                 {sendingReset ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <KeyRound className="h-4 w-4 mr-1" />}
                 Gửi email đặt lại mật khẩu
               </Button>
