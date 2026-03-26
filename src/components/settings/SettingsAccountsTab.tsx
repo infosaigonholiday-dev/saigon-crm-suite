@@ -116,11 +116,11 @@ export function SettingsAccountsTab() {
     }
   }
 
-  async function handleResetPassword(userId: string) {
+  async function handleResetPassword(userId: string, email?: string) {
     setResettingId(userId);
     try {
       const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
-        body: { action: "reset_password", user_id: userId },
+        body: { action: "reset_password", user_id: userId, email: email ?? null },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -149,6 +149,8 @@ export function SettingsAccountsTab() {
       setConfirmResetAll(false);
     }
   }
+
+  const confirmResetProfile = profiles.find((p) => p.id === confirmResetId) ?? null;
 
   return (
     <div className="space-y-4">
@@ -192,15 +194,33 @@ export function SettingsAccountsTab() {
                 <TableCell>
                   {p.id !== user?.id && (
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" disabled={resettingId === p.id}
-                        onClick={() => setConfirmResetId(p.id)} title="Reset mật khẩu">
-                        {resettingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
-                          <KeyRound className="h-4 w-4 text-amber-600" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={resettingId === p.id}
+                        onClick={() => setConfirmResetId(p.id)}
+                        title="Reset mật khẩu"
+                      >
+                        {resettingId === p.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <KeyRound className="h-4 w-4 text-primary" />
+                        )}
                       </Button>
-                      <Button variant="ghost" size="icon" disabled={togglingId === p.id} onClick={() => handleToggleActive(p)}
-                        title={p.is_active ? "Vô hiệu hóa" : "Kích hoạt"}>
-                        {togglingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
-                          p.is_active ? <ShieldOff className="h-4 w-4 text-destructive" /> : <ShieldCheck className="h-4 w-4 text-primary" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={togglingId === p.id}
+                        onClick={() => handleToggleActive(p)}
+                        title={p.is_active ? "Vô hiệu hóa" : "Kích hoạt"}
+                      >
+                        {togglingId === p.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : p.is_active ? (
+                          <ShieldOff className="h-4 w-4 text-destructive" />
+                        ) : (
+                          <ShieldCheck className="h-4 w-4 text-primary" />
+                        )}
                       </Button>
                     </div>
                   )}
@@ -216,7 +236,6 @@ export function SettingsAccountsTab() {
         </Table>
       </div>
 
-      {/* Dialog tạo tài khoản */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -261,7 +280,6 @@ export function SettingsAccountsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* AlertDialog xác nhận reset từng TK */}
       <AlertDialog open={!!confirmResetId} onOpenChange={(open) => !open && setConfirmResetId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -272,14 +290,21 @@ export function SettingsAccountsTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmResetId && handleResetPassword(confirmResetId)}>
-              Xác nhận reset
+            <AlertDialogAction asChild>
+              <Button
+                onClick={() => confirmResetProfile && handleResetPassword(confirmResetProfile.id, confirmResetProfile.email)}
+                disabled={!confirmResetProfile || resettingId === confirmResetProfile.id}
+              >
+                {confirmResetProfile && resettingId === confirmResetProfile.id && (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                )}
+                Xác nhận reset
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* AlertDialog xác nhận reset tất cả */}
       <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -290,8 +315,11 @@ export function SettingsAccountsTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetAllPasswords}>
-              Xác nhận reset tất cả
+            <AlertDialogAction asChild>
+              <Button onClick={handleResetAllPasswords} disabled={resettingAll}>
+                {resettingAll && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Xác nhận reset tất cả
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
