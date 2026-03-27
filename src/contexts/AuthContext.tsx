@@ -6,6 +6,7 @@ import { toast } from "sonner";
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  userRole: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -13,6 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
+  userRole: null,
   loading: true,
   signOut: async () => {},
 });
@@ -21,12 +23,29 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function fetchRole(userId: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single();
+    setUserRole(data?.role ?? null);
+  }
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
+
+        if (session?.user) {
+          setTimeout(() => fetchRole(session.user.id), 0);
+        } else {
+          setUserRole(null);
+        }
+
         setLoading(false);
 
         if (event === "SIGNED_OUT") {
@@ -43,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        fetchRole(session.user.id);
+      }
       setLoading(false);
     });
 
@@ -54,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, userRole, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

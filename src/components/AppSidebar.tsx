@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -27,8 +28,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+const CRM_ROLES = [
+  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "DIEUHAN", "MANAGER",
+  "SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT",
+];
+
+const HR_ROLES = [
+  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "HCNS", "HR_MANAGER",
+];
+
+const FINANCE_ROLES = [
+  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "KETOAN",
+];
+
+const SETTINGS_ROLES = [
+  "ADMIN", "SUPER_ADMIN",
+];
+
 const crmItems = [
-  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Khách hàng", url: "/khach-hang", icon: Users },
   { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList },
   { title: "Báo giá", url: "/bao-gia", icon: FileText },
@@ -43,8 +60,11 @@ const hrItems = [
   { title: "Bảng lương", url: "/bang-luong", icon: Banknote },
 ];
 
-const otherItems = [
+const financeItems = [
   { title: "Tài chính", url: "/tai-chinh", icon: BarChart3 },
+];
+
+const settingsItems = [
   { title: "Cài đặt", url: "/cai-dat", icon: Settings },
 ];
 
@@ -52,6 +72,10 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { userRole } = useAuth();
+
+  const hasAccess = (allowedRoles: string[]) =>
+    !!userRole && allowedRoles.includes(userRole);
 
   const renderItems = (items: typeof crmItems) =>
     items.map((item) => (
@@ -71,6 +95,11 @@ export function AppSidebar() {
         </SidebarMenuButton>
       </SidebarMenuItem>
     ));
+
+  // Dashboard is always visible
+  const dashboardItem = [
+    { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  ];
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -95,23 +124,33 @@ export function AppSidebar() {
         <SidebarGroup>
           {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Kinh doanh</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>{renderItems(crmItems)}</SidebarMenu>
+            <SidebarMenu>
+              {renderItems(dashboardItem)}
+              {hasAccess(CRM_ROLES) && renderItems(crmItems)}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Nhân sự</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(hrItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {hasAccess(HR_ROLES) && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Nhân sự</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{renderItems(hrItems)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(otherItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {(hasAccess(FINANCE_ROLES) || hasAccess(SETTINGS_ROLES)) && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {hasAccess(FINANCE_ROLES) && renderItems(financeItems)}
+                {hasAccess(SETTINGS_ROLES) && renderItems(settingsItems)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
