@@ -18,6 +18,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions, type PermissionKey } from "@/hooks/usePermissions";
 import {
   Sidebar,
   SidebarContent,
@@ -31,47 +32,37 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const CRM_ROLES = [
-  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "DIEUHAN", "MANAGER",
-  "SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT",
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  permission?: PermissionKey;
+}
+
+const crmItems: MenuItem[] = [
+  { title: "Khách hàng", url: "/khach-hang", icon: Users, permission: "customers.view" },
+  { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, permission: "leads.view" },
+  { title: "Báo giá", url: "/bao-gia", icon: FileText, permission: "quotations.view" },
+  { title: "Gói tour", url: "/goi-tour", icon: Package, permission: "quotations.view" },
+  { title: "Lịch trình", url: "/lich-trinh", icon: Route, permission: "quotations.view" },
+  { title: "Lưu trú", url: "/luu-tru", icon: Hotel, permission: "quotations.view" },
+  { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, permission: "bookings.view" },
+  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, permission: "bookings.view" },
+  { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, permission: "payments.view" },
 ];
 
-const HR_ROLES = [
-  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "HCNS", "HR_MANAGER",
+const hrItems: MenuItem[] = [
+  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "employees.view" },
+  { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, permission: "leave.view" },
+  { title: "Bảng lương", url: "/bang-luong", icon: Banknote, permission: "payroll.view" },
 ];
 
-const FINANCE_ROLES = [
-  "ADMIN", "SUPER_ADMIN", "DIRECTOR", "KETOAN",
+const financeItems: MenuItem[] = [
+  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, permission: "finance.view" },
 ];
 
-const SETTINGS_ROLES = [
-  "ADMIN", "SUPER_ADMIN",
-];
-
-const crmItems = [
-  { title: "Khách hàng", url: "/khach-hang", icon: Users },
-  { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList },
-  { title: "Báo giá", url: "/bao-gia", icon: FileText },
-  { title: "Gói tour", url: "/goi-tour", icon: Package },
-  { title: "Lịch trình", url: "/lich-trinh", icon: Route },
-  { title: "Lưu trú", url: "/luu-tru", icon: Hotel },
-  { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays },
-  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature },
-  { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign },
-];
-
-const hrItems = [
-  { title: "Nhân sự", url: "/nhan-su", icon: UserCog },
-  { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff },
-  { title: "Bảng lương", url: "/bang-luong", icon: Banknote },
-];
-
-const financeItems = [
-  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3 },
-];
-
-const settingsItems = [
-  { title: "Cài đặt", url: "/cai-dat", icon: Settings },
+const settingsItems: MenuItem[] = [
+  { title: "Cài đặt", url: "/cai-dat", icon: Settings, permission: "settings.view" },
 ];
 
 export function AppSidebar() {
@@ -79,11 +70,12 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { userRole } = useAuth();
+  const { hasPermission, loading: permLoading } = usePermissions();
 
-  const hasAccess = (allowedRoles: string[]) =>
-    !!userRole && allowedRoles.includes(userRole);
+  const filterItems = (items: MenuItem[]) =>
+    items.filter((item) => !item.permission || hasPermission(item.permission));
 
-  const renderItems = (items: typeof crmItems) =>
+  const renderItems = (items: MenuItem[]) =>
     items.map((item) => (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton asChild isActive={
@@ -102,10 +94,14 @@ export function AppSidebar() {
       </SidebarMenuItem>
     ));
 
-  // Dashboard is always visible
-  const dashboardItem = [
+  const dashboardItem: MenuItem[] = [
     { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   ];
+
+  const visibleCrm = filterItems(crmItems);
+  const visibleHr = filterItems(hrItems);
+  const visibleFinance = filterItems(financeItems);
+  const visibleSettings = filterItems(settingsItems);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -132,27 +128,27 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {renderItems(dashboardItem)}
-              {hasAccess(CRM_ROLES) && renderItems(crmItems)}
+              {visibleCrm.length > 0 && renderItems(visibleCrm)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {hasAccess(HR_ROLES) && (
+        {visibleHr.length > 0 && (
           <SidebarGroup>
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Nhân sự</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <SidebarMenu>{renderItems(hrItems)}</SidebarMenu>
+              <SidebarMenu>{renderItems(visibleHr)}</SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {(hasAccess(FINANCE_ROLES) || hasAccess(SETTINGS_ROLES)) && (
+        {(visibleFinance.length > 0 || visibleSettings.length > 0) && (
           <SidebarGroup>
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
-                {hasAccess(FINANCE_ROLES) && renderItems(financeItems)}
-                {hasAccess(SETTINGS_ROLES) && renderItems(settingsItems)}
+                {renderItems(visibleFinance)}
+                {renderItems(visibleSettings)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
