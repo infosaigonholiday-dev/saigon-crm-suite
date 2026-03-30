@@ -49,8 +49,9 @@ export default function Bookings() {
           <h1 className="text-2xl font-bold">Đặt tour</h1>
           <p className="text-sm text-muted-foreground">{bookings.length} booking</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
       </div>
+      <BookingFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardContent className="p-0">

@@ -61,8 +61,9 @@ export default function Customers() {
           <h1 className="text-2xl font-bold">Khách hàng</h1>
           <p className="text-sm text-muted-foreground">{customers.length} khách hàng</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
       </div>
+      <CustomerFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardHeader className="pb-3">

@@ -69,8 +69,9 @@ export default function Leads() {
           <h1 className="text-2xl font-bold">Tiềm năng (Lead)</h1>
           <p className="text-sm text-muted-foreground">{leads.length} lead</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
       </div>
+      <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {columns.map((col) => {

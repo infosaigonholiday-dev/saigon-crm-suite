@@ -47,8 +47,9 @@ export default function Payments() {
           <h1 className="text-2xl font-bold">Thanh toán</h1>
           <p className="text-sm text-muted-foreground">{payments.length} giao dịch</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Thêm thanh toán</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm thanh toán</Button>
       </div>
+      <PaymentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardContent className="p-0">
