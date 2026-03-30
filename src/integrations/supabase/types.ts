@@ -1231,6 +1231,51 @@ export type Database = {
           },
         ]
       }
+      employee_permissions: {
+        Row: {
+          employee_id: string
+          granted: boolean | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          notes: string | null
+          permission_key: string
+        }
+        Insert: {
+          employee_id: string
+          granted?: boolean | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          permission_key: string
+        }
+        Update: {
+          employee_id?: string
+          granted?: boolean | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          permission_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_permissions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_salaries: {
         Row: {
           approved_by: string | null
@@ -2746,6 +2791,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_default_permissions_for_role: {
+        Args: { _role: string }
+        Returns: string[]
+      }
       get_my_department_id: { Args: never; Returns: string }
       get_my_employee_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
