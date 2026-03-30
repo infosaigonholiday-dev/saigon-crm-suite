@@ -70,6 +70,9 @@ export default function Settings() {
           <TabsContent value="roles" className="mt-4">
             <SettingsRolesTab />
           </TabsContent>
+          <TabsContent value="permissions" className="mt-4">
+            <SettingsPermissionsTab />
+          </TabsContent>
         </Tabs>
       )}
     </div>
