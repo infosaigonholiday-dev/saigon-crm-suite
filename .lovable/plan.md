@@ -1,66 +1,57 @@
 
 
-## Fix 4 nút "Thêm mới" không hoạt động
+## Bổ sung thông tin khách hàng
 
-Hiện tại cả 4 nút chỉ là `<Button>` không có `onClick` hay dialog nào. Cần tạo form dialog cho từng trang.
+### Phân tích hiện trạng
 
-### Thay đổi
+Bảng `customers` đã có sẵn: `address`, `company_name`, `tax_code`, `segment`, `total_bookings`, `total_revenue`, `total_paid`, `assigned_sale_id`, `zalo_id`, `created_at`. Chỉ cần thêm các cột mới còn thiếu.
 
-**1. Tạo `src/components/customers/CustomerFormDialog.tsx`**
+### 1. Database Migration -- Thêm cột mới
 
-Dialog form thêm khách hàng với các trường:
-- `full_name` (required), `type` (required, select: CÁ NHÂN / DOANH NGHIỆP)
-- `phone`, `email` (validate format), `company_name`, `address`, `tax_code`, `zalo_id`
-- `segment` (select: NEW/SILVER/GOLD/DIAMOND, default NEW)
-- `notes`
+Thêm 9 cột vào bảng `customers`:
 
-Submit: insert vào bảng `customers`, invalidate query `["customers"]`, toast thành công.
+| Cột | Kiểu | Mục đích |
+|-----|------|----------|
+| `date_of_birth` | date | Ngày sinh |
+| `gender` | text | Nam/Nữ/Khác |
+| `id_number` | text | CCCD/Passport |
+| `source` | text | Nguồn KH (Facebook, Zalo...) |
+| `company_address` | text | Địa chỉ công ty |
+| `contact_person` | text | Người liên hệ |
+| `contact_position` | text | Chức vụ người LH |
+| `company_email` | text | Email công ty |
+| `founded_date` | date | Ngày thành lập |
+| `employee_count` | integer | Quy mô nhân sự |
 
-**2. Tạo `src/components/leads/LeadFormDialog.tsx`**
+Giữ nguyên các cột đã tồn tại (`address`, `company_name`, `tax_code`, `assigned_sale_id`, `segment`, `total_bookings`, `total_revenue`, `total_paid`).
 
-Dialog form thêm lead:
-- `full_name` (required), `phone`, `email`
-- `channel` (select: Facebook/Zalo/Website/Referral/Other)
-- `interest_type`, `company_name`, `expected_value` (number)
-- `status` default "NEW"
+### 2. Cập nhật CustomerFormDialog
 
-Submit: insert vào `leads`, invalidate `["leads"]`, toast.
+Chuyển form thành 2 tabs dùng Radix Tabs:
 
-**3. Tạo `src/components/bookings/BookingFormDialog.tsx`**
+**Tab "Thông tin cơ bản":**
+- Họ tên (required), SĐT (required), Email, Ngày sinh (date picker), Giới tính (radio), CCCD/Passport, Địa chỉ, Nguồn (select), Zalo ID, Sale phụ trách (select -- query profiles với role SALE_*)
 
-Dialog form tạo booking:
-- `code` (required, text), `customer_id` (required, select từ danh sách customers)
-- `pax_total` (number), `total_value` (number)
-- `deposit_amount`, `deposit_due_at` (date), `remaining_due_at` (date)
-- `status` default "PENDING"
+**Tab "Thông tin công ty":**
+- Tên công ty, MST (validate 10 số), Địa chỉ công ty, Người liên hệ, Chức vụ, Email công ty, Ngày thành lập, Quy mô nhân sự
 
-Submit: insert vào `bookings`, invalidate `["bookings"]`, toast.
+**Validation bổ sung:**
+- MST: `/^\d{10}$/`
+- Ngày sinh < today
+- SĐT trở thành required
 
-**4. Tạo `src/components/payments/PaymentFormDialog.tsx`**
+### 3. Cập nhật danh sách Customers.tsx
 
-Dialog form thêm thanh toán:
-- `booking_id` (required, select từ danh sách bookings — hiển thị code)
-- `amount` (required, number)
-- `payment_type` (select: DEPOSIT/REMAINING/FULL/REFUND)
-- `method` (select: BANK_TRANSFER/CASH/CARD)
-- `paid_at` (date), `bank_ref_code`, `notes`
+- Thêm cột "Nguồn" và "Sale phụ trách" vào bảng
+- Query thêm `source`, `assigned_sale_id` + join profiles để lấy tên sale
+- Badge phân hạng đã có sẵn (segment)
 
-Submit: insert vào `payments`, invalidate `["payments"]`, toast.
-
-**5. Cập nhật 4 trang chính**
+### Files thay đổi
 
 | File | Thay đổi |
 |------|----------|
-| `src/pages/Customers.tsx` | Import `CustomerFormDialog`, thêm state `open`, nút onClick mở dialog |
-| `src/pages/Leads.tsx` | Import `LeadFormDialog`, thêm state `open`, nút onClick mở dialog |
-| `src/pages/Bookings.tsx` | Import `BookingFormDialog`, thêm state `open`, nút onClick mở dialog |
-| `src/pages/Payments.tsx` | Import `PaymentFormDialog`, thêm state `open`, nút onClick mở dialog |
-
-### Chi tiết kỹ thuật
-
-- Mỗi dialog dùng `Dialog` + `DialogContent` từ shadcn, form state bằng `useState`
-- Validation: required fields check trước submit, email regex, phone chỉ số
-- Submit dùng `useMutation` + `useQueryClient().invalidateQueries()` để refresh danh sách
-- Toast dùng `useToast` từ `@/hooks/use-toast`
-- Tổng cộng 4 file mới + 4 file sửa
+| Migration SQL | ALTER TABLE add 9 columns |
+| `src/components/customers/CustomerFormDialog.tsx` | Thêm tabs, thêm fields, thêm query profiles |
+| `src/pages/Customers.tsx` | Thêm cột nguồn + sale, update query |
+| `src/integrations/supabase/types.ts` | Auto-updated |
 
