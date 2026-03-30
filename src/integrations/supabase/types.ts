@@ -972,20 +972,30 @@ export type Database = {
           address: string | null
           assigned_sale_id: string | null
           blacklist_reason: string | null
+          company_address: string | null
+          company_email: string | null
           company_name: string | null
+          contact_person: string | null
+          contact_position: string | null
           created_at: string | null
           created_by: string | null
+          date_of_birth: string | null
           department_id: string | null
           email: string | null
+          employee_count: number | null
           first_booking_date: string | null
+          founded_date: string | null
           full_name: string
+          gender: string | null
           id: string
+          id_number: string | null
           is_blacklisted: boolean | null
           last_booking_date: string | null
           notes: string | null
           phone: string | null
           segment: string | null
           segment_updated_at: string | null
+          source: string | null
           source_id: string | null
           tax_code: string | null
           total_bookings: number | null
@@ -998,20 +1008,30 @@ export type Database = {
           address?: string | null
           assigned_sale_id?: string | null
           blacklist_reason?: string | null
+          company_address?: string | null
+          company_email?: string | null
           company_name?: string | null
+          contact_person?: string | null
+          contact_position?: string | null
           created_at?: string | null
           created_by?: string | null
+          date_of_birth?: string | null
           department_id?: string | null
           email?: string | null
+          employee_count?: number | null
           first_booking_date?: string | null
+          founded_date?: string | null
           full_name: string
+          gender?: string | null
           id?: string
+          id_number?: string | null
           is_blacklisted?: boolean | null
           last_booking_date?: string | null
           notes?: string | null
           phone?: string | null
           segment?: string | null
           segment_updated_at?: string | null
+          source?: string | null
           source_id?: string | null
           tax_code?: string | null
           total_bookings?: number | null
@@ -1024,20 +1044,30 @@ export type Database = {
           address?: string | null
           assigned_sale_id?: string | null
           blacklist_reason?: string | null
+          company_address?: string | null
+          company_email?: string | null
           company_name?: string | null
+          contact_person?: string | null
+          contact_position?: string | null
           created_at?: string | null
           created_by?: string | null
+          date_of_birth?: string | null
           department_id?: string | null
           email?: string | null
+          employee_count?: number | null
           first_booking_date?: string | null
+          founded_date?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
+          id_number?: string | null
           is_blacklisted?: boolean | null
           last_booking_date?: string | null
           notes?: string | null
           phone?: string | null
           segment?: string | null
           segment_updated_at?: string | null
+          source?: string | null
           source_id?: string | null
           tax_code?: string | null
           total_bookings?: number | null
