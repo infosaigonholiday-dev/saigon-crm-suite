@@ -17,6 +17,10 @@ import Payroll from "./pages/Payroll";
 import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import ComingSoon from "./pages/ComingSoon";
+import Quotations from "./pages/Quotations";
+import TourPackages from "./pages/TourPackages";
+import Itineraries from "./pages/Itineraries";
+import Accommodations from "./pages/Accommodations";
 import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -45,7 +49,10 @@ function ProtectedRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/khach-hang" element={<Customers />} />
         <Route path="/tiem-nang" element={<Leads />} />
-        <Route path="/bao-gia" element={<ComingSoon title="Báo giá" />} />
+        <Route path="/bao-gia" element={<Quotations />} />
+        <Route path="/goi-tour" element={<TourPackages />} />
+        <Route path="/lich-trinh" element={<Itineraries />} />
+        <Route path="/luu-tru" element={<Accommodations />} />
         <Route path="/dat-tour" element={<Bookings />} />
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
         <Route path="/thanh-toan" element={<Payments />} />

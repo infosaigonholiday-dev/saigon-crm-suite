@@ -11,6 +11,9 @@ import {
   Settings,
   CalendarOff,
   Banknote,
+  Package,
+  Route,
+  Hotel,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -49,6 +52,9 @@ const crmItems = [
   { title: "Khách hàng", url: "/khach-hang", icon: Users },
   { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList },
   { title: "Báo giá", url: "/bao-gia", icon: FileText },
+  { title: "Gói tour", url: "/goi-tour", icon: Package },
+  { title: "Lịch trình", url: "/lich-trinh", icon: Route },
+  { title: "Lưu trú", url: "/luu-tru", icon: Hotel },
   { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays },
   { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature },
   { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign },
