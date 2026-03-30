@@ -7,6 +7,7 @@ import { SettingsAccountsTab } from "@/components/settings/SettingsAccountsTab";
 import { SettingsDepartmentsTab } from "@/components/settings/SettingsDepartmentsTab";
 import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
+import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 
 export default function Settings() {
   const { user } = useAuth();
