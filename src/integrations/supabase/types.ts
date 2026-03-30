@@ -292,6 +292,44 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_itineraries: {
+        Row: {
+          activities: Json | null
+          actual_date: string | null
+          booking_id: string
+          created_at: string | null
+          day_number: number
+          destination: string
+          id: string
+        }
+        Insert: {
+          activities?: Json | null
+          actual_date?: string | null
+          booking_id: string
+          created_at?: string | null
+          day_number: number
+          destination?: string
+          id?: string
+        }
+        Update: {
+          activities?: Json | null
+          actual_date?: string | null
+          booking_id?: string
+          created_at?: string | null
+          day_number?: number
+          destination?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_itineraries_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           cancellation_fee: number | null

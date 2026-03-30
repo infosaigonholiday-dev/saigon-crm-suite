@@ -10,6 +10,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Leads from "./pages/Leads";
 import Bookings from "./pages/Bookings";
+import BookingDetail from "./pages/BookingDetail";
 import Payments from "./pages/Payments";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
@@ -56,6 +57,7 @@ function ProtectedRoutes() {
         <Route path="/lich-trinh" element={<Itineraries />} />
         <Route path="/luu-tru" element={<Accommodations />} />
         <Route path="/dat-tour" element={<Bookings />} />
+        <Route path="/dat-tour/:id" element={<BookingDetail />} />
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
         <Route path="/thanh-toan" element={<Payments />} />
         <Route path="/nhan-su" element={<Employees />} />

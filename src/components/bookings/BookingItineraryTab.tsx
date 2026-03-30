@@ -31,6 +31,16 @@ const statusIcons: Record<string, string> = {
   CoVanDe: "⚠️",
 };
 
+interface ItineraryDay {
+  id: string;
+  booking_id: string;
+  day_number: number;
+  actual_date: string | null;
+  destination: string;
+  activities: Activity[];
+  created_at: string;
+}
+
 interface Props {
   bookingId: string;
 }
@@ -38,7 +48,7 @@ interface Props {
 export default function BookingItineraryTab({ bookingId }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const queryKey = ["tour-itineraries", bookingId];
+  const queryKey = ["booking-itineraries", bookingId];
 
   const [activityDialog, setActivityDialog] = useState<{ open: boolean; dayId: string | null }>({ open: false, dayId: null });
   const [addingDay, setAddingDay] = useState(false);
@@ -47,26 +57,26 @@ export default function BookingItineraryTab({ bookingId }: Props) {
   const { data: days = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tour_itineraries")
+      const { data, error } = await (supabase as any)
+        .from("booking_itineraries")
         .select("*")
         .eq("booking_id", bookingId)
         .order("day_number", { ascending: true });
       if (error) throw error;
-      return data;
+      return (data ?? []) as ItineraryDay[];
     },
   });
 
   const addDayMutation = useMutation({
     mutationFn: async () => {
       const nextDay = days.length > 0 ? Math.max(...days.map((d) => d.day_number)) + 1 : 1;
-      const { error } = await supabase.from("tour_itineraries").insert({
+      const { error } = await (supabase as any).from("booking_itineraries").insert({
         booking_id: bookingId,
         day_number: nextDay,
         destination: newDay.destination || "Chưa xác định",
         actual_date: newDay.actual_date ? format(newDay.actual_date, "yyyy-MM-dd") : null,
         activities: [],
-      } as any);
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -80,7 +90,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
 
   const deleteDayMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("tour_itineraries").delete().eq("id", id);
+      const { error } = await (supabase as any).from("booking_itineraries").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -94,11 +104,11 @@ export default function BookingItineraryTab({ bookingId }: Props) {
     mutationFn: async ({ dayId, activity }: { dayId: string; activity: Activity }) => {
       const day = days.find((d) => d.id === dayId);
       if (!day) throw new Error("Không tìm thấy ngày");
-      const currentActivities = (day.activities as Activity[]) || [];
+      const currentActivities = day.activities || [];
       const updated = [...currentActivities, activity].sort((a, b) => a.time.localeCompare(b.time));
-      const { error } = await supabase
-        .from("tour_itineraries")
-        .update({ activities: updated as any })
+      const { error } = await (supabase as any)
+        .from("booking_itineraries")
+        .update({ activities: updated })
         .eq("id", dayId);
       if (error) throw error;
     },
@@ -181,7 +191,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       )}
 
       {days.map((day) => {
-        const activities = (day.activities as Activity[]) || [];
+        const activities = day.activities || [];
         return (
           <Card key={day.id}>
             <CardHeader className="pb-3">
