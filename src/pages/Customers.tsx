@@ -30,6 +30,7 @@ const segmentColors: Record<string, string> = {
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["customers"],
