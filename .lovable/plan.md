@@ -1,29 +1,76 @@
 
+Mục tiêu: sửa triệt để lỗi “vẫn login thất bại” và dọn toàn bộ chỗ còn sót liên quan đến mật khẩu mặc định.
 
-## Fix bảo mật mật khẩu mặc định & Thêm liên kết nhân viên
+1. Xác định nguyên nhân chính
+- Tôi đã kiểm tra dữ liệu thật: tài khoản `tienhcns.saigonholiday@gmail.com` có trong `profiles`, có trong `auth.users`, đã confirm email, không bị khóa, có password hash.
+- Auth log hiện trả về `invalid_credentials`, nghĩa là form login đang chạy nhưng mật khẩu người dùng nhập không khớp với mật khẩu hiện tại trong Supabase.
+- Vì vậy lỗi không phải do thiếu email/profile nữa, mà là do luồng tạo/reset tài khoản chưa giúp người dùng biết cách vào hệ thống sau khi ẩn mật khẩu mặc định.
 
-### Thay đổi
+2. Sửa luồng tài khoản để dùng được ngay
+- Cập nhật `manage-employee-accounts` theo hướng an toàn nhưng khả dụng:
+  - vẫn cho phép admin tạo/reset mật khẩu,
+  - trả về thông điệp không lộ plaintext password,
+  - bổ sung lựa chọn gửi email đặt mật khẩu hoặc gửi recovery link sau khi tạo/reset để nhân viên tự đặt mật khẩu.
+- Nếu chưa muốn gửi email ngay, tối thiểu phải đổi copy trong UI để admin hiểu rõ: sau khi tạo/reset cần dùng chức năng “Quên mật khẩu” với đúng email đó để thiết lập mật khẩu mới.
 
-**1. Edge Function `manage-employee-accounts/index.ts`** -- Xóa mật khẩu khỏi response message:
-- Line 135: `"Tài khoản đã được tạo thành công cho ${email}"` (bỏ phần mật khẩu)
-- Line 255: `"Đã reset mật khẩu về mặc định"` (bỏ `(${DEFAULT_PASSWORD})`)
-- Line 319: `"Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định"` (bỏ `(${DEFAULT_PASSWORD})`)
+3. Sửa các màn hình còn lộ hoặc gây hiểu nhầm
+- `src/components/employees/EmployeeFormDialog.tsx`
+  - bỏ toast `Đã tạo tài khoản đăng nhập (MK: sgh123456)`
+  - bỏ mô tả còn hiển thị mật khẩu mặc định
+  - thay bằng hướng dẫn an toàn: tài khoản được tạo, nhân viên dùng “Quên mật khẩu” để đặt mật khẩu
+- `src/components/employees/EmployeeRoleTab.tsx`
+  - bỏ 2 khối text còn lộ `sgh123456`
+  - thay bằng trạng thái “Tài khoản đã tạo” + hướng dẫn gửi link khôi phục / quên mật khẩu
+- `src/components/settings/SettingsAccountsTab.tsx`
+  - giữ phần đã fix, nhưng bổ sung copy rõ hơn sau create/reset để tránh admin nghĩ có thể đăng nhập bằng mật khẩu không còn hiển thị.
 
-**2. `SettingsAccountsTab.tsx`** -- 3 sửa đổi:
+4. Sửa warning React ở trang Login
+- Console đang có warning `Function components cannot be given refs`.
+- Nguồn gần nhất là `Login.tsx` khi render `Dialog`/toast stack trong route login.
+- Tôi sẽ rà lại composition của `Dialog`, `Button asChild`, `AlertDialogAction asChild` và các component wrapper được dùng quanh login/reset để loại bỏ component không forwardRef đúng cách.
+- Mục tiêu là xóa warning để tránh side effect ở form/dialog và làm login page ổn định hơn.
 
-a) Xóa text `sgh123456` khỏi 3 chỗ trong UI:
-- Line 243: DialogDescription tạo tài khoản
-- Line 288: AlertDialog reset 1 tài khoản
-- Line 313: AlertDialog reset tất cả
+5. Cải thiện thông báo đăng nhập thất bại
+- `src/pages/Login.tsx`
+  - đổi message thân thiện hơn: “Sai email hoặc mật khẩu”
+  - với tài khoản nhân viên mới/reset, thêm gợi ý ngay dưới toast hoặc helper text: “Nếu đây là tài khoản mới, hãy dùng Quên mật khẩu để đặt mật khẩu.”
+- Việc này không sửa auth backend nhưng giúp người dùng thoát vòng lặp “nhập mật khẩu không đúng”.
 
-b) Thêm state `employee_id` vào formData, thêm query employees chưa liên kết (`profile_id IS NULL`, `deleted_at IS NULL`)
+6. Kiểm tra reset-password flow
+- `src/pages/ResetPassword.tsx`
+  - giữ route public như hiện tại,
+  - rà lại điều kiện `ready/expired` để tránh false negative khi link recovery load chậm,
+  - đảm bảo người dùng từ email recovery luôn vào được form đổi mật khẩu thay vì bị timeout sớm.
 
-c) Thêm Select "Liên kết nhân viên" vào form tạo tài khoản, gửi `employee_id` kèm request create. Khi chọn nhân viên, tự động điền Họ tên và Email từ dữ liệu nhân viên (nếu có)
+7. Kết quả sau khi triển khai
+- Tài khoản đã tạo vẫn tồn tại và liên kết đúng với nhân viên.
+- Hệ thống không còn lộ `sgh123456` trong UI/API.
+- Admin có hướng dẫn đúng để cho nhân viên vào hệ thống.
+- Người dùng mới/reset có thể vào bằng luồng “Quên mật khẩu” hoặc email recovery thay vì đoán mật khẩu.
+- Warning ref ở login/dialog được xử lý.
 
-### Files thay đổi
+Chi tiết kỹ thuật
+- File cần sửa:
+  - `supabase/functions/manage-employee-accounts/index.ts`
+  - `src/pages/Login.tsx`
+  - `src/pages/ResetPassword.tsx`
+  - `src/components/employees/EmployeeFormDialog.tsx`
+  - `src/components/employees/EmployeeRoleTab.tsx`
+  - có thể thêm rà soát `src/components/ui/dialog.tsx` hoặc chỗ dùng `asChild` nếu warning xuất phát từ composition
+- Dữ liệu thật đã xác nhận:
+  - profile/auth user của `tienhcns.saigonholiday@gmail.com` tồn tại
+  - `is_active = true`
+  - `banned_until = null`
+  - `last_sign_in_at = null`
+  - lỗi hiện tại là `invalid_credentials`
 
-| File | Nội dung |
-|------|----------|
-| `supabase/functions/manage-employee-accounts/index.ts` | Xóa mật khẩu khỏi 3 response messages |
-| `src/components/settings/SettingsAccountsTab.tsx` | Xóa text mật khẩu + thêm dropdown liên kết nhân viên |
-
+Luồng đề xuất sau fix
+```text
+Admin tạo tài khoản
+-> hệ thống liên kết employee + profile
+-> không hiển thị mật khẩu
+-> nhân viên dùng "Quên mật khẩu"
+-> mở /reset-password từ email
+-> tự đặt mật khẩu mới
+-> đăng nhập bình thường
+```
