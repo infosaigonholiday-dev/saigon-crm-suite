@@ -36,10 +36,18 @@ interface Profile {
   departments?: { name: string } | null;
 }
 
+interface UnlinkedEmployee {
+  id: string;
+  full_name: string;
+  email: string | null;
+  employee_code: string;
+}
+
 export function SettingsAccountsTab() {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [unlinkedEmployees, setUnlinkedEmployees] = useState<UnlinkedEmployee[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -48,12 +56,13 @@ export function SettingsAccountsTab() {
   const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC",
+    full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "",
   });
 
   useEffect(() => {
     loadProfiles();
     loadDepartments();
+    loadUnlinkedEmployees();
   }, []);
 
   async function loadProfiles() {
@@ -67,6 +76,32 @@ export function SettingsAccountsTab() {
   async function loadDepartments() {
     const { data } = await supabase.from("departments").select("id, name").order("name");
     if (data) setDepartments(data);
+  }
+
+  async function loadUnlinkedEmployees() {
+    const { data } = await supabase
+      .from("employees")
+      .select("id, full_name, email, employee_code")
+      .is("profile_id", null)
+      .is("deleted_at", null)
+      .order("full_name");
+    if (data) setUnlinkedEmployees(data);
+  }
+
+  function handleSelectEmployee(employeeId: string) {
+    if (employeeId === "__none__") {
+      setFormData({ ...formData, employee_id: "" });
+      return;
+    }
+    const emp = unlinkedEmployees.find((e) => e.id === employeeId);
+    if (emp) {
+      setFormData({
+        ...formData,
+        employee_id: employeeId,
+        full_name: emp.full_name,
+        email: emp.email || formData.email,
+      });
+    }
   }
 
   async function handleCreate() {
@@ -83,14 +118,15 @@ export function SettingsAccountsTab() {
           email: formData.email,
           department_id: formData.department_id || null,
           role: formData.role,
+          employee_id: formData.employee_id || null,
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success(data.message || "Tạo tài khoản thành công");
       setDialogOpen(false);
-      setFormData({ full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC" });
-      await loadProfiles();
+      setFormData({ full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "" });
+      await Promise.all([loadProfiles(), loadUnlinkedEmployees()]);
     } catch (err: any) {
       toast.error(err.message || "Lỗi tạo tài khoản");
     } finally {
@@ -240,9 +276,23 @@ export function SettingsAccountsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm tài khoản mới</DialogTitle>
-            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định: sgh123456</DialogDescription>
+            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định sẽ được thiết lập tự động.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Liên kết nhân viên</Label>
+              <Select value={formData.employee_id || "__none__"} onValueChange={handleSelectEmployee}>
+                <SelectTrigger><SelectValue placeholder="Chọn nhân viên (không bắt buộc)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Không liên kết —</SelectItem>
+                  {unlinkedEmployees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.employee_code} — {e.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Họ tên *</Label>
               <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} placeholder="Nguyễn Văn A" />
@@ -285,7 +335,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Mật khẩu tài khoản này sẽ được reset về mặc định: <strong>sgh123456</strong>. Hành động này không thể hoàn tác.
+              Mật khẩu tài khoản <strong>{confirmResetProfile?.email}</strong> sẽ được reset về mặc định. Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -310,7 +360,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset tất cả mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu về mặc định: <strong>sgh123456</strong>. Hành động này không thể hoàn tác.
+              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu về mặc định. Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

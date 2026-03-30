@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
           JSON.stringify({
             success: true,
             user_id: createdUserId,
-            message: `Tài khoản đã được tạo thành công cho ${email}. Mật khẩu mặc định: sgh123456`,
+            message: `Tài khoản đã được tạo thành công cho ${email}`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, message: `Đã reset mật khẩu về mặc định (${DEFAULT_PASSWORD})` }),
+        JSON.stringify({ success: true, message: "Đã reset mật khẩu về mặc định" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định (${DEFAULT_PASSWORD})`,
+          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định`,
           count: resetCount,
           errors: errors.length > 0 ? errors : undefined,
         }),
