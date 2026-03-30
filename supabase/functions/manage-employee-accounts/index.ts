@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định (${DEFAULT_PASSWORD})`,
+          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định`,
           count: resetCount,
           errors: errors.length > 0 ? errors : undefined,
         }),
