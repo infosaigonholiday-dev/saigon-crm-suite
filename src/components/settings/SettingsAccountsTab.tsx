@@ -276,7 +276,7 @@ export function SettingsAccountsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm tài khoản mới</DialogTitle>
-            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định sẽ được thiết lập tự động.</DialogDescription>
+            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Email đặt mật khẩu sẽ được gửi tự động.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -335,7 +335,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Mật khẩu tài khoản <strong>{confirmResetProfile?.email}</strong> sẽ được reset về mặc định. Hành động này không thể hoàn tác.
+              Mật khẩu tài khoản <strong>{confirmResetProfile?.email}</strong> sẽ được reset. Nhân viên cần dùng "Quên mật khẩu" để đặt lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -360,7 +360,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset tất cả mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu về mặc định. Hành động này không thể hoàn tác.
+              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu. Nhân viên cần dùng "Quên mật khẩu" để đặt lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -161,10 +161,10 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Tài khoản đã tạo thành công. Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
+                Tài khoản đã tạo thành công. Email đặt mật khẩu đã được gửi tự động.
               </p>
               <p className="text-xs text-muted-foreground">
-                Vui lòng thông báo cho nhân viên đăng nhập và đổi mật khẩu qua chức năng "Quên mật khẩu".
+                Nhân viên kiểm tra hộp thư (kể cả Spam) để đặt mật khẩu và đăng nhập.
               </p>
             </CardContent>
           </Card>
@@ -178,7 +178,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Nhân viên chưa có tài khoản đăng nhập. Mật khẩu mặc định: <span className="font-mono font-bold text-foreground">sgh123456</span>
+                Nhân viên chưa có tài khoản đăng nhập. Sau khi tạo, email đặt mật khẩu sẽ được gửi tự động.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

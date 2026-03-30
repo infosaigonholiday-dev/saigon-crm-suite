@@ -32,7 +32,7 @@ export default function ResetPassword() {
 
     const timeout = setTimeout(() => {
       setExpired(true);
-    }, 8000);
+    }, 15000);
 
     return () => {
       subscription.unsubscribe();

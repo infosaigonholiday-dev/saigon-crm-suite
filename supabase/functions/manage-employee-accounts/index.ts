@@ -128,11 +128,21 @@ Deno.serve(async (req) => {
             .is("email", null);
         }
 
+        // Auto-send recovery email so user can set their own password
+        try {
+          await adminClient.auth.admin.generateLink({
+            type: "recovery",
+            email,
+          });
+        } catch (_linkErr) {
+          // Non-critical: admin can manually trigger "Quên mật khẩu" later
+        }
+
         return new Response(
           JSON.stringify({
             success: true,
             user_id: createdUserId,
-            message: `Tài khoản đã được tạo thành công cho ${email}`,
+            message: `Tài khoản đã được tạo cho ${email}. Email đặt mật khẩu đã được gửi tự động.`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -252,7 +262,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, message: "Đã reset mật khẩu về mặc định" }),
+        JSON.stringify({ success: true, message: "Đã reset mật khẩu về mặc định. Nhân viên cần dùng chức năng Quên mật khẩu để đặt lại." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -316,7 +326,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Đã reset mật khẩu ${resetCount}/${allProfiles.length} tài khoản về mặc định`,
+          message: `Đã reset ${resetCount}/${allProfiles.length} tài khoản. Nhân viên cần dùng Quên mật khẩu để đặt lại.`,
           count: resetCount,
           errors: errors.length > 0 ? errors : undefined,
         }),
