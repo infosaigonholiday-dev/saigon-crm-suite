@@ -49,6 +49,7 @@ function ProtectedRoutes() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/khach-hang" element={<Customers />} />
+        <Route path="/khach-hang/:id" element={<CustomerDetail />} />
         <Route path="/tiem-nang" element={<Leads />} />
         <Route path="/bao-gia" element={<Quotations />} />
         <Route path="/goi-tour" element={<TourPackages />} />
