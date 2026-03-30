@@ -276,7 +276,7 @@ export function SettingsAccountsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm tài khoản mới</DialogTitle>
-            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định sẽ được thiết lập tự động.</DialogDescription>
+            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Email đặt mật khẩu sẽ được gửi tự động.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
