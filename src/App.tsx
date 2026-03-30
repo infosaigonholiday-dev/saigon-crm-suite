@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Leads from "./pages/Leads";
 import Bookings from "./pages/Bookings";
 import Payments from "./pages/Payments";
@@ -48,6 +49,7 @@ function ProtectedRoutes() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/khach-hang" element={<Customers />} />
+        <Route path="/khach-hang/:id" element={<CustomerDetail />} />
         <Route path="/tiem-nang" element={<Leads />} />
         <Route path="/bao-gia" element={<Quotations />} />
         <Route path="/goi-tour" element={<TourPackages />} />

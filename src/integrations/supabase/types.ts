@@ -977,6 +977,7 @@ export type Database = {
           created_by: string | null
           department_id: string | null
           email: string | null
+          first_booking_date: string | null
           full_name: string
           id: string
           is_blacklisted: boolean | null
@@ -988,6 +989,7 @@ export type Database = {
           source_id: string | null
           tax_code: string | null
           total_bookings: number | null
+          total_paid: number | null
           total_revenue: number | null
           type: string
           zalo_id: string | null
@@ -1001,6 +1003,7 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           email?: string | null
+          first_booking_date?: string | null
           full_name: string
           id?: string
           is_blacklisted?: boolean | null
@@ -1012,6 +1015,7 @@ export type Database = {
           source_id?: string | null
           tax_code?: string | null
           total_bookings?: number | null
+          total_paid?: number | null
           total_revenue?: number | null
           type: string
           zalo_id?: string | null
@@ -1025,6 +1029,7 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           email?: string | null
+          first_booking_date?: string | null
           full_name?: string
           id?: string
           is_blacklisted?: boolean | null
@@ -1036,6 +1041,7 @@ export type Database = {
           source_id?: string | null
           tax_code?: string | null
           total_bookings?: number | null
+          total_paid?: number | null
           total_revenue?: number | null
           type?: string
           zalo_id?: string | null
