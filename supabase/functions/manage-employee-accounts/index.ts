@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
           JSON.stringify({
             success: true,
             user_id: createdUserId,
-            message: `Tài khoản đã được tạo thành công cho ${email}. Mật khẩu mặc định: sgh123456`,
+            message: `Tài khoản đã được tạo thành công cho ${email}`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
