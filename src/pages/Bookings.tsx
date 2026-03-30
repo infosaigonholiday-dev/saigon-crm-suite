@@ -29,6 +29,7 @@ const formatCurrency = (v: number | null) =>
   v ? v.toLocaleString("vi-VN") + "đ" : "—";
 
 export default function Bookings() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
