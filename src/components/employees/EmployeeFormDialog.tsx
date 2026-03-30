@@ -224,7 +224,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
             });
             if (accError) throw accError;
             if (accData?.error) throw new Error(accData.error);
-            toast.success("Đã tạo tài khoản đăng nhập (MK: sgh123456)");
+            toast.success("Đã tạo tài khoản. Email đặt mật khẩu đã được gửi cho nhân viên.");
           } catch (accErr: any) {
             toast.error(`Tạo tài khoản lỗi: ${accErr.message}`);
           }
