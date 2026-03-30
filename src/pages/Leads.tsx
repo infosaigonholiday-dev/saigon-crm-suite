@@ -20,6 +20,7 @@ const columns: { id: LeadStatus; label: string; color: string }[] = [
 export default function Leads() {
   const queryClient = useQueryClient();
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads"],
