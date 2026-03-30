@@ -31,6 +31,7 @@ const formatCurrency = (v: number | null) =>
 
 export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
