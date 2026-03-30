@@ -50,11 +50,12 @@ export default function Settings() {
         </p>
       ) : (
         <Tabs defaultValue="accounts" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="accounts">Tài khoản</TabsTrigger>
             <TabsTrigger value="departments">Phòng ban</TabsTrigger>
             <TabsTrigger value="levels">Cấp bậc</TabsTrigger>
             <TabsTrigger value="roles">Quyền hạn</TabsTrigger>
+            <TabsTrigger value="permissions">Phân quyền</TabsTrigger>
           </TabsList>
 
           <TabsContent value="accounts" className="mt-4">
