@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -28,17 +29,30 @@ const segmentColors: Record<string, string> = {
   DIAMOND: "bg-accent/15 text-accent border border-accent/30",
 };
 
+function loyaltyBadge(totalBookings: number) {
+  if (totalBookings > 5) return { label: "VIP", className: "bg-destructive/15 text-destructive border border-destructive/30" };
+  if (totalBookings >= 3) return { label: "Trung thành", className: "bg-primary/15 text-primary border border-primary/30" };
+  if (totalBookings >= 1) return { label: "Mới", className: "bg-muted text-muted-foreground" };
+  return null;
+}
+
+function formatCurrency(n: number | null) {
+  if (!n) return "0";
+  return new Intl.NumberFormat("vi-VN").format(n);
+}
+
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, department_id, assigned_sale_id")
+        .select("id, full_name, phone, email, segment, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -48,7 +62,7 @@ export default function Customers() {
   const filtered = customers.filter((c) => {
     const matchSegment = filter === "ALL" || c.segment === filter;
     const q = search.toLowerCase();
-    const matchSearch = !search || 
+    const matchSearch = !search ||
       c.full_name.toLowerCase().includes(q) ||
       (c.phone?.includes(search)) ||
       (c.email?.toLowerCase().includes(q));
@@ -99,23 +113,39 @@ export default function Customers() {
                   <TableHead>Điện thoại</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phân khúc</TableHead>
+                  <TableHead className="text-right">Bookings</TableHead>
+                  <TableHead className="text-right">Doanh thu</TableHead>
+                  <TableHead className="text-right">Đã TT</TableHead>
+                  <TableHead>Booking cuối</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell className="font-medium">{c.full_name}</TableCell>
-                    <TableCell>{c.phone ?? "—"}</TableCell>
-                    <TableCell>{c.email ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={segmentColors[c.segment ?? "NEW"]}>
-                        {c.segment ?? "NEW"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map((c) => {
+                  const badge = loyaltyBadge(c.total_bookings ?? 0);
+                  return (
+                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/khach-hang/${c.id}`)}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {c.full_name}
+                          {badge && <Badge variant="outline" className={badge.className}>{badge.label}</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell>{c.phone ?? "—"}</TableCell>
+                      <TableCell>{c.email ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={segmentColors[c.segment ?? "NEW"]}>
+                          {c.segment ?? "NEW"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(c.total_revenue)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(c.total_paid)}</TableCell>
+                      <TableCell>{c.last_booking_date ?? "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
