@@ -182,7 +182,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
         date_of_birth: form.date_of_birth || null,
         id_card: form.id_card || null,
         phone: form.phone || null,
-        email: form.email || null,
+        email: form.email || (form.login_email.trim() ? form.login_email.trim() : null),
         address: form.address || null,
         employee_code: isEdit ? form.employee_code : (form.employee_code || null),
         department_id: form.department_id || null,

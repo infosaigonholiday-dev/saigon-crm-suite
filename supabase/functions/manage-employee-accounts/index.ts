@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
 
         // Step 3: Link employee to profile
         if (employee_id) {
+          // Link profile and auto-fill email if employee doesn't have one
           const { error: linkError } = await adminClient
             .from("employees")
             .update({ profile_id: createdUserId })
@@ -118,6 +119,13 @@ Deno.serve(async (req) => {
           if (linkError) {
             throw new Error("Lỗi liên kết tài khoản với nhân viên: " + linkError.message);
           }
+
+          // Auto-fill employee email from login email if missing
+          await adminClient
+            .from("employees")
+            .update({ email })
+            .eq("id", employee_id)
+            .is("email", null);
         }
 
         return new Response(
