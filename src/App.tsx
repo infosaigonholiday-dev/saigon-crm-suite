@@ -49,7 +49,10 @@ function ProtectedRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/khach-hang" element={<Customers />} />
         <Route path="/tiem-nang" element={<Leads />} />
-        <Route path="/bao-gia" element={<ComingSoon title="Báo giá" />} />
+        <Route path="/bao-gia" element={<Quotations />} />
+        <Route path="/goi-tour" element={<TourPackages />} />
+        <Route path="/lich-trinh" element={<Itineraries />} />
+        <Route path="/luu-tru" element={<Accommodations />} />
         <Route path="/dat-tour" element={<Bookings />} />
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
         <Route path="/thanh-toan" element={<Payments />} />
