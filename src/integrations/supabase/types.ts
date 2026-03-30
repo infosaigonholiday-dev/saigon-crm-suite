@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      accommodations: {
+        Row: {
+          amenities: string[] | null
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string | null
+          id: string
+          location: string
+          name: string
+          notes: string | null
+          rating: number | null
+          status: string | null
+          type: string
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          amenities?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          location: string
+          name: string
+          notes?: string | null
+          rating?: number | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          amenities?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          location?: string
+          name?: string
+          notes?: string | null
+          rating?: number | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       accounts_payable: {
         Row: {
           amount_due: number
@@ -2135,6 +2189,79 @@ export type Database = {
         }
         Relationships: []
       }
+      quotations: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          customer_id: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          status: string | null
+          total_amount: number | null
+          tour_package_id: string | null
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          status?: string | null
+          total_amount?: number | null
+          tour_package_id?: string | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          status?: string | null
+          total_amount?: number | null
+          tour_package_id?: string | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_tour_package_id_fkey"
+            columns: ["tour_package_id"]
+            isOneToOne: false
+            referencedRelation: "tour_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           base_price: number | null
@@ -2453,6 +2580,120 @@ export type Database = {
           vat_input?: number | null
           vat_output?: number | null
           vat_payable?: number | null
+        }
+        Relationships: []
+      }
+      tour_itineraries: {
+        Row: {
+          accommodation_id: string | null
+          activities: Json | null
+          created_at: string | null
+          day_number: number
+          description: string | null
+          id: string
+          meals_included: string[] | null
+          title: string
+          tour_package_id: string
+          transportation: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accommodation_id?: string | null
+          activities?: Json | null
+          created_at?: string | null
+          day_number?: number
+          description?: string | null
+          id?: string
+          meals_included?: string[] | null
+          title: string
+          tour_package_id: string
+          transportation?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accommodation_id?: string | null
+          activities?: Json | null
+          created_at?: string | null
+          day_number?: number
+          description?: string | null
+          id?: string
+          meals_included?: string[] | null
+          title?: string
+          tour_package_id?: string
+          transportation?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_itineraries_accommodation_id_fkey"
+            columns: ["accommodation_id"]
+            isOneToOne: false
+            referencedRelation: "accommodations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_itineraries_tour_package_id_fkey"
+            columns: ["tour_package_id"]
+            isOneToOne: false
+            referencedRelation: "tour_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_packages: {
+        Row: {
+          base_price: number | null
+          code: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          destination: string[] | null
+          duration_days: number
+          duration_nights: number | null
+          exclusions: string[] | null
+          id: string
+          inclusions: string[] | null
+          max_pax: number | null
+          min_pax: number | null
+          name: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number | null
+          code: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          destination?: string[] | null
+          duration_days?: number
+          duration_nights?: number | null
+          exclusions?: string[] | null
+          id?: string
+          inclusions?: string[] | null
+          max_pax?: number | null
+          min_pax?: number | null
+          name: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number | null
+          code?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          destination?: string[] | null
+          duration_days?: number
+          duration_nights?: number | null
+          exclusions?: string[] | null
+          id?: string
+          inclusions?: string[] | null
+          max_pax?: number | null
+          min_pax?: number | null
+          name?: string
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
