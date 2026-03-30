@@ -10,6 +10,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Leads from "./pages/Leads";
 import Bookings from "./pages/Bookings";
+import BookingDetail from "./pages/BookingDetail";
 import Payments from "./pages/Payments";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
