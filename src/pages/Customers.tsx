@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ const segmentColors: Record<string, string> = {
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ["customers"],
@@ -60,8 +62,9 @@ export default function Customers() {
           <h1 className="text-2xl font-bold">Khách hàng</h1>
           <p className="text-sm text-muted-foreground">{customers.length} khách hàng</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
       </div>
+      <CustomerFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardHeader className="pb-3">

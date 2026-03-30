@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import BookingFormDialog from "@/components/bookings/BookingFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ const formatCurrency = (v: number | null) =>
   v ? v.toLocaleString("vi-VN") + "đ" : "—";
 
 export default function Bookings() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
@@ -46,8 +49,9 @@ export default function Bookings() {
           <h1 className="text-2xl font-bold">Đặt tour</h1>
           <p className="text-sm text-muted-foreground">{bookings.length} booking</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
       </div>
+      <BookingFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardContent className="p-0">

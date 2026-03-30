@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import PaymentFormDialog from "@/components/payments/PaymentFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function Payments() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["payments"],
     queryFn: async () => {
@@ -44,8 +47,9 @@ export default function Payments() {
           <h1 className="text-2xl font-bold">Thanh toán</h1>
           <p className="text-sm text-muted-foreground">{payments.length} giao dịch</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Thêm thanh toán</Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm thanh toán</Button>
       </div>
+      <PaymentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <Card>
         <CardContent className="p-0">
