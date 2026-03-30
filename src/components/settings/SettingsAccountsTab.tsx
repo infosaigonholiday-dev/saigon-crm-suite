@@ -335,7 +335,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Mật khẩu tài khoản <strong>{confirmResetProfile?.email}</strong> sẽ được reset về mặc định. Hành động này không thể hoàn tác.
+              Mật khẩu tài khoản <strong>{confirmResetProfile?.email}</strong> sẽ được reset. Nhân viên cần dùng "Quên mật khẩu" để đặt lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
