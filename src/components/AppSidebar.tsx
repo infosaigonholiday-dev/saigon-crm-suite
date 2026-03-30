@@ -95,8 +95,11 @@ export function AppSidebar() {
       </SidebarMenuItem>
     ));
 
+  const dashboardType = getDashboardType(userRole);
+  const dashboardLabel = dashboardType === "hr" ? "Tổng quan NS" : dashboardType === "personal" ? "Dashboard" : "Tổng quan";
+
   const dashboardItem: MenuItem[] = [
-    { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+    { title: dashboardLabel, url: "/", icon: LayoutDashboard },
   ];
 
   const visibleCrm = filterItems(crmItems);
