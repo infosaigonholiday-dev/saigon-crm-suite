@@ -80,7 +80,7 @@ export default function Bookings() {
                   const paymentOverdue = status === "DEPOSITED" && isOverdue(b.remaining_due_at);
                   const customerName = (b.customers as any)?.full_name ?? "—";
                   return (
-                    <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
                       <TableCell className="font-mono text-xs">{b.code}</TableCell>
                       <TableCell className="font-medium">{customerName}</TableCell>
                       <TableCell className="text-center">{b.pax_total ?? 0}</TableCell>
