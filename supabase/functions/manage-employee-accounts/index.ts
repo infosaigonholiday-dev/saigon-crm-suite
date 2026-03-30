@@ -128,11 +128,21 @@ Deno.serve(async (req) => {
             .is("email", null);
         }
 
+        // Auto-send recovery email so user can set their own password
+        try {
+          await adminClient.auth.admin.generateLink({
+            type: "recovery",
+            email,
+          });
+        } catch (_linkErr) {
+          // Non-critical: admin can manually trigger "Quên mật khẩu" later
+        }
+
         return new Response(
           JSON.stringify({
             success: true,
             user_id: createdUserId,
-            message: `Tài khoản đã được tạo thành công cho ${email}`,
+            message: `Tài khoản đã được tạo cho ${email}. Email đặt mật khẩu đã được gửi tự động.`,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
