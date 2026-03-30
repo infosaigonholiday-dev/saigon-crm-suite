@@ -360,7 +360,7 @@ export function SettingsAccountsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset tất cả mật khẩu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu về mặc định. Hành động này không thể hoàn tác.
+              Tất cả tài khoản (trừ tài khoản của bạn) sẽ được reset mật khẩu. Nhân viên cần dùng "Quên mật khẩu" để đặt lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
