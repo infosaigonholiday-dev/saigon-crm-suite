@@ -27,6 +27,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function Payments() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["payments"],
     queryFn: async () => {
