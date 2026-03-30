@@ -52,12 +52,30 @@ export default function Customers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date")
+        .select("id, full_name, phone, email, segment, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
+
+  // Fetch sale profiles for display
+  const saleIds = [...new Set(customers.map((c) => c.assigned_sale_id).filter(Boolean))] as string[];
+  const { data: saleProfiles = [] } = useQuery({
+    queryKey: ["sale-profiles", saleIds],
+    queryFn: async () => {
+      if (saleIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", saleIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: saleIds.length > 0,
+  });
+
+  const saleMap = Object.fromEntries(saleProfiles.map((p) => [p.id, p.full_name]));
 
   const filtered = customers.filter((c) => {
     const matchSegment = filter === "ALL" || c.segment === filter;
@@ -111,12 +129,12 @@ export default function Customers() {
                 <TableRow>
                   <TableHead>Tên khách hàng</TableHead>
                   <TableHead>Điện thoại</TableHead>
-                  <TableHead>Email</TableHead>
                   <TableHead>Phân khúc</TableHead>
+                  <TableHead>Nguồn</TableHead>
+                  <TableHead>Sale phụ trách</TableHead>
                   <TableHead className="text-right">Bookings</TableHead>
                   <TableHead className="text-right">Doanh thu</TableHead>
                   <TableHead className="text-right">Đã TT</TableHead>
-                  <TableHead>Booking cuối</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,16 +149,16 @@ export default function Customers() {
                         </div>
                       </TableCell>
                       <TableCell>{c.phone ?? "—"}</TableCell>
-                      <TableCell>{c.email ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={segmentColors[c.segment ?? "NEW"]}>
                           {c.segment ?? "NEW"}
                         </Badge>
                       </TableCell>
+                      <TableCell>{(c as any).source ?? "—"}</TableCell>
+                      <TableCell>{c.assigned_sale_id ? (saleMap[c.assigned_sale_id] ?? "—") : "—"}</TableCell>
                       <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_paid)}</TableCell>
-                      <TableCell>{c.last_booking_date ?? "—"}</TableCell>
                     </TableRow>
                   );
                 })}
