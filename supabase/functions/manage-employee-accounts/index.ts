@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, message: `Đã reset mật khẩu về mặc định (${DEFAULT_PASSWORD})` }),
+        JSON.stringify({ success: true, message: "Đã reset mật khẩu về mặc định" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
