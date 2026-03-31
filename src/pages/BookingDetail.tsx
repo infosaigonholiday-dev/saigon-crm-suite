@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
+import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
@@ -62,7 +63,6 @@ export default function BookingDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/dat-tour")}>
           <ArrowLeft className="h-5 w-5" />
@@ -78,11 +78,11 @@ export default function BookingDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">Thông tin</TabsTrigger>
           <TabsTrigger value="itinerary">Lịch trình</TabsTrigger>
+          <TabsTrigger value="services">Dự toán chi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -128,6 +128,10 @@ export default function BookingDetail() {
 
         <TabsContent value="itinerary" className="mt-4">
           <BookingItineraryTab bookingId={booking.id} />
+        </TabsContent>
+
+        <TabsContent value="services" className="mt-4">
+          <BookingServicesTab bookingId={booking.id} />
         </TabsContent>
       </Tabs>
     </div>

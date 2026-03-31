@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Settings as SettingsIcon } from "lucide-react";
 import { SettingsAccountsTab } from "@/components/settings/SettingsAccountsTab";
@@ -9,33 +10,69 @@ import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+const HR_ROLES = ["HCNS", "HR_MANAGER", "HR_HEAD"];
+
 export default function Settings() {
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { hasPermission, loading: permLoading } = usePermissions();
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAdmin();
-  }, [user]);
-
-  async function checkAdmin() {
     if (!user) return;
-    const { data: profile } = await supabase
+    supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
-    setIsAdmin(profile?.role === "ADMIN");
-    setLoading(false);
-  }
+      .single()
+      .then(({ data }) => {
+        setRole(data?.role || null);
+        setLoading(false);
+      });
+  }, [user]);
 
-  if (loading) {
+  if (loading || permLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  const canView = hasPermission("settings.view");
+  if (!canView) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <SettingsIcon className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Cài đặt</h1>
+        </div>
+        <p className="text-muted-foreground">Bạn không có quyền truy cập phần quản lý.</p>
+      </div>
+    );
+  }
+
+  const isAdmin = ADMIN_ROLES.includes(role || "");
+  const isDirector = role === "DIRECTOR";
+  const isHR = HR_ROLES.includes(role || "");
+
+  // Determine visible tabs
+  const showAccounts = isAdmin;
+  const showDepartments = isAdmin || isDirector || isHR;
+  const showLevels = isAdmin || isDirector || isHR;
+  const showRoles = true; // anyone with settings.view
+  const showPermissions = isAdmin || isDirector;
+
+  const tabs = [
+    showAccounts && { value: "accounts", label: "Tài khoản" },
+    showDepartments && { value: "departments", label: "Phòng ban" },
+    showLevels && { value: "levels", label: "Cấp bậc" },
+    showRoles && { value: "roles", label: "Quyền hạn" },
+    showPermissions && { value: "permissions", label: "Phân quyền" },
+  ].filter(Boolean) as { value: string; label: string }[];
+
+  const defaultTab = tabs[0]?.value || "roles";
 
   return (
     <div className="space-y-6">
@@ -44,37 +81,29 @@ export default function Settings() {
         <h1 className="text-2xl font-bold text-foreground">Cài đặt</h1>
       </div>
 
-      {!isAdmin ? (
-        <p className="text-muted-foreground">
-          Bạn không có quyền truy cập phần quản lý.
-        </p>
-      ) : (
-        <Tabs defaultValue="accounts" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="accounts">Tài khoản</TabsTrigger>
-            <TabsTrigger value="departments">Phòng ban</TabsTrigger>
-            <TabsTrigger value="levels">Cấp bậc</TabsTrigger>
-            <TabsTrigger value="roles">Quyền hạn</TabsTrigger>
-            <TabsTrigger value="permissions">Phân quyền</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+          ))}
+        </TabsList>
 
-          <TabsContent value="accounts" className="mt-4">
-            <SettingsAccountsTab />
-          </TabsContent>
-          <TabsContent value="departments" className="mt-4">
-            <SettingsDepartmentsTab />
-          </TabsContent>
-          <TabsContent value="levels" className="mt-4">
-            <SettingsLevelsTab />
-          </TabsContent>
-          <TabsContent value="roles" className="mt-4">
-            <SettingsRolesTab />
-          </TabsContent>
-          <TabsContent value="permissions" className="mt-4">
-            <SettingsPermissionsTab />
-          </TabsContent>
-        </Tabs>
-      )}
+        {showAccounts && (
+          <TabsContent value="accounts" className="mt-4"><SettingsAccountsTab /></TabsContent>
+        )}
+        {showDepartments && (
+          <TabsContent value="departments" className="mt-4"><SettingsDepartmentsTab /></TabsContent>
+        )}
+        {showLevels && (
+          <TabsContent value="levels" className="mt-4"><SettingsLevelsTab /></TabsContent>
+        )}
+        {showRoles && (
+          <TabsContent value="roles" className="mt-4"><SettingsRolesTab /></TabsContent>
+        )}
+        {showPermissions && (
+          <TabsContent value="permissions" className="mt-4"><SettingsPermissionsTab /></TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

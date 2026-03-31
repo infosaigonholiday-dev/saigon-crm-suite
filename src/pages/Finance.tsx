@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { TransactionListTab } from "@/components/finance/TransactionListTab";
+import { SalaryCostTab } from "@/components/finance/SalaryCostTab";
+import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
+import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -12,7 +17,34 @@ const formatVND = (v: number | null) => {
   return v.toLocaleString("vi-VN");
 };
 
-export default function Finance() {
+const OFFICE_CATEGORIES = [
+  { value: "RENT", label: "Tiền nhà" },
+  { value: "ELECTRICITY", label: "Tiền điện" },
+  { value: "WATER", label: "Tiền nước" },
+  { value: "WIFI", label: "Wifi/Internet" },
+  { value: "PHONE", label: "Cước điện thoại" },
+  { value: "PARKING", label: "Gửi xe" },
+  { value: "SUPPLIES", label: "Văn phòng phẩm" },
+  { value: "OTHER", label: "Khác" },
+];
+
+const MARKETING_CATEGORIES = [
+  { value: "ADS", label: "Quảng cáo" },
+  { value: "CONTENT", label: "Nội dung" },
+  { value: "OTA_COMMISSION", label: "Hoa hồng OTA" },
+  { value: "EVENT", label: "Sự kiện" },
+  { value: "OTHER", label: "Khác" },
+];
+
+const OTHER_CATEGORIES = [
+  { value: "LEGAL", label: "Pháp lý" },
+  { value: "TRAINING", label: "Đào tạo" },
+  { value: "BANK_FEE", label: "Phí ngân hàng" },
+  { value: "LICENSE", label: "Giấy phép" },
+  { value: "OTHER", label: "Khác" },
+];
+
+function OverviewTab() {
   const currentYear = new Date().getFullYear();
 
   const { data: pnl = [], isLoading: loadingPnl } = useQuery({
@@ -42,7 +74,6 @@ export default function Finance() {
   });
 
   const isLoading = loadingPnl || loadingRev;
-
   const totalRevenue = pnl.reduce((s, r) => s + (r.gross_revenue ?? 0), 0);
   const totalProfit = pnl.reduce((s, r) => s + (r.net_profit ?? 0), 0);
   const totalBookings = revenue.reduce((s, r) => s + (r.booking_count ?? 0), 0);
@@ -67,11 +98,6 @@ export default function Finance() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Tài chính</h1>
-        <p className="text-sm text-muted-foreground">Báo cáo tài chính năm {currentYear}</p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <Card key={s.label}>
@@ -101,14 +127,7 @@ export default function Finance() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                 <Bar dataKey="revenue" name="Doanh thu" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="profit" name="Lợi nhuận" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -118,6 +137,43 @@ export default function Finance() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export default function Finance() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Tài chính</h1>
+        <p className="text-sm text-muted-foreground">Quản lý tài chính tổng hợp</p>
+      </div>
+
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
+          <TabsTrigger value="salary">CP Lương</TabsTrigger>
+          <TabsTrigger value="office">CP Văn phòng</TabsTrigger>
+          <TabsTrigger value="marketing">CP Marketing</TabsTrigger>
+          <TabsTrigger value="other">CP Khác</TabsTrigger>
+          <TabsTrigger value="opex">Tổng hợp OPEX</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
+        <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
+        <TabsContent value="salary" className="mt-4"><SalaryCostTab /></TabsContent>
+        <TabsContent value="office" className="mt-4">
+          <ExpenseListTab title="Chi phí văn phòng" tableName="office_expenses" categories={OFFICE_CATEGORIES} queryKey="office-expenses" />
+        </TabsContent>
+        <TabsContent value="marketing" className="mt-4">
+          <ExpenseListTab title="Chi phí Marketing" tableName="marketing_expenses" categories={MARKETING_CATEGORIES} queryKey="marketing-expenses" />
+        </TabsContent>
+        <TabsContent value="other" className="mt-4">
+          <ExpenseListTab title="Chi phí khác" tableName="other_expenses" categories={OTHER_CATEGORIES} queryKey="other-expenses" />
+        </TabsContent>
+        <TabsContent value="opex" className="mt-4"><ExpenseSummaryTab /></TabsContent>
+      </Tabs>
     </div>
   );
 }

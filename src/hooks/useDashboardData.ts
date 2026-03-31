@@ -7,7 +7,7 @@ type DataScope = "all" | "team" | "self";
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR"];
 const MANAGER_ROLES = ["MANAGER", "DIEUHAN"];
 const FINANCE_ROLES = ["KETOAN"];
-const HR_ROLES = ["HCNS", "HR_MANAGER"];
+const HR_ROLES = ["HCNS", "HR_MANAGER", "HR_HEAD"];
 const SELF_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR", "INTERN"];
 
 export function getDataScope(role: string | null): DataScope {
