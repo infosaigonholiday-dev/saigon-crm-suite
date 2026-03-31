@@ -14,6 +14,7 @@ import {
   Package,
   Route,
   Hotel,
+  Building2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -47,6 +48,7 @@ const crmItems: MenuItem[] = [
   { title: "Gói tour", url: "/goi-tour", icon: Package, permission: "quotations.view" },
   { title: "Lịch trình", url: "/lich-trinh", icon: Route, permission: "quotations.view" },
   { title: "Lưu trú", url: "/luu-tru", icon: Hotel, permission: "quotations.view" },
+  { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, permission: "bookings.view" },
   { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, permission: "bookings.view" },
   { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, permission: "bookings.view" },
   { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, permission: "payments.view" },

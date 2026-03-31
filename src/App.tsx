@@ -23,6 +23,7 @@ import Quotations from "./pages/Quotations";
 import TourPackages from "./pages/TourPackages";
 import Itineraries from "./pages/Itineraries";
 import Accommodations from "./pages/Accommodations";
+import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -58,6 +59,7 @@ function ProtectedRoutes() {
         <Route path="/luu-tru" element={<Accommodations />} />
         <Route path="/dat-tour" element={<Bookings />} />
         <Route path="/dat-tour/:id" element={<BookingDetail />} />
+        <Route path="/nha-cung-cap" element={<Vendors />} />
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
         <Route path="/thanh-toan" element={<Payments />} />
         <Route path="/nhan-su" element={<Employees />} />

@@ -1888,6 +1888,53 @@ export type Database = {
           },
         ]
       }
+      marketing_expenses: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          category: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          notes: string | null
+          recorded_by: string | null
+        }
+        Insert: {
+          amount?: number
+          approved_by?: string | null
+          category?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          category?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_expenses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       office_expenses: {
         Row: {
           amount: number
@@ -1955,6 +2002,53 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      other_expenses: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          category: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          notes: string | null
+          recorded_by: string | null
+        }
+        Insert: {
+          amount?: number
+          approved_by?: string | null
+          category?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          category?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "other_expenses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
@@ -2816,6 +2910,142 @@ export type Database = {
         }
         Relationships: []
       }
+      tour_services: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          expected_cost: number | null
+          id: string
+          notes: string | null
+          service_type: string | null
+          status: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          expected_cost?: number | null
+          id?: string
+          notes?: string | null
+          service_type?: string | null
+          status?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          expected_cost?: number | null
+          id?: string
+          notes?: string | null
+          service_type?: string | null
+          status?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_services_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_services_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          approval_status: string | null
+          approved_by: string | null
+          booking_id: string | null
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          recorded_by: string | null
+          reference_code: string | null
+          tour_service_id: string | null
+          transaction_date: string
+          type: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amount?: number
+          approval_status?: string | null
+          approved_by?: string | null
+          booking_id?: string | null
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          recorded_by?: string | null
+          reference_code?: string | null
+          tour_service_id?: string | null
+          transaction_date?: string
+          type: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          approval_status?: string | null
+          approved_by?: string | null
+          booking_id?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          recorded_by?: string | null
+          reference_code?: string | null
+          tour_service_id?: string | null
+          transaction_date?: string
+          type?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tour_service_id_fkey"
+            columns: ["tour_service_id"]
+            isOneToOne: false
+            referencedRelation: "tour_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           dashboard_layout: Json | null
@@ -2853,6 +3083,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vendors: {
+        Row: {
+          bank_account: string | null
+          bank_name: string | null
+          beneficiary: string | null
+          category: string | null
+          contact_phone: string | null
+          created_at: string | null
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          bank_account?: string | null
+          bank_name?: string | null
+          beneficiary?: string | null
+          category?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          bank_account?: string | null
+          bank_name?: string | null
+          beneficiary?: string | null
+          category?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
