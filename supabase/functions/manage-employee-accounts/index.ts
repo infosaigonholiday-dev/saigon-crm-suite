@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ALLOWED_ROLES = ["ADMIN", "HCNS", "HR_MANAGER", "DIRECTOR", "SUPER_ADMIN"];
+const ALLOWED_ROLES = ["ADMIN", "HCNS", "HR_MANAGER", "HR_HEAD", "DIRECTOR", "SUPER_ADMIN"];
 const DEFAULT_PASSWORD = "sgh123456";
 
 Deno.serve(async (req) => {
