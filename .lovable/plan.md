@@ -1,75 +1,142 @@
 
 
-## Kế hoạch: Phân quyền 3 cấp HCNS + Bảng so sánh chi tiết
+## Kế hoạch tổng hợp: Tái cấu trúc Module Tài chính & Điều hành
 
-### Quy ước role mới cho phòng HCNS
+### Hiện trạng
 
-| Cấp bậc | Role trong hệ thống | Tên hiển thị |
+- **Finance.tsx**: Chỉ có 4 KPI cards + 1 biểu đồ bar từ `profit_loss_monthly` và `revenue_records`
+- **Thư mục `src/components/finance/`**: Trống — chưa có component nào
+- **Chưa có**: Trang Vendors, bảng `vendors`, `tour_services`, `transactions`, `marketing_expenses`, `other_expenses`
+- **Plan file** `.lovable/plan.md`: Chỉ chứa kế hoạch HCNS cũ, cần ghi đè bằng kế hoạch tổng hợp
+
+---
+
+### Phần 1: Database Migration — 5 bảng mới
+
+**Bảng `vendors`** — Danh bạ NCC
+- name, category (TRANSPORT/HOTEL/RESTAURANT/MC/GUIDE/VISA/EVENT/OTHER), contact_phone, bank_account, bank_name, beneficiary, notes
+- RLS: ADMIN, DIRECTOR, DIEUHAN, MANAGER, KETOAN
+
+**Bảng `tour_services`** — Dự toán chi / Phiếu đặt dịch vụ
+- booking_id (FK bookings), vendor_id (FK vendors), service_type, description, expected_cost, due_date, status (PENDING/CONFIRMED/COMPLETED), created_by, notes
+- RLS: Đọc = ADMIN/DIRECTOR/DIEUHAN/MANAGER/KETOAN; Ghi = ADMIN/DIRECTOR/DIEUHAN/MANAGER
+
+**Bảng `transactions`** — Sổ quỹ tổng hợp (Single Source of Truth)
+- transaction_date, type (INCOME/EXPENSE), category (TOUR_REVENUE/TOUR_EXPENSE/SALARY/BHXH/OFFICE_RENT/UTILITIES/MARKETING/PHONE/PARKING/OTHER), amount, booking_id (nullable FK), vendor_id (nullable FK), tour_service_id (nullable FK), description, recorded_by, approved_by, approval_status (DRAFT/APPROVED/REJECTED), payment_method, reference_code, notes
+- RLS: ADMIN/KETOAN/DIRECTOR full; DIEUHAN/MANAGER đọc TOUR_EXPENSE liên quan
+
+**Bảng `marketing_expenses`** — Chi phí marketing
+- category (ADS/CONTENT/OTA_COMMISSION/EVENT/OTHER), description, amount, expense_date, department_id, recorded_by, approved_by, notes
+- RLS: ADMIN, KETOAN, DIRECTOR, MKT
+
+**Bảng `other_expenses`** — Chi phí khác
+- category (LEGAL/TRAINING/BANK_FEE/LICENSE/OTHER), description, amount, expense_date, department_id, recorded_by, approved_by, notes
+- RLS: ADMIN, KETOAN, DIRECTOR
+
+---
+
+### Phần 2: Trang Vendors mới (`/nha-cung-cap`)
+
+- Danh sách NCC với filter theo loại dịch vụ
+- Form CRUD (VendorFormDialog)
+- Permission: `bookings.view` (đọc), `bookings.edit` (ghi)
+- Thêm route trong App.tsx, thêm mục sidebar
+
+**Tệp tạo mới:**
+- `src/pages/Vendors.tsx`
+- `src/components/vendors/VendorFormDialog.tsx`
+
+---
+
+### Phần 3: Mở rộng BookingDetail — Tab "Dự toán chi"
+
+- Thêm tab hiển thị `tour_services` của booking
+- Điều hành thêm/sửa phiếu dịch vụ (chọn NCC từ dropdown vendors)
+- Hiển thị: Tổng dự toán, Đã chi (sum từ transactions), Công nợ NCC
+
+**Tệp tạo mới:**
+- `src/components/bookings/BookingServicesTab.tsx`
+
+**Tệp sửa:**
+- `src/pages/BookingDetail.tsx` — thêm tab
+
+---
+
+### Phần 4: Tái cấu trúc Finance.tsx — 7 Tab
+
+| Tab | Nguồn dữ liệu | Mô tả |
 |---|---|---|
-| Nhân viên HCNS | `HCNS` | Nhân viên HCNS |
-| Leader HCNS | `HR_MANAGER` | Leader HCNS |
-| Trưởng phòng HCNS | Dùng `HR_MANAGER` + override hoặc tạo role mới | Trưởng phòng HCNS |
+| Tổng quan | `profit_loss_monthly`, `revenue_records` | Giữ nguyên KPI + biểu đồ hiện tại |
+| Sổ quỹ | `transactions` | Bảng thu/chi, form "Lập phiếu Thu/Chi", filter tháng |
+| Chi phí lương | `payroll` | Tổng hợp gross/net/BHXH/thuế theo tháng |
+| Chi phí văn phòng | `office_expenses` | Danh sách + form thêm mới |
+| Chi phí Marketing | `marketing_expenses` | Danh sách + form thêm mới |
+| Chi phí khác | `other_expenses` | Danh sách + form thêm mới |
+| Tổng hợp OPEX | Tất cả bảng chi phí | Stacked bar chart 5 nhóm theo tháng |
 
-**Vấn đề**: DB constraint `profiles_role_check` chỉ cho phép các role đã định nghĩa. Hiện không có role riêng cho "Trưởng phòng HCNS". Có 2 cách:
-- **Cách 1**: Dùng `HCNS` = nhân viên, `HR_MANAGER` = leader, thêm role mới `HR_HEAD` = trưởng phòng (cần migration thêm vào constraint)
-- **Cách 2**: Dùng `HCNS` = nhân viên, `HR_MANAGER` = trưởng phòng, leader dùng override quyền
+**Tệp tạo mới:**
+- `src/components/finance/TransactionFormDialog.tsx` — Form lập phiếu Thu/Chi (dropdown Mã Tour + NCC khi chọn category liên quan tour)
+- `src/components/finance/TransactionListTab.tsx` — Tab Sổ quỹ
+- `src/components/finance/SalaryCostTab.tsx` — Tab chi phí lương (query payroll group by tháng)
+- `src/components/finance/ExpenseListTab.tsx` — Component dùng chung cho VP/MKT/Khác
+- `src/components/finance/ExpenseFormDialog.tsx` — Form thêm chi phí dùng chung
+- `src/components/finance/ExpenseSummaryTab.tsx` — Tab tổng hợp OPEX
 
-Tôi đề xuất **Cách 1** vì rõ ràng nhất. Bảng quyền chi tiết:
+**Tệp sửa:**
+- `src/pages/Finance.tsx` — Refactor thành Tabs layout
 
-### Bảng quyền chi tiết 3 cấp HCNS
+---
 
-| Permission | Nhân viên HCNS (`HCNS`) | Leader HCNS (`HR_MANAGER`) | Trưởng phòng HCNS (`HR_HEAD`) |
-|---|:---:|:---:|:---:|
-| **Nhân sự** | | | |
-| employees.view | ✅ | ✅ | ✅ |
-| employees.create | ✅ | ✅ | ✅ |
-| employees.edit | ✅ | ✅ | ✅ |
-| employees.delete | ❌ | ✅ | ✅ |
-| **Nghỉ phép** | | | |
-| leave.view | ✅ | ✅ | ✅ |
-| leave.create | ✅ | ✅ | ✅ |
-| leave.approve | ❌ | ✅ | ✅ |
-| **Bảng lương** | | | |
-| payroll.view | ✅ | ✅ | ✅ |
-| payroll.create | ✅ | ✅ | ✅ |
-| payroll.edit | ❌ | ✅ | ✅ |
-| **Booking / Hợp đồng** | | | |
-| bookings.view | ❌ | ❌ | ✅ |
-| **Báo giá** | | | |
-| quotations.view | ❌ | ❌ | ✅ |
-| **Thanh toán** | | | |
-| payments.view | ❌ | ❌ | ✅ |
-| **Khách hàng** | | | |
-| customers.view | ❌ | ❌ | ❌ |
-| **Tài chính** | | | |
-| finance.view | ❌ | ❌ | ❌ |
-| **Cài đặt** | | | |
-| settings.view | ❌ | ❌ | ❌ |
+### Phần 5: Cập nhật phân quyền & sidebar
 
-### Thay đổi cần thực hiện
+**`src/hooks/usePermissions.ts`:**
+- KETOAN thêm quyền truy cập transactions
+- settings.view cho HCNS, HR_MANAGER, HR_HEAD
 
-**1. Migration DB** -- thêm role `HR_HEAD` vào constraint + cập nhật DB function
+**`src/components/AppSidebar.tsx`:**
+- Thêm mục "Nhà cung cấp" vào nhóm Kinh doanh
 
-- Sửa constraint `profiles_role_check` thêm `HR_HEAD`
-- Cập nhật function `get_default_permissions_for_role` thêm case `HR_HEAD`
-- Cập nhật function `prevent_role_change` thêm `HR_HEAD` vào danh sách được phép đổi role
-- Cập nhật RLS policies trên các bảng employees, payroll, leave_requests, etc. thêm `HR_HEAD`
+**`src/App.tsx`:**
+- Thêm route `/nha-cung-cap`
 
-**2. File `src/hooks/usePermissions.ts`**
+**`src/pages/Settings.tsx`:**
+- Refactor: permission-based thay vì hardcode isAdmin
+- HR roles vào được tab Phòng ban + Cấp bậc
 
-- Sửa `HCNS`: bỏ `customers.view`, bỏ `employees.delete`, bỏ `leave.approve`, bỏ `payroll.edit`
-- Sửa `HR_MANAGER`: bỏ `customers.view`, thêm `employees.delete`, `leave.approve`, `payroll.edit`
-- Thêm `HR_HEAD`: tất cả quyền HR + `bookings.view`, `quotations.view`, `payments.view`
+**`src/hooks/useDashboardData.ts`:**
+- Thêm HR_HEAD vào HR_ROLES
 
-**3. File `src/components/settings/SettingsRolesTab.tsx`**
+**Migration DB bổ sung:**
+- Cập nhật `get_default_permissions_for_role` thêm settings.view cho HR roles
 
-- Cập nhật label: HCNS → "Nhân viên HCNS", HR_MANAGER → "Leader HCNS", thêm HR_HEAD → "Trưởng phòng HCNS"
+---
 
-**4. Cập nhật role cho Lê Thị Thủy Tiên**
+### Phần 6: Cập nhật plan file
 
-- Đổi role từ `MANAGER` sang `HR_HEAD` trong bảng profiles (dùng insert tool)
+Ghi đè `.lovable/plan.md` bằng kế hoạch tổng hợp này.
 
-**5. Cập nhật Edge Function `manage-employee-accounts`**
+---
 
-- Thêm `HR_HEAD` vào danh sách role hợp lệ nếu cần
+### Tóm tắt tệp cần tạo/sửa
+
+| Tệp | Hành động |
+|---|---|
+| Migration SQL | 5 bảng mới + RLS + cập nhật DB function |
+| `src/pages/Vendors.tsx` | Tạo mới |
+| `src/components/vendors/VendorFormDialog.tsx` | Tạo mới |
+| `src/components/bookings/BookingServicesTab.tsx` | Tạo mới |
+| `src/components/finance/TransactionFormDialog.tsx` | Tạo mới |
+| `src/components/finance/TransactionListTab.tsx` | Tạo mới |
+| `src/components/finance/SalaryCostTab.tsx` | Tạo mới |
+| `src/components/finance/ExpenseListTab.tsx` | Tạo mới |
+| `src/components/finance/ExpenseFormDialog.tsx` | Tạo mới |
+| `src/components/finance/ExpenseSummaryTab.tsx` | Tạo mới |
+| `src/pages/Finance.tsx` | Refactor → 7 tabs |
+| `src/pages/BookingDetail.tsx` | Thêm tab Dự toán chi |
+| `src/components/AppSidebar.tsx` | Thêm mục NCC |
+| `src/App.tsx` | Thêm route /nha-cung-cap |
+| `src/hooks/usePermissions.ts` | Cập nhật quyền |
+| `src/hooks/useDashboardData.ts` | Thêm HR_HEAD |
+| `src/pages/Settings.tsx` | Refactor permission-based |
+| `.lovable/plan.md` | Ghi đè plan mới |
 
