@@ -1,46 +1,38 @@
 
 
-## Đồng bộ Permission: Client ↔ DB Function
+## Cập nhật CustomerFormDialog
 
-### Phân tích mismatch hiện tại
+### Thay đổi chính
 
-So sánh chi tiết 16 roles giữa `usePermissions.ts` và `get_default_permissions_for_role()`:
+Form hiện tại đã có 2 tabs và hầu hết các trường. Cần điều chỉnh:
 
-| Role | Vấn đề |
-|------|--------|
-| **DIRECTOR** | Client thiếu `finance.submit` (DB có) |
-| **HCNS** | Cần thêm: `leave.approve`, `payroll.edit`, `finance.create` (theo yêu cầu) |
-| **Còn lại 14 roles** | Đã khớp 100% |
+**1. Tab "Thông tin cá nhân" (đổi tên từ "Thông tin cơ bản")**
+- Đổi nguồn từ hardcoded array → query `lead_sources` table
+- Giới tính: đổi từ RadioGroup → Select dropdown
+- Phân khúc: đổi từ Select editable → Badge read-only
+- Ngày sinh: thêm badge "Sinh nhật sắp tới" nếu trong 7 ngày
+- Phone validate: siết lại `^\d{10}$` (đúng 10 số)
+- Bỏ trường Zalo ID (không có trong spec), thay bằng CCCD/Passport (đã có)
 
-Ngoài ra, `finance.create` chưa tồn tại trong `ALL_PERMISSION_KEYS` — cần thêm mới.
+**2. Tab "Thông tin doanh nghiệp" (đổi tên từ "Thông tin công ty")**
+- Thêm trường "Ngày sinh người liên hệ" (DatePicker) — map DB column `contact_birthday`
+- Map `employee_count` → `company_size` trong DB insert (DB có cả 2 cột, dùng `company_size`)
 
-### Kế hoạch thực hiện
+**3. Submit logic**
+- Thêm `contact_birthday` và `company_size` vào insert payload
+- Giữ `segment` mặc định "NEW" nhưng không cho user sửa
 
-**1. Thêm permission key `finance.create` vào hệ thống**
-- `ALL_PERMISSION_KEYS`: thêm `"finance.create"`
-- `PERMISSION_GROUPS.finance`: thêm `"finance.create"` vào danh sách keys
-- Cập nhật type `PermissionKey` (tự động từ const)
+### File thay đổi
 
-**2. Sửa `DEFAULT_PERMISSIONS` trong `usePermissions.ts`**
-- **DIRECTOR**: thêm `finance.submit`
-- **HCNS**: thêm `leave.approve`, `payroll.edit`, `finance.create`
-- Giữ nguyên `settings.view` cho HCNS (đã có cả 2 nơi)
-- **ADMIN/SUPER_ADMIN**: tự động có `finance.create` vì spread từ ALL_PERMISSION_KEYS
+**`src/components/customers/CustomerFormDialog.tsx`**
+- Thêm `useQuery` cho `lead_sources`
+- Thay `sources` hardcoded → dynamic từ DB
+- Giới tính: `Select` thay `RadioGroup`
+- Phân khúc: render Badge read-only thay Select
+- Thêm helper `isBirthdayUpcoming(date)` — check 7 ngày tới
+- Thêm `contact_birthday` DatePicker trong tab company
+- Phone validation: `^\d{10}$`
+- Insert payload: thêm `contact_birthday`, dùng `company_size` thay `employee_count`
 
-**3. Cập nhật DB function `get_default_permissions_for_role()`** (migration)
-- HCNS: thêm `leave.approve`, `payroll.edit`, `finance.create`
-- Giữ nguyên tất cả role khác (đã khớp)
-
-### Files thay đổi
-- `src/hooks/usePermissions.ts` — thêm `finance.create`, sửa DIRECTOR và HCNS
-- Migration SQL — `CREATE OR REPLACE FUNCTION get_default_permissions_for_role()` cập nhật HCNS
-
-### Kết quả sau khi sửa — HCNS
-```text
-employees.view, employees.create, employees.edit,
-leave.view, leave.create, leave.approve,
-payroll.view, payroll.create, payroll.edit,
-finance.create, finance.submit,
-settings.view
-```
+### Không cần migration — tất cả cột đã tồn tại trong DB
 
