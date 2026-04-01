@@ -1,43 +1,46 @@
 
 
-## Kiểm tra phân quyền theo Role — Kết quả phân tích
+## Đồng bộ Permission: Client ↔ DB Function
 
-### Hiện trạng
+### Phân tích mismatch hiện tại
 
-Sau khi review toàn bộ code, tôi phát hiện các vấn đề sau:
+So sánh chi tiết 16 roles giữa `usePermissions.ts` và `get_default_permissions_for_role()`:
 
-#### 1. Nút Xóa — CÓ LỖ HỔNG
+| Role | Vấn đề |
+|------|--------|
+| **DIRECTOR** | Client thiếu `finance.submit` (DB có) |
+| **HCNS** | Cần thêm: `leave.approve`, `payroll.edit`, `finance.create` (theo yêu cầu) |
+| **Còn lại 14 roles** | Đã khớp 100% |
 
-| Trang | Trạng thái | Vấn đề |
-|-------|-----------|--------|
-| Employees.tsx (danh sách) | OK | Đã check `hasPermission("employees.delete")` |
-| **EmployeeDetail.tsx** | **LỖI** | Nút Xóa hiển thị cho **tất cả** user, không check permission |
-| **Vendors.tsx** | **LỖI** | Nút Xóa nằm trong `canEdit` — ai có quyền sửa đều thấy nút xóa |
-| Customers, Leads, Bookings | OK | Không có nút xóa trong UI (chỉ RLS bảo vệ ở DB) |
+Ngoài ra, `finance.create` chưa tồn tại trong `ALL_PERMISSION_KEYS` — cần thêm mới.
 
-#### 2. Data visibility (RLS) — OK
+### Kế hoạch thực hiện
 
-- **CEO/DIRECTOR**: RLS cho phép xem tất cả bảng chính (customers, bookings, employees, transactions...)
-- **SALE_***: Chỉ thấy customers/leads/bookings mình tạo hoặc được assign (`sale_id = auth.uid()`, `assigned_sale_id = auth.uid()`)
-- **HCNS**: Thấy employees, leave, payroll. Không thấy customers. Finance chỉ thấy record mình submit
+**1. Thêm permission key `finance.create` vào hệ thống**
+- `ALL_PERMISSION_KEYS`: thêm `"finance.create"`
+- `PERMISSION_GROUPS.finance`: thêm `"finance.create"` vào danh sách keys
+- Cập nhật type `PermissionKey` (tự động từ const)
 
-#### 3. Sidebar — OK
-- Đã dùng permission-based filtering, mỗi role chỉ thấy menu tương ứng
+**2. Sửa `DEFAULT_PERMISSIONS` trong `usePermissions.ts`**
+- **DIRECTOR**: thêm `finance.submit`
+- **HCNS**: thêm `leave.approve`, `payroll.edit`, `finance.create`
+- Giữ nguyên `settings.view` cho HCNS (đã có cả 2 nơi)
+- **ADMIN/SUPER_ADMIN**: tự động có `finance.create` vì spread từ ALL_PERMISSION_KEYS
 
-### Kế hoạch sửa (2 file)
+**3. Cập nhật DB function `get_default_permissions_for_role()`** (migration)
+- HCNS: thêm `leave.approve`, `payroll.edit`, `finance.create`
+- Giữ nguyên tất cả role khác (đã khớp)
 
-**File 1: `src/pages/EmployeeDetail.tsx`**
-- Thêm `usePermissions` hook
-- Wrap nút Xóa trong điều kiện `hasPermission("employees.delete")`
-- Chỉ ADMIN/SUPER_ADMIN mới thấy nút Xóa
+### Files thay đổi
+- `src/hooks/usePermissions.ts` — thêm `finance.create`, sửa DIRECTOR và HCNS
+- Migration SQL — `CREATE OR REPLACE FUNCTION get_default_permissions_for_role()` cập nhật HCNS
 
-**File 2: `src/pages/Vendors.tsx`**
-- Tách nút Xóa ra khỏi block `canEdit`
-- Thêm check `hasPermission("bookings.delete")` hoặc kiểm tra role ADMIN/SUPER_ADMIN riêng cho nút Xóa vendor
-
-### Chi tiết kỹ thuật
-
-EmployeeDetail.tsx: Thêm `const { hasPermission } = usePermissions()` và wrap `<AlertDialog>` trong `{hasPermission("employees.delete") && (...)}`
-
-Vendors.tsx: Tách `<Button>` xóa ra ngoài `canEdit`, thêm biến `const canDelete = hasPermission("bookings.delete")` hoặc check role trực tiếp vì vendors chưa có permission key riêng. Giải pháp đơn giản nhất: chỉ hiện nút xóa cho ADMIN/SUPER_ADMIN bằng cách check `userRole`.
+### Kết quả sau khi sửa — HCNS
+```text
+employees.view, employees.create, employees.edit,
+leave.view, leave.create, leave.approve,
+payroll.view, payroll.create, payroll.edit,
+finance.create, finance.submit,
+settings.view
+```
 
