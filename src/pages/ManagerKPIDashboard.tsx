@@ -122,6 +122,24 @@ export default function ManagerKPIDashboard() {
     },
     enabled: !!departmentId,
   });
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
+
+  const { data: followUpLeads = [] } = useQuery({
+    queryKey: ["manager-follow-up-leads", departmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, destination, assigned_to")
+        .eq("department_id", departmentId!)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", threeDaysLater)
+        .order("follow_up_date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!departmentId,
+  });
 
   const totalTarget = (targets || []).reduce((s, t) => s + (Number(t.target_revenue) || 0), 0);
   const revenueThisMonth = (bookingsThisMonth || []).reduce((s, b) => s + (Number(b.total_value) || 0), 0);
