@@ -52,7 +52,32 @@ const roleOptions = [
 
 const MANAGER_ROLES = ["ADMIN", "HCNS", "DIRECTOR", "SUPER_ADMIN"];
 
-export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, onProfileLinked }: Props) {
+function detectRoleMismatch(role: string, deptName?: string | null): string | null {
+  if (!deptName || !role) return null;
+  const deptLower = deptName.toLowerCase();
+  const isSaleDept = deptLower.includes("kinh doanh") || deptLower.includes("kd ");
+  const isHrDept = deptLower.includes("hcns") || deptLower.includes("nhân sự");
+  const isFinDept = deptLower.includes("kế toán") || deptLower.includes("tài chính");
+  
+  const hrRoles = ["HCNS", "HR_MANAGER", "HR_HEAD", "INTERN_HCNS"];
+  const finRoles = ["KETOAN", "INTERN_KETOAN"];
+  const saleRoles = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND"];
+  
+  const roleLabel = roleOptions.find(r => r.value === role)?.label ?? role;
+  
+  if (isSaleDept && (hrRoles.includes(role) || finRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  if (isHrDept && (saleRoles.includes(role) || finRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  if (isFinDept && (saleRoles.includes(role) || hrRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  return null;
+}
+
+export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, onProfileLinked }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
