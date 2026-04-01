@@ -125,8 +125,8 @@ Deno.serve(async (req) => {
       } catch (err) {
         // Cleanup: delete BOTH auth user AND orphan profile
         if (createdUserId) {
-          await adminClient.from("profiles").delete().eq("id", createdUserId).catch(() => {});
-          await adminClient.auth.admin.deleteUser(createdUserId).catch(() => {});
+          try { await adminClient.from("profiles").delete().eq("id", createdUserId); } catch (_) {}
+          try { await adminClient.auth.admin.deleteUser(createdUserId); } catch (_) {}
         }
         return jsonResponse({ error: (err as Error).message || "Lỗi tạo tài khoản" }, 400);
       }
