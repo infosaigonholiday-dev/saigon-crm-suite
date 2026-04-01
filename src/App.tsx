@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -41,25 +42,25 @@ function ProtectedRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/khach-hang" element={<PermissionGuard permission="customers.view"><Customers /></PermissionGuard>} />
-        <Route path="/khach-hang/:id" element={<PermissionGuard permission="customers.view"><CustomerDetail /></PermissionGuard>} />
-        <Route path="/tiem-nang" element={<PermissionGuard permission="leads.view"><Leads /></PermissionGuard>} />
-        <Route path="/bao-gia" element={<PermissionGuard permission="quotations.view"><Quotations /></PermissionGuard>} />
-        <Route path="/goi-tour" element={<PermissionGuard permission="quotations.view"><TourPackages /></PermissionGuard>} />
-        <Route path="/lich-trinh" element={<PermissionGuard permission="quotations.view"><Itineraries /></PermissionGuard>} />
-        <Route path="/luu-tru" element={<PermissionGuard permission="quotations.view"><Accommodations /></PermissionGuard>} />
-        <Route path="/dat-tour" element={<PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard>} />
-        <Route path="/dat-tour/:id" element={<PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard>} />
-        <Route path="/nha-cung-cap" element={<Vendors />} />
-        <Route path="/hop-dong" element={<PermissionGuard permission="bookings.view"><Contracts /></PermissionGuard>} />
-        <Route path="/thanh-toan" element={<PermissionGuard permission="payments.view"><Payments /></PermissionGuard>} />
-        <Route path="/nhan-su" element={<PermissionGuard permission="employees.view"><Employees /></PermissionGuard>} />
-        <Route path="/nhan-su/:id" element={<PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard>} />
-        <Route path="/nghi-phep" element={<PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard>} />
-        <Route path="/bang-luong" element={<PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard>} />
-        <Route path="/tai-chinh" element={<PermissionGuard anyOf={["finance.view", "finance.submit"]}><Finance /></PermissionGuard>} />
-        <Route path="/cai-dat" element={<PermissionGuard permission="settings.view"><Settings /></PermissionGuard>} />
+        <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+        <Route path="/khach-hang" element={<ErrorBoundary><PermissionGuard permission="customers.view"><Customers /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/khach-hang/:id" element={<ErrorBoundary><PermissionGuard permission="customers.view"><CustomerDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/tiem-nang" element={<ErrorBoundary><PermissionGuard permission="leads.view"><Leads /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/bao-gia" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Quotations /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nha-cung-cap" element={<ErrorBoundary><Vendors /></ErrorBoundary>} />
+        <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Contracts /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard permission="payments.view"><Payments /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard permission="employees.view"><Employees /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su/:id" element={<ErrorBoundary><PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nghi-phep" element={<ErrorBoundary><PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/bang-luong" element={<ErrorBoundary><PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={["finance.view", "finance.submit"]}><Finance /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard permission="settings.view"><Settings /></PermissionGuard></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

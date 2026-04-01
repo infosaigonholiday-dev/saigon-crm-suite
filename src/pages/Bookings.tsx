@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 
+const PAGE_SIZE = 20;
+
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
 const statusConfig: Record<BookingStatus, { label: string; className: string }> = {
@@ -31,20 +33,33 @@ const formatCurrency = (v: number | null) =>
 
 export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [page, setPage] = useState(0);
   const navigate = useNavigate();
+
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ["bookings-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("bookings")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["bookings"],
+    queryKey: ["bookings", page],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
         .select("id, code, customer_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch high-priority note counts per booking
   const { data: highNoteMap = {} } = useQuery({
     queryKey: ["booking-high-notes-list"],
     queryFn: async () => {
@@ -59,12 +74,14 @@ export default function Bookings() {
     },
   });
 
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Đặt tour</h1>
-          <p className="text-sm text-muted-foreground">{bookings.length} booking</p>
+          <p className="text-sm text-muted-foreground">{totalCount} booking</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
       </div>
@@ -130,6 +147,15 @@ export default function Bookings() {
             </Table>
           )}
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-4 border-t">
+            <span className="text-sm text-muted-foreground">Trang {page + 1} / {totalPages}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Trước</Button>
+              <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= totalCount} onClick={() => setPage(p => p + 1)}>Sau</Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
