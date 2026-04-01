@@ -419,6 +419,137 @@ export type Database = {
           },
         ]
       }
+      budget_estimate_items: {
+        Row: {
+          category: string
+          description: string | null
+          estimate_id: string
+          id: string
+          payment_deadline: string | null
+          quantity: number | null
+          sort_order: number | null
+          total: number | null
+          unit_price: number | null
+          vendor_id: string | null
+        }
+        Insert: {
+          category: string
+          description?: string | null
+          estimate_id: string
+          id?: string
+          payment_deadline?: string | null
+          quantity?: number | null
+          sort_order?: number | null
+          total?: number | null
+          unit_price?: number | null
+          vendor_id?: string | null
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          estimate_id?: string
+          id?: string
+          payment_deadline?: string | null
+          quantity?: number | null
+          sort_order?: number | null
+          total?: number | null
+          unit_price?: number | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_estimate_items_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "budget_estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_estimate_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_estimates: {
+        Row: {
+          advance_amount: number | null
+          advance_recipient: string | null
+          booking_id: string
+          code: string | null
+          created_at: string | null
+          created_by: string
+          id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          total_estimated: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          advance_amount?: number | null
+          advance_recipient?: string | null
+          booking_id: string
+          code?: string | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          total_estimated?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          advance_amount?: number | null
+          advance_recipient?: string | null
+          booking_id?: string
+          code?: string | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          total_estimated?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_estimates_advance_recipient_fkey"
+            columns: ["advance_recipient"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_estimates_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_estimates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_estimates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_plans: {
         Row: {
           actual_amount: number | null
