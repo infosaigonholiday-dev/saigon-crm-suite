@@ -100,7 +100,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       qc.invalidateQueries({ queryKey });
       toast.success("Đã xóa ngày");
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const addActivityMutation = useMutation({
