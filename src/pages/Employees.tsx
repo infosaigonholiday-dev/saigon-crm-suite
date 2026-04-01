@@ -334,6 +334,9 @@ export default function Employees() {
                         <TableCell className="text-sm">{e.email ?? "—"}</TableCell>
                         <TableCell>{e.position ?? "—"}</TableCell>
                         <TableCell>{deptName}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{roleLabel}</Badge>
+                        </TableCell>
                         <TableCell className="text-xs">{employmentTypes[e.employment_type ?? ""] ?? e.employment_type ?? "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={st.className}>{st.label}</Badge>
