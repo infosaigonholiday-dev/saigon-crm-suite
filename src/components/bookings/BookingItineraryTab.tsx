@@ -86,7 +86,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       qc.invalidateQueries({ queryKey });
       setAddingDay(false);
       setNewDay({ destination: "", actual_date: null });
-      toast({ title: "Đã thêm ngày mới" });
+      toast.success("Đã thêm ngày mới");
     },
     onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
   });
