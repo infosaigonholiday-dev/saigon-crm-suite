@@ -92,7 +92,7 @@ export default function AccommodationFormDialog({ open, onOpenChange }: Props) {
       setAmenities([]);
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   return (

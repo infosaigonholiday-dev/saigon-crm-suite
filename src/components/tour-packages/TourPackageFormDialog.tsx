@@ -97,7 +97,7 @@ export default function TourPackageFormDialog({ open, onOpenChange }: Props) {
       setExclusions([]);
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const TagInput = ({

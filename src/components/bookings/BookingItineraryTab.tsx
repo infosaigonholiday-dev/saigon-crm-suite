@@ -132,7 +132,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Lịch trình tour</h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => toast({ title: "Tính năng xuất PDF sẽ sớm ra mắt!" })}>
+          <Button variant="outline" size="sm" onClick={() => toast("Tính năng xuất PDF sẽ sớm ra mắt!")}>
             <FileText className="h-4 w-4 mr-1" /> Xuất PDF
           </Button>
           <Button size="sm" onClick={() => setAddingDay(true)}>

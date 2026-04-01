@@ -157,7 +157,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
       onOpenChange(false);
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

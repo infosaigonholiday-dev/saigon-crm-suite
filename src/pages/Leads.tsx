@@ -93,7 +93,7 @@ export default function Leads() {
       toast.success("Thành công", { description: "Đã chuyển đổi thành khách hàng thành công" });
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

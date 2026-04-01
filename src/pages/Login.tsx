@@ -48,7 +48,7 @@ export default function Login() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) {
-      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+      toast.error("Lỗi", { description: error.message });
     } else {
       setForgotSent(true);
     }

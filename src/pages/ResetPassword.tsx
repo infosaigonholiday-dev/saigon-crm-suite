@@ -53,7 +53,7 @@ export default function ResetPassword() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast({ title: "Lỗi đặt lại mật khẩu", description: error.message, variant: "destructive" });
+      toast.error("Lỗi đặt lại mật khẩu", { description: error.message });
     } else {
       setSuccess(true);
     }
