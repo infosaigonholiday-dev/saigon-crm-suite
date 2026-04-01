@@ -1,51 +1,69 @@
 
 
-## Luồng Quyết toán sau tour
+## Dashboard KPI cho MANAGER + Báo cáo Tài chính
 
 ### Tổng quan
-Thêm luồng quyết toán 3 bước (Điều hành → Kế toán → CEO) vào module Tài chính. Tạo từ dự toán đã giải ngân, so sánh dự toán vs thực chi, tự động tính hoàn ứng/chi bù, và đóng booking khi CEO duyệt.
+Hai phần việc: (1) Tạo dashboard KPI riêng cho MANAGER với dữ liệu theo phòng ban, (2) Thêm 5 tab báo cáo mới vào Finance.tsx với phân quyền theo role.
 
 ### Kế hoạch thực hiện
 
-**1. Migration SQL** — Tạo bảng `budget_settlements` và `settlement_items`
+**1. ManagerKPIDashboard (`src/pages/ManagerKPIDashboard.tsx`)** — Component mới
 
-- `budget_settlements`: code (QT-YYYY-NNNN), status 6 bước (draft → pending_accountant → accountant_approved → pending_ceo → ceo_approved → closed), generated columns cho variance/refund/additional
-- `settlement_items`: so sánh estimated vs actual, có receipt_url
-- Sequence `budget_settlement_seq` + trigger `generate_settlement_code` (pattern giống estimate)
-- Trigger `update_settlement_total` cập nhật `total_actual` khi items thay đổi
-- Trigger `update_variance_pct` tính % chênh lệch
-- RLS: DIEUHAN tạo, KETOAN/DIRECTOR/ADMIN duyệt, đọc theo created_by hoặc role
+- Query dữ liệu theo `department_id` từ `get_my_department_id()`:
+  - `sale_targets` (filter department + tháng hiện tại) → tổng target_revenue vs actual_revenue
+  - `bookings` (tháng này + department) → đếm + tổng doanh thu
+  - `customers` (department) → đếm KH mới tháng
+  - `leads` (department, status active) → tổng expected_value (pipeline)
+  - `bookings` tháng trước → so sánh % tăng/giảm
 
-**2. Component `BudgetSettlementsTab.tsx`** — Tab "Quyết toán" mới
+- UI Cards:
+  - a. Target doanh thu: Progress bar + % đạt
+  - b. Booking mới tháng
+  - c. KH mới tháng
+  - d. Pipeline value
 
-Theo pattern `BudgetEstimatesTab.tsx`:
+- Bảng xếp hạng Sale: query bookings group by sale_id, join profiles lấy tên → sort doanh thu giảm dần
+- So sánh tháng trước: mũi tên xanh/đỏ kèm % thay đổi
+- KHÔNG hiển thị: lợi nhuận, chi phí, dòng tiền, công nợ
 
-- **Danh sách**: bảng settlements với filter trạng thái, 6 status badge màu
-- **Tạo quyết toán**: chọn từ estimates đã giải ngân (status=disbursed) → copy items sang settlement_items với estimated_amount, nhập actual_amount + receipt_url
-- **Bảng so sánh**: Hạng mục | Dự toán | Thực chi | Chênh lệch | % — highlight đỏ nếu > 10%
-- **Tự động tính**: hoàn ứng (advance - actual nếu dương), chi bù (actual - advance nếu dương)
-- **Banner cảnh báo**: variance_pct > 10% → banner đỏ "Chênh lệch vượt 10%"
-- **Luồng duyệt**:
-  - Điều hành: nút "Gửi KT duyệt" → status=pending_accountant
-  - Kế toán (KETOAN): nút "Duyệt KT" → status=pending_ceo
-  - CEO (DIRECTOR/ADMIN): nút "Duyệt & Đóng" → status=closed + UPDATE bookings.status='COMPLETED'
+**2. Dashboard.tsx** — Cập nhật routing
 
-**3. Tích hợp Finance.tsx**
+- Thêm type `"manager"` vào `getDashboardType`: khi role = MANAGER → return "manager"
+- Import + render `ManagerKPIDashboard` khi type === "manager"
 
-- Thêm tab "Quyết toán" vào TabsList (grid-cols-9)
-- Import và render `BudgetSettlementsTab`
+**3. Finance Reports — 5 tab mới trong Finance.tsx**
 
-### Chi tiết kỹ thuật
+Tạo 5 component con:
 
-- Trigger functions dùng `SECURITY DEFINER` + `SET search_path TO 'public'`
-- Generated columns: `variance`, `refund_amount`, `additional_amount` dùng `GENERATED ALWAYS AS ... STORED`
-- `variance_pct` tính bằng trigger (vì cần chia cho total_estimated, không immutable)
-- Khi closed: mutation gọi thêm `supabase.from("bookings").update({ status: "COMPLETED" })`
-- Estimate status cập nhật thành 'settled' khi tạo quyết toán
+- **`RevenueReportTab.tsx`**: BarChart doanh thu theo tháng từ `revenue_records`, filter năm. Bảng chi tiết bên dưới (tháng, booking_count, gross_revenue). Nhận prop `departmentFilter` để MANAGER chỉ thấy department mình.
+
+- **`ProfitReportTab.tsx`**: 2 card (LN gộp = gross_revenue - tour_direct_cost, LN ròng = gross_revenue - total_opex) + LineChart trend 12 tháng từ `profit_loss_monthly`.
+
+- **`CashflowReportTab.tsx`**: LineChart total_inflow vs total_outflow + net_cashflow từ `cashflow_monthly`. Card opening/closing balance.
+
+- **`TaxReportTab.tsx`**: Bảng từ `tax_records`: period, vat_output, vat_input, vat_payable, cit_amount, status.
+
+- **`DebtReportTab.tsx`**: 2 sub-tab:
+  - Khách nợ: `accounts_receivable` join customers/bookings. Highlight đỏ nếu due_date < today && status != PAID.
+  - Nợ NCC: `accounts_payable`. Tương tự highlight quá hạn.
+
+**4. Finance.tsx** — Phân quyền tabs
+
+- Dùng `useAuth()` lấy `userRole`
+- Full tabs (tất cả 14 tabs): ADMIN, SUPER_ADMIN, DIRECTOR, KETOAN
+- MANAGER: chỉ thấy tab "Doanh thu" (với filter department tự động)
+- TabsList responsive: dùng overflow-x-auto thay vì grid-cols cố định
 
 ### Files thay đổi
-- Migration SQL mới (budget_settlements, settlement_items, triggers, RLS)
-- `src/components/finance/BudgetSettlementsTab.tsx` (mới)
-- `src/pages/Finance.tsx` (thêm tab)
-- `src/integrations/supabase/types.ts` (tự động cập nhật)
+- `src/pages/ManagerKPIDashboard.tsx` (mới)
+- `src/hooks/useDashboardData.ts` (cập nhật getDashboardType)
+- `src/pages/Dashboard.tsx` (thêm manager case)
+- `src/components/finance/RevenueReportTab.tsx` (mới)
+- `src/components/finance/ProfitReportTab.tsx` (mới)
+- `src/components/finance/CashflowReportTab.tsx` (mới)
+- `src/components/finance/TaxReportTab.tsx` (mới)
+- `src/components/finance/DebtReportTab.tsx` (mới)
+- `src/pages/Finance.tsx` (thêm tabs + phân quyền)
+
+Không cần migration SQL — tất cả bảng dữ liệu đã tồn tại.
 
