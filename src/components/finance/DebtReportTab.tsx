@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { exportToCSV } from "@/lib/exportUtils";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -52,7 +55,27 @@ export function DebtReportTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Công nợ</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Công nợ</h2>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => {
+                const arData = receivables.map((r: any) => ({
+                  Loại: 'Phải thu', 'Khách hàng/NCC': r.customers?.full_name || '', 'Phải thu/trả': r.amount_due, 'Đã thu/trả': r.amount_paid, 'Còn lại': r.amount_remaining, Hạn: r.due_date || '', 'Trạng thái': r.status
+                }));
+                const apData = payables.map(r => ({
+                  Loại: 'Phải trả', 'Khách hàng/NCC': r.supplier_name, 'Phải thu/trả': r.amount_due, 'Đã thu/trả': r.amount_paid, 'Còn lại': r.amount_remaining, Hạn: r.due_date || '', 'Trạng thái': r.status
+                }));
+                exportToCSV([...arData, ...apData], 'cong-no');
+              }}>
+                <Download className="h-4 w-4 mr-2" />Xuất CSV
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>

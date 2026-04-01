@@ -3,8 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { exportToCSV } from "@/lib/exportUtils";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
 
 const formatVND = (v: number) => {
@@ -52,6 +55,20 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Báo cáo doanh thu</h2>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                  data.map(r => ({ Tháng: r.month, Booking: r.booking_count ?? 0, 'Doanh thu': r.gross_revenue ?? 0, 'Doanh thu ròng': r.net_revenue ?? 0 })),
+                  'bao-cao-doanh-thu'
+                )}>
+                  <Download className="h-4 w-4 mr-2" />Xuất CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+            </UiTooltip>
+          </TooltipProvider>
         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
           <SelectTrigger className="w-28">
             <SelectValue />
@@ -77,6 +94,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
             <p className="text-2xl font-bold mt-1">{totalBookings}</p>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <Card>
@@ -90,7 +108,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                 <Bar dataKey="revenue" name="Doanh thu" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
