@@ -29,8 +29,8 @@ interface Department {
 
 export function SettingsDepartmentsTab() {
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
-  const isAdmin = profile?.role === "ADMIN" || profile?.role === "SUPER_ADMIN";
+  const { userRole } = useAuth();
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

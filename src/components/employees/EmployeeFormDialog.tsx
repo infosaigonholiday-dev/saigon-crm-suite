@@ -309,7 +309,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 <Select value={form.level} onValueChange={v => update("level", v)}>
                   <SelectTrigger><SelectValue placeholder="Chọn cấp bậc" /></SelectTrigger>
                   <SelectContent>
-                    {levels.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    {levelOptions.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
