@@ -85,7 +85,7 @@ export default function ItineraryFormDialog({ open, onOpenChange, defaultTourPac
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Thêm lịch trình thành công" });
+      toast.success("Thêm lịch trình thành công");
       qc.invalidateQueries({ queryKey: ["tour-itineraries"] });
       setForm({ ...initial, tour_package_id: defaultTourPackageId ?? "" });
       setMeals([]);
