@@ -218,6 +218,9 @@ export default function PersonalDashboard() {
         </Card>
       </div>
 
+      {/* KPI Card */}
+      <KpiProgressCard />
+
       {/* Follow-up Leads */}
       {followUpLeads.length > 0 && (
         <Card>
