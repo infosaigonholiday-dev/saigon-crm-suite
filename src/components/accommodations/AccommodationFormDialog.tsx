@@ -86,7 +86,7 @@ export default function AccommodationFormDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Thêm điểm lưu trú thành công" });
+      toast.success("Thêm điểm lưu trú thành công");
       qc.invalidateQueries({ queryKey: ["accommodations"] });
       setForm(initial);
       setAmenities([]);
