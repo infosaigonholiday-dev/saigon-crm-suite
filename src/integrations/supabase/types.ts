@@ -1674,6 +1674,92 @@ export type Database = {
           },
         ]
       }
+      employee_kpis: {
+        Row: {
+          achievement_pct: number | null
+          actual_value: number | null
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          employee_id: string
+          evaluated_at: string | null
+          evaluated_by: string | null
+          id: string
+          kpi_name: string
+          note: string | null
+          period_type: string
+          period_value: number
+          period_year: number
+          target_value: number
+          unit: string | null
+        }
+        Insert: {
+          achievement_pct?: number | null
+          actual_value?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          employee_id: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          id?: string
+          kpi_name: string
+          note?: string | null
+          period_type: string
+          period_value: number
+          period_year: number
+          target_value?: number
+          unit?: string | null
+        }
+        Update: {
+          achievement_pct?: number | null
+          actual_value?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          employee_id?: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          id?: string
+          kpi_name?: string
+          note?: string | null
+          period_type?: string
+          period_value?: number
+          period_year?: number
+          target_value?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_kpis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_kpis_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_kpis_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_kpis_evaluated_by_fkey"
+            columns: ["evaluated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_permissions: {
         Row: {
           employee_id: string
