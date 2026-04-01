@@ -106,6 +106,9 @@ export default function Settings() {
         {showPermissions && (
           <TabsContent value="permissions" className="mt-4"><SettingsPermissionsTab /></TabsContent>
         )}
+        {showAuditLog && (
+          <TabsContent value="audit" className="mt-4"><SettingsAuditLogTab /></TabsContent>
+        )}
       </Tabs>
     </div>
   );
