@@ -361,7 +361,7 @@ export default function Employees() {
                     );
                   })}
                   {employees.length === 0 && (
-                    <TableRow><TableCell colSpan={(canEdit || canDelete) ? 9 : 8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={(canEdit || canDelete) ? 10 : 9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
