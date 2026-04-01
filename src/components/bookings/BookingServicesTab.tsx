@@ -40,7 +40,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-export default function BookingServicesTab({ bookingId }: Props) {
+export default function BookingServicesTab({ bookingId, readOnly = false }: Props) {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("bookings.edit");

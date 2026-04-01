@@ -47,7 +47,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-export default function BookingItineraryTab({ bookingId }: Props) {
+export default function BookingItineraryTab({ bookingId, readOnly = false }: Props) {
   
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
