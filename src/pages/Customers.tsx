@@ -29,6 +29,12 @@ const segmentColors: Record<string, string> = {
   DIAMOND: "bg-accent/15 text-accent border border-accent/30",
 };
 
+const tierBadgeConfig: Record<string, { label: string; className: string } | null> = {
+  Silver: { label: "Silver", className: "bg-muted text-muted-foreground" },
+  Gold: { label: "Gold", className: "bg-amber-100 text-amber-700 border border-amber-300" },
+  Diamond: { label: "Diamond", className: "bg-purple-100 text-purple-700 border border-purple-300" },
+};
+
 function loyaltyBadge(totalBookings: number) {
   if (totalBookings > 5) return { label: "VIP", className: "bg-destructive/15 text-destructive border border-destructive/30" };
   if (totalBookings >= 3) return { label: "Trung thành", className: "bg-primary/15 text-primary border border-primary/30" };
@@ -52,7 +58,7 @@ export default function Customers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
+        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -145,6 +151,11 @@ export default function Customers() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {c.full_name}
+                          {tierBadgeConfig[c.tier ?? ""] && (
+                            <Badge variant="outline" className={tierBadgeConfig[c.tier ?? ""]!.className}>
+                              {tierBadgeConfig[c.tier ?? ""]!.label}
+                            </Badge>
+                          )}
                           {badge && <Badge variant="outline" className={badge.className}>{badge.label}</Badge>}
                         </div>
                       </TableCell>
