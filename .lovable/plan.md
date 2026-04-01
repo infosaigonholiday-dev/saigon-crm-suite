@@ -1,168 +1,80 @@
 
 
-# KIỂM TRA DATA FLOW GIỮA CÁC MODULE
+# KẾ HOẠCH TỔNG HỢP (ĐÃ BỔ SUNG DIỄN GIẢI)
 
 ---
 
-## A. LUỒNG LEAD → KH → BOOKING → HĐ → THANH TOÁN → TÀI CHÍNH
+## DIỄN GIẢI: ROLE LẤY TỪ ĐÂU?
 
-**1. Tạo Lead mới → thấy trên Kanban?**
-✅ OK — `LeadFormDialog` insert vào `leads`, invalidate `["leads"]`. `Leads.tsx` query leads theo status, filter vào columns Kanban.
+Hiện tại hệ thống có **4 trường riêng biệt** trong hồ sơ nhân viên, KHÔNG tự động liên kết với nhau:
 
-**2. Lead chuyển đổi → tạo Customer tự động? assigned_sale_id đúng?**
-✅ OK — `convertToCustomer` mutation trong `Leads.tsx`: insert customer với `assigned_sale_id: lead.assigned_to`, update lead `status='WON'` + `customer_id`.
+```text
+┌──────────────────────────────────────────────────────────┐
+│  employees table (Hồ sơ nhân viên)                       │
+│  ├─ position    = "Chức vụ" (text tự do, VD: "NV KD")   │
+│  ├─ level       = "Cấp bậc" (C-LEVEL/DIRECTOR/MANAGER/  │
+│  │                 STAFF/INTERN)                          │
+│  ├─ department_id = "Phòng ban" (KD Nội địa, HCNS...)   │
+│  └─ (không quyết định quyền hệ thống)                   │
+│                                                          │
+│  profiles table (Tài khoản đăng nhập)                    │
+│  └─ role        = "Quyền hệ thống" ← CHỈ TRƯỜNG NÀY    │
+│                    quyết định phân quyền (SALE_DOMESTIC,  │
+│                    HCNS, ADMIN, INTERN_KETOAN...)         │
+└──────────────────────────────────────────────────────────┘
+```
 
-**3. Tạo Booking từ Customer → booking.customer_id reference đúng?**
-❌ **CẦN FIX** — `BookingFormDialog.tsx` insert booking với `customer_id: form.customer_id` ✅ nhưng **KHÔNG set `sale_id`**. Booking insert không có `sale_id: user.id`. Hệ quả:
-- RLS `bookings_read` check `sale_id = auth.uid()` → Sale tạo booking nhưng **không thấy booking đó** (vì sale_id = null)
-- RLS `bookings_update` check `sale_id = auth.uid()` → Sale không thể sửa booking mình tạo
-- **File cần fix**: `src/components/bookings/BookingFormDialog.tsx` — thêm `sale_id: user.id` vào insert payload (cần import useAuth)
+**Vấn đề**: Phòng ban = "KD Nội địa" nhưng `profiles.role` = "HCNS" → nhân viên có quyền HCNS, không phải Sale. Ba trường `position`, `level`, `department_id` chỉ là thông tin HR, **không ảnh hưởng phân quyền**.
 
-**4. Tạo Hợp đồng từ Booking → auto-fill đúng?**
-✅ OK — `ContractFormDialog.tsx` select booking → fill customer_id + total_value.
-
-**5. Payment → booking.remaining_amount cập nhật? Customer.total_paid cập nhật?**
-⚠️ **PARTIAL** — Customer.total_paid: ✅ cập nhật qua DB trigger `trg_payment_customer_stats` (function `update_customer_payment_stats`).
-Booking.remaining_amount: ❌ **KHÔNG tự động cập nhật**. Không có trigger nào update `bookings.remaining_amount` khi payment được thêm. `remaining_amount` chỉ được set lúc tạo booking (giá trị tĩnh ban đầu). **Cần tạo trigger** hoặc tính toán `remaining_amount = total_value - SUM(payments.amount)` dynamically.
-
-**6. Payment xong → Customer tier tự động nâng hạng?**
-✅ OK — DB trigger `trg_auto_tier` trên bảng `payments` gọi function `auto_update_customer_tier()`. Tuy nhiên, function logic dùng `total_revenue` (từ bookings), không phải `total_paid`. Điều này đúng nghiệp vụ — tier dựa trên doanh thu (tổng giá trị booking), không phải tiền đã thanh toán.
-
-**7. Tạo Dự toán cho Booking → liên kết đúng booking_id?**
-✅ OK — `BudgetEstimatesTab` create mutation: `booking_id: formBookingId`, `created_by: user!.id`.
-
-**8. KT duyệt dự toán → status chuyển approved?**
-✅ OK — `reviewMutation` update status = "approved" hoặc "rejected" + `reviewed_by`, `reviewed_at`, `review_note`.
-
-**9. Tạo Quyết toán từ Dự toán → copy hạng mục + số dự toán đúng?**
-✅ OK — `BudgetSettlementsTab` chỉ cho chọn dự toán `status = "disbursed"`. `loadEstimateItems` fetch estimate items → map sang settlement items với `estimated_amount = unit_price * quantity`, `actual_amount = 0` để DH nhập thực chi.
-
-**10. DH submit → KT duyệt → CEO duyệt → booking status = 'completed'?**
-✅ OK — Flow: `draft → pending_accountant → pending_ceo → closed`. `ceoApproveMutation` update settlement `status='closed'` rồi `bookings.update({ status: 'COMPLETED' })`.
-
-**11. Booking completed → không ai sửa được?**
-❌ **CẦN FIX** — Không có logic nào trong UI hoặc RLS ngăn chặn sửa booking khi status = 'COMPLETED'. `BookingDetail.tsx` và `BookingFormDialog.tsx` không check status trước khi cho sửa. Cần:
-- UI: disable edit khi `status === 'COMPLETED'` hoặc `'CANCELLED'`
-- Hoặc: RLS policy thêm condition `status NOT IN ('COMPLETED','CANCELLED')`
+**Role được gán ở 2 nơi**:
+1. Khi tạo tài khoản: Tab "Phân quyền nhân sự" trong chi tiết nhân viên → chọn "Quyền hệ thống" → set `profiles.role`
+2. Cài đặt → Tài khoản → tạo tài khoản mới → chọn role
 
 ---
 
-## B. LUỒNG HCNS NHẬP CHI PHÍ
+## Thay đổi 1: DB Migration — thêm 6 roles TTS + bổ sung thiếu
 
-**12. HCNS nhập chi phí → approval_status = 'pending_review', submitted_by = HCNS?**
-✅ OK — `TransactionFormDialog.tsx` line 121-123: `if (isSubmitter) { payload.submitted_by = user?.id; payload.approval_status = "PENDING_REVIEW"; }`. `isSubmitter = hasPermission("finance.submit") && !hasPermission("finance.view")` → đúng cho HCNS.
+Cập nhật `profiles_role_check` constraint thêm: `INTERN_DIEUHAN`, `INTERN_SALE_DOMESTIC`, `INTERN_SALE_OUTBOUND`, `INTERN_MKT`, `INTERN_HCNS`, `INTERN_KETOAN`, `SUPER_ADMIN`, `HR_MANAGER`, `HR_HEAD`, `SALE_MICE`.
 
-**13. KT thấy trong tab "Duyệt chi phí"?**
-✅ OK — `ApprovalTab.tsx` query `.eq("approval_status", "PENDING_REVIEW")`.
+Cập nhật function `get_default_permissions_for_role()` thêm 6 WHEN clauses cho TTS (quyền view-only theo phòng ban).
 
-**14. KT duyệt → approved. KT từ chối → rejected + review_note?**
-✅ OK — `approveMutation`: update `approval_status: "APPROVED"`. `rejectMutation`: update `approval_status: "REJECTED"`, `review_note: note`.
+## Thay đổi 2: `src/hooks/usePermissions.ts`
 
-**15. HCNS thấy status cập nhật? Sửa lại record bị từ chối?**
-✅ OK — `TransactionListTab submitterOnly`: query `submitted_by = user.id` → thấy tất cả records mình tạo (kể cả APPROVED, REJECTED). `canEditRow`: cho sửa khi `["DRAFT", "REJECTED"].includes(t.approval_status)`. Khi sửa record REJECTED → `approval_status = "PENDING_REVIEW"` (resubmit).
+Thêm 6 entries DEFAULT_PERMISSIONS cho TTS roles:
+- INTERN_DIEUHAN: bookings.view, leave.view/create, sop.view
+- INTERN_SALE_DOMESTIC/OUTBOUND: customers.view, leads.view, bookings.view, leave.view/create, sop.view
+- INTERN_MKT: customers.view, leads.view, leave.view/create, sop.view
+- INTERN_HCNS: employees.view, leave.view/create, sop.view
+- INTERN_KETOAN: customers.view, bookings.view, payments.view, leave.view/create, sop.view
 
----
+## Thay đổi 3: `src/components/settings/SettingsAccountsTab.tsx`
 
-## C. LUỒNG PHÂN QUYỀN CEO OVERRIDE
+- Mở rộng ROLES từ 8 → 22 roles đầy đủ với label tiếng Việt
+- Thêm dropdown **đổi role** cho tài khoản đã tạo (update `profiles.role`)
 
-**16. CEO vào Settings → chọn NV → tick can_delete cho customers?**
-✅ OK — `PermissionEditDialog.tsx`: checkbox matrix, upsert vào `employee_permissions` với `granted = true/false`.
+## Thay đổi 4: `src/components/employees/EmployeeRoleTab.tsx`
 
-**17. NV Sale đăng nhập → thấy nút Xóa?**
-✅ OK — `usePermissions` load overrides từ `employee_permissions`, merge với DEFAULT_PERMISSIONS. Nếu `customers.delete` được grant → `hasPermission("customers.delete")` = true → nút Xóa hiện.
+Bổ sung roleOptions thêm: SUPER_ADMIN, HR_MANAGER, HR_HEAD, SALE_MICE, và 6 TTS roles.
 
-**18. CEO untick → NV không còn thấy nút Xóa?**
-✅ OK — Override bị xóa hoặc set `granted = false` → fallback về DEFAULT_PERMISSIONS (không có `customers.delete` cho SALE) → nút ẩn.
+## Thay đổi 5: `src/components/settings/SettingsRolesTab.tsx`
 
-**19. CEO thêm finance.view cho MANAGER → MANAGER thấy thêm menu Tài chính?**
-✅ OK — Override `finance.view` grant → `hasPermission("finance.view")` = true → sidebar filter pass → menu hiện. Và Finance.tsx sẽ render `FullFinanceView` thay vì `ManagerFinanceView`.
+- Thêm 6 TTS roles vào bảng tham chiếu
+- Thêm **ghi chú diễn giải** rõ ràng: "Quyền hệ thống được xác định từ trường `profiles.role` (cột 'Quyền hệ thống' trong tab Phân quyền nhân sự của hồ sơ nhân viên). Các trường Chức vụ, Cấp bậc, Phòng ban chỉ là thông tin tổ chức, KHÔNG ảnh hưởng phân quyền."
 
----
+## Thay đổi 6: MANAGER truy cập tab Phân quyền (scoped theo phòng ban)
 
-## D. NOTIFICATIONS
-
-**20. Edge Function daily-reminders: birthday → notification?**
-✅ OK — Function query customers có `date_of_birth` trong 0-3 ngày tới, deduplicate, insert vào `notifications`.
-
-**21. Sale đăng nhập → bell hiện badge đỏ?**
-✅ OK — `NotificationBell` query `notifications.is_read = false` cho `user_id`, hiển thị count.
-
-**22. Click notification → navigate đúng trang KH?**
-✅ OK — `markAsRead` navigate to `/khach-hang/${entityId}`.
-⚠️ **MINOR**: Notification cho leads (type='follow_up') cũng navigate to `/khach-hang/${entityId}` nhưng entity_id là lead ID, không phải customer ID. Sẽ ra 404 hoặc sai trang.
-**File cần fix**: `src/components/NotificationBell.tsx` — check `entity_type` để navigate đúng route (`/leads/${id}` cho lead, `/khach-hang/${id}` cho customer).
-
-**23. Lead follow_up_date = hôm nay → hiện trên PersonalDashboard?**
-✅ OK — `PersonalDashboard.tsx` query leads `assigned_to = user.id`, `follow_up_date <= threeDaysLater`, order by follow_up_date. Hiển thị card "Lead cần follow-up".
+- `src/pages/Settings.tsx`: Cho MANAGER thấy tab "Phân quyền"
+- `src/components/settings/SettingsPermissionsTab.tsx`: Filter nhân viên chỉ hiện cùng `department_id` với MANAGER. ADMIN/DIRECTOR thấy tất cả.
 
 ---
 
-## E. BOOKING LƯU Ý
+## Tổng: 7 files thay đổi
 
-**24. Tạo lưu ý priority='high' → banner đỏ đầu BookingDetail?**
-✅ OK — `BookingDetail.tsx` line 107: `Alert variant="destructive"` khi `highNotes.length > 0`.
-
-**25. Danh sách Bookings → icon cảnh báo cạnh booking?**
-✅ OK — `Bookings.tsx` query `booking_special_notes` priority='high', hiển thị `AlertTriangle` icon.
-
-**26. HDV (TOUR) → xem được lưu ý read-only?**
-✅ OK — RLS `booking_notes_read` include `TOUR` trong `has_any_role` list. Frontend: `BookingSpecialNotesTab` chỉ hiện form thêm khi `canEditNotes` = `hasPermission("bookings.edit")`. TOUR không có `bookings.edit` → read-only.
-
----
-
-## TÓM TẮT
-
-| # | Mục | Trạng thái | Vấn đề |
-|---|-----|-----------|--------|
-| 1 | Lead → Kanban | ✅ | — |
-| 2 | Lead → Customer | ✅ | — |
-| **3** | **Booking insert** | **❌** | **Thiếu `sale_id` → Sale không thấy booking mình tạo** |
-| 4 | Booking → HĐ | ✅ | — |
-| **5** | **Payment → remaining** | **❌** | **booking.remaining_amount không tự cập nhật** |
-| 6 | Payment → tier | ✅ | — |
-| 7 | Dự toán → booking | ✅ | — |
-| 8 | KT duyệt dự toán | ✅ | — |
-| 9 | QT copy từ DT | ✅ | — |
-| 10 | 3-lớp duyệt QT | ✅ | — |
-| **11** | **Completed lock** | **❌** | **Booking completed vẫn sửa được** |
-| 12 | HCNS nhập chi phí | ✅ | — |
-| 13 | KT thấy tab duyệt | ✅ | — |
-| 14 | KT duyệt/từ chối | ✅ | — |
-| 15 | HCNS sửa rejected | ✅ | — |
-| 16-18 | CEO permission override | ✅ | — |
-| 19 | CEO override finance | ✅ | — |
-| 20 | Birthday notification | ✅ | — |
-| 21 | Bell badge | ✅ | — |
-| **22** | **Click notification nav** | **⚠️** | **Lead notification navigate sai route** |
-| 23 | Follow-up dashboard | ✅ | — |
-| 24 | Banner lưu ý | ✅ | — |
-| 25 | Icon cảnh báo | ✅ | — |
-| 26 | TOUR read-only | ✅ | — |
-
----
-
-## KẾ HOẠCH FIX (4 mục)
-
-### Fix 1: BookingFormDialog — thêm sale_id (CRITICAL)
-**File**: `src/components/bookings/BookingFormDialog.tsx`
-- Import `useAuth` từ `@/contexts/AuthContext`
-- Trong mutation insert, thêm `sale_id: user?.id` vào payload
-- Đây là lỗi nghiêm trọng: Sale tạo booking nhưng RLS chặn không cho xem lại
-
-### Fix 2: Booking remaining_amount — tạo trigger DB
-**Migration SQL**: Tạo trigger trên bảng `payments` (AFTER INSERT/UPDATE/DELETE) → recalculate `bookings.remaining_amount = total_value - deposit_amount - SUM(payments.amount WHERE booking_id)`.
-Hoặc đơn giản hơn: `remaining_amount = total_value - (SELECT COALESCE(SUM(amount),0) FROM payments WHERE booking_id = bookings.id)`.
-
-### Fix 3: Lock booking khi COMPLETED
-**File**: `src/pages/BookingDetail.tsx`
-- Thêm `const isLocked = status === "COMPLETED" || status === "CANCELLED"`
-- Disable edit buttons, form submissions khi `isLocked`
-- Hiện badge "Đã đóng — không thể chỉnh sửa" cho booking completed
-
-### Fix 4: NotificationBell — navigate theo entity_type
-**File**: `src/components/NotificationBell.tsx`
-- Trong `markAsRead`: check `n.entity_type`:
-  - `"customer"` → `/khach-hang/${entityId}`
-  - `"lead"` → `/leads` (hoặc nếu có lead detail page)
-  - Default → không navigate
+1. DB migration (constraint + function)
+2. `src/hooks/usePermissions.ts`
+3. `src/components/settings/SettingsAccountsTab.tsx`
+4. `src/components/employees/EmployeeRoleTab.tsx`
+5. `src/components/settings/SettingsRolesTab.tsx`
+6. `src/pages/Settings.tsx`
+7. `src/components/settings/SettingsPermissionsTab.tsx`
 
