@@ -18,7 +18,7 @@ import LeaveManagement from "./pages/LeaveManagement";
 import Payroll from "./pages/Payroll";
 import Finance from "./pages/Finance";
 import Login from "./pages/Login";
-import ComingSoon from "./pages/ComingSoon";
+import Contracts from "./pages/Contracts";
 import Quotations from "./pages/Quotations";
 import TourPackages from "./pages/TourPackages";
 import Itineraries from "./pages/Itineraries";
