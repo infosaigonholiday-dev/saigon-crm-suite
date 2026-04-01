@@ -1,69 +1,41 @@
 
 
-## Dashboard KPI cho MANAGER + Báo cáo Tài chính
+## Fix tự động Orphaned Profile
 
-### Tổng quan
-Hai phần việc: (1) Tạo dashboard KPI riêng cho MANAGER với dữ liệu theo phòng ban, (2) Thêm 5 tab báo cáo mới vào Finance.tsx với phân quyền theo role.
+### Phân tích nguyên nhân
 
-### Kế hoạch thực hiện
+Luồng `create` hiện tại có thể tạo orphaned profile trong trường hợp:
+1. Auth user tạo thành công → trigger `handle_new_user` tự động tạo profile
+2. Bước tiếp theo (update department/link employee) thất bại → catch block xóa auth user (`deleteUser`)
+3. **Profile vẫn còn** vì trigger đã insert rồi, không ai xóa → orphan
 
-**1. ManagerKPIDashboard (`src/pages/ManagerKPIDashboard.tsx`)** — Component mới
+Ngoài ra, `reset_password` và `reset_all_passwords` crash khi gặp profile không có auth user.
 
-- Query dữ liệu theo `department_id` từ `get_my_department_id()`:
-  - `sale_targets` (filter department + tháng hiện tại) → tổng target_revenue vs actual_revenue
-  - `bookings` (tháng này + department) → đếm + tổng doanh thu
-  - `customers` (department) → đếm KH mới tháng
-  - `leads` (department, status active) → tổng expected_value (pipeline)
-  - `bookings` tháng trước → so sánh % tăng/giảm
+### Kế hoạch sửa
 
-- UI Cards:
-  - a. Target doanh thu: Progress bar + % đạt
-  - b. Booking mới tháng
-  - c. KH mới tháng
-  - d. Pipeline value
+**1. Edge Function `manage-employee-accounts/index.ts`**
 
-- Bảng xếp hạng Sale: query bookings group by sale_id, join profiles lấy tên → sort doanh thu giảm dần
-- So sánh tháng trước: mũi tên xanh/đỏ kèm % thay đổi
-- KHÔNG hiển thị: lợi nhuận, chi phí, dòng tiền, công nợ
+- **Action `create` — cleanup**: Khi catch lỗi và xóa auth user, đồng thời xóa profile orphan:
+  ```
+  if (createdUserId) {
+    await adminClient.from("profiles").delete().eq("id", createdUserId);
+    await adminClient.auth.admin.deleteUser(createdUserId);
+  }
+  ```
 
-**2. Dashboard.tsx** — Cập nhật routing
+- **Action `reset_password` — skip orphan**: Khi "User not found" và fallback email cũng không tìm thấy → trả message rõ ràng thay vì lỗi chung, gợi ý tạo lại tài khoản.
 
-- Thêm type `"manager"` vào `getDashboardType`: khi role = MANAGER → return "manager"
-- Import + render `ManagerKPIDashboard` khi type === "manager"
+- **Action `reset_all_passwords` — skip orphan**: Khi gặp profile không có auth user → ghi vào `skipped[]` thay vì `errors[]`, tiếp tục batch. Response trả về danh sách skipped profiles.
 
-**3. Finance Reports — 5 tab mới trong Finance.tsx**
+- **Action mới `cleanup_orphans`**: Quét tất cả profiles, check từng profile có tồn tại trong auth.users không → xóa orphan profiles + trả về danh sách đã cleanup.
 
-Tạo 5 component con:
+**2. UI `SettingsAccountsTab.tsx`**
 
-- **`RevenueReportTab.tsx`**: BarChart doanh thu theo tháng từ `revenue_records`, filter năm. Bảng chi tiết bên dưới (tháng, booking_count, gross_revenue). Nhận prop `departmentFilter` để MANAGER chỉ thấy department mình.
-
-- **`ProfitReportTab.tsx`**: 2 card (LN gộp = gross_revenue - tour_direct_cost, LN ròng = gross_revenue - total_opex) + LineChart trend 12 tháng từ `profit_loss_monthly`.
-
-- **`CashflowReportTab.tsx`**: LineChart total_inflow vs total_outflow + net_cashflow từ `cashflow_monthly`. Card opening/closing balance.
-
-- **`TaxReportTab.tsx`**: Bảng từ `tax_records`: period, vat_output, vat_input, vat_payable, cit_amount, status.
-
-- **`DebtReportTab.tsx`**: 2 sub-tab:
-  - Khách nợ: `accounts_receivable` join customers/bookings. Highlight đỏ nếu due_date < today && status != PAID.
-  - Nợ NCC: `accounts_payable`. Tương tự highlight quá hạn.
-
-**4. Finance.tsx** — Phân quyền tabs
-
-- Dùng `useAuth()` lấy `userRole`
-- Full tabs (tất cả 14 tabs): ADMIN, SUPER_ADMIN, DIRECTOR, KETOAN
-- MANAGER: chỉ thấy tab "Doanh thu" (với filter department tự động)
-- TabsList responsive: dùng overflow-x-auto thay vì grid-cols cố định
+- Khi `reset_password` trả về lỗi chứa "không tồn tại" → hiện toast kèm nút "Tạo lại tài khoản" hoặc "Xóa profile".
+- Khi `reset_all_passwords` trả về `skipped` > 0 → hiện warning với danh sách orphan profiles.
+- Thêm nút "Dọn dẹp tài khoản lỗi" gọi action `cleanup_orphans` (chỉ hiện khi có orphan detected).
 
 ### Files thay đổi
-- `src/pages/ManagerKPIDashboard.tsx` (mới)
-- `src/hooks/useDashboardData.ts` (cập nhật getDashboardType)
-- `src/pages/Dashboard.tsx` (thêm manager case)
-- `src/components/finance/RevenueReportTab.tsx` (mới)
-- `src/components/finance/ProfitReportTab.tsx` (mới)
-- `src/components/finance/CashflowReportTab.tsx` (mới)
-- `src/components/finance/TaxReportTab.tsx` (mới)
-- `src/components/finance/DebtReportTab.tsx` (mới)
-- `src/pages/Finance.tsx` (thêm tabs + phân quyền)
-
-Không cần migration SQL — tất cả bảng dữ liệu đã tồn tại.
+- `supabase/functions/manage-employee-accounts/index.ts` — sửa cleanup + thêm action
+- `src/components/settings/SettingsAccountsTab.tsx` — UI xử lý orphan
 
