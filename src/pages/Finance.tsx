@@ -200,6 +200,19 @@ export default function Finance() {
   const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
   const isManager = userRole === "MANAGER";
 
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ["pending-approval-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("approval_status", "PENDING_REVIEW");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isFullAccess,
+  });
+
   if (!hasFinanceView && hasFinanceSubmit) {
     return <SubmitterView />;
   }
