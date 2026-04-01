@@ -1090,13 +1090,18 @@ export type Database = {
       }
       contracts: {
         Row: {
+          approved_by: string | null
           booking_id: string | null
+          cancellation_terms: string | null
           code: string
           contract_type: string | null
           created_at: string | null
           created_by: string | null
           customer_id: string | null
+          deposit_amount: number | null
+          deposit_due_at: string | null
           file_url: string | null
+          full_payment_due_at: string | null
           id: string
           payment_terms: Json | null
           signed_at: string | null
@@ -1105,13 +1110,18 @@ export type Database = {
           total_value: number | null
         }
         Insert: {
+          approved_by?: string | null
           booking_id?: string | null
+          cancellation_terms?: string | null
           code: string
           contract_type?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
+          deposit_amount?: number | null
+          deposit_due_at?: string | null
           file_url?: string | null
+          full_payment_due_at?: string | null
           id?: string
           payment_terms?: Json | null
           signed_at?: string | null
@@ -1120,13 +1130,18 @@ export type Database = {
           total_value?: number | null
         }
         Update: {
+          approved_by?: string | null
           booking_id?: string | null
+          cancellation_terms?: string | null
           code?: string
           contract_type?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
+          deposit_amount?: number | null
+          deposit_due_at?: string | null
           file_url?: string | null
+          full_payment_due_at?: string | null
           id?: string
           payment_terms?: Json | null
           signed_at?: string | null
@@ -1135,6 +1150,13 @@ export type Database = {
           total_value?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contracts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contracts_booking_id_fkey"
             columns: ["booking_id"]
