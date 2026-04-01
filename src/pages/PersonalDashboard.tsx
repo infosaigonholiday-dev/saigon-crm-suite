@@ -3,12 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake } from "lucide-react";
+import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake, Circle, MapPin, Phone as PhoneIcon } from "lucide-react";
 import { usePersonalDashboardData } from "@/hooks/useDashboardData";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
@@ -92,6 +93,25 @@ export default function PersonalDashboard() {
     enabled: !!user?.id,
   });
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
+
+  const { data: followUpLeads = [] } = useQuery({
+    queryKey: ["follow-up-leads", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, destination, phone, assigned_to")
+        .eq("assigned_to", user!.id)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", threeDaysLater)
+        .order("follow_up_date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
   const statCards = [
     { label: "Doanh số tháng này", value: formatVND(stats.myRevenue), icon: TrendingUp },
     { label: "Booking của tôi", value: String(stats.myBookingCount), icon: CalendarDays },
@@ -152,7 +172,7 @@ export default function PersonalDashboard() {
           </CardContent>
         </Card>
 
-        {/* Upcoming Events */}
+      {/* Upcoming Events */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -197,6 +217,55 @@ export default function PersonalDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Follow-up Leads */}
+      {followUpLeads.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <PhoneIcon className="h-4 w-4 text-primary" />
+              Lead cần follow-up ({followUpLeads.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {followUpLeads.map((lead) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const followDate = new Date(lead.follow_up_date!);
+                followDate.setHours(0, 0, 0, 0);
+                const diff = differenceInCalendarDays(followDate, today);
+                const tempColors: Record<string, string> = { hot: "text-red-500", warm: "text-orange-500", cold: "text-blue-500" };
+
+                return (
+                  <div
+                    key={lead.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate("/tiem-nang")}
+                  >
+                    <Circle className={`h-3 w-3 shrink-0 fill-current ${tempColors[lead.temperature ?? "warm"] || "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{lead.full_name}</p>
+                      {lead.destination && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />{lead.destination}
+                        </p>
+                      )}
+                    </div>
+                    {diff < 0 ? (
+                      <Badge variant="destructive" className="shrink-0 text-xs">Quá hạn {Math.abs(diff)} ngày</Badge>
+                    ) : diff === 0 ? (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 shrink-0 text-xs">Hôm nay</Badge>
+                    ) : (
+                      <Badge className="bg-blue-50 text-blue-600 border-blue-200 shrink-0 text-xs">Còn {diff} ngày</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

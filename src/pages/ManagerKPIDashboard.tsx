@@ -2,10 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarDays, Users, ClipboardList, TrendingUp, TrendingDown, Loader2, Target } from "lucide-react";
+import { CalendarDays, Users, ClipboardList, TrendingUp, TrendingDown, Loader2, Target, Phone, Circle, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
@@ -117,6 +118,24 @@ export default function ManagerKPIDashboard() {
         .from("profiles")
         .select("id, full_name")
         .eq("department_id", departmentId!);
+      return data || [];
+    },
+    enabled: !!departmentId,
+  });
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
+
+  const { data: followUpLeads = [] } = useQuery({
+    queryKey: ["manager-follow-up-leads", departmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, destination, assigned_to")
+        .eq("department_id", departmentId!)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", threeDaysLater)
+        .order("follow_up_date");
+      if (error) throw error;
       return data || [];
     },
     enabled: !!departmentId,
@@ -274,6 +293,51 @@ export default function ManagerKPIDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Follow-up Leads (team) */}
+      {followUpLeads.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              Lead cần follow-up (team) ({followUpLeads.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {followUpLeads.map((lead) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const followDate = new Date(lead.follow_up_date!);
+                followDate.setHours(0, 0, 0, 0);
+                const diff = differenceInCalendarDays(followDate, today);
+                const tempColors: Record<string, string> = { hot: "text-red-500", warm: "text-orange-500", cold: "text-blue-500" };
+                const saleName = profileMap.get(lead.assigned_to ?? "") || "Chưa gán";
+
+                return (
+                  <div key={lead.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+                    <Circle className={`h-3 w-3 shrink-0 fill-current ${tempColors[lead.temperature ?? "warm"] || "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{lead.full_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {saleName}
+                        {lead.destination && <> · <MapPin className="h-3 w-3 inline" /> {lead.destination}</>}
+                      </p>
+                    </div>
+                    {diff < 0 ? (
+                      <Badge variant="destructive" className="shrink-0 text-xs">Quá hạn {Math.abs(diff)} ngày</Badge>
+                    ) : diff === 0 ? (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 shrink-0 text-xs">Hôm nay</Badge>
+                    ) : (
+                      <Badge className="bg-blue-50 text-blue-600 border-blue-200 shrink-0 text-xs">Còn {diff} ngày</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

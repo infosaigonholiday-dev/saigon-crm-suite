@@ -27,12 +27,15 @@ const tempConfig: Record<string, { icon: string; className: string }> = {
   cold: { icon: "🔵", className: "text-blue-500" },
 };
 
-function isFollowUpOverdue(date: string | null): boolean {
-  if (!date) return false;
+function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
+  if (!date) return null;
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return d <= today;
+  if (d.getTime() < today.getTime()) return "overdue";
+  if (d.getTime() === today.getTime()) return "today";
+  return null;
 }
 
 export default function Leads() {
@@ -142,15 +145,21 @@ export default function Leads() {
               <div className="bg-muted/30 rounded-b-lg min-h-[400px] p-2 space-y-2">
                 {colLeads.map((lead) => {
                   const temp = tempConfig[lead.temperature ?? "warm"];
-                  const followUpDue = isFollowUpOverdue(lead.follow_up_date);
+                  const followUpStatus = getFollowUpStatus(lead.follow_up_date);
                   const showConvert = (col.id === "QUOTED" || col.id === "QUALIFIED") && !lead.customer_id;
+
+                  const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
+                    ? "border-l-[3px] border-l-red-500"
+                    : lead.temperature === "hot"
+                      ? "border-l-[3px] border-l-orange-400"
+                      : "";
 
                   return (
                     <Card
                       key={lead.id}
                       draggable
                       onDragStart={() => handleDragStart(lead.id)}
-                      className={`cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${draggedId === lead.id ? "opacity-50" : ""}`}
+                      className={`cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${borderClass} ${draggedId === lead.id ? "opacity-50" : ""}`}
                     >
                       <CardContent className="p-3">
                         <div className="flex items-start gap-2">
@@ -178,10 +187,16 @@ export default function Leads() {
                             )}
 
                             {/* Follow-up alert */}
-                            {followUpDue && (
+                            {followUpStatus === "overdue" && (
                               <div className="flex items-center gap-1 text-xs text-destructive font-medium">
                                 <AlertTriangle className="h-3 w-3" />
-                                Cần follow-up!
+                                Quá hạn!
+                              </div>
+                            )}
+                            {followUpStatus === "today" && (
+                              <div className="flex items-center gap-1 text-xs text-orange-600 font-medium">
+                                <AlertTriangle className="h-3 w-3" />
+                                Follow-up hôm nay!
                               </div>
                             )}
 
