@@ -64,6 +64,7 @@ export default function Settings() {
   const showLevels = isAdmin || isDirector || isHR;
   const showRoles = true; // anyone with settings.view
   const showPermissions = isAdmin || isDirector;
+  const showAuditLog = isAdmin || isDirector;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
@@ -71,6 +72,7 @@ export default function Settings() {
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
     showPermissions && { value: "permissions", label: "Phân quyền" },
+    showAuditLog && { value: "audit", label: "Nhật ký xóa" },
   ].filter(Boolean) as { value: string; label: string }[];
 
   const defaultTab = tabs[0]?.value || "roles";
