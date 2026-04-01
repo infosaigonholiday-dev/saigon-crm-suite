@@ -121,6 +121,9 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
       if (isSubmitter) {
         payload.submitted_by = user?.id;
         payload.approval_status = "PENDING_REVIEW";
+      } else if (isEdit && transaction?.approval_status === "REJECTED" && transaction?.submitted_by === user?.id) {
+        // Resubmit rejected record
+        payload.approval_status = "PENDING_REVIEW";
       } else {
         payload.approval_status = "DRAFT";
       }
