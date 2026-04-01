@@ -19,7 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2 } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2, Pencil } from "lucide-react";
 
 const ROLES: { value: string; label: string }[] = [
   { value: "ADMIN", label: "Quản trị viên" },
@@ -83,6 +83,10 @@ export function SettingsAccountsTab() {
   const [formData, setFormData] = useState({
     full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "",
   });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState<Profile | null>(null);
+  const [editData, setEditData] = useState({ department_id: "", role: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadProfiles();
@@ -246,6 +250,37 @@ export function SettingsAccountsTab() {
     }
   }
 
+  function openEditDialog(profile: Profile) {
+    setEditProfile(profile);
+    setEditData({
+      department_id: profile.department_id || "",
+      role: profile.role,
+    });
+    setEditDialogOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editProfile) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          department_id: editData.department_id || null,
+          role: editData.role,
+        })
+        .eq("id", editProfile.id);
+      if (error) throw error;
+      toast.success("Cập nhật tài khoản thành công");
+      setEditDialogOpen(false);
+      await loadProfiles();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi cập nhật tài khoản");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const confirmResetProfile = profiles.find((p) => p.id === confirmResetId) ?? null;
 
   return (
@@ -294,8 +329,17 @@ export function SettingsAccountsTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {p.id !== user?.id && (
-                    <div className="flex gap-1">
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEditDialog(p)}
+                    title="Sửa tài khoản"
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                {p.id !== user?.id && (
+                  <>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -324,8 +368,9 @@ export function SettingsAccountsTab() {
                           <ShieldCheck className="h-4 w-4 text-primary" />
                         )}
                       </Button>
-                    </div>
+                  </>
                   )}
+                </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -420,6 +465,42 @@ export function SettingsAccountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sửa tài khoản</DialogTitle>
+            <DialogDescription>Cập nhật phòng ban và role cho {editProfile?.full_name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Phòng ban</Label>
+              <Select value={editData.department_id} onValueChange={(v) => setEditData({ ...editData, department_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editData.role} onValueChange={(v) => setEditData({ ...editData, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
         <AlertDialogContent>
