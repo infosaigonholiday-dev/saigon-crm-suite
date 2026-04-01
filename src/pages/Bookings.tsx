@@ -96,7 +96,12 @@ export default function Bookings() {
                   const customerName = (b.customers as any)?.full_name ?? "—";
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
-                      <TableCell className="font-mono text-xs">{b.code}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <span className="flex items-center gap-1">
+                          {(highNoteMap as Record<string, number>)[b.id] > 0 && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                          {b.code}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-medium">{customerName}</TableCell>
                       <TableCell className="text-center">{b.pax_total ?? 0}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(b.total_value)}</TableCell>
