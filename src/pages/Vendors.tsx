@@ -150,5 +150,6 @@ export default function Vendors() {
 
       <VendorFormDialog open={dialogOpen} onOpenChange={setDialogOpen} vendor={editing} />
     </div>
+    </PermissionGuard>
   );
 }
