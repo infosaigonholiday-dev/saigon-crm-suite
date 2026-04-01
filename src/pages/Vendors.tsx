@@ -65,6 +65,7 @@ export default function Vendors() {
   });
 
   return (
+    <PermissionGuard permission="vendors.view">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
