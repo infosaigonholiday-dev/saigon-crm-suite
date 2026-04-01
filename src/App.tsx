@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import { PermissionGuard } from "@/components/PermissionGuard";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -32,15 +33,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { session, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const { session } = useAuth();
 
   if (!session) {
     return <Navigate to="/login" replace />;
@@ -50,25 +43,26 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/khach-hang" element={<Customers />} />
-        <Route path="/khach-hang/:id" element={<CustomerDetail />} />
-        <Route path="/tiem-nang" element={<Leads />} />
-        <Route path="/bao-gia" element={<Quotations />} />
-        <Route path="/goi-tour" element={<TourPackages />} />
-        <Route path="/lich-trinh" element={<Itineraries />} />
-        <Route path="/luu-tru" element={<Accommodations />} />
-        <Route path="/dat-tour" element={<Bookings />} />
-        <Route path="/dat-tour/:id" element={<BookingDetail />} />
+        <Route path="/khach-hang" element={<PermissionGuard permission="customers.view"><Customers /></PermissionGuard>} />
+        <Route path="/khach-hang/:id" element={<PermissionGuard permission="customers.view"><CustomerDetail /></PermissionGuard>} />
+        <Route path="/tiem-nang" element={<PermissionGuard permission="leads.view"><Leads /></PermissionGuard>} />
+        <Route path="/bao-gia" element={<PermissionGuard permission="quotations.view"><Quotations /></PermissionGuard>} />
+        <Route path="/goi-tour" element={<PermissionGuard permission="quotations.view"><TourPackages /></PermissionGuard>} />
+        <Route path="/lich-trinh" element={<PermissionGuard permission="quotations.view"><Itineraries /></PermissionGuard>} />
+        <Route path="/luu-tru" element={<PermissionGuard permission="quotations.view"><Accommodations /></PermissionGuard>} />
+        <Route path="/dat-tour" element={<PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard>} />
+        <Route path="/dat-tour/:id" element={<PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard>} />
         <Route path="/nha-cung-cap" element={<Vendors />} />
         <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
-        <Route path="/thanh-toan" element={<Payments />} />
-        <Route path="/nhan-su" element={<Employees />} />
-        <Route path="/nhan-su/:id" element={<EmployeeDetail />} />
-        <Route path="/nghi-phep" element={<LeaveManagement />} />
-        <Route path="/bang-luong" element={<Payroll />} />
-        <Route path="/tai-chinh" element={<Finance />} />
-        <Route path="/cai-dat" element={<Settings />} />
+        <Route path="/thanh-toan" element={<PermissionGuard permission="payments.view"><Payments /></PermissionGuard>} />
+        <Route path="/nhan-su" element={<PermissionGuard permission="employees.view"><Employees /></PermissionGuard>} />
+        <Route path="/nhan-su/:id" element={<PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard>} />
+        <Route path="/nghi-phep" element={<PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard>} />
+        <Route path="/bang-luong" element={<PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard>} />
+        <Route path="/tai-chinh" element={<PermissionGuard permission="finance.view"><Finance /></PermissionGuard>} />
+        <Route path="/cai-dat" element={<PermissionGuard permission="settings.view"><Settings /></PermissionGuard>} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
@@ -89,7 +83,6 @@ function AppRoutes() {
       <Route path="/login" element={session ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/*" element={<ProtectedRoutes />} />
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
