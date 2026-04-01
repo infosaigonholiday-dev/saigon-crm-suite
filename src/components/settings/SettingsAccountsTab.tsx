@@ -329,8 +329,17 @@ export function SettingsAccountsTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {p.id !== user?.id && (
-                    <div className="flex gap-1">
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEditDialog(p)}
+                    title="Sửa tài khoản"
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                {p.id !== user?.id && (
+                  <>
                       <Button
                         variant="ghost"
                         size="icon"
