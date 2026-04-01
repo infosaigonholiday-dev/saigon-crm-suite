@@ -44,6 +44,7 @@ interface ItineraryDay {
 
 interface Props {
   bookingId: string;
+  readOnly?: boolean;
 }
 
 export default function BookingItineraryTab({ bookingId }: Props) {

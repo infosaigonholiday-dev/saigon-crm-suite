@@ -37,6 +37,7 @@ const formatCurrency = (v: number | null) => v ? new Intl.NumberFormat("vi-VN").
 
 interface Props {
   bookingId: string;
+  readOnly?: boolean;
 }
 
 export default function BookingServicesTab({ bookingId }: Props) {
