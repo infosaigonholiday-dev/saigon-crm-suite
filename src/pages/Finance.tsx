@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
@@ -13,6 +14,11 @@ import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
 import { BudgetEstimatesTab } from "@/components/finance/BudgetEstimatesTab";
 import { BudgetSettlementsTab } from "@/components/finance/BudgetSettlementsTab";
+import { RevenueReportTab } from "@/components/finance/RevenueReportTab";
+import { ProfitReportTab } from "@/components/finance/ProfitReportTab";
+import { CashflowReportTab } from "@/components/finance/CashflowReportTab";
+import { TaxReportTab } from "@/components/finance/TaxReportTab";
+import { DebtReportTab } from "@/components/finance/DebtReportTab";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -46,6 +52,8 @@ const OTHER_CATEGORIES = [
   { value: "LICENSE", label: "Giấy phép" },
   { value: "OTHER", label: "Khác" },
 ];
+
+const FULL_ACCESS_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "KETOAN"];
 
 function OverviewTab() {
   const currentYear = new Date().getFullYear();
@@ -156,13 +164,47 @@ function SubmitterView() {
   );
 }
 
+function ManagerFinanceView() {
+  const { user } = useAuth();
+
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile-dept-finance", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("department_id")
+        .eq("id", user!.id)
+        .single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Doanh thu</h1>
+        <p className="text-sm text-muted-foreground">Báo cáo doanh thu phòng ban</p>
+      </div>
+      <RevenueReportTab departmentFilter={profile?.department_id} />
+    </div>
+  );
+}
+
 export default function Finance() {
   const { hasPermission } = usePermissions();
+  const { userRole } = useAuth();
   const hasFinanceView = hasPermission("finance.view");
   const hasFinanceSubmit = hasPermission("finance.submit");
+  const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
+  const isManager = userRole === "MANAGER";
 
   if (!hasFinanceView && hasFinanceSubmit) {
     return <SubmitterView />;
+  }
+
+  if (isManager && !isFullAccess) {
+    return <ManagerFinanceView />;
   }
 
   return (
@@ -173,11 +215,16 @@ export default function Finance() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
           <TabsTrigger value="estimates">Dự toán</TabsTrigger>
           <TabsTrigger value="settlements">Quyết toán</TabsTrigger>
+          <TabsTrigger value="revenue">Doanh thu</TabsTrigger>
+          <TabsTrigger value="profit">Lợi nhuận</TabsTrigger>
+          <TabsTrigger value="cashflow">Dòng tiền</TabsTrigger>
+          <TabsTrigger value="tax">Thuế</TabsTrigger>
+          <TabsTrigger value="debt">Công nợ</TabsTrigger>
           <TabsTrigger value="salary">CP Lương</TabsTrigger>
           <TabsTrigger value="office">CP Văn phòng</TabsTrigger>
           <TabsTrigger value="marketing">CP Marketing</TabsTrigger>
@@ -189,6 +236,11 @@ export default function Finance() {
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
         <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>
+        <TabsContent value="revenue" className="mt-4"><RevenueReportTab /></TabsContent>
+        <TabsContent value="profit" className="mt-4"><ProfitReportTab /></TabsContent>
+        <TabsContent value="cashflow" className="mt-4"><CashflowReportTab /></TabsContent>
+        <TabsContent value="tax" className="mt-4"><TaxReportTab /></TabsContent>
+        <TabsContent value="debt" className="mt-4"><DebtReportTab /></TabsContent>
         <TabsContent value="salary" className="mt-4"><SalaryCostTab /></TabsContent>
         <TabsContent value="office" className="mt-4">
           <ExpenseListTab title="Chi phí văn phòng" tableName="office_expenses" categories={OFFICE_CATEGORIES} queryKey="office-expenses" />
