@@ -59,7 +59,7 @@ function ProtectedRoutes() {
         <Route path="/nhan-su/:id" element={<PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard>} />
         <Route path="/nghi-phep" element={<PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard>} />
         <Route path="/bang-luong" element={<PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard>} />
-        <Route path="/tai-chinh" element={<PermissionGuard permission="finance.view"><Finance /></PermissionGuard>} />
+        <Route path="/tai-chinh" element={<PermissionGuard anyOf={["finance.view", "finance.submit"]}><Finance /></PermissionGuard>} />
         <Route path="/cai-dat" element={<PermissionGuard permission="settings.view"><Settings /></PermissionGuard>} />
       </Route>
       <Route path="*" element={<NotFound />} />

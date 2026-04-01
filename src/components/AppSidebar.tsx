@@ -77,7 +77,10 @@ export function AppSidebar() {
   const { hasPermission, loading: permLoading } = usePermissions();
 
   const filterItems = (items: MenuItem[]) =>
-    items.filter((item) => !item.permission || hasPermission(item.permission));
+    items.filter((item) => {
+      if (item.anyPermission) return hasAnyPermission(item.anyPermission);
+      return !item.permission || hasPermission(item.permission);
+    });
 
   const renderItems = (items: MenuItem[]) =>
     items.map((item) => (

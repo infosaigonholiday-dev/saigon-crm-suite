@@ -2981,6 +2981,10 @@ export type Database = {
           payment_method: string | null
           recorded_by: string | null
           reference_code: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_by: string | null
           tour_service_id: string | null
           transaction_date: string
           type: string
@@ -2999,6 +3003,10 @@ export type Database = {
           payment_method?: string | null
           recorded_by?: string | null
           reference_code?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
           tour_service_id?: string | null
           transaction_date?: string
           type: string
@@ -3017,6 +3025,10 @@ export type Database = {
           payment_method?: string | null
           recorded_by?: string | null
           reference_code?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
           tour_service_id?: string | null
           transaction_date?: string
           type?: string
@@ -3028,6 +3040,20 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
