@@ -296,6 +296,7 @@ export default function Employees() {
                     <TableHead>Email</TableHead>
                     <TableHead>Vị trí</TableHead>
                     <TableHead>Phòng ban</TableHead>
+                    <TableHead>Quyền HT</TableHead>
                     <TableHead>Loại NV</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     {(canEdit || canDelete) && <TableHead className="w-[90px]">Thao tác</TableHead>}
