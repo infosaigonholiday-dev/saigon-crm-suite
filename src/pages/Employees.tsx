@@ -20,6 +20,7 @@ import { Search, Plus, Loader2, ChevronLeft, ChevronRight, Pencil, Trash2 } from
 import { useNavigate } from "react-router-dom";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
