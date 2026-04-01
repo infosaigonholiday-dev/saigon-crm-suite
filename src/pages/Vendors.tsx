@@ -29,6 +29,7 @@ export default function Vendors() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("bookings.edit");
+  const canDelete = hasPermission("bookings.delete");
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("ALL");
@@ -110,7 +111,7 @@ export default function Vendors() {
                   <TableHead>SĐT</TableHead>
                   <TableHead>Ngân hàng</TableHead>
                   <TableHead>STK</TableHead>
-                  {canEdit && <TableHead className="w-[100px]" />}
+                  {(canEdit || canDelete) && <TableHead className="w-[100px]" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,15 +122,19 @@ export default function Vendors() {
                     <TableCell>{v.contact_phone || "—"}</TableCell>
                     <TableCell>{v.bank_name || "—"}</TableCell>
                     <TableCell>{v.bank_account || "—"}</TableCell>
-                    {canEdit && (
+                    {(canEdit || canDelete) && (
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditing(v); setDialogOpen(true); }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá NCC này?")) deleteMutation.mutate(v.id); }}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="icon" onClick={() => { setEditing(v); setDialogOpen(true); }}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá NCC này?")) deleteMutation.mutate(v.id); }}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}

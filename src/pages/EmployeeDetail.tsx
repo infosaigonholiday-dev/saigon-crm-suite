@@ -19,6 +19,7 @@ import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab"
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -42,6 +43,7 @@ export default function EmployeeDetail() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { hasPermission } = usePermissions();
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],
@@ -102,33 +104,35 @@ export default function EmployeeDetail() {
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />Sửa
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                <Trash2 className="h-4 w-4 mr-2" />Xóa
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Xác nhận xóa nhân viên</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Bạn có chắc muốn xóa nhân viên <strong>{employee.full_name}</strong>?
-                  Dữ liệu sẽ bị ẩn khỏi hệ thống nhưng vẫn lưu trong database để đối soát.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Hủy</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleSoftDelete}
-                  disabled={deleting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                  Xóa nhân viên
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {hasPermission("employees.delete") && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4 mr-2" />Xóa
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Xác nhận xóa nhân viên</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Bạn có chắc muốn xóa nhân viên <strong>{employee.full_name}</strong>?
+                    Dữ liệu sẽ bị ẩn khỏi hệ thống nhưng vẫn lưu trong database để đối soát.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleSoftDelete}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                    Xóa nhân viên
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
