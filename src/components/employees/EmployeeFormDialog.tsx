@@ -128,13 +128,13 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
     },
   });
 
-  const { data: levels = [] } = useQuery({
-    queryKey: ["employee-levels"],
-    queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("value").eq("key", "employee_levels").single();
-      try { return JSON.parse(data?.value || "[]") as string[]; } catch { return []; }
-    },
-  });
+  const levelOptions = [
+    { value: "C-LEVEL", label: "C-Level" },
+    { value: "DIRECTOR", label: "Giám đốc" },
+    { value: "MANAGER", label: "Trưởng phòng" },
+    { value: "STAFF", label: "Nhân viên" },
+    { value: "INTERN", label: "Thực tập sinh" },
+  ];
 
   useQuery({
     queryKey: ["employee-edit", employeeId],
@@ -309,7 +309,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 <Select value={form.level} onValueChange={v => update("level", v)}>
                   <SelectTrigger><SelectValue placeholder="Chọn cấp bậc" /></SelectTrigger>
                   <SelectContent>
-                    {levels.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    {levelOptions.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
