@@ -16,6 +16,7 @@ import {
 import { CalendarIcon, Plus, Trash2, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ActivityFormDialog, { type Activity } from "./ActivityFormDialog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const typeIcons: Record<string, string> = {
   DiChuyen: "🚌",
