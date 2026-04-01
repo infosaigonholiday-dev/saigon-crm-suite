@@ -152,6 +152,11 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         company_email: form.company_email || null,
         founded_date: form.founded_date ? format(form.founded_date, "yyyy-MM-dd") : null,
         company_size: form.company_size ? parseInt(form.company_size) : null,
+        contact_person_phone: form.contact_person_phone || null,
+        tour_interest: form.tour_interest || null,
+        contact_status: form.contact_status || null,
+        issue_faced: form.issue_faced || null,
+        result: form.result || null,
       } as any);
       if (error) throw error;
     },
