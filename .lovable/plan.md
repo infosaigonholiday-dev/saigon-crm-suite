@@ -1,18 +1,58 @@
 
 
-## Khẩn cấp bảo mật — 2 file cần sửa
+## Kế hoạch fix bảo mật — 6 findings
 
-### Thay đổi 1: `.gitignore` — Thêm `.env` entries
+### Ưu tiên 1: Lỗi nghiêm trọng (ERROR)
 
-Thêm 3 dòng vào cuối file: `.env`, `.env.local`, `.env.production`
+**Finding #4 — Deactivated users vẫn truy cập được dữ liệu**
 
-### Thay đổi 2: `src/integrations/supabase/client.ts` — Dùng env vars
+Sửa hàm `has_role` và `has_any_role` để thêm điều kiện `AND is_active = true`. Khi user bị deactivate, mọi RLS policy dùng các hàm này sẽ tự động từ chối truy cập.
 
-Thay thế hardcoded URL và key bằng `import.meta.env.VITE_SUPABASE_URL` và `import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY`, kèm runtime check throw error nếu thiếu.
+```sql
+-- has_role: thêm AND is_active = true
+CREATE OR REPLACE FUNCTION public.has_role(...)
+  SELECT EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = _user_id AND role = _role AND is_active = true
+  )
 
-### Lưu ý quan trọng
+-- has_any_role: tương tự
+CREATE OR REPLACE FUNCTION public.has_any_role(...)
+  SELECT EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = _user_id AND role = ANY(_roles) AND is_active = true
+  )
+```
 
-- File `.env` đã tồn tại với đúng biến `VITE_SUPABASE_URL` và `VITE_SUPABASE_PUBLISHABLE_KEY` → app sẽ hoạt động bình thường
-- Supabase anon key là **publishable key** (không phải secret), nên việc nó từng nằm trong code không phải lỗ hổng nghiêm trọng, nhưng dùng env vars vẫn là best practice
-- Không thay đổi file nào khác
+### Ưu tiên 2: Profile self-update quá rộng (WARN #2)
+
+Siết chặt policy `profiles_self_update` — ngoài `role` và `is_active`, thêm kiểm tra `department_id` và `employee_id` không được tự thay đổi:
+
+```sql
+-- WITH CHECK thêm:
+AND department_id = (SELECT department_id FROM profiles WHERE id = auth.uid())
+```
+
+Hoặc tạo trigger `prevent_profile_field_change` chặn user tự đổi `department_id`, `employee_id`.
+
+### Ưu tiên 3: Xác minh tables thiếu RLS (WARN #5)
+
+Chạy query kiểm tra xem có table nào trong schema `public` chưa có RLS policy. Nếu có, thêm policy phù hợp.
+
+### Không cần fix ngay
+
+- **Finding #1 (Leaked Password)**: Thao tác thủ công trên Supabase Dashboard → Auth → Settings → Password Security
+- **Finding #3 (Documents admin overlap)**: Thiết kế hợp lý, chỉ lưu ý
+- **Finding #6 (Employee PII)**: Cần thiết kế column-level security phức tạp hơn, có thể xử lý sau
+
+### Chi tiết kỹ thuật
+
+**File thay đổi:**
+
+| File | Thay đổi |
+|------|----------|
+| Migration SQL mới | Sửa `has_role`, `has_any_role` thêm `is_active` check |
+| Migration SQL mới | Siết `profiles_self_update` policy chặn đổi `department_id` |
+
+**Tổng cộng**: 1 migration file, sửa 2 functions + 1 RLS policy
 
