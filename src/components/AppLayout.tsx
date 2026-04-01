@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
