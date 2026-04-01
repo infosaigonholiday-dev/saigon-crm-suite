@@ -151,6 +151,11 @@ export default function Customers() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {c.full_name}
+                          {tierBadgeConfig[c.tier ?? ""] && (
+                            <Badge variant="outline" className={tierBadgeConfig[c.tier ?? ""]!.className}>
+                              {tierBadgeConfig[c.tier ?? ""]!.label}
+                            </Badge>
+                          )}
                           {badge && <Badge variant="outline" className={badge.className}>{badge.label}</Badge>}
                         </div>
                       </TableCell>
