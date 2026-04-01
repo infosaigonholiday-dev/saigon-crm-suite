@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingUp, DollarSign } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Loader2, TrendingUp, DollarSign, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { exportToCSV } from "@/lib/exportUtils";
 
 const formatVND = (v: number) => {
   if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(1) + "tr";
