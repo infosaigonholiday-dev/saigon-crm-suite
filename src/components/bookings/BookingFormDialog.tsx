@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   open: boolean;

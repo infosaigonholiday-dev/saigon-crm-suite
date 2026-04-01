@@ -51,11 +51,17 @@ export function NotificationBell() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
-  const markAsRead = async (id: string, entityId: string | null) => {
+  const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["notifications-unread", user?.id] });
     setOpen(false);
-    if (entityId) navigate(`/khach-hang/${entityId}`);
+    if (entityId) {
+      if (entityType === "lead") {
+        navigate("/leads");
+      } else {
+        navigate(`/khach-hang/${entityId}`);
+      }
+    }
   };
 
   const markAllRead = async () => {
