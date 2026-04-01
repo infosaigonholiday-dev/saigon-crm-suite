@@ -26,6 +26,7 @@ import Itineraries from "./pages/Itineraries";
 import Accommodations from "./pages/Accommodations";
 import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
+import SOPLibrary from "./pages/SOPLibrary";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
