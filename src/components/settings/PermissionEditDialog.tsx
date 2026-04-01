@@ -202,12 +202,38 @@ export function PermissionEditDialog({ employee, open, onOpenChange }: Props) {
           </ScrollArea>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Lưu
+        <DialogFooter className="flex justify-between sm:justify-between">
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            disabled={saving || Object.keys(permStates).length === 0}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await supabase
+                  .from("employee_permissions")
+                  .delete()
+                  .eq("employee_id", employee.id);
+                setPermStates({} as any);
+                queryClient.invalidateQueries({ queryKey: ["employee-permissions"] });
+                queryClient.invalidateQueries({ queryKey: ["employee-permission-counts"] });
+                toast.success("Đã reset quyền về mặc định theo role");
+              } catch (err: any) {
+                toast.error("Lỗi: " + err.message);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            Reset mặc định
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Lưu
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
