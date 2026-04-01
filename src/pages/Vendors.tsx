@@ -111,7 +111,7 @@ export default function Vendors() {
                   <TableHead>SĐT</TableHead>
                   <TableHead>Ngân hàng</TableHead>
                   <TableHead>STK</TableHead>
-                  {canEdit && <TableHead className="w-[100px]" />}
+                  {(canEdit || canDelete) && <TableHead className="w-[100px]" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
