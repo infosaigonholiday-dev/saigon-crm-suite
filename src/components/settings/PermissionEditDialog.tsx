@@ -147,24 +147,39 @@ export function PermissionEditDialog({ employee, open, onOpenChange }: Props) {
                       const isOn = getEffective(key);
                       const isOverride = !!permStates[key];
                       const isDefaultOn = defaults.has(key);
+                      const isDelete = action === "delete";
 
                       return (
                         <label
                           key={key}
                           className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-colors ${
-                            isOverride
+                            isDelete
                               ? isOn
-                                ? "border-emerald-500/40 bg-emerald-500/5"
-                                : "border-destructive/40 bg-destructive/5"
-                              : "border-border"
+                                ? "border-destructive/50 bg-destructive/10"
+                                : "border-border"
+                              : isOverride
+                                ? isOn
+                                  ? "border-emerald-500/40 bg-emerald-500/5"
+                                  : "border-destructive/40 bg-destructive/5"
+                                : "border-border"
                           }`}
                         >
                           <Checkbox
                             checked={isOn}
                             onCheckedChange={() => toggle(key)}
                           />
-                          <span className="text-sm">{ACTION_LABELS[action] || action}</span>
-                          {isOverride && (
+                          <span className={`text-sm ${isDelete ? "font-semibold text-destructive" : ""}`}>
+                            {ACTION_LABELS[action] || action}
+                          </span>
+                          {isDelete && isOn && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] ml-auto bg-destructive/10 text-destructive border-destructive/30"
+                            >
+                              ⚠ Xóa
+                            </Badge>
+                          )}
+                          {!isDelete && isOverride && (
                             <Badge
                               variant="outline"
                               className={`text-[10px] ml-auto ${
@@ -174,7 +189,7 @@ export function PermissionEditDialog({ employee, open, onOpenChange }: Props) {
                               {isOn ? "Thêm" : "Bỏ"}
                             </Badge>
                           )}
-                          {!isOverride && isDefaultOn && (
+                          {!isOverride && !isDelete && isDefaultOn && (
                             <span className="text-[10px] text-muted-foreground ml-auto">mặc định</span>
                           )}
                         </label>
