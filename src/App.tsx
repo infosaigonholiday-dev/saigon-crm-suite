@@ -53,7 +53,7 @@ function ProtectedRoutes() {
         <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
         <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard></ErrorBoundary>} />
         <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nha-cung-cap" element={<ErrorBoundary><Vendors /></ErrorBoundary>} />
+        <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Vendors /></PermissionGuard></ErrorBoundary>} />
         <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Contracts /></PermissionGuard></ErrorBoundary>} />
         <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard permission="payments.view"><Payments /></PermissionGuard></ErrorBoundary>} />
         <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard permission="employees.view"><Employees /></PermissionGuard></ErrorBoundary>} />
