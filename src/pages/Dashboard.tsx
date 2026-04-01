@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getDashboardType, useBusinessDashboardData, getDataScope } from "@/hooks/useDashboardData";
 import PersonalDashboard from "./PersonalDashboard";
 import HrDashboard from "./HrDashboard";
+import ManagerKPIDashboard from "./ManagerKPIDashboard";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
