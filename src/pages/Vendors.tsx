@@ -11,6 +11,7 @@ import { Loader2, Plus, Search, Pencil, Trash2, Building2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { VendorFormDialog } from "@/components/vendors/VendorFormDialog";
+import { PermissionGuard } from "@/components/PermissionGuard";
 
 const CATEGORIES = [
   { value: "TRANSPORT", label: "Vận chuyển" },
