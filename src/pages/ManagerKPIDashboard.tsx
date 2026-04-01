@@ -20,6 +20,7 @@ function formatVND(value: number) {
 export default function ManagerKPIDashboard() {
   const { user } = useAuth();
   const now = new Date();
+  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const startOfMonth = new Date(currentYear, now.getMonth(), 1).toISOString();
