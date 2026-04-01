@@ -1,43 +1,51 @@
 
 
-## Cập nhật CustomerDetail - Hiển thị đầy đủ thông tin
+## Luồng Quyết toán sau tour
 
-### Hiện trạng
-Trang CustomerDetail hiện chỉ hiển thị: tên, phone, email, segment badge, 4 stat cards, và 3 tabs (Bookings, Payments, Chart). Thiếu hoàn toàn thông tin cá nhân mở rộng và thông tin doanh nghiệp.
+### Tổng quan
+Thêm luồng quyết toán 3 bước (Điều hành → Kế toán → CEO) vào module Tài chính. Tạo từ dự toán đã giải ngân, so sánh dự toán vs thực chi, tự động tính hoàn ứng/chi bù, và đóng booking khi CEO duyệt.
 
-### Kế hoạch
+### Kế hoạch thực hiện
 
-**1. Thêm tab "Hồ sơ" làm tab mặc định** (trước Bookings)
+**1. Migration SQL** — Tạo bảng `budget_settlements` và `settlement_items`
 
-Chia thành 2 Card:
+- `budget_settlements`: code (QT-YYYY-NNNN), status 6 bước (draft → pending_accountant → accountant_approved → pending_ceo → ceo_approved → closed), generated columns cho variance/refund/additional
+- `settlement_items`: so sánh estimated vs actual, có receipt_url
+- Sequence `budget_settlement_seq` + trigger `generate_settlement_code` (pattern giống estimate)
+- Trigger `update_settlement_total` cập nhật `total_actual` khi items thay đổi
+- Trigger `update_variance_pct` tính % chênh lệch
+- RLS: DIEUHAN tạo, KETOAN/DIRECTOR/ADMIN duyệt, đọc theo created_by hoặc role
 
-**Card "Thông tin cá nhân"** — grid 2 cột hiển thị:
-- Ngày sinh (date_of_birth) + badge "Sinh nhật sắp tới" nếu trong 7 ngày
-- Giới tính (gender)
-- CCCD/Passport (id_number)
-- Địa chỉ (address)
-- Nguồn đến (source) — join `lead_sources` để lấy tên
-- Phân hạng (tier) — badge màu: Mới/Silver/Gold/Diamond
-- Phân khúc (segment) — badge hiện có
-- Ghi chú (notes)
+**2. Component `BudgetSettlementsTab.tsx`** — Tab "Quyết toán" mới
 
-**Card "Thông tin doanh nghiệp"** — chỉ hiện khi `type === 'DOANH NGHIỆP'` hoặc có `company_name`:
-- Tên công ty (company_name)
-- MST (tax_code)
-- Địa chỉ công ty (company_address)
-- Người liên hệ (contact_person) + chức vụ (contact_position)
-- Ngày sinh người liên hệ (contact_birthday)
-- Email công ty (company_email)
-- Ngày thành lập (founded_date)
-- Quy mô nhân sự (company_size)
+Theo pattern `BudgetEstimatesTab.tsx`:
 
-**2. Cập nhật header**
-- Thêm tier badge cạnh segment badge
-- Thêm nút "Sửa" mở CustomerFormDialog (edit mode) — nếu chưa có edit mode, bỏ qua
+- **Danh sách**: bảng settlements với filter trạng thái, 6 status badge màu
+- **Tạo quyết toán**: chọn từ estimates đã giải ngân (status=disbursed) → copy items sang settlement_items với estimated_amount, nhập actual_amount + receipt_url
+- **Bảng so sánh**: Hạng mục | Dự toán | Thực chi | Chênh lệch | % — highlight đỏ nếu > 10%
+- **Tự động tính**: hoàn ứng (advance - actual nếu dương), chi bù (actual - advance nếu dương)
+- **Banner cảnh báo**: variance_pct > 10% → banner đỏ "Chênh lệch vượt 10%"
+- **Luồng duyệt**:
+  - Điều hành: nút "Gửi KT duyệt" → status=pending_accountant
+  - Kế toán (KETOAN): nút "Duyệt KT" → status=pending_ceo
+  - CEO (DIRECTOR/ADMIN): nút "Duyệt & Đóng" → status=closed + UPDATE bookings.status='COMPLETED'
 
-**3. Thêm query join lead_sources**
-- Sửa customer query: `.select("*, lead_sources(name)")` hoặc query riêng dựa trên `source_id`
+**3. Tích hợp Finance.tsx**
 
-### File thay đổi
-- `src/pages/CustomerDetail.tsx` — thêm tab Hồ sơ, tier badge, lead_sources join, helper `isBirthdayUpcoming`
+- Thêm tab "Quyết toán" vào TabsList (grid-cols-9)
+- Import và render `BudgetSettlementsTab`
+
+### Chi tiết kỹ thuật
+
+- Trigger functions dùng `SECURITY DEFINER` + `SET search_path TO 'public'`
+- Generated columns: `variance`, `refund_amount`, `additional_amount` dùng `GENERATED ALWAYS AS ... STORED`
+- `variance_pct` tính bằng trigger (vì cần chia cho total_estimated, không immutable)
+- Khi closed: mutation gọi thêm `supabase.from("bookings").update({ status: "COMPLETED" })`
+- Estimate status cập nhật thành 'settled' khi tạo quyết toán
+
+### Files thay đổi
+- Migration SQL mới (budget_settlements, settlement_items, triggers, RLS)
+- `src/components/finance/BudgetSettlementsTab.tsx` (mới)
+- `src/pages/Finance.tsx` (thêm tab)
+- `src/integrations/supabase/types.ts` (tự động cập nhật)
 
