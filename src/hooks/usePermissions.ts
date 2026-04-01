@@ -22,7 +22,7 @@ export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
 
 // Permission groups for UI display
 export const PERMISSION_GROUPS: Record<string, { label: string; keys: PermissionKey[] }> = {
-  customers: { label: "Khách hàng", keys: ["customers.view", "customers.create", "customers.edit", "customers.delete"] },
+  customers: { label: "Khách hàng", keys: ["customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export"] },
   leads: { label: "Tiềm năng", keys: ["leads.view", "leads.create", "leads.edit", "leads.delete"] },
   bookings: { label: "Đặt tour", keys: ["bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve"] },
   quotations: { label: "Báo giá", keys: ["quotations.view", "quotations.create", "quotations.edit", "quotations.delete"] },
