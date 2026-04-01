@@ -48,6 +48,11 @@ const initial = {
   company_email: "",
   founded_date: null as Date | null,
   company_size: "",
+  contact_person_phone: "",
+  tour_interest: "",
+  contact_status: "",
+  issue_faced: "",
+  result: "",
 };
 
 const segmentLabels: Record<string, { label: string; className: string }> = {
