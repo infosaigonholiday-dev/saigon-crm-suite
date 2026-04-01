@@ -39,6 +39,7 @@ interface MenuItem {
   url: string;
   icon: any;
   permission?: PermissionKey;
+  anyPermission?: PermissionKey[];
 }
 
 const crmItems: MenuItem[] = [
