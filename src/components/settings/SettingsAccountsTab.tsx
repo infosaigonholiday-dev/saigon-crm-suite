@@ -466,6 +466,42 @@ export function SettingsAccountsTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sửa tài khoản</DialogTitle>
+            <DialogDescription>Cập nhật phòng ban và role cho {editProfile?.full_name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Phòng ban</Label>
+              <Select value={editData.department_id} onValueChange={(v) => setEditData({ ...editData, department_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editData.role} onValueChange={(v) => setEditData({ ...editData, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
         <AlertDialogContent>
           <AlertDialogHeader>
