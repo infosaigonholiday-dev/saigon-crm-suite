@@ -74,7 +74,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { userRole } = useAuth();
-  const { hasPermission, loading: permLoading } = usePermissions();
+  const { hasPermission, hasAnyPermission, loading: permLoading } = usePermissions();
 
   const filterItems = (items: MenuItem[]) =>
     items.filter((item) => {
