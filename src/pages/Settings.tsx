@@ -9,6 +9,7 @@ import { SettingsDepartmentsTab } from "@/components/settings/SettingsDepartment
 import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
+import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HCNS", "HR_MANAGER", "HR_HEAD"];
