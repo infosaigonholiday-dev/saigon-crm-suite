@@ -76,7 +76,7 @@ export default function PaymentFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["payments"] });
-      toast({ title: "Thành công", description: "Đã thêm thanh toán" });
+      toast.success("Thành công", { description: "Đã thêm thanh toán" });
       setForm(initial);
       onOpenChange(false);
     },
