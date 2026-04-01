@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   open: boolean;
@@ -31,7 +32,7 @@ const initial = {
 export default function BookingFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: customers = [] } = useQuery({
@@ -65,6 +66,7 @@ export default function BookingFormDialog({ open, onOpenChange }: Props) {
       const { error } = await supabase.from("bookings").insert({
         code: form.code.trim(),
         customer_id: form.customer_id,
+        sale_id: user?.id ?? null,
         pax_total: form.pax_total ? Number(form.pax_total) : 0,
         total_value: form.total_value ? Number(form.total_value) : 0,
         deposit_amount: form.deposit_amount ? Number(form.deposit_amount) : 0,

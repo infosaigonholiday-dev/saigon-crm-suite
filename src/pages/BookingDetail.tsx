@@ -85,6 +85,7 @@ export default function BookingDetail() {
 
   const canEditNotes = hasPermission("bookings.edit");
   const canDeleteNotes = hasPermission("bookings.delete");
+  const isLocked = status === "COMPLETED" || status === "CANCELLED";
 
   return (
     <div className="space-y-6">
@@ -102,6 +103,16 @@ export default function BookingDetail() {
           </p>
         </div>
       </div>
+
+      {/* Locked booking banner */}
+      {isLocked && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Booking đã <strong>{status === "COMPLETED" ? "hoàn thành" : "huỷ"}</strong> — không thể chỉnh sửa.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* High priority notes banner */}
       {highNotes.length > 0 && (
@@ -171,15 +182,15 @@ export default function BookingDetail() {
         </TabsContent>
 
         <TabsContent value="itinerary" className="mt-4">
-          <BookingItineraryTab bookingId={booking.id} />
+          <BookingItineraryTab bookingId={booking.id} readOnly={isLocked} />
         </TabsContent>
 
         <TabsContent value="services" className="mt-4">
-          <BookingServicesTab bookingId={booking.id} />
+          <BookingServicesTab bookingId={booking.id} readOnly={isLocked} />
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4">
-          <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes} canDelete={canDeleteNotes} />
+          <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes && !isLocked} canDelete={canDeleteNotes && !isLocked} />
         </TabsContent>
       </Tabs>
     </div>
