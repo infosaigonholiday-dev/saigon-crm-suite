@@ -201,6 +201,10 @@ export default function EmployeeDetail() {
           <EmployeeInsuranceTab employeeId={id!} />
         </TabsContent>
 
+        <TabsContent value="kpi" className="mt-4">
+          <EmployeeKpiTab employeeId={id!} />
+        </TabsContent>
+
         <TabsContent value="role" className="mt-4">
           <EmployeeRoleTab
             employeeId={id!}
