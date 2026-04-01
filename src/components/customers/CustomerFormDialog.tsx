@@ -71,7 +71,7 @@ function isBirthdayUpcoming(dob: Date): boolean {
 export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const { data: salesProfiles = [] } = useQuery({
