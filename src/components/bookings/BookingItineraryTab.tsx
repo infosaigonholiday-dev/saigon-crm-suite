@@ -88,7 +88,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       setNewDay({ destination: "", actual_date: null });
       toast.success("Đã thêm ngày mới");
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const deleteDayMutation = useMutation({
