@@ -37,7 +37,7 @@ function isFollowUpOverdue(date: string | null): boolean {
 
 export default function Leads() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
