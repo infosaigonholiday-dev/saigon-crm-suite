@@ -31,7 +31,7 @@ const initial = {
 export default function BookingFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const { data: customers = [] } = useQuery({
