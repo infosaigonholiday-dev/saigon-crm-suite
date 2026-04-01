@@ -34,8 +34,8 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
 
 // Default permissions per role (client-side mirror of DB function)
 const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
-  ADMIN: [...ALL_PERMISSION_KEYS],
-  SUPER_ADMIN: [...ALL_PERMISSION_KEYS],
+  ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
+  SUPER_ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
   DIRECTOR: [
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
