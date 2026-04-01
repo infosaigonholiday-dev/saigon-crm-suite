@@ -79,6 +79,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         channel: form.channel || null,
         interest_type: form.interest_type || null,
         company_name: form.company_name || null,
+        company_address: (form as any).company_address || null,
         expected_value: form.expected_value ? Number(form.expected_value) : null,
         budget: form.budget ? Number(form.budget) : null,
         destination: form.destination || null,
@@ -86,8 +87,14 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         temperature: form.temperature || "warm",
         follow_up_date: followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         call_notes: form.call_notes || null,
+        tour_interest: (form as any).tour_interest || null,
+        contact_status: (form as any).contact_status || null,
+        issue_faced: (form as any).issue_faced || null,
+        result: (form as any).result || null,
+        assigned_staff_name: (form as any).assigned_staff_name || null,
+        assigned_staff_phone: (form as any).assigned_staff_phone || null,
         status: "NEW",
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
