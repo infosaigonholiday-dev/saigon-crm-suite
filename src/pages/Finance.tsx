@@ -231,6 +231,16 @@ export default function Finance() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          {isFullAccess && (
+            <TabsTrigger value="approval" className="relative">
+              Duyệt chi phí
+              {pendingCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1">
+                  {pendingCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
           <TabsTrigger value="estimates">Dự toán</TabsTrigger>
           <TabsTrigger value="settlements">Quyết toán</TabsTrigger>
