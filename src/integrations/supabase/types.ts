@@ -1529,6 +1529,66 @@ export type Database = {
           },
         ]
       }
+      department_sops: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          id: string
+          is_required: boolean | null
+          level: string | null
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_required?: boolean | null
+          level?: string | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_required?: boolean | null
+          level?: string | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_sops_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_sops_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           budget_monthly: number | null
@@ -3162,6 +3222,42 @@ export type Database = {
             columns: ["settlement_id"]
             isOneToOne: false
             referencedRelation: "budget_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_acknowledgements: {
+        Row: {
+          acknowledged_at: string | null
+          employee_id: string
+          id: string
+          sop_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          employee_id: string
+          id?: string
+          sop_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          employee_id?: string
+          id?: string
+          sop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_acknowledgements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_acknowledgements_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "department_sops"
             referencedColumns: ["id"]
           },
         ]
