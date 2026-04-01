@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // All permission keys in the system
 export const ALL_PERMISSION_KEYS = [
-  "customers.view", "customers.create", "customers.edit", "customers.delete",
+  "customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export",
   "leads.view", "leads.create", "leads.edit", "leads.delete",
   "bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve",
   "quotations.view", "quotations.create", "quotations.edit", "quotations.delete",
@@ -15,6 +15,7 @@ export const ALL_PERMISSION_KEYS = [
   "finance.view", "finance.create", "finance.edit", "finance.submit",
   "settings.view", "settings.edit",
   "sop.view", "sop.create",
+  "vendors.view",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
