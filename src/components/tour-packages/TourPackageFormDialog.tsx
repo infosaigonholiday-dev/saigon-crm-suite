@@ -89,7 +89,7 @@ export default function TourPackageFormDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Tạo gói tour thành công" });
+      toast.success("Tạo gói tour thành công");
       qc.invalidateQueries({ queryKey: ["tour-packages"] });
       setForm(initial);
       setDestinations([]);
