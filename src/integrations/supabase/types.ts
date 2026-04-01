@@ -1013,6 +1013,8 @@ export type Database = {
           company_address: string | null
           company_email: string | null
           company_name: string | null
+          company_size: number | null
+          contact_birthday: string | null
           contact_person: string | null
           contact_position: string | null
           created_at: string | null
@@ -1036,6 +1038,7 @@ export type Database = {
           source: string | null
           source_id: string | null
           tax_code: string | null
+          tier: string | null
           total_bookings: number | null
           total_paid: number | null
           total_revenue: number | null
@@ -1049,6 +1052,8 @@ export type Database = {
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
+          company_size?: number | null
+          contact_birthday?: string | null
           contact_person?: string | null
           contact_position?: string | null
           created_at?: string | null
@@ -1072,6 +1077,7 @@ export type Database = {
           source?: string | null
           source_id?: string | null
           tax_code?: string | null
+          tier?: string | null
           total_bookings?: number | null
           total_paid?: number | null
           total_revenue?: number | null
@@ -1085,6 +1091,8 @@ export type Database = {
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
+          company_size?: number | null
+          contact_birthday?: string | null
           contact_person?: string | null
           contact_position?: string | null
           created_at?: string | null
@@ -1108,6 +1116,7 @@ export type Database = {
           source?: string | null
           source_id?: string | null
           tax_code?: string | null
+          tier?: string | null
           total_bookings?: number | null
           total_paid?: number | null
           total_revenue?: number | null
