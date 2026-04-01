@@ -49,6 +49,8 @@ interface Props {
 export default function BookingItineraryTab({ bookingId }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canDelete = hasPermission("bookings.delete");
   const queryKey = ["booking-itineraries", bookingId];
 
   const [activityDialog, setActivityDialog] = useState<{ open: boolean; dayId: string | null }>({ open: false, dayId: null });
