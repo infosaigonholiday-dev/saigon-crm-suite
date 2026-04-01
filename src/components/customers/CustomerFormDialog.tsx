@@ -152,7 +152,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({ title: "Thành công", description: "Đã thêm khách hàng mới" });
+      toast.success("Thành công", { description: "Đã thêm khách hàng mới" });
       setForm(initial);
       onOpenChange(false);
     },
