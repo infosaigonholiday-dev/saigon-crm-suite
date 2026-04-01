@@ -1,136 +1,263 @@
 
 
-# BÁO CÁO PERFORMANCE & CODE QUALITY AUDIT
+# KIỂM TRA PHÂN QUYỀN TỪNG ROLE — KẾT QUẢ CHI TIẾT
 
 ---
 
-## A. N+1 QUERIES
+## 1. ADMIN / SUPER_ADMIN
 
-**1. useDashboardData.ts — revenue chart query**
-✅ OK — Single query fetches all bookings for the year (`select("total_value, created_at").gte(...).lt(...)`), then `groupByMonth()` groups client-side. No loop of 12 queries.
+**Permissions**: ALL_PERMISSION_KEYS (tất cả)
 
-**2. Supabase query trong vòng loop**
-✅ OK — No `.map(...)` or `.forEach(...)` calling `supabase.from(...)` found anywhere in `src/`.
+**Menu thấy**: Dashboard, KH, Lead, Báo giá, Gói tour, Lịch trình, Lưu trú, NCC, Đặt tour, HĐ, Thanh toán, Nhân sự, Nghỉ phép, Bảng lương, Tài chính, Quy trình, Cài đặt = **17 items**
 
----
+**Data**: RLS policies cho SELECT đều include ADMIN/SUPER_ADMIN → tất cả records
 
-## B. PAGINATION
+**Nút Xóa**: Có `*.delete` trong permissions → HIỆN
 
-**3. Customers.tsx — pagination**
-✅ OK — `PAGE_SIZE = 20`, `.range(page * PAGE_SIZE, ...)`, page controls present. Resets `setPage(0)` on filter/search change.
+**Duyệt**: Có `bookings.approve`, `leave.approve`, `finance.edit` → duyệt mọi thứ
 
-**4. Leads.tsx — pagination**
-❌ CẦN FIX — Has pagination (PAGE_SIZE=20, range query), but does NOT reset `setPage(0)` when filter changes. Leads uses Kanban view with no filter controls that call setPage, but the page state can get stale.
-
-**5. Bookings.tsx — pagination**
-❌ CẦN FIX — Has pagination (PAGE_SIZE=20, range query), but does NOT reset `setPage(0)` when any filter changes. No filter controls exist that reset page.
-
-**6. Page size = 20? Reset page khi filter thay đổi?**
-✅ / ❌ — Page size = 20 everywhere. Reset on filter: only Customers and Employees do it. Leads and Bookings don't (see items 4-5).
+**✅ OK**
 
 ---
 
-## C. ERROR HANDLING
+## 2. DIRECTOR
 
-**7. ErrorBoundary component tồn tại?**
-✅ OK — `src/components/ErrorBoundary.tsx` exists with proper `getDerivedStateFromError` + reload button.
+**Permissions**: Tất cả trừ `*.delete`, `finance.create`, `leave.create`
 
-**8. Các route chính bọc ErrorBoundary?**
-✅ OK — All routes in `App.tsx` wrapped with `<ErrorBoundary>`.
+**Menu thấy**: Giống ADMIN (17 items) — có tất cả `.view` permissions
 
-**9. Supabase queries handle error?**
-✅ OK — Most queries use `if (error) throw error` pattern, which React Query catches and surfaces. Dashboard queries silently return empty arrays (acceptable for stats).
+**Data**: RLS include DIRECTOR ở mọi bảng → tất cả records
 
----
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
 
-## D. TOAST SYSTEM
+**Duyệt**: Có `bookings.approve`, `leave.approve`, `finance.edit` → duyệt quyết toán lớp 3 (CEO approve in BudgetSettlementsTab)
 
-**10. Chỉ dùng Sonner?**
-✅ OK — All imports use `import { toast } from "sonner"`. No Radix Toaster component found.
-
-**11. use-toast.ts đã xóa?**
-✅ OK — No file `use-toast.ts` exists. No imports found.
+**✅ OK**
 
 ---
 
-## E. CODE CLEANUP
+## 3. KETOAN
 
-**12. App.css — no Vite template CSS?**
-✅ OK — `src/App.css` is empty (0 lines).
+**Permissions**: `customers.view, bookings.view, payments.view/create/edit, payroll.view/edit, finance.view/edit/submit, settings.view, sop.view`
 
-**13. index.html title = "Saigon Holiday CRM"?**
-✅ OK — `<title>Saigon Holiday CRM</title>`. No "Lovable App".
+**Menu thấy**:
+- ✅ KH, Đặt tour, HĐ, NCC (bookings.view), Thanh toán, Bảng lương, Tài chính, Quy trình, Cài đặt
+- ✅ KHÔNG thấy: Lead, Nhân sự, Nghỉ phép
 
-**14. main.tsx — React.StrictMode?**
-❌ CẦN FIX — `main.tsx` renders `<App />` directly without `React.StrictMode`. Should wrap with `<StrictMode>` for development checks.
+**❌ CẦN FIX — Menu Cài đặt**:
+- Yêu cầu: KETOAN KHÔNG thấy Cài đặt
+- Thực tế: KETOAN có `settings.view` → thấy menu Cài đặt
+- **Đây là design decision**: KETOAN có `settings.view` trong DEFAULT_PERMISSIONS. Nếu cần ẩn, phải xóa `settings.view` khỏi KETOAN permissions.
 
-**15. Loading check — no duplicate between ProtectedRoutes and AppRoutes?**
-✅ OK — Only `AppRoutes` checks `loading`. `ProtectedRoutes` only checks `session`.
+**❌ CẦN FIX — Menu thừa**: KETOAN có `bookings.view` nên thấy cả NCC, Đặt tour, HĐ. Yêu cầu chỉ nêu "Bookings (xem)" nhưng sidebar hiện 3 items (NCC, Đặt tour, HĐ) vì cùng dùng `bookings.view`. Đây là hệ quả của việc 3 menu items cùng dùng 1 permission key.
+
+**Tài chính**: `isFullAccess` bao gồm KETOAN → thấy TẤT CẢ tabs + Duyệt chi phí ✅
+
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
+
+**Duyệt**: `finance.edit` → duyệt chi phí + dự toán + quyết toán lớp 2 ✅
+
+**⚠️ Kết luận**: ✅ OK về cơ bản. Vấn đề `settings.view` là minor — KETOAN thấy tab Quyền hạn (read-only) trong Settings, không gây harm.
 
 ---
 
-## F. TYPE SAFETY
+## 4. MANAGER
 
-**16. Bảng mới có type definitions trong types.ts?**
-✅ OK — `types.ts` (3902 lines) contains definitions for `budget_estimates`, `budget_settlements`, `booking_special_notes`, and `notifications`.
+**Permissions**: `customers.view/create/edit, leads.view/create/edit, bookings.view/create/edit, quotations.view/create/edit, payments.view/create, employees.view, leave.view/approve, sop.view/create`
 
-**17. Form validation — Zod schema?**
-❌ CẦN FIX — No Zod schemas found anywhere in `src/components/`. Only `VendorFormDialog` uses `react-hook-form` (without Zod). All other forms use uncontrolled state with manual validation. This is a significant gap — forms accept any input without schema validation.
+**Menu thấy**:
+- ✅ Dashboard, KH, Lead, Báo giá, Gói tour, Lịch trình, Lưu trú, NCC, Đặt tour, HĐ, Thanh toán, Nhân sự, Nghỉ phép, Quy trình
+- ✅ KHÔNG thấy: Bảng lương (`payroll.view` absent), Cài đặt (`settings.view` absent)
+
+**❌ CẦN FIX — Tài chính menu**: MANAGER không có `finance.view` NOR `finance.submit` → sidebar filter `anyPermission: ["finance.view", "finance.submit"]` → KHÔNG thấy menu Tài chính. Nhưng yêu cầu nói "chỉ tab Doanh thu". Tuy nhiên, code có `ManagerFinanceView` cho MANAGER khi accessing Finance page. **Vấn đề**: MANAGER không thấy menu Tài chính trong sidebar → không thể navigate tới page → ManagerFinanceView không bao giờ hiện.
+
+**Fix cần thiết**: Thêm `finance.view` hoặc tạo permission key mới cho MANAGER, HOẶC thêm `finance.submit` vào MANAGER permissions để menu hiện.
+
+**Data**: RLS bookings/customers/leads filter theo `department_id = get_my_department_id()` cho MANAGER ✅
+
+**Dashboard**: `getDashboardType("MANAGER")` = "manager" → ManagerKPIDashboard ✅
+
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — MANAGER không thấy menu Tài chính nên không truy cập được tab Doanh thu.
 
 ---
 
-## G. BUILD CHECK
+## 5. DIEUHAN
 
-**18. Build errors?**
-Cannot run build in read-only mode. Recommend user runs `npm run build` to verify.
+**Permissions**: `customers.view/create/edit, leads.view/create/edit, bookings.view/create/edit/approve, quotations.view/create/edit, payments.view/create/edit, sop.view/create`
 
-**19. Console warnings?**
-✅ OK — No error logs found in browser console at time of check.
+**Menu thấy**: Dashboard, KH, Lead, Báo giá, Gói tour, Lịch trình, Lưu trú, NCC, Đặt tour, HĐ, Thanh toán, Quy trình
+
+**❌ CẦN FIX — Tài chính**: DIEUHAN không có `finance.view` NOR `finance.submit` → KHÔNG thấy menu Tài chính. Nhưng yêu cầu nói DIEUHAN cần "nhập chi phí tour, lập dự toán, lập quyết toán".
+
+DIEUHAN có RLS access tới `budget_estimates` (INSERT) và `budget_settlements` (INSERT), nhưng không có menu Tài chính để navigate.
+
+**Fix**: Thêm `finance.submit` hoặc `finance.create` vào DIEUHAN DEFAULT_PERMISSIONS.
+
+**Data**: RLS include DIEUHAN ở bookings (toàn bộ), customers, etc. ✅
+
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — DIEUHAN không truy cập được Tài chính.
+
+---
+
+## 6. SALE_DOMESTIC / SALE_OUTBOUND / SALE_MICE / SALE_INBOUND
+
+**Permissions**: `customers.view/create/edit, leads.view/create/edit, bookings.view/create, quotations.view/create/edit, payments.view, sop.view`
+
+**Menu thấy**: Dashboard, KH, Lead, Báo giá, Gói tour, Lịch trình, Lưu trú, NCC, Đặt tour, HĐ, Thanh toán, Quy trình
+
+**❌ CẦN FIX — Menu thừa**: Sale thấy NCC, Lưu trú, Gói tour, Lịch trình, HĐ. Yêu cầu chỉ nêu "KH, Lead, Báo giá, Booking, Nghỉ phép". Sale KHÔNG có `leave.view` → KHÔNG thấy Nghỉ phép.
+
+**❌ CẦN FIX — Nghỉ phép**: Sale không có `leave.view` hay `leave.create` → không thể tạo đơn nghỉ phép. Đây là thiếu sót — mọi NV đều cần tạo đơn nghỉ.
+
+**Data**: RLS bookings filter `sale_id = auth.uid()` → chỉ thấy của mình ✅. Customers filter `assigned_sale_id = auth.uid()` ✅.
+
+**Dashboard**: `getDashboardType` returns "personal" ✅
+
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — Thiếu `leave.view`, `leave.create` cho SALE roles.
+
+---
+
+## 7. HCNS
+
+**Permissions**: `employees.view/create/edit, leave.view/create/approve, payroll.view/create/edit, finance.create/submit, settings.view, sop.view/create`
+
+**Menu thấy**: Nhân sự, Nghỉ phép, Bảng lương, Tài chính (finance.submit), Quy trình, Cài đặt
+
+**❌ CẦN FIX — Menu thừa**: HCNS thấy Cài đặt. Yêu cầu nói KHÔNG thấy Cài đặt. Thực tế HCNS có `settings.view`.
+
+**Tài chính**: `!hasFinanceView && hasFinanceSubmit` → SubmitterView (chỉ form nhập) ✅
+
+**❌ CẦN FIX — Menu thừa 2**: HCNS KHÔNG có `customers.view`, `leads.view`, `bookings.view` → KHÔNG thấy KH/Lead/Booking ✅. Nhưng thấy Cài đặt (minor issue, read-only).
+
+**Nút Xóa**: KHÔNG có `*.delete` → ẨN ✅
+
+**⚠️ Kết quả**: Gần OK. Settings.view cho HCNS là thiết kế hiện tại (xem tab Quyền hạn read-only).
+
+---
+
+## 8. HR_MANAGER / HR_HEAD
+
+**HR_MANAGER permissions**: `employees.view/create/edit, leave.view/create/approve, payroll.view/create/edit, finance.submit, settings.view, sop.view/create`
+
+**HR_HEAD** thêm: `bookings.view, quotations.view, payments.view`
+
+**Menu HR_MANAGER**: Nhân sự, Nghỉ phép, Bảng lương, Tài chính, Quy trình, Cài đặt ✅
+**Menu HR_HEAD**: + Đặt tour, HĐ, NCC, Báo giá, Lưu trú/Gói tour/Lịch trình, Thanh toán ✅
+
+**Duyệt nghỉ phép**: `leave.approve` ✅
+
+**✅ OK**
+
+---
+
+## 9. MKT
+
+**Permissions**: `customers.view, leads.view/create/edit, sop.view`
+
+**Menu thấy**: Dashboard, KH, Lead, Quy trình
+
+**❌ CẦN FIX — Nghỉ phép**: MKT không có `leave.view/create` → không tạo được đơn nghỉ.
+
+**Data Lead**: RLS leads — cần kiểm tra. MKT không trong leads RLS `has_any_role` list → chỉ thấy leads `assigned_to = auth.uid()` hoặc `created_by`. Yêu cầu nói "tất cả leads" vì MKT là nguồn chính.
+
+**❌ CẦN FIX — RLS leads**: MKT có thể không thấy tất cả leads nếu RLS không include MKT.
+
+**Nút Xóa**: ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — Thiếu `leave.view/create`. RLS leads có thể giới hạn.
+
+---
+
+## 10. TOUR
+
+**Permissions**: `customers.view, bookings.view, sop.view`
+
+**Menu thấy**: Dashboard, KH, NCC, Đặt tour, HĐ, Quy trình
+
+**Menu thừa**: TOUR thấy KH, NCC, HĐ — yêu cầu chỉ nêu "Booking (xem)". Đây là do `bookings.view` và `customers.view` mở nhiều menu items.
+
+**❌ CẦN FIX — Nghỉ phép**: TOUR không có `leave.view/create` → không tạo đơn nghỉ.
+
+**Data bookings**: RLS include TOUR → thấy tất cả bookings (hợp lý, TOUR cần xem lịch trình).
+
+**Nút Xóa**: ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — Thiếu `leave.view/create`.
+
+---
+
+## 11. INTERN
+
+**Permissions**: `sop.view` only
+
+**Menu thấy**: Dashboard, Quy trình
+
+**❌ CẦN FIX — Nghỉ phép**: INTERN không có `leave.view/create` → không tạo đơn nghỉ. Yêu cầu nói INTERN cần "tạo đơn".
+
+**Data**: Không có `.view` permission nào ngoài `sop.view` → chỉ thấy SOP ✅
+
+**Nút Xóa**: ẨN ✅
+
+**❌ Kết quả: CẦN FIX** — Thiếu `leave.view/create`.
 
 ---
 
 ## TÓM TẮT
 
-| # | Mục | Trạng thái |
-|---|-----|-----------|
-| 1 | Dashboard — no N+1 | ✅ OK |
-| 2 | No loop queries | ✅ OK |
-| 3 | Customers pagination | ✅ OK |
-| 4 | Leads page reset on filter | ❌ Minor |
-| 5 | Bookings page reset on filter | ❌ Minor |
-| 6 | PAGE_SIZE = 20 | ✅ OK |
-| 7 | ErrorBoundary exists | ✅ OK |
-| 8 | Routes wrapped | ✅ OK |
-| 9 | Error handling in queries | ✅ OK |
-| 10 | Only Sonner toast | ✅ OK |
-| 11 | use-toast removed | ✅ OK |
-| 12 | App.css clean | ✅ OK |
-| 13 | index.html title correct | ✅ OK |
-| **14** | **StrictMode missing** | **❌ CẦN FIX** |
-| 15 | No duplicate loading check | ✅ OK |
-| 16 | Type definitions present | ✅ OK |
-| **17** | **No Zod form validation** | **❌ CẦN FIX** |
-| 18 | Build check | ⚠️ Cần chạy thủ công |
-| 19 | Console warnings | ✅ OK |
+| # | Role | Trạng thái | Vấn đề chính |
+|---|------|-----------|-------------|
+| 1 | ADMIN/SUPER_ADMIN | ✅ OK | — |
+| 2 | DIRECTOR | ✅ OK | — |
+| 3 | KETOAN | ⚠️ Minor | settings.view hiện nhưng read-only |
+| 4 | MANAGER | ❌ CẦN FIX | Không thấy menu Tài chính (thiếu finance permission) |
+| 5 | DIEUHAN | ❌ CẦN FIX | Không thấy menu Tài chính |
+| 6 | SALE_* | ❌ CẦN FIX | Thiếu `leave.view`, `leave.create` |
+| 7 | HCNS | ⚠️ Minor | settings.view (acceptable) |
+| 8 | HR_MANAGER/HR_HEAD | ✅ OK | — |
+| 9 | MKT | ❌ CẦN FIX | Thiếu `leave.view/create`, RLS leads hạn chế |
+| 10 | TOUR | ❌ CẦN FIX | Thiếu `leave.view/create` |
+| 11 | INTERN | ❌ CẦN FIX | Thiếu `leave.view/create` |
 
 ---
 
-## KẾ HOẠCH FIX (nếu phê duyệt)
+## KẾ HOẠCH FIX
 
-### Fix 1: StrictMode (item 14)
-**File**: `src/main.tsx`
-- Wrap `<App />` with `<React.StrictMode>`.
+### Fix 1: Thêm `leave.view` + `leave.create` cho tất cả roles thiếu
 
-### Fix 2: Leads/Bookings page reset (items 4-5)
-**Files**: `src/pages/Leads.tsx`, `src/pages/Bookings.tsx`
-- Currently neither page has filter controls that change data scope, so page reset is less critical. However, if status filters are added later, `setPage(0)` should be called. Low priority — note for future.
+**File**: `src/hooks/usePermissions.ts` — DEFAULT_PERMISSIONS
 
-### Fix 3: Form Validation with Zod (item 17)
-This is a large-scope refactor affecting 10+ form dialogs. Recommended approach:
-- Add `zod` + `@hookform/resolvers` dependencies
-- Prioritize high-risk forms first: `CustomerFormDialog`, `BookingFormDialog`, `LeadFormDialog`, `TransactionFormDialog`
-- Create Zod schemas for each form and integrate via `zodResolver` with `react-hook-form`
-- This is a multi-session effort. Recommend tackling 2-3 forms per iteration.
+Thêm `"leave.view", "leave.create"` vào:
+- `SALE_DOMESTIC`, `SALE_INBOUND`, `SALE_OUTBOUND`, `SALE_MICE`
+- `MKT`, `TOUR`, `INTERN`
 
-**Recommendation**: Approve Fix 1 (StrictMode) now. Fix 3 (Zod) should be planned as a separate task due to scope.
+**File**: DB function `get_default_permissions_for_role()` — đồng bộ thêm tương tự.
+
+### Fix 2: Thêm `finance.submit` cho MANAGER và DIEUHAN
+
+**File**: `src/hooks/usePermissions.ts`
+- MANAGER: thêm `"finance.submit"` (để thấy menu Tài chính → ManagerFinanceView xử lý chỉ hiện Doanh thu)
+- DIEUHAN: thêm `"finance.submit"` (để thấy menu Tài chính → SubmitterView nhập chi phí)
+
+Lưu ý: DIEUHAN cũng cần `"finance.create"` để nhập chi phí (đã có trong HCNS nhưng thiếu ở DIEUHAN hiện tại... kiểm tra lại: DIEUHAN không có `finance.create` cũng không có `finance.submit` → cần thêm cả hai).
+
+**File**: DB function — đồng bộ.
+
+### Fix 3 (optional): Tách menu permissions chi tiết hơn
+
+Hiện tại `bookings.view` mở 3 menu items (NCC, Đặt tour, HĐ). Nếu muốn SALE không thấy NCC:
+- Tạo permission `vendors.view` riêng
+- Hoặc chấp nhận SALE thấy NCC (read-only, RLS vẫn bảo vệ)
+
+**Đề xuất**: Chấp nhận hiện trạng vì RLS bảo vệ đúng. Menu items thêm không gây risk.
+
+### Tổng file thay đổi
+
+1. `src/hooks/usePermissions.ts` — cập nhật DEFAULT_PERMISSIONS cho 9 roles
+2. DB migration — cập nhật function `get_default_permissions_for_role()` đồng bộ
 
