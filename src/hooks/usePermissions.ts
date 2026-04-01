@@ -12,7 +12,7 @@ export const ALL_PERMISSION_KEYS = [
   "employees.view", "employees.create", "employees.edit", "employees.delete",
   "leave.view", "leave.create", "leave.approve",
   "payroll.view", "payroll.create", "payroll.edit",
-  "finance.view", "finance.edit", "finance.submit",
+  "finance.view", "finance.create", "finance.edit", "finance.submit",
   "settings.view", "settings.edit",
 ] as const;
 
