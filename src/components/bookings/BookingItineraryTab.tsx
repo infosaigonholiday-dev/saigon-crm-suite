@@ -117,7 +117,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: "Đã thêm hoạt động" });
+      toast.success("Đã thêm hoạt động");
     },
     onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
   });
