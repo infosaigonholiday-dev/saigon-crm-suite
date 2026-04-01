@@ -44,6 +44,21 @@ export default function Bookings() {
     },
   });
 
+  // Fetch high-priority note counts per booking
+  const { data: highNoteMap = {} } = useQuery({
+    queryKey: ["booking-high-notes-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("booking_special_notes")
+        .select("booking_id")
+        .eq("priority", "high");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach((n) => { map[n.booking_id] = (map[n.booking_id] || 0) + 1; });
+      return map;
+    },
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
