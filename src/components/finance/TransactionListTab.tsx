@@ -141,9 +141,11 @@ export function TransactionListTab() {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => { setEditing(t); setDialogOpen(true); }}><Pencil className="h-3 w-3" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(t.id); }}>
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </Button>
+                          {canDelete && (
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(t.id); }}>
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}

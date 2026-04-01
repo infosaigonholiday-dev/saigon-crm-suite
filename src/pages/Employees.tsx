@@ -240,9 +240,11 @@ export default function Employees() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => openEdit(e.id, ev)} title="Sửa">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                            {canDelete && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

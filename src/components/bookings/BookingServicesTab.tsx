@@ -207,9 +207,11 @@ export default function BookingServicesTab({ bookingId }: Props) {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(s.id); }}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
+                            {canDelete && (
+                              <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(s.id); }}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       )}
