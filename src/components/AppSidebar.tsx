@@ -66,6 +66,10 @@ const financeItems: MenuItem[] = [
   { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, anyPermission: ["finance.view", "finance.submit"] },
 ];
 
+const sopItems: MenuItem[] = [
+  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "sop.view" },
+];
+
 const settingsItems: MenuItem[] = [
   { title: "Cài đặt", url: "/cai-dat", icon: Settings, permission: "settings.view" },
 ];
