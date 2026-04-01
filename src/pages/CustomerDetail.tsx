@@ -12,11 +12,43 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays } from "lucide-react";
+import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift } from "lucide-react";
 
 function fmt(n: number | null) {
   if (!n) return "0";
   return new Intl.NumberFormat("vi-VN").format(n);
+}
+
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("vi-VN");
+}
+
+function isBirthdayUpcoming(dob: string | null): boolean {
+  if (!dob) return false;
+  const today = new Date();
+  const birth = new Date(dob);
+  const thisYear = today.getFullYear();
+  const upcoming = new Date(thisYear, birth.getMonth(), birth.getDate());
+  if (upcoming < today) upcoming.setFullYear(thisYear + 1);
+  const diff = (upcoming.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  return diff >= 0 && diff <= 7;
+}
+
+const tierColors: Record<string, string> = {
+  "Diamond": "bg-purple-100 text-purple-800 border-purple-300",
+  "Gold": "bg-yellow-100 text-yellow-800 border-yellow-300",
+  "Silver": "bg-gray-100 text-gray-700 border-gray-300",
+  "Mới": "bg-blue-100 text-blue-700 border-blue-300",
+};
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value || "—"}</span>
+    </div>
+  );
 }
 
 export default function CustomerDetail() {
@@ -28,7 +60,7 @@ export default function CustomerDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select("*, lead_sources(name)")
         .eq("id", id!)
         .single();
       if (error) throw error;
@@ -65,7 +97,6 @@ export default function CustomerDetail() {
     enabled: !!id,
   });
 
-  // Monthly chart data from bookings
   const chartData = (() => {
     const map: Record<string, { month: string; revenue: number; paid: number }> = {};
     bookings.forEach((b) => {
@@ -92,6 +123,9 @@ export default function CustomerDetail() {
     return <div className="text-center py-20 text-muted-foreground">Không tìm thấy khách hàng</div>;
   }
 
+  const tier = customer.tier ?? "Mới";
+  const showCompany = customer.type === "Doanh nghiệp" || !!customer.company_name;
+
   const stats = [
     { label: "Tổng booking", value: customer.total_bookings ?? 0, icon: CalendarDays },
     { label: "Doanh thu", value: fmt(customer.total_revenue), icon: TrendingUp },
@@ -101,6 +135,7 @@ export default function CustomerDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/khach-hang")}>
           <ArrowLeft className="h-5 w-5" />
@@ -111,7 +146,10 @@ export default function CustomerDetail() {
             {customer.phone ?? ""} {customer.email ? `• ${customer.email}` : ""}
           </p>
         </div>
-        <Badge variant="outline" className="ml-auto">{customer.segment ?? "NEW"}</Badge>
+        <div className="ml-auto flex items-center gap-2">
+          <Badge variant="outline" className={tierColors[tier] || ""}>{tier}</Badge>
+          <Badge variant="outline">{customer.segment ?? "NEW"}</Badge>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -132,13 +170,92 @@ export default function CustomerDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="bookings">
+      <Tabs defaultValue="profile">
         <TabsList>
+          <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
           <TabsTrigger value="bookings">Bookings ({bookings.length})</TabsTrigger>
           <TabsTrigger value="payments">Thanh toán ({payments.length})</TabsTrigger>
           <TabsTrigger value="chart">Xu hướng</TabsTrigger>
         </TabsList>
 
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Thông tin cá nhân</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <InfoRow
+                  label="Ngày sinh"
+                  value={
+                    <span className="flex items-center gap-2">
+                      {fmtDate(customer.date_of_birth)}
+                      {isBirthdayUpcoming(customer.date_of_birth) && (
+                        <Badge className="bg-pink-100 text-pink-700 border-pink-300 gap-1">
+                          <Gift className="h-3 w-3" /> Sinh nhật sắp tới
+                        </Badge>
+                      )}
+                    </span>
+                  }
+                />
+                <InfoRow label="Giới tính" value={customer.gender} />
+                <InfoRow label="CCCD/Passport" value={customer.id_number} />
+                <InfoRow label="Địa chỉ" value={customer.address} />
+                <InfoRow
+                  label="Nguồn đến"
+                  value={(customer as any).lead_sources?.name ?? customer.source ?? "—"}
+                />
+                <InfoRow
+                  label="Phân hạng"
+                  value={<Badge variant="outline" className={tierColors[tier] || ""}>{tier}</Badge>}
+                />
+                <InfoRow
+                  label="Phân khúc"
+                  value={<Badge variant="outline">{customer.segment ?? "NEW"}</Badge>}
+                />
+                <div className="col-span-2 md:col-span-3">
+                  <InfoRow label="Ghi chú" value={customer.notes} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {showCompany && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Thông tin doanh nghiệp</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <InfoRow label="Tên công ty" value={customer.company_name} />
+                  <InfoRow label="Mã số thuế" value={customer.tax_code} />
+                  <InfoRow label="Địa chỉ công ty" value={customer.company_address} />
+                  <InfoRow label="Người liên hệ" value={customer.contact_person} />
+                  <InfoRow label="Chức vụ" value={customer.contact_position} />
+                  <InfoRow
+                    label="Ngày sinh người LH"
+                    value={
+                      <span className="flex items-center gap-2">
+                        {fmtDate(customer.contact_birthday)}
+                        {isBirthdayUpcoming(customer.contact_birthday) && (
+                          <Badge className="bg-pink-100 text-pink-700 border-pink-300 gap-1">
+                            <Gift className="h-3 w-3" /> Sắp tới
+                          </Badge>
+                        )}
+                      </span>
+                    }
+                  />
+                  <InfoRow label="Email công ty" value={customer.company_email} />
+                  <InfoRow label="Ngày thành lập" value={fmtDate(customer.founded_date)} />
+                  <InfoRow label="Quy mô nhân sự" value={customer.company_size ? `${customer.company_size} người` : null} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Bookings Tab */}
         <TabsContent value="bookings">
           <Card>
             <CardContent className="p-0">
@@ -173,6 +290,7 @@ export default function CustomerDetail() {
           </Card>
         </TabsContent>
 
+        {/* Payments Tab */}
         <TabsContent value="payments">
           <Card>
             <CardContent className="p-0">
@@ -207,6 +325,7 @@ export default function CustomerDetail() {
           </Card>
         </TabsContent>
 
+        {/* Chart Tab */}
         <TabsContent value="chart">
           <Card>
             <CardHeader>
