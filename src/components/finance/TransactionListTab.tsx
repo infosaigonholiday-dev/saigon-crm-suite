@@ -29,6 +29,7 @@ const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) +
 export function TransactionListTab() {
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("finance.edit");
+  const canDelete = hasPermission("finance.edit") && (hasPermission("customers.delete" as any) || hasPermission("employees.delete" as any));
   const queryClient = useQueryClient();
 
   const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth() + 1));
