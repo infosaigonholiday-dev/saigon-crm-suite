@@ -42,7 +42,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const set = (k: string, v: string) => {
