@@ -138,7 +138,10 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
+      queryClient.invalidateQueries({ queryKey: ["pending-approval-count"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-transactions"] });
+      const isResubmit = isEdit && transaction?.approval_status === "REJECTED";
+      toast.success(isResubmit ? "Đã gửi lại chờ duyệt" : isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
       onOpenChange(false);
     },
     onError: () => toast.error("Lỗi khi lưu"),

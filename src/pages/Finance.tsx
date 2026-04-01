@@ -257,6 +257,7 @@ export default function Finance() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
+        {isFullAccess && <TabsContent value="approval" className="mt-4"><ApprovalTab /></TabsContent>}
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
         <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>

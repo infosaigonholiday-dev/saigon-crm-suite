@@ -195,8 +195,10 @@ export function TransactionListTab({ submitterOnly }: Props) {
                         <Badge variant="outline" className={statusCfg.className}>
                           {statusCfg.label}
                         </Badge>
-                        {t.review_note && t.approval_status === "REJECTED" && (
-                          <p className="text-xs text-muted-foreground mt-1 truncate max-w-[120px]" title={t.review_note}>{t.review_note}</p>
+                        {t.approval_status === "REJECTED" && t.review_note && (
+                          <p className="text-xs text-destructive mt-1 max-w-[200px]" title={t.review_note}>
+                            Lý do: {t.review_note}
+                          </p>
                         )}
                       </TableCell>
                       <TableCell>
