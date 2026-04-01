@@ -67,6 +67,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   INTERN_DIEUHAN: ["bookings.view", "leave.view", "leave.create", "sop.view"],
   INTERN_SALE_DOMESTIC: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
   INTERN_SALE_OUTBOUND: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_SALE_MICE: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_SALE_INBOUND: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
   INTERN_MKT: ["customers.view", "leads.view", "leave.view", "leave.create", "sop.view"],
   INTERN_HCNS: ["employees.view", "leave.view", "leave.create", "sop.view"],
   INTERN_KETOAN: ["customers.view", "bookings.view", "payments.view", "leave.view", "leave.create", "sop.view"],
