@@ -1,43 +1,33 @@
 
 
-# Kế hoạch sửa (cập nhật lần 5)
+# Fix lỗi `.catch()` trong Edge Function
 
-## Sửa lại 2 điểm
+## Vấn đề
+Dòng 128-129 dùng `.catch(() => {})` trên Supabase query builder. Trong Deno, kết quả trả về không phải Promise thuần nên không có `.catch()`. Lỗi này sẽ **lặp lại mỗi lần** cleanup được gọi (khi tạo tài khoản thất bại ở bước sau).
 
-### 1. Nút Xuất CSV — chỉ ADMIN thấy
-Permission `customers.export` chỉ gán cho: **ADMIN, SUPER_ADMIN**. Không ai khác.
+## Cách sửa
+Thay `.catch(() => {})` bằng `try/catch` block:
 
-### 2. Nhà cung cấp — loại trừ DIRECTOR
-Permission `vendors.view` gán cho: **ADMIN, SUPER_ADMIN, DIEUHAN, KETOAN, HR_HEAD**. DIRECTOR không thấy.
+**File**: `supabase/functions/manage-employee-accounts/index.ts` (dòng 127-130)
 
----
+Từ:
+```ts
+if (createdUserId) {
+  await adminClient.from("profiles").delete().eq("id", createdUserId).catch(() => {});
+  await adminClient.auth.admin.deleteUser(createdUserId).catch(() => {});
+}
+```
 
-## Tổng thay đổi: 1 migration + 6 file code
+Thành:
+```ts
+if (createdUserId) {
+  try { await adminClient.from("profiles").delete().eq("id", createdUserId); } catch (_) {}
+  try { await adminClient.auth.admin.deleteUser(createdUserId); } catch (_) {}
+}
+```
 
-### A. Permission keys mới
-- `customers.export` → ADMIN, SUPER_ADMIN
-- `vendors.view` → ADMIN, SUPER_ADMIN, DIEUHAN, KETOAN, HR_HEAD
+## Trả lời câu hỏi
+Sau khi fix, lỗi này **không bao giờ lặp lại** nữa. Đây là lỗi cú pháp 1 lần, sửa xong là xong vĩnh viễn.
 
-**File**: `src/hooks/usePermissions.ts` — thêm 2 key + gán default
-
-### B. UI
-- `src/pages/Customers.tsx` — bọc nút Xuất CSV bằng `hasPermission("customers.export")`
-- `src/components/AppSidebar.tsx` — đổi permission NCC từ `bookings.view` → `vendors.view`
-- `src/pages/Vendors.tsx` — thêm PermissionGuard `vendors.view`
-
-### C. Thêm trường doanh nghiệp (giữ nguyên)
-**DB Migration** thêm cột vào `leads` (7 cột) + `customers` (5 cột) + cập nhật function `get_default_permissions_for_role`
-
-**Files UI**:
-- `src/components/leads/LeadFormDialog.tsx` — thêm trường input
-- `src/pages/Leads.tsx` — hiển thị thông tin DN
-- `src/components/customers/CustomerFormDialog.tsx` — thêm trường input
-- `src/pages/CustomerDetail.tsx` — hiển thị thông tin mới
-
-### Tóm tắt phân quyền
-
-| Tính năng | Roles được phép |
-|-----------|----------------|
-| Xuất CSV khách hàng | ADMIN, SUPER_ADMIN |
-| Nhà cung cấp | ADMIN, SUPER_ADMIN, DIEUHAN, KETOAN, HR_HEAD |
+## Tổng: sửa 2 dòng trong 1 file, deploy lại edge function
 
