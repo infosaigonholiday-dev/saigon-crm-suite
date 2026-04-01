@@ -32,7 +32,7 @@ const initial = {
 export default function PaymentFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const { data: bookings = [] } = useQuery({
