@@ -136,9 +136,11 @@ export default function BookingItineraryTab({ bookingId, readOnly = false }: Pro
           <Button variant="outline" size="sm" onClick={() => toast("Tính năng xuất PDF sẽ sớm ra mắt!")}>
             <FileText className="h-4 w-4 mr-1" /> Xuất PDF
           </Button>
-          <Button size="sm" onClick={() => setAddingDay(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Thêm ngày
-          </Button>
+          {!readOnly && (
+            <Button size="sm" onClick={() => setAddingDay(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Thêm ngày
+            </Button>
+          )}
         </div>
       </div>
 
