@@ -83,6 +83,10 @@ export function SettingsAccountsTab() {
   const [formData, setFormData] = useState({
     full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "",
   });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState<Profile | null>(null);
+  const [editData, setEditData] = useState({ department_id: "", role: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadProfiles();
