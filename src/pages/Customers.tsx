@@ -13,6 +13,7 @@ import {
 import { Search, Plus, Loader2, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { exportToCSV } from "@/lib/exportUtils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const PAGE_SIZE = 20;
 
