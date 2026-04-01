@@ -93,6 +93,25 @@ export default function PersonalDashboard() {
     enabled: !!user?.id,
   });
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
+
+  const { data: followUpLeads = [] } = useQuery({
+    queryKey: ["follow-up-leads", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, destination, phone, assigned_to")
+        .eq("assigned_to", user!.id)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", threeDaysLater)
+        .order("follow_up_date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
   const statCards = [
     { label: "Doanh số tháng này", value: formatVND(stats.myRevenue), icon: TrendingUp },
     { label: "Booking của tôi", value: String(stats.myBookingCount), icon: CalendarDays },
