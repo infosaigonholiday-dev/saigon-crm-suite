@@ -30,12 +30,19 @@ const initial = {
   channel: "",
   interest_type: "",
   company_name: "",
+  company_address: "",
   expected_value: "",
   budget: "",
   destination: "",
   pax_count: "",
   temperature: "warm",
   call_notes: "",
+  tour_interest: "",
+  contact_status: "",
+  issue_faced: "",
+  result: "",
+  assigned_staff_name: "",
+  assigned_staff_phone: "",
 };
 
 export default function LeadFormDialog({ open, onOpenChange }: Props) {
