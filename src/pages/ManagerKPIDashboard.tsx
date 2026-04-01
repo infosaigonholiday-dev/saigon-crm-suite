@@ -168,7 +168,62 @@ export default function ManagerKPIDashboard() {
     .map(([id, data]) => ({ id, name: profileMap.get(id) || "N/A", ...data }))
     .sort((a, b) => b.revenue - a.revenue);
 
-  const loading = !profile;
+  // KPI section as inline component
+  function ManagerKpiSection({ departmentId, profileMap }: { departmentId: string; profileMap: Map<string, string> }) {
+    const [kpiOpen, setKpiOpen] = useState(false);
+    const { data: deptEmployees = [] } = useQuery({
+      queryKey: ["dept-employees-kpi", departmentId],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("employees")
+          .select("id, full_name, position, department_id")
+          .eq("department_id", departmentId)
+          .is("deleted_at", null);
+        return data || [];
+      },
+      enabled: !!departmentId,
+    });
+
+    const { data: teamKpis = [], refetch } = useQuery({
+      queryKey: ["team-kpis", departmentId, currentMonth, currentYear],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("employee_kpis")
+          .select("*")
+          .eq("department_id", departmentId)
+          .eq("period_type", "monthly")
+          .eq("period_year", currentYear)
+          .eq("period_value", currentMonth);
+        return data || [];
+      },
+      enabled: !!departmentId,
+    });
+
+    return (
+      <>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">KPI nhân viên tháng {currentMonth}</h2>
+          <Button size="sm" onClick={() => setKpiOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />Set KPI
+          </Button>
+        </div>
+        <KpiTeamTable
+          kpis={teamKpis}
+          employees={deptEmployees}
+          canEdit={true}
+          onRefetch={() => refetch()}
+        />
+        <KpiSetDialog
+          open={kpiOpen}
+          onOpenChange={setKpiOpen}
+          employees={deptEmployees}
+          onSuccess={() => refetch()}
+        />
+      </>
+    );
+  }
+
+
 
   if (loading) {
     return (
