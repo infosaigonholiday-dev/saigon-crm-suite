@@ -22,6 +22,7 @@ interface Props {
 export function ExpenseListTab({ title, tableName, categories, queryKey }: Props) {
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("finance.edit");
+  const canDelete = hasPermission("finance.edit") && (hasPermission("customers.delete" as any) || hasPermission("employees.delete" as any));
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
