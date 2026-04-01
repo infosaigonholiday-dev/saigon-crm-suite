@@ -1715,63 +1715,81 @@ export type Database = {
       leads: {
         Row: {
           assigned_to: string | null
+          budget: number | null
+          call_notes: string | null
           channel: string | null
           company_name: string | null
           created_at: string | null
           customer_id: string | null
           department_id: string | null
+          destination: string | null
           email: string | null
           expected_value: number | null
+          follow_up_date: string | null
           full_name: string
           id: string
           interest_type: string | null
           last_contact_at: string | null
           lost_reason: string | null
           next_followup_at: string | null
+          pax_count: number | null
           phone: string | null
           probability_pct: number | null
           source_id: string | null
           status: string | null
+          temperature: string | null
         }
         Insert: {
           assigned_to?: string | null
+          budget?: number | null
+          call_notes?: string | null
           channel?: string | null
           company_name?: string | null
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
+          destination?: string | null
           email?: string | null
           expected_value?: number | null
+          follow_up_date?: string | null
           full_name: string
           id?: string
           interest_type?: string | null
           last_contact_at?: string | null
           lost_reason?: string | null
           next_followup_at?: string | null
+          pax_count?: number | null
           phone?: string | null
           probability_pct?: number | null
           source_id?: string | null
           status?: string | null
+          temperature?: string | null
         }
         Update: {
           assigned_to?: string | null
+          budget?: number | null
+          call_notes?: string | null
           channel?: string | null
           company_name?: string | null
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
+          destination?: string | null
           email?: string | null
           expected_value?: number | null
+          follow_up_date?: string | null
           full_name?: string
           id?: string
           interest_type?: string | null
           last_contact_at?: string | null
           lost_reason?: string | null
           next_followup_at?: string | null
+          pax_count?: number | null
           phone?: string | null
           probability_pct?: number | null
           source_id?: string | null
           status?: string | null
+          temperature?: string | null
         }
         Relationships: [
           {
