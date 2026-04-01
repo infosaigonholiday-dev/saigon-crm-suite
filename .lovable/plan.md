@@ -1,31 +1,31 @@
 
 
-## Auto schedule cron job cho daily-reminders
+## Thêm chuông thông báo vào header
 
-### Vấn đề trước đó
-Không dùng migration vì SQL chứa anon key — nếu commit vào git sẽ lộ secret. Tuy nhiên anon key của project này đã public trong client code rồi (nằm trong `.env` với prefix `VITE_`), nên thực tế không có rủi ro thêm.
+### Tổng quan
+Tạo component `NotificationBell` với popover hiển thị danh sách thông báo chưa đọc, tích hợp vào header AppLayout.
 
-### Giải pháp
-Dùng migration tool để tạo SQL tự động schedule cron job:
+### Kế hoạch
 
-```sql
-SELECT cron.schedule(
-  'daily-reminders',
-  '0 0 * * *',
-  $$
-  SELECT net.http_post(
-    url:='https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/daily-reminders',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZWF6a2hucWtrcHF0Y3h1bnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjIwOTEsImV4cCI6MjA4OTk5ODA5MX0.uHPUBzQMIV69aL4KOWeaq6xwG9I5MuPv_DkQGzFsX8M"}'::jsonb,
-    body:=concat('{"time": "', now(), '"}')::jsonb
-  ) as request_id;
-  $$
-);
-```
+**1. Tạo `src/components/NotificationBell.tsx`**
 
-### Thực hiện
-- 1 migration duy nhất chứa lệnh `cron.schedule` ở trên
-- Extensions `pg_cron` và `pg_net` đã được enable ở migration trước
+- useQuery poll notifications mỗi 60s: query `notifications` where `user_id = auth.uid()`, `is_read = false`, order by `created_at desc`, limit 20
+- Realtime subscription qua `supabase.channel()` để refetch khi có INSERT mới
+- UI: Button chứa Bell icon (20px) + badge đỏ tròn (absolute positioned) hiển thị count
+- Click → Popover (shadcn) dropdown:
+  - Mỗi item: icon theo type (Cake/Building2/Phone/CreditCard), title bold, message muted 12px, thời gian relative (date-fns `formatDistanceToNow` với locale vi)
+  - Click item → mark as read + navigate `/khach-hang/{entity_id}`
+  - Footer: "Đánh dấu tất cả đã đọc" button
+
+**2. Cập nhật `src/components/AppLayout.tsx`**
+
+- Import NotificationBell, đặt trước avatar trong header (line 19, bên trong div `ml-auto`)
+
+### Dependencies
+- `date-fns` đã có trong project (dùng ở nhiều nơi)
+- Cần thêm locale `vi` từ `date-fns/locale/vi`
 
 ### Files thay đổi
-- 1 migration file mới (SQL only)
+- `src/components/NotificationBell.tsx` — mới
+- `src/components/AppLayout.tsx` — thêm import + render NotificationBell
 
