@@ -212,9 +212,28 @@ export default function Employees() {
           <p className="text-sm text-muted-foreground">Tổng: {totalCount} nhân viên</p>
         </div>
         {canCreate && (
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />Thêm nhân viên
-          </Button>
+          <div className="flex gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                    employees.map(e => ({
+                      'Mã NV': e.employee_code, 'Họ tên': e.full_name, 'Điện thoại': e.phone ?? '',
+                      Email: e.email ?? '', 'Vị trí': e.position ?? '', 'Phòng ban': (e.departments as any)?.name ?? '',
+                      'Trạng thái': e.status ?? ''
+                    })),
+                    'danh-sach-nhan-vien'
+                  )}>
+                    <Download className="h-4 w-4 mr-2" />Xuất CSV
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" />Thêm nhân viên
+            </Button>
+          </div>
         )}
       </div>
 

@@ -123,7 +123,26 @@ export default function Customers() {
           <h1 className="text-2xl font-bold">Khách hàng</h1>
           <p className="text-sm text-muted-foreground">{totalCount} khách hàng</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+        <div className="flex gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                  customers.map(c => ({
+                    'Tên KH': c.full_name, 'Điện thoại': c.phone ?? '', Email: c.email ?? '',
+                    'Phân khúc': c.segment ?? '', 'Hạng': c.tier ?? '', 'Booking': c.total_bookings ?? 0,
+                    'Doanh thu': c.total_revenue ?? 0, 'Đã TT': c.total_paid ?? 0
+                  })),
+                  'danh-sach-khach-hang'
+                )}>
+                  <Download className="h-4 w-4 mr-2" />Xuất CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+        </div>
       </div>
       <CustomerFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
