@@ -182,15 +182,15 @@ export default function BookingDetail() {
         </TabsContent>
 
         <TabsContent value="itinerary" className="mt-4">
-          <BookingItineraryTab bookingId={booking.id} />
+          <BookingItineraryTab bookingId={booking.id} readOnly={isLocked} />
         </TabsContent>
 
         <TabsContent value="services" className="mt-4">
-          <BookingServicesTab bookingId={booking.id} />
+          <BookingServicesTab bookingId={booking.id} readOnly={isLocked} />
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4">
-          <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes} canDelete={canDeleteNotes} />
+          <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes && !isLocked} canDelete={canDeleteNotes && !isLocked} />
         </TabsContent>
       </Tabs>
     </div>
