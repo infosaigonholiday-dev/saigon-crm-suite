@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, differenceInDays, setYear } from "date-fns";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -14,9 +14,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Loader2, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,8 +34,7 @@ const initial = {
   gender: "",
   id_number: "",
   address: "",
-  source: "",
-  zalo_id: "",
+  source_id: "",
   assigned_sale_id: "",
   segment: "NEW",
   notes: "",
@@ -45,12 +44,29 @@ const initial = {
   company_address: "",
   contact_person: "",
   contact_position: "",
+  contact_birthday: null as Date | null,
   company_email: "",
   founded_date: null as Date | null,
-  employee_count: "",
+  company_size: "",
 };
 
-const sources = ["Facebook", "Zalo", "Referral", "Walk-in", "Website"];
+const segmentLabels: Record<string, { label: string; className: string }> = {
+  NEW: { label: "Mới", className: "bg-muted text-muted-foreground" },
+  SILVER: { label: "Silver", className: "bg-secondary text-secondary-foreground" },
+  GOLD: { label: "Gold", className: "bg-primary/20 text-primary" },
+  DIAMOND: { label: "Diamond", className: "bg-accent text-accent-foreground" },
+};
+
+function isBirthdayUpcoming(dob: Date): boolean {
+  const today = new Date();
+  const thisYearBday = setYear(dob, today.getFullYear());
+  const diff = differenceInDays(thisYearBday, today);
+  if (diff >= 0 && diff <= 7) return true;
+  // Also check next year wrap
+  const nextYearBday = setYear(dob, today.getFullYear() + 1);
+  const diff2 = differenceInDays(nextYearBday, today);
+  return diff2 >= 0 && diff2 <= 7;
+}
 
 export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
@@ -72,6 +88,18 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     },
   });
 
+  const { data: leadSources = [] } = useQuery({
+    queryKey: ["lead-sources"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_sources")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const set = (k: string, v: any) => {
     setForm((p) => ({ ...p, [k]: v }));
     setErrors((p) => ({ ...p, [k]: "" }));
@@ -81,8 +109,8 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     const e: Record<string, string> = {};
     if (!form.full_name.trim()) e.full_name = "Bắt buộc";
     if (!form.phone.trim()) e.phone = "Bắt buộc";
-    if (form.phone && !/^[0-9+\-\s()]{8,15}$/.test(form.phone))
-      e.phone = "Số điện thoại không hợp lệ";
+    if (form.phone && !/^\d{10}$/.test(form.phone))
+      e.phone = "Số điện thoại phải đúng 10 chữ số";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Email không hợp lệ";
     if (form.date_of_birth && form.date_of_birth >= new Date())
@@ -106,8 +134,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         gender: form.gender || null,
         id_number: form.id_number || null,
         address: form.address || null,
-        source: form.source || null,
-        zalo_id: form.zalo_id || null,
+        source_id: form.source_id || null,
         assigned_sale_id: form.assigned_sale_id || null,
         segment: form.segment,
         notes: form.notes || null,
@@ -116,9 +143,10 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         company_address: form.company_address || null,
         contact_person: form.contact_person || null,
         contact_position: form.contact_position || null,
+        contact_birthday: form.contact_birthday ? format(form.contact_birthday, "yyyy-MM-dd") : null,
         company_email: form.company_email || null,
         founded_date: form.founded_date ? format(form.founded_date, "yyyy-MM-dd") : null,
-        employee_count: form.employee_count ? parseInt(form.employee_count) : null,
+        company_size: form.company_size ? parseInt(form.company_size) : null,
       } as any);
       if (error) throw error;
     },
@@ -138,6 +166,8 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     mutation.mutate();
   };
 
+  const seg = segmentLabels[form.segment] || segmentLabels.NEW;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -145,13 +175,13 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Thêm khách hàng</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="basic" className="w-full">
+        <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">Thông tin cơ bản</TabsTrigger>
-            <TabsTrigger value="company">Thông tin công ty</TabsTrigger>
+            <TabsTrigger value="personal">Thông tin cá nhân</TabsTrigger>
+            <TabsTrigger value="company">Thông tin doanh nghiệp</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basic" className="space-y-4 mt-4">
+          <TabsContent value="personal" className="space-y-4 mt-4">
             {/* Row 1: Name + Type */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -175,7 +205,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Điện thoại <span className="text-destructive">*</span></Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="10 chữ số" />
                 {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
               </div>
               <div className="space-y-1.5">
@@ -188,7 +218,12 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
             {/* Row 3: DOB + Gender */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Ngày sinh</Label>
+                <Label className="flex items-center gap-2">
+                  Ngày sinh
+                  {form.date_of_birth && isBirthdayUpcoming(form.date_of_birth) && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">🎂 Sinh nhật sắp tới</Badge>
+                  )}
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.date_of_birth && "text-muted-foreground")}>
@@ -211,14 +246,14 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
               </div>
               <div className="space-y-1.5">
                 <Label>Giới tính</Label>
-                <RadioGroup value={form.gender} onValueChange={(v) => set("gender", v)} className="flex gap-4 pt-2">
-                  {["Nam", "Nữ", "Khác"].map((g) => (
-                    <div key={g} className="flex items-center space-x-1.5">
-                      <RadioGroupItem value={g} id={`gender-${g}`} />
-                      <Label htmlFor={`gender-${g}`} className="font-normal">{g}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn giới tính" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Nam">Nam</SelectItem>
+                    <SelectItem value="Nữ">Nữ</SelectItem>
+                    <SelectItem value="Khác">Khác</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -234,27 +269,19 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
 
-            {/* Row 5: Source + Zalo */}
+            {/* Row 5: Source + Sale */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Nguồn</Label>
-                <Select value={form.source} onValueChange={(v) => set("source", v)}>
+                <Label>Nguồn đến</Label>
+                <Select value={form.source_id} onValueChange={(v) => set("source_id", v)}>
                   <SelectTrigger><SelectValue placeholder="Chọn nguồn" /></SelectTrigger>
                   <SelectContent>
-                    {sources.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {leadSources.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Zalo ID</Label>
-                <Input value={form.zalo_id} onChange={(e) => set("zalo_id", e.target.value)} />
-              </div>
-            </div>
-
-            {/* Row 6: Sale + Segment */}
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Sale phụ trách</Label>
                 <Select value={form.assigned_sale_id} onValueChange={(v) => set("assigned_sale_id", v)}>
@@ -266,17 +293,13 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Phân khúc</Label>
-                <Select value={form.segment} onValueChange={(v) => set("segment", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NEW">Mới</SelectItem>
-                    <SelectItem value="SILVER">Silver</SelectItem>
-                    <SelectItem value="GOLD">Gold</SelectItem>
-                    <SelectItem value="DIAMOND">Diamond</SelectItem>
-                  </SelectContent>
-                </Select>
+            </div>
+
+            {/* Row 6: Segment (read-only) */}
+            <div className="space-y-1.5">
+              <Label>Phân khúc</Label>
+              <div className="pt-1">
+                <Badge className={seg.className}>{seg.label}</Badge>
               </div>
             </div>
 
@@ -307,7 +330,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Người liên hệ</Label>
+                <Label>Người liên hệ chính</Label>
                 <Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
               </div>
               <div className="space-y-1.5">
@@ -318,10 +341,34 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
+                <Label>Ngày sinh người liên hệ</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.contact_birthday && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {form.contact_birthday ? format(form.contact_birthday, "dd/MM/yyyy") : "Chọn ngày"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={form.contact_birthday ?? undefined}
+                      onSelect={(d) => set("contact_birthday", d ?? null)}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Email công ty</Label>
                 <Input type="email" value={form.company_email} onChange={(e) => set("company_email", e.target.value)} />
                 {errors.company_email && <p className="text-xs text-destructive">{errors.company_email}</p>}
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Ngày thành lập</Label>
                 <Popover>
@@ -342,11 +389,10 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
                   </PopoverContent>
                 </Popover>
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Quy mô nhân sự</Label>
-              <Input type="number" value={form.employee_count} onChange={(e) => set("employee_count", e.target.value)} placeholder="Số nhân viên" />
+              <div className="space-y-1.5">
+                <Label>Quy mô nhân sự</Label>
+                <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} placeholder="Số nhân viên" />
+              </div>
             </div>
           </TabsContent>
         </Tabs>
