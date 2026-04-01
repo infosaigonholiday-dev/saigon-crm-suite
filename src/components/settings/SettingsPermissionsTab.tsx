@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,26 +14,48 @@ import { PermissionEditDialog } from "./PermissionEditDialog";
 import { getDefaultPermissions, ALL_PERMISSION_KEYS, type PermissionKey } from "@/hooks/usePermissions";
 
 const DELETE_KEYS = ALL_PERMISSION_KEYS.filter(k => k.endsWith(".delete"));
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR"];
 
 type FilterMode = "ALL" | "HAS_DELETE" | "NO_DELETE" | "CUSTOM_ONLY";
 
 export function SettingsPermissionsTab() {
+  const { user, userRole } = useAuth();
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("ALL");
   const [selectedEmployee, setSelectedEmployee] = useState<{
     id: string; full_name: string; role: string;
   } | null>(null);
 
-  const { data: employees } = useQuery({
-    queryKey: ["employees-permissions-list"],
+  // Get current user's department_id for MANAGER scoping
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile-dept"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await supabase.from("profiles").select("department_id").eq("id", user!.id).single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const isFullAccess = ADMIN_ROLES.includes(userRole || "");
+
+  const { data: employees } = useQuery({
+    queryKey: ["employees-permissions-list", myProfile?.department_id, isFullAccess],
+    queryFn: async () => {
+      let query = supabase
         .from("employees")
-        .select("id, full_name, employee_code, position, profiles(role)")
+        .select("id, full_name, employee_code, position, department_id, profiles(role)")
         .is("deleted_at", null)
         .order("full_name");
+
+      // MANAGER: only show employees in same department
+      if (!isFullAccess && myProfile?.department_id) {
+        query = query.eq("department_id", myProfile.department_id);
+      }
+
+      const { data } = await query;
       return data || [];
     },
+    enabled: isFullAccess || !!myProfile?.department_id,
   });
 
   const { data: allOverrides } = useQuery({

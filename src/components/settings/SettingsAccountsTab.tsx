@@ -287,7 +287,7 @@ export function SettingsAccountsTab() {
                 <TableCell className="font-mono text-sm">{p.email}</TableCell>
                 <TableCell>{p.full_name}</TableCell>
                 <TableCell>{p.departments?.name || "—"}</TableCell>
-                <TableCell><Badge variant="outline">{p.role}</Badge></TableCell>
+                <TableCell><Badge variant="outline">{ROLE_LABEL_MAP[p.role] || p.role}</Badge></TableCell>
                 <TableCell>
                   <Badge variant={p.is_active ? "default" : "destructive"}>
                     {p.is_active ? "Hoạt động" : "Vô hiệu"}
