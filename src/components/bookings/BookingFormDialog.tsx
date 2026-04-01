@@ -76,7 +76,7 @@ export default function BookingFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bookings"] });
-      toast({ title: "Thành công", description: "Đã tạo booking mới" });
+      toast.success("Thành công", { description: "Đã tạo booking mới" });
       setForm(initial);
       onOpenChange(false);
     },
