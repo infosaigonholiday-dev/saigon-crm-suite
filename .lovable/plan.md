@@ -1,33 +1,24 @@
 
 
-# Fix lỗi `.catch()` trong Edge Function
+# Thêm chức năng Sửa tài khoản (phòng ban + role)
 
 ## Vấn đề
-Dòng 128-129 dùng `.catch(() => {})` trên Supabase query builder. Trong Deno, kết quả trả về không phải Promise thuần nên không có `.catch()`. Lỗi này sẽ **lặp lại mỗi lần** cleanup được gọi (khi tạo tài khoản thất bại ở bước sau).
+Tab Tài khoản chỉ có tạo mới, không có nút sửa. Không thể cập nhật phòng ban hoặc role cho tài khoản đã tồn tại.
 
-## Cách sửa
-Thay `.catch(() => {})` bằng `try/catch` block:
+## Giải pháp
+Thêm nút "Sửa" vào cột Thao tác + dialog chỉnh sửa phòng ban và role.
 
-**File**: `supabase/functions/manage-employee-accounts/index.ts` (dòng 127-130)
+## Thay đổi
 
-Từ:
-```ts
-if (createdUserId) {
-  await adminClient.from("profiles").delete().eq("id", createdUserId).catch(() => {});
-  await adminClient.auth.admin.deleteUser(createdUserId).catch(() => {});
-}
-```
+### 1. `src/components/settings/SettingsAccountsTab.tsx`
+- Thêm state `editProfile` và `editDialogOpen`
+- Thêm nút bút chì (Edit) vào cột Thao tác cho mỗi dòng (kể cả chính mình)
+- Thêm Dialog sửa với 2 trường: **Phòng ban** (Select) và **Role** (Select)
+- Khi lưu: gọi `supabase.from("profiles").update({ department_id, role })` trực tiếp (admin có quyền RLS)
+- Reload danh sách sau khi lưu
 
-Thành:
-```ts
-if (createdUserId) {
-  try { await adminClient.from("profiles").delete().eq("id", createdUserId); } catch (_) {}
-  try { await adminClient.auth.admin.deleteUser(createdUserId); } catch (_) {}
-}
-```
+### 2. Edge Function — không cần thay đổi
+Việc cập nhật `department_id` và `role` trên bảng `profiles` có thể thực hiện trực tiếp qua client vì admin đã có quyền RLS.
 
-## Trả lời câu hỏi
-Sau khi fix, lỗi này **không bao giờ lặp lại** nữa. Đây là lỗi cú pháp 1 lần, sửa xong là xong vĩnh viễn.
-
-## Tổng: sửa 2 dòng trong 1 file, deploy lại edge function
+## Tổng: sửa 1 file UI duy nhất
 
