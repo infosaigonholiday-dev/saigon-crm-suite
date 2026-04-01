@@ -43,7 +43,22 @@ export function ProfitReportTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Báo cáo lợi nhuận — {currentYear}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Báo cáo lợi nhuận — {currentYear}</h2>
+        <TooltipProvider>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                data.map(r => ({ Tháng: r.month, 'LN gộp': r.gross_profit ?? 0, 'LN ròng': r.net_profit ?? 0, 'Biên LN %': r.net_margin_pct ?? 0 })),
+                'bao-cao-loi-nhuan'
+              )}>
+                <Download className="h-4 w-4 mr-2" />Xuất CSV
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+          </UiTooltip>
+        </TooltipProvider>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>

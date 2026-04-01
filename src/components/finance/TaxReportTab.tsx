@@ -38,7 +38,22 @@ export function TaxReportTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Thuế VAT & TNDN</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Thuế VAT & TNDN</h2>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                data.map(r => ({ Kỳ: `${r.period_start} → ${r.period_end}`, 'VAT đầu ra': r.vat_output, 'VAT đầu vào': r.vat_input, 'VAT phải nộp': r.vat_payable, 'Thuế TNDN': r.cit_amount, 'Trạng thái': r.status })),
+                'bao-cao-thue'
+              )}>
+                <Download className="h-4 w-4 mr-2" />Xuất CSV
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       <Card>
         <CardContent className="pt-6">
