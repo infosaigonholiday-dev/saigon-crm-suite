@@ -29,6 +29,12 @@ const segmentColors: Record<string, string> = {
   DIAMOND: "bg-accent/15 text-accent border border-accent/30",
 };
 
+const tierBadgeConfig: Record<string, { label: string; className: string } | null> = {
+  Silver: { label: "Silver", className: "bg-muted text-muted-foreground" },
+  Gold: { label: "Gold", className: "bg-amber-100 text-amber-700 border border-amber-300" },
+  Diamond: { label: "Diamond", className: "bg-purple-100 text-purple-700 border border-purple-300" },
+};
+
 function loyaltyBadge(totalBookings: number) {
   if (totalBookings > 5) return { label: "VIP", className: "bg-destructive/15 text-destructive border border-destructive/30" };
   if (totalBookings >= 3) return { label: "Trung thành", className: "bg-primary/15 text-primary border border-primary/30" };
