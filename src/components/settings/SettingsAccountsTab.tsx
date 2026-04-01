@@ -250,6 +250,37 @@ export function SettingsAccountsTab() {
     }
   }
 
+  function openEditDialog(profile: Profile) {
+    setEditProfile(profile);
+    setEditData({
+      department_id: profile.department_id || "",
+      role: profile.role,
+    });
+    setEditDialogOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editProfile) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          department_id: editData.department_id || null,
+          role: editData.role,
+        })
+        .eq("id", editProfile.id);
+      if (error) throw error;
+      toast.success("Cập nhật tài khoản thành công");
+      setEditDialogOpen(false);
+      await loadProfiles();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi cập nhật tài khoản");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const confirmResetProfile = profiles.find((p) => p.id === confirmResetId) ?? null;
 
   return (
