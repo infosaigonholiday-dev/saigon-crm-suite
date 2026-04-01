@@ -3,12 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake } from "lucide-react";
+import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake, Circle, MapPin, Phone as PhoneIcon } from "lucide-react";
 import { usePersonalDashboardData } from "@/hooks/useDashboardData";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
