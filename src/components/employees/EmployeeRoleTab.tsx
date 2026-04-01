@@ -12,7 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Shield, Mail, UserCheck, KeyRound } from "lucide-react";
+import { Loader2, Shield, Mail, UserCheck, KeyRound, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Props {
   employeeId: string;
