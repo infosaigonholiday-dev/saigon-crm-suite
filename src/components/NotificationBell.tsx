@@ -95,7 +95,7 @@ export function NotificationBell() {
               return (
                 <button
                   key={n.id}
-                  onClick={() => markAsRead(n.id, n.entity_id)}
+                  onClick={() => markAsRead(n.id, n.entity_id, n.entity_type)}
                   className="flex w-full gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
                 >
                   <Icon className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
