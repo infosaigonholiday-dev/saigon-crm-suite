@@ -257,6 +257,9 @@ export default function ManagerKPIDashboard() {
         </Card>
       </div>
 
+      {/* KPI Section */}
+      <ManagerKpiSection departmentId={departmentId} profileMap={profileMap} />
+
       {/* Sales Ranking Table */}
       <Card>
         <CardHeader>
