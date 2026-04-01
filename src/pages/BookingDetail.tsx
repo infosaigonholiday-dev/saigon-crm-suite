@@ -104,6 +104,16 @@ export default function BookingDetail() {
         </div>
       </div>
 
+      {/* Locked booking banner */}
+      {isLocked && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Booking đã <strong>{status === "COMPLETED" ? "hoàn thành" : "huỷ"}</strong> — không thể chỉnh sửa.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* High priority notes banner */}
       {highNotes.length > 0 && (
         <Alert variant="destructive">
