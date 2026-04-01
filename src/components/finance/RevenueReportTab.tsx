@@ -57,7 +57,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
         <h2 className="text-lg font-semibold">Báo cáo doanh thu</h2>
         <div className="flex items-center gap-2">
           <TooltipProvider>
-            <Tooltip>
+            <UiTooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" onClick={() => exportToCSV(
                   data.map(r => ({ Tháng: r.month, Booking: r.booking_count ?? 0, 'Doanh thu': r.gross_revenue ?? 0, 'Doanh thu ròng': r.net_revenue ?? 0 })),
@@ -67,7 +67,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
-            </Tooltip>
+            </UiTooltip>
           </TooltipProvider>
         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
           <SelectTrigger className="w-28">
@@ -108,7 +108,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                <UiTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                 <Bar dataKey="revenue" name="Doanh thu" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
