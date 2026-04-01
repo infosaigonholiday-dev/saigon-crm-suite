@@ -1,28 +1,35 @@
 
 
-## Fix RLS policies cho bookings, customers, leads
+## Tạo PermissionGuard và áp dụng cho protected routes
 
-### Thay đổi duy nhất: 1 migration SQL
+### File 1: Tạo mới `src/components/PermissionGuard.tsx`
 
-Tạo migration mới chứa chính xác SQL bạn đã cung cấp:
+Component nhận `permission` (PermissionKey) + `children`. Dùng `usePermissions()` để check quyền. Loading → spinner, không quyền → toast + redirect `/`, có quyền → render children. Dùng `useEffect` + `useRef` để toast chỉ fire 1 lần.
 
-**Bookings** (5 policies):
-- `bookings_read`: Sale owner + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR/KETOAN/HR_HEAD + MANAGER cùng phòng ban
-- `bookings_write`: INSERT — Sale owner + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR
-- `bookings_update`: Sale owner + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR
-- `bookings_delete`: Chỉ ADMIN/SUPER_ADMIN/DIRECTOR
+### File 2: Sửa `src/App.tsx`
 
-**Customers** (2 policies):
-- `customers_read`: assigned_sale + created_by + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR/KETOAN/HR_HEAD + MANAGER cùng phòng ban
-- `customers_write`: assigned_sale + created_by + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR
+- Bỏ loading check trong `ProtectedRoutes` (giữ lại trong `AppRoutes`)
+- Bọc PermissionGuard cho 14 routes theo mapping user yêu cầu
+- Di chuyển `<Route path="*" element={<NotFound />} />` vào trong ProtectedRoutes
 
-**Leads** (2 policies):
-- `leads_read`: assigned_to + created_by + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR/KETOAN + MANAGER cùng phòng ban
-- `leads_write`: assigned_to + created_by + ADMIN/SUPER_ADMIN/DIEUHAN/DIRECTOR
+### Route mapping
 
-### Chi tiết kỹ thuật
+| Route | Permission |
+|-------|-----------|
+| `/khach-hang`, `/khach-hang/:id` | `customers.view` |
+| `/tiem-nang` | `leads.view` |
+| `/dat-tour`, `/dat-tour/:id` | `bookings.view` |
+| `/bao-gia`, `/goi-tour`, `/lich-trinh`, `/luu-tru` | `quotations.view` |
+| `/thanh-toan` | `payments.view` |
+| `/nhan-su`, `/nhan-su/:id` | `employees.view` |
+| `/nghi-phep` | `leave.view` |
+| `/bang-luong` | `payroll.view` |
+| `/tai-chinh` | `finance.view` |
+| `/cai-dat` | `settings.view` |
 
-- Drop tất cả policy cũ trước khi tạo mới (tránh conflict)
-- Sử dụng `get_my_department_id()` cho MANAGER team scope
-- Không thay đổi code frontend — chỉ database migration
+### Không thay đổi
+
+- Dashboard (`/`) không cần guard
+- Sidebar filtering đã có sẵn — PermissionGuard là lớp bảo vệ thứ 2 chống truy cập trực tiếp URL
+- Không thay đổi hooks, contexts, hay components khác
 
