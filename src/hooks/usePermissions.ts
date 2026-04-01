@@ -33,6 +33,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   finance: { label: "Tài chính", keys: ["finance.view", "finance.create", "finance.edit", "finance.submit"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
   sop: { label: "Quy trình", keys: ["sop.view", "sop.create"] },
+  vendors: { label: "Nhà cung cấp", keys: ["vendors.view"] },
 };
 
 // Default permissions per role (client-side mirror of DB function)
