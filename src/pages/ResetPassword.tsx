@@ -20,6 +20,22 @@ export default function ResetPassword() {
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
+    const init = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          setReady(true);
+          return;
+        }
+      }
+      if (window.location.hash.includes('type=recovery')) {
+        setReady(true);
+      }
+    };
+    init();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);

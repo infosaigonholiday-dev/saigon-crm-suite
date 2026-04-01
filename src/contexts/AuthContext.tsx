@@ -49,8 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (event === "SIGNED_OUT") {
-          toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
-          window.location.href = "/login";
+          if (window.location.pathname !== "/reset-password") {
+            toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
+            window.location.href = "/login";
+          }
         }
 
         if (event === "TOKEN_REFRESHED" && !session) {
