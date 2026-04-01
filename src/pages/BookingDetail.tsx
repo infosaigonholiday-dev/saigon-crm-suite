@@ -31,7 +31,7 @@ export default function BookingDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { userRole } = useAuth();
-  const { can } = usePermissions();
+  const { hasPermission } = usePermissions();
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["booking", id],
