@@ -55,6 +55,8 @@ const PAGE_SIZE = 20;
 export default function Employees() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canDelete = hasPermission("employees.delete");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
