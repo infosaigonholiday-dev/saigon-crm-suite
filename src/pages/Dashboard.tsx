@@ -132,6 +132,7 @@ export default function Dashboard() {
   const type = getDashboardType(userRole);
 
   if (type === "hr") return <HrDashboard />;
+  if (type === "manager") return <ManagerKPIDashboard />;
   if (type === "personal") return <PersonalDashboard />;
   return <BusinessDashboard />;
 }

@@ -17,10 +17,11 @@ export function getDataScope(role: string | null): DataScope {
   return "self";
 }
 
-export function getDashboardType(role: string | null): "business" | "personal" | "hr" {
+export function getDashboardType(role: string | null): "business" | "personal" | "hr" | "manager" {
   if (!role) return "personal";
   if (HR_ROLES.includes(role)) return "hr";
-  if (ADMIN_ROLES.includes(role) || MANAGER_ROLES.includes(role) || FINANCE_ROLES.includes(role)) return "business";
+  if (MANAGER_ROLES.includes(role)) return "manager";
+  if (ADMIN_ROLES.includes(role) || FINANCE_ROLES.includes(role)) return "business";
   return "personal";
 }
 
