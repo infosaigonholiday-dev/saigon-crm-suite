@@ -306,6 +306,8 @@ export default function Employees() {
                   {employees.map((e) => {
                     const st = statusLabels[e.status ?? "ACTIVE"] ?? statusLabels.ACTIVE;
                     const deptName = (e.departments as any)?.name ?? "—";
+                    const profileRole = (e as any).profiles?.role as string | undefined;
+                    const roleLabel = profileRole ? (ROLE_LABEL_MAP[profileRole] ?? profileRole) : "—";
                     const lvlLabel = levelLabels[e.level ?? ""] ?? e.level ?? "";
                     const lvlClass = levelColors[e.level ?? ""] ?? "bg-muted text-muted-foreground";
                     return (
