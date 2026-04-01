@@ -47,7 +47,7 @@ export default function ResetPassword() {
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: "Mật khẩu xác nhận không khớp", variant: "destructive" });
+      toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
     setLoading(true);
