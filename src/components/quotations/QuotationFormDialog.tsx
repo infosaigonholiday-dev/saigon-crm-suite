@@ -90,7 +90,7 @@ export default function QuotationFormDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Tạo báo giá thành công" });
+      toast.success("Tạo báo giá thành công");
       qc.invalidateQueries({ queryKey: ["quotations"] });
       setForm(initial);
       onOpenChange(false);
