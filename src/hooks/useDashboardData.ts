@@ -25,6 +25,16 @@ export function getDashboardType(role: string | null): "business" | "personal" |
   return "personal";
 }
 
+function groupByMonth(rows: { total_value: number | null; created_at: string | null }[]) {
+  const months = Array.from({ length: 12 }, (_, i) => ({ month: `T${i + 1}`, value: 0 }));
+  for (const r of rows) {
+    if (!r.created_at) continue;
+    const m = new Date(r.created_at).getMonth();
+    months[m].value += Math.round((Number(r.total_value) || 0) / 1_000_000);
+  }
+  return months;
+}
+
 export function useBusinessDashboardData() {
   const { user, userRole } = useAuth();
   const scope = getDataScope(userRole);
@@ -109,30 +119,23 @@ export function useBusinessDashboardData() {
     queryFn: async () => {
       const now = new Date();
       const year = now.getFullYear();
-      const months: { month: string; value: number }[] = [];
+      const startOfYear = new Date(year, 0, 1).toISOString();
+      const endOfYear = new Date(year + 1, 0, 1).toISOString();
 
-      for (let m = 0; m < 12; m++) {
-        const start = new Date(year, m, 1).toISOString();
-        const end = new Date(year, m + 1, 1).toISOString();
+      let query = supabase
+        .from("bookings")
+        .select("total_value, created_at")
+        .gte("created_at", startOfYear)
+        .lt("created_at", endOfYear);
 
-        let query = supabase
-          .from("bookings")
-          .select("total_value")
-          .gte("created_at", start)
-          .lt("created_at", end);
-
-        if (scope === "team" && departmentId) {
-          query = query.eq("department_id", departmentId);
-        } else if (scope === "self") {
-          query = query.eq("sale_id", user!.id);
-        }
-
-        const { data } = await query;
-        const total = (data || []).reduce((s, r) => s + (Number(r.total_value) || 0), 0);
-        months.push({ month: `T${m + 1}`, value: Math.round(total / 1_000_000) });
+      if (scope === "team" && departmentId) {
+        query = query.eq("department_id", departmentId);
+      } else if (scope === "self") {
+        query = query.eq("sale_id", user!.id);
       }
 
-      return months;
+      const { data } = await query;
+      return groupByMonth(data || []);
     },
     enabled: !!user,
   });
@@ -253,24 +256,17 @@ export function usePersonalDashboardData() {
     queryFn: async () => {
       const now = new Date();
       const year = now.getFullYear();
-      const months: { month: string; value: number }[] = [];
+      const startOfYear = new Date(year, 0, 1).toISOString();
+      const endOfYear = new Date(year + 1, 0, 1).toISOString();
 
-      for (let m = 0; m < 12; m++) {
-        const start = new Date(year, m, 1).toISOString();
-        const end = new Date(year, m + 1, 1).toISOString();
+      const { data } = await supabase
+        .from("bookings")
+        .select("total_value, created_at")
+        .eq("sale_id", user!.id)
+        .gte("created_at", startOfYear)
+        .lt("created_at", endOfYear);
 
-        const { data } = await supabase
-          .from("bookings")
-          .select("total_value")
-          .eq("sale_id", user!.id)
-          .gte("created_at", start)
-          .lt("created_at", end);
-
-        const total = (data || []).reduce((s, r) => s + (Number(r.total_value) || 0), 0);
-        months.push({ month: `T${m + 1}`, value: Math.round(total / 1_000_000) });
-      }
-
-      return months;
+      return groupByMonth(data || []);
     },
     enabled: !!user,
   });

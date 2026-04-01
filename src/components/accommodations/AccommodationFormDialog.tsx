@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -86,13 +86,13 @@ export default function AccommodationFormDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Thêm điểm lưu trú thành công" });
+      toast.success("Thêm điểm lưu trú thành công");
       qc.invalidateQueries({ queryKey: ["accommodations"] });
       setForm(initial);
       setAmenities([]);
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   return (

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +47,7 @@ interface Props {
 }
 
 export default function BookingItineraryTab({ bookingId }: Props) {
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
   const canDelete = hasPermission("bookings.delete");
@@ -86,9 +86,9 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       qc.invalidateQueries({ queryKey });
       setAddingDay(false);
       setNewDay({ destination: "", actual_date: null });
-      toast({ title: "Đã thêm ngày mới" });
+      toast.success("Đã thêm ngày mới");
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const deleteDayMutation = useMutation({
@@ -98,9 +98,9 @@ export default function BookingItineraryTab({ bookingId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: "Đã xóa ngày" });
+      toast.success("Đã xóa ngày");
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const addActivityMutation = useMutation({
@@ -117,9 +117,9 @@ export default function BookingItineraryTab({ bookingId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: "Đã thêm hoạt động" });
+      toast.success("Đã thêm hoạt động");
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   if (isLoading) {
@@ -132,7 +132,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Lịch trình tour</h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => toast({ title: "Tính năng xuất PDF sẽ sớm ra mắt!" })}>
+          <Button variant="outline" size="sm" onClick={() => toast("Tính năng xuất PDF sẽ sớm ra mắt!")}>
             <FileText className="h-4 w-4 mr-1" /> Xuất PDF
           </Button>
           <Button size="sm" onClick={() => setAddingDay(true)}>

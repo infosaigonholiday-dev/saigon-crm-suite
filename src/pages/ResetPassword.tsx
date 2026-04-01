@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -14,7 +14,7 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
-  const { toast } = useToast();
+  
   const navigate = useNavigate();
 
   const [expired, setExpired] = useState(false);
@@ -43,17 +43,17 @@ export default function ResetPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast({ title: "Mật khẩu phải có ít nhất 6 ký tự", variant: "destructive" });
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: "Mật khẩu xác nhận không khớp", variant: "destructive" });
+      toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast({ title: "Lỗi đặt lại mật khẩu", description: error.message, variant: "destructive" });
+      toast.error("Lỗi đặt lại mật khẩu", { description: error.message });
     } else {
       setSuccess(true);
     }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -42,7 +42,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const set = (k: string, v: string) => {
@@ -85,13 +85,13 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
-      toast({ title: "Thành công", description: "Đã thêm lead mới" });
+      toast.success("Thành công", { description: "Đã thêm lead mới" });
       setForm(initial);
       setFollowUpDate(undefined);
       onOpenChange(false);
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -90,12 +90,12 @@ export default function QuotationFormDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Tạo báo giá thành công" });
+      toast.success("Tạo báo giá thành công");
       qc.invalidateQueries({ queryKey: ["quotations"] });
       setForm(initial);
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   const submit = () => {

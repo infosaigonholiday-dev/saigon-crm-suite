@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format, differenceInDays, setYear } from "date-fns";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -71,7 +71,7 @@ function isBirthdayUpcoming(dob: Date): boolean {
 export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const { data: salesProfiles = [] } = useQuery({
@@ -152,12 +152,12 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({ title: "Thành công", description: "Đã thêm khách hàng mới" });
+      toast.success("Thành công", { description: "Đã thêm khách hàng mới" });
       setForm(initial);
       onOpenChange(false);
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

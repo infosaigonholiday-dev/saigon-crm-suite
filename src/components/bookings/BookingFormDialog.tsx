@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -31,7 +31,7 @@ const initial = {
 export default function BookingFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
   const qc = useQueryClient();
 
   const { data: customers = [] } = useQuery({
@@ -76,12 +76,12 @@ export default function BookingFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bookings"] });
-      toast({ title: "Thành công", description: "Đã tạo booking mới" });
+      toast.success("Thành công", { description: "Đã tạo booking mới" });
       setForm(initial);
       onOpenChange(false);
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

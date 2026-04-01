@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -85,13 +85,13 @@ export default function ItineraryFormDialog({ open, onOpenChange, defaultTourPac
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Thêm lịch trình thành công" });
+      toast.success("Thêm lịch trình thành công");
       qc.invalidateQueries({ queryKey: ["tour-itineraries"] });
       setForm({ ...initial, tour_package_id: defaultTourPackageId ?? "" });
       setMeals([]);
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
   return (

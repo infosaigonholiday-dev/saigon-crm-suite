@@ -5,7 +5,7 @@ import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Plus, GripVertical, Phone, Loader2, Thermometer, MapPin, Users, AlertTriangle, UserPlus,
 } from "lucide-react";
@@ -37,7 +37,7 @@ function isFollowUpOverdue(date: string | null): boolean {
 
 export default function Leads() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -90,10 +90,10 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast({ title: "Thành công", description: "Đã chuyển đổi thành khách hàng thành công" });
+      toast.success("Thành công", { description: "Đã chuyển đổi thành khách hàng thành công" });
     },
     onError: (err: any) => {
-      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+      toast.error("Lỗi", { description: err.message });
     },
   });
 

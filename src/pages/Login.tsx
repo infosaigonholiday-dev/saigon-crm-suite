@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, CheckCircle } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -13,7 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  
 
   // Forgot password state
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function Login() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast({ title: "Đăng nhập thất bại", description: "Sai email hoặc mật khẩu. Nếu là tài khoản mới, hãy dùng Quên mật khẩu để đặt mật khẩu.", variant: "destructive" });
+      toast.error("Đăng nhập thất bại", { description: "Sai email hoặc mật khẩu. Nếu là tài khoản mới, hãy dùng Quên mật khẩu để đặt mật khẩu." });
     }
     setLoading(false);
   };
@@ -48,7 +48,7 @@ export default function Login() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) {
-      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+      toast.error("Lỗi", { description: error.message });
     } else {
       setForgotSent(true);
     }
