@@ -18,6 +18,7 @@ import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
 import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab";
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
+import { EmployeeKpiTab } from "@/components/employees/EmployeeKpiTab";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 
