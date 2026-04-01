@@ -61,8 +61,26 @@ export function KpiTeamTable({ kpis, employees, canEdit, onRefetch }: KpiTeamTab
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">KPI nhân viên</CardTitle>
+        {kpis.length > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const rows = kpis.map((k: any) => {
+                    const emp = empMap.get(k.employee_id);
+                    return { 'Nhân viên': emp?.full_name || '', 'Chức vụ': emp?.position || '', 'KPI': k.kpi_name, 'Target': k.target_value, 'Thực tế': k.actual_value, '% Đạt': k.achievement_pct };
+                  });
+                  exportToCSV(rows, 'kpi-nhan-vien');
+                }}>
+                  <Download className="h-4 w-4 mr-2" />Xuất CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardHeader>
       <CardContent>
         {kpis.length === 0 ? (
