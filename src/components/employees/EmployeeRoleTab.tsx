@@ -63,7 +63,7 @@ function detectRoleMismatch(role: string, deptName?: string | null): string | nu
   
   const hrRoles = ["HCNS", "HR_MANAGER", "HR_HEAD", "INTERN_HCNS"];
   const finRoles = ["KETOAN", "INTERN_KETOAN"];
-  const saleRoles = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND"];
+  const saleRoles = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND", "INTERN_SALE_MICE", "INTERN_SALE_INBOUND"];
   
   const roleLabel = roleOptions.find(r => r.value === role)?.label ?? role;
   

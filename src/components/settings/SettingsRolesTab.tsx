@@ -25,6 +25,8 @@ const rolesReference = [
   { role: "INTERN_DIEUHAN", label: "TTS Điều hành", desc: "Xem booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
   { role: "INTERN_SALE_DOMESTIC", label: "TTS KD Nội địa", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
   { role: "INTERN_SALE_OUTBOUND", label: "TTS KD Outbound", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_SALE_MICE", label: "TTS KD MICE", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_SALE_INBOUND", label: "TTS KD Inbound", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
   { role: "INTERN_MKT", label: "TTS Marketing", desc: "Xem khách hàng, lead. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
   { role: "INTERN_HCNS", label: "TTS HCNS", desc: "Xem danh sách nhân sự. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
   { role: "INTERN_KETOAN", label: "TTS Kế toán", desc: "Xem khách hàng, booking, thanh toán. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
