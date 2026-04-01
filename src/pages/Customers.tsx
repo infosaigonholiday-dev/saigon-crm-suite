@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Search, Plus, Loader2 } from "lucide-react";
 
+const PAGE_SIZE = 20;
+
 type Segment = "ALL" | "NEW" | "SILVER" | "GOLD" | "DIAMOND";
 
 const segments: { label: string; value: Segment }[] = [
@@ -50,16 +52,34 @@ function formatCurrency(n: number | null) {
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  const { data: customers = [], isLoading } = useQuery({
-    queryKey: ["customers"],
+  // Count query with filters
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ["customers-count", filter, search],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase.from("customers").select("*", { count: "exact", head: true });
+      if (filter !== "ALL") q = q.eq("segment", filter);
+      if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const { data: customers = [], isLoading } = useQuery({
+    queryKey: ["customers", filter, search, page],
+    queryFn: async () => {
+      let q = supabase
         .from("customers")
         .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
         .order("created_at", { ascending: false });
+      if (filter !== "ALL") q = q.eq("segment", filter);
+      if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
+      q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -82,23 +102,24 @@ export default function Customers() {
   });
 
   const saleMap = Object.fromEntries(saleProfiles.map((p) => [p.id, p.full_name]));
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const filtered = customers.filter((c) => {
-    const matchSegment = filter === "ALL" || c.segment === filter;
-    const q = search.toLowerCase();
-    const matchSearch = !search ||
-      c.full_name.toLowerCase().includes(q) ||
-      (c.phone?.includes(search)) ||
-      (c.email?.toLowerCase().includes(q));
-    return matchSegment && matchSearch;
-  });
+  const handleFilterChange = (v: Segment) => {
+    setFilter(v);
+    setPage(0);
+  };
+
+  const handleSearchChange = (v: string) => {
+    setSearch(v);
+    setPage(0);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Khách hàng</h1>
-          <p className="text-sm text-muted-foreground">{customers.length} khách hàng</p>
+          <p className="text-sm text-muted-foreground">{totalCount} khách hàng</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
       </div>
@@ -113,7 +134,7 @@ export default function Customers() {
                   key={s.value}
                   variant={filter === s.value ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setFilter(s.value)}
+                  onClick={() => handleFilterChange(s.value)}
                   className="text-xs"
                 >
                   {s.label}
@@ -122,7 +143,7 @@ export default function Customers() {
             </div>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Tìm kiếm..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder="Tìm kiếm..." className="pl-9" value={search} onChange={(e) => handleSearchChange(e.target.value)} />
             </div>
           </div>
         </CardHeader>
@@ -144,7 +165,7 @@ export default function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => {
+                {customers.map((c) => {
                   const badge = loyaltyBadge(c.total_bookings ?? 0);
                   return (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/khach-hang/${c.id}`)}>
@@ -173,13 +194,22 @@ export default function Customers() {
                     </TableRow>
                   );
                 })}
-                {filtered.length === 0 && (
+                {customers.length === 0 && (
                   <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           )}
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-4 border-t">
+            <span className="text-sm text-muted-foreground">Trang {page + 1} / {totalPages}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Trước</Button>
+              <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= totalCount} onClick={() => setPage(p => p + 1)}>Sau</Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

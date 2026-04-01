@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Plus, GripVertical, Phone, Loader2, Thermometer, MapPin, Users, AlertTriangle, UserPlus,
+  Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
 } from "lucide-react";
+
+const PAGE_SIZE = 20;
 
 type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "QUOTED" | "WON" | "LOST";
 
@@ -40,17 +42,30 @@ function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
 
 export default function Leads() {
   const queryClient = useQueryClient();
-  
+
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ["leads-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["leads"],
+    queryKey: ["leads", page],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
         .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, assigned_to, customer_id")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
       return data;
     },
@@ -66,7 +81,6 @@ export default function Leads() {
 
   const convertToCustomer = useMutation({
     mutationFn: async (lead: any) => {
-      // Create customer
       const { data: customer, error: custErr } = await supabase
         .from("customers")
         .insert({
@@ -82,7 +96,6 @@ export default function Leads() {
         .single();
       if (custErr) throw custErr;
 
-      // Update lead
       const { error: leadErr } = await supabase
         .from("leads")
         .update({ customer_id: customer.id, status: "WON" })
@@ -116,6 +129,8 @@ export default function Leads() {
     return v >= 1_000_000 ? `${Math.round(v / 1_000_000)}tr` : v.toLocaleString("vi-VN");
   };
 
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -125,7 +140,7 @@ export default function Leads() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Tiềm năng (Lead)</h1>
-          <p className="text-sm text-muted-foreground">{leads.length} lead</p>
+          <p className="text-sm text-muted-foreground">{totalCount} lead</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
       </div>
@@ -165,13 +180,11 @@ export default function Leads() {
                         <div className="flex items-start gap-2">
                           <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                           <div className="min-w-0 flex-1 space-y-1.5">
-                            {/* Name + Temperature */}
                             <div className="flex items-center gap-1.5">
                               {temp && <span className="text-sm" title={lead.temperature ?? ""}>{temp.icon}</span>}
                               <p className="font-medium text-sm truncate flex-1">{lead.full_name}</p>
                             </div>
 
-                            {/* Destination */}
                             {lead.destination && (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <MapPin className="h-3 w-3 shrink-0" />
@@ -179,14 +192,12 @@ export default function Leads() {
                               </div>
                             )}
 
-                            {/* Phone */}
                             {lead.phone && (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Phone className="h-3 w-3" />{lead.phone}
                               </div>
                             )}
 
-                            {/* Follow-up alert */}
                             {followUpStatus === "overdue" && (
                               <div className="flex items-center gap-1 text-xs text-destructive font-medium">
                                 <AlertTriangle className="h-3 w-3" />
@@ -200,7 +211,6 @@ export default function Leads() {
                               </div>
                             )}
 
-                            {/* Bottom row: badges + values */}
                             <div className="flex items-center flex-wrap gap-1.5 mt-1">
                               <Badge variant="outline" className="text-xs">{lead.channel ?? "—"}</Badge>
                               {lead.pax_count && (
@@ -213,7 +223,6 @@ export default function Leads() {
                               </span>
                             </div>
 
-                            {/* Convert button */}
                             {showConvert && (
                               <Button
                                 size="sm"
@@ -240,6 +249,16 @@ export default function Leads() {
           );
         })}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between py-4">
+          <span className="text-sm text-muted-foreground">Trang {page + 1} / {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Trước</Button>
+            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= totalCount} onClick={() => setPage(p => p + 1)}>Sau</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
