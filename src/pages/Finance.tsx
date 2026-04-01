@@ -12,6 +12,7 @@ import { SalaryCostTab } from "@/components/finance/SalaryCostTab";
 import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
 import { BudgetEstimatesTab } from "@/components/finance/BudgetEstimatesTab";
+import { BudgetSettlementsTab } from "@/components/finance/BudgetSettlementsTab";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
