@@ -64,6 +64,12 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   TOUR: ["customers.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
   MKT: ["customers.view", "leads.view", "leads.create", "leads.edit", "leave.view", "leave.create", "sop.view"],
   INTERN: ["leave.view", "leave.create", "sop.view"],
+  INTERN_DIEUHAN: ["bookings.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_SALE_DOMESTIC: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_SALE_OUTBOUND: ["customers.view", "leads.view", "bookings.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_MKT: ["customers.view", "leads.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_HCNS: ["employees.view", "leave.view", "leave.create", "sop.view"],
+  INTERN_KETOAN: ["customers.view", "bookings.view", "payments.view", "leave.view", "leave.create", "sop.view"],
 };
 
 export function getDefaultPermissions(role: string): PermissionKey[] {

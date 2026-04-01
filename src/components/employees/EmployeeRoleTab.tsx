@@ -24,18 +24,28 @@ interface Props {
 }
 
 const roleOptions = [
-  { value: "ADMIN", label: "Admin", desc: "Toàn quyền hệ thống" },
+  { value: "ADMIN", label: "Quản trị viên", desc: "Toàn quyền hệ thống" },
+  { value: "SUPER_ADMIN", label: "Super Admin", desc: "Quyền cao nhất" },
   { value: "DIRECTOR", label: "Giám đốc", desc: "Quản lý cấp cao" },
-  { value: "HCNS", label: "Nhân sự (HCNS)", desc: "Quản lý nhân sự, lương" },
+  { value: "HCNS", label: "Nhân viên HCNS", desc: "Quản lý nhân sự cơ bản" },
+  { value: "HR_MANAGER", label: "Leader HCNS", desc: "Toàn quyền nhân sự" },
+  { value: "HR_HEAD", label: "Trưởng phòng HCNS", desc: "Nhân sự + xem booking" },
   { value: "KETOAN", label: "Kế toán", desc: "Quản lý tài chính" },
   { value: "MANAGER", label: "Trưởng phòng", desc: "Quản lý phòng ban" },
   { value: "DIEUHAN", label: "Điều hành", desc: "Điều hành tour" },
   { value: "SALE_DOMESTIC", label: "Sale Nội địa", desc: "Kinh doanh nội địa" },
   { value: "SALE_INBOUND", label: "Sale Inbound", desc: "Kinh doanh inbound" },
   { value: "SALE_OUTBOUND", label: "Sale Outbound", desc: "Kinh doanh outbound" },
-  { value: "TOUR", label: "Tour", desc: "Hướng dẫn viên" },
-  { value: "MKT", label: "Marketing", desc: "Marketing" },
+  { value: "SALE_MICE", label: "Sale MICE", desc: "Kinh doanh MICE" },
+  { value: "TOUR", label: "Hướng dẫn viên", desc: "Xem tour được phân công" },
+  { value: "MKT", label: "Marketing", desc: "Quản lý lead, chiến dịch" },
   { value: "INTERN", label: "Thực tập sinh", desc: "Quyền hạn hạn chế" },
+  { value: "INTERN_DIEUHAN", label: "TTS Điều hành", desc: "Xem booking" },
+  { value: "INTERN_SALE_DOMESTIC", label: "TTS KD Nội địa", desc: "Xem KH, lead, booking" },
+  { value: "INTERN_SALE_OUTBOUND", label: "TTS KD Outbound", desc: "Xem KH, lead, booking" },
+  { value: "INTERN_MKT", label: "TTS Marketing", desc: "Xem KH, lead" },
+  { value: "INTERN_HCNS", label: "TTS HCNS", desc: "Xem nhân sự" },
+  { value: "INTERN_KETOAN", label: "TTS Kế toán", desc: "Xem KH, booking, thanh toán" },
 ];
 
 const MANAGER_ROLES = ["ADMIN", "HCNS", "DIRECTOR", "SUPER_ADMIN"];

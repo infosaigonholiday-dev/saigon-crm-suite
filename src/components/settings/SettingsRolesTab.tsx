@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -20,6 +22,12 @@ const rolesReference = [
   { role: "TOUR", label: "Hướng dẫn viên", desc: "Xem lịch tour, thông tin khách đoàn được phân công.", color: "bg-muted text-muted-foreground" },
   { role: "MKT", label: "Marketing", desc: "Quản lý nguồn lead, chiến dịch marketing.", color: "bg-muted text-muted-foreground" },
   { role: "INTERN", label: "Thực tập sinh", desc: "Quyền hạn hạn chế, chỉ xem hồ sơ cá nhân.", color: "bg-muted text-muted-foreground" },
+  { role: "INTERN_DIEUHAN", label: "TTS Điều hành", desc: "Xem booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_SALE_DOMESTIC", label: "TTS KD Nội địa", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_SALE_OUTBOUND", label: "TTS KD Outbound", desc: "Xem khách hàng, lead, booking. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_MKT", label: "TTS Marketing", desc: "Xem khách hàng, lead. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_HCNS", label: "TTS HCNS", desc: "Xem danh sách nhân sự. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
+  { role: "INTERN_KETOAN", label: "TTS Kế toán", desc: "Xem khách hàng, booking, thanh toán. Chỉ quyền view.", color: "bg-muted/50 text-muted-foreground" },
 ];
 
 export function SettingsRolesTab() {
@@ -30,11 +38,20 @@ export function SettingsRolesTab() {
         <p className="text-sm text-muted-foreground">Danh sách các vai trò và mô tả quyền hạn trong hệ thống.</p>
       </div>
 
+      <Alert className="border-primary/30 bg-primary/5">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-sm">
+          <strong>Quyền hệ thống được xác định từ trường <code className="bg-muted px-1 rounded">profiles.role</code></strong> — cột "Quyền hệ thống" trong tab <em>Phân quyền nhân sự</em> của hồ sơ nhân viên, hoặc khi tạo tài khoản mới ở mục Cài đặt → Tài khoản.
+          <br />
+          <span className="text-muted-foreground">Các trường Chức vụ (position), Cấp bậc (level), Phòng ban (department_id) chỉ là thông tin tổ chức, <strong>KHÔNG ảnh hưởng phân quyền</strong>.</span>
+        </AlertDescription>
+      </Alert>
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[140px]">Mã Role</TableHead>
+              <TableHead className="w-[180px]">Mã Role</TableHead>
               <TableHead className="w-[160px]">Tên hiển thị</TableHead>
               <TableHead>Mô tả quyền hạn</TableHead>
             </TableRow>

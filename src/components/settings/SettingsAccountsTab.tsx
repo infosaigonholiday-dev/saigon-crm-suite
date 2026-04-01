@@ -21,10 +21,33 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2 } from "lucide-react";
 
-const ROLES = [
-  "ADMIN", "DIRECTOR", "DIEUHAN", "HCNS",
-  "SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "KETOAN",
+const ROLES: { value: string; label: string }[] = [
+  { value: "ADMIN", label: "Quản trị viên" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "DIRECTOR", label: "Giám đốc" },
+  { value: "HCNS", label: "Nhân viên HCNS" },
+  { value: "HR_MANAGER", label: "Leader HCNS" },
+  { value: "HR_HEAD", label: "Trưởng phòng HCNS" },
+  { value: "KETOAN", label: "Kế toán" },
+  { value: "MANAGER", label: "Trưởng phòng" },
+  { value: "DIEUHAN", label: "Điều hành" },
+  { value: "SALE_DOMESTIC", label: "Sale Nội địa" },
+  { value: "SALE_INBOUND", label: "Sale Inbound" },
+  { value: "SALE_OUTBOUND", label: "Sale Outbound" },
+  { value: "SALE_MICE", label: "Sale MICE" },
+  { value: "TOUR", label: "Hướng dẫn viên" },
+  { value: "MKT", label: "Marketing" },
+  { value: "INTERN", label: "Thực tập sinh" },
+  { value: "INTERN_DIEUHAN", label: "TTS Điều hành" },
+  { value: "INTERN_SALE_DOMESTIC", label: "TTS KD Nội địa" },
+  { value: "INTERN_SALE_OUTBOUND", label: "TTS KD Outbound" },
+  { value: "INTERN_MKT", label: "TTS Marketing" },
+  { value: "INTERN_HCNS", label: "TTS HCNS" },
+  { value: "INTERN_KETOAN", label: "TTS Kế toán" },
 ];
+
+const ROLE_LABEL_MAP: Record<string, string> = {};
+ROLES.forEach(r => { ROLE_LABEL_MAP[r.value] = r.label; });
 
 interface Profile {
   id: string;

@@ -63,7 +63,8 @@ export default function Settings() {
   const showDepartments = isAdmin || isDirector || isHR;
   const showLevels = isAdmin || isDirector || isHR;
   const showRoles = true; // anyone with settings.view
-  const showPermissions = isAdmin || isDirector;
+  const isManager = role === "MANAGER";
+  const showPermissions = isAdmin || isDirector || isManager;
   const showAuditLog = isAdmin || isDirector;
 
   const tabs = [
