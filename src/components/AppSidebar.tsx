@@ -116,6 +116,7 @@ export function AppSidebar() {
   const visibleCrm = filterItems(crmItems);
   const visibleHr = filterItems(hrItems);
   const visibleFinance = filterItems(financeItems);
+  const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
 
   return (
