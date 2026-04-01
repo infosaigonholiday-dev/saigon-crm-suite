@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
@@ -41,6 +41,21 @@ export default function Bookings() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch high-priority note counts per booking
+  const { data: highNoteMap = {} } = useQuery({
+    queryKey: ["booking-high-notes-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("booking_special_notes")
+        .select("booking_id")
+        .eq("priority", "high");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach((n) => { map[n.booking_id] = (map[n.booking_id] || 0) + 1; });
+      return map;
     },
   });
 
@@ -81,7 +96,12 @@ export default function Bookings() {
                   const customerName = (b.customers as any)?.full_name ?? "—";
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
-                      <TableCell className="font-mono text-xs">{b.code}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <span className="flex items-center gap-1">
+                          {(highNoteMap as Record<string, number>)[b.id] > 0 && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                          {b.code}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-medium">{customerName}</TableCell>
                       <TableCell className="text-center">{b.pax_total ?? 0}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(b.total_value)}</TableCell>

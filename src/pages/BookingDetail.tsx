@@ -1,13 +1,17 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
 import BookingServicesTab from "@/components/bookings/BookingServicesTab";
+import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
@@ -25,6 +29,9 @@ const formatCurrency = (v: number | null) =>
 export default function BookingDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { userRole } = useAuth();
+  const { hasPermission } = usePermissions();
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["booking", id],
@@ -34,6 +41,21 @@ export default function BookingDetail() {
         .select("*, customers(full_name, phone, email)")
         .eq("id", id!)
         .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // High priority notes for banner
+  const { data: highNotes = [] } = useQuery({
+    queryKey: ["booking-high-notes", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("booking_special_notes")
+        .select("content, note_type")
+        .eq("booking_id", id!)
+        .eq("priority", "high");
       if (error) throw error;
       return data;
     },
@@ -61,6 +83,9 @@ export default function BookingDetail() {
   const cfg = statusConfig[status] ?? statusConfig.PENDING;
   const customer = booking.customers as any;
 
+  const canEditNotes = hasPermission("bookings.edit");
+  const canDeleteNotes = hasPermission("bookings.delete");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -78,11 +103,30 @@ export default function BookingDetail() {
         </div>
       </div>
 
+      {/* High priority notes banner */}
+      {highNotes.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-medium">Lưu ý quan trọng:</span>{" "}
+            {highNotes.map((n: any) => n.content).join(" • ")}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">Thông tin</TabsTrigger>
           <TabsTrigger value="itinerary">Lịch trình</TabsTrigger>
           <TabsTrigger value="services">Dự toán chi</TabsTrigger>
+          <TabsTrigger value="notes">
+            Lưu ý
+            {highNotes.length > 0 && (
+              <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {highNotes.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -132,6 +176,10 @@ export default function BookingDetail() {
 
         <TabsContent value="services" className="mt-4">
           <BookingServicesTab bookingId={booking.id} />
+        </TabsContent>
+
+        <TabsContent value="notes" className="mt-4">
+          <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes} canDelete={canDeleteNotes} />
         </TabsContent>
       </Tabs>
     </div>
