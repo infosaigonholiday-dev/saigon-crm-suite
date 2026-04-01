@@ -9,6 +9,7 @@ import { SettingsDepartmentsTab } from "@/components/settings/SettingsDepartment
 import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
+import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HCNS", "HR_MANAGER", "HR_HEAD"];
@@ -63,6 +64,7 @@ export default function Settings() {
   const showLevels = isAdmin || isDirector || isHR;
   const showRoles = true; // anyone with settings.view
   const showPermissions = isAdmin || isDirector;
+  const showAuditLog = isAdmin || isDirector;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
@@ -70,6 +72,7 @@ export default function Settings() {
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
     showPermissions && { value: "permissions", label: "Phân quyền" },
+    showAuditLog && { value: "audit", label: "Nhật ký xóa" },
   ].filter(Boolean) as { value: string; label: string }[];
 
   const defaultTab = tabs[0]?.value || "roles";
@@ -102,6 +105,9 @@ export default function Settings() {
         )}
         {showPermissions && (
           <TabsContent value="permissions" className="mt-4"><SettingsPermissionsTab /></TabsContent>
+        )}
+        {showAuditLog && (
+          <TabsContent value="audit" className="mt-4"><SettingsAuditLogTab /></TabsContent>
         )}
       </Tabs>
     </div>
