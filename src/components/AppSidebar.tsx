@@ -62,7 +62,7 @@ const hrItems: MenuItem[] = [
 ];
 
 const financeItems: MenuItem[] = [
-  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, permission: "finance.view" },
+  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, anyPermission: ["finance.view", "finance.submit"] },
 ];
 
 const settingsItems: MenuItem[] = [
