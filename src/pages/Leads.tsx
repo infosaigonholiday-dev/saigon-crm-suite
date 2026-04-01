@@ -5,7 +5,7 @@ import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Plus, GripVertical, Phone, Loader2, Thermometer, MapPin, Users, AlertTriangle, UserPlus,
 } from "lucide-react";
