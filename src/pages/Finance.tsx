@@ -173,10 +173,11 @@ export default function Finance() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
           <TabsTrigger value="estimates">Dự toán</TabsTrigger>
+          <TabsTrigger value="settlements">Quyết toán</TabsTrigger>
           <TabsTrigger value="salary">CP Lương</TabsTrigger>
           <TabsTrigger value="office">CP Văn phòng</TabsTrigger>
           <TabsTrigger value="marketing">CP Marketing</TabsTrigger>
