@@ -158,12 +158,13 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {(visibleFinance.length > 0 || visibleSettings.length > 0) && (
+        {(visibleFinance.length > 0 || visibleSop.length > 0 || visibleSettings.length > 0) && (
           <SidebarGroup>
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {renderItems(visibleFinance)}
+                {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}
               </SidebarMenu>
             </SidebarGroupContent>
