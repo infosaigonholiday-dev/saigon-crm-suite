@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { TransactionListTab } from "@/components/finance/TransactionListTab";
+import { ApprovalTab } from "@/components/finance/ApprovalTab";
 import { SalaryCostTab } from "@/components/finance/SalaryCostTab";
 import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
