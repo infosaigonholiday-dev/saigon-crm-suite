@@ -85,7 +85,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
-      toast({ title: "Thành công", description: "Đã thêm lead mới" });
+      toast.success("Thành công", { description: "Đã thêm lead mới" });
       setForm(initial);
       setFollowUpDate(undefined);
       onOpenChange(false);
