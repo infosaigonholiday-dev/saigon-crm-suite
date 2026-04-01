@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -35,13 +36,20 @@ const employmentTypes: Record<string, string> = {
   PARTTIME: "Bán thời gian", CONTRACT: "Hợp đồng", SEASONAL: "Thời vụ",
 };
 
+const levelLabels: Record<string, string> = {
+  "C-LEVEL": "C-Level",
+  "DIRECTOR": "Giám đốc",
+  "MANAGER": "Trưởng phòng",
+  "STAFF": "Nhân viên",
+  "INTERN": "Thực tập sinh",
+};
+
 const levelColors: Record<string, string> = {
-  Intern: "bg-muted text-muted-foreground",
-  Junior: "bg-accent/15 text-accent border-accent/30",
-  Senior: "bg-primary/15 text-primary border-primary/30",
-  Lead: "bg-warning/15 text-warning border-warning/30",
-  Manager: "bg-success/15 text-success border-success/30",
-  Director: "bg-destructive/10 text-destructive border-destructive/20",
+  "C-LEVEL": "bg-destructive/10 text-destructive border-destructive/20",
+  "DIRECTOR": "bg-warning/15 text-warning border-warning/30",
+  "MANAGER": "bg-success/15 text-success border-success/30",
+  "STAFF": "bg-primary/15 text-primary border-primary/30",
+  "INTERN": "bg-muted text-muted-foreground",
 };
 
 function getInitials(name: string): string {
@@ -52,11 +60,22 @@ function getInitials(name: string): string {
 
 const PAGE_SIZE = 20;
 
+// Roles that should only see their own profile
+const SELF_ONLY_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR", "INTERN"];
+// Roles that see department-scoped list
+const DEPT_SCOPED_ROLES = ["MANAGER", "DIEUHAN"];
+
 export default function Employees() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
+  const { userRole, user } = useAuth();
   const canDelete = hasPermission("employees.delete");
+  const canCreate = hasPermission("employees.create");
+  const canEdit = hasPermission("employees.edit");
+  const isSelfOnly = SELF_ONLY_ROLES.includes(userRole ?? "");
+  const isDeptScoped = DEPT_SCOPED_ROLES.includes(userRole ?? "");
+
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -67,6 +86,41 @@ export default function Employees() {
   const [editEmployeeId, setEditEmployeeId] = useState<string | undefined>();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // For self-only roles, redirect to own profile
+  const { data: myEmployee } = useQuery({
+    queryKey: ["my-employee-id"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("profile_id", user?.id ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: isSelfOnly && !!user?.id,
+  });
+
+  useEffect(() => {
+    if (isSelfOnly && myEmployee?.id) {
+      navigate(`/nhan-su/${myEmployee.id}`, { replace: true });
+    }
+  }, [isSelfOnly, myEmployee, navigate]);
+
+  // Get my department name for header
+  const { data: myDept } = useQuery({
+    queryKey: ["my-department-name"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("department_id, departments:department_id(name)")
+        .eq("id", user?.id ?? "")
+        .maybeSingle();
+      return (data?.departments as any)?.name ?? null;
+    },
+    enabled: isDeptScoped && !!user?.id,
+  });
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchInput(value);
@@ -107,6 +161,7 @@ export default function Employees() {
       if (error) throw error;
       return { data: data ?? [], count: count ?? 0 };
     },
+    enabled: !isSelfOnly,
   });
 
   const employees = result?.data ?? [];
@@ -138,16 +193,27 @@ export default function Employees() {
     }
   }
 
+  // If self-only role and still loading, show loader
+  if (isSelfOnly) {
+    return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  const headerTitle = isDeptScoped && myDept
+    ? `Nhân viên phòng ${myDept}`
+    : "Nhân sự";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Nhân sự</h1>
+          <h1 className="text-2xl font-bold">{headerTitle}</h1>
           <p className="text-sm text-muted-foreground">Tổng: {totalCount} nhân viên</p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" />Thêm nhân viên
-        </Button>
+        {canCreate && (
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />Thêm nhân viên
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -159,13 +225,15 @@ export default function Employees() {
                 onChange={(e) => handleSearchChange(e.target.value)} />
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setPage(0); }}>
-                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Phòng ban" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Tất cả phòng ban</SelectItem>
-                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {!isDeptScoped && (
+                <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setPage(0); }}>
+                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Phòng ban" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả phòng ban</SelectItem>
+                    {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
                 <SelectTrigger className="w-[140px]"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
                 <SelectContent>
@@ -199,13 +267,14 @@ export default function Employees() {
                     <TableHead>Phòng ban</TableHead>
                     <TableHead>Loại NV</TableHead>
                     <TableHead>Trạng thái</TableHead>
-                    <TableHead className="w-[90px]">Thao tác</TableHead>
+                    {(canEdit || canDelete) && <TableHead className="w-[90px]">Thao tác</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.map((e) => {
                     const st = statusLabels[e.status ?? "ACTIVE"] ?? statusLabels.ACTIVE;
                     const deptName = (e.departments as any)?.name ?? "—";
+                    const lvlLabel = levelLabels[e.level ?? ""] ?? e.level ?? "";
                     const lvlClass = levelColors[e.level ?? ""] ?? "bg-muted text-muted-foreground";
                     return (
                       <TableRow key={e.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/nhan-su/${e.id}`)}>
@@ -219,9 +288,9 @@ export default function Employees() {
                             </Avatar>
                             <div className="min-w-0">
                               <p className="font-medium truncate">{e.full_name}</p>
-                              {e.level && (
+                              {lvlLabel && (
                                 <Badge variant="outline" className={`text-[10px] px-1.5 py-0 mt-0.5 ${lvlClass}`}>
-                                  {e.level}
+                                  {lvlLabel}
                                 </Badge>
                               )}
                             </div>
@@ -235,23 +304,27 @@ export default function Employees() {
                         <TableCell>
                           <Badge variant="outline" className={st.className}>{st.label}</Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex gap-0.5">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => openEdit(e.id, ev)} title="Sửa">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            {canDelete && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                        {(canEdit || canDelete) && (
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => openEdit(e.id, ev)} title="Sửa">
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
                   {employees.length === 0 && (
-                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={(canEdit || canDelete) ? 9 : 8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
