@@ -58,6 +58,7 @@ export default function Customers() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
 
   // Count query with filters
   const { data: totalCount = 0 } = useQuery({
