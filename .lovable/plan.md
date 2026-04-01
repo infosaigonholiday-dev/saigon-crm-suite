@@ -1,80 +1,37 @@
 
 
-# KẾ HOẠCH TỔNG HỢP (ĐÃ BỔ SUNG DIỄN GIẢI)
+# VẤN ĐỀ GỐC: Nhân viên KD vẫn thấy toàn bộ dữ liệu
+
+## Nguyên nhân chính: `profiles.role` KHÔNG ĐÚNG
+
+Kiểm tra database cho thấy:
+
+| Nhân viên | Phòng ban | profiles.role | Đúng ra phải là |
+|-----------|-----------|---------------|-----------------|
+| nguyen tuan phuong | Phòng KD MICE | **HCNS** | SALE_MICE |
+| le thi thao linh | Phòng KD MICE | *(chưa có tài khoản)* | — |
+| Lê Thị Thủy Tiên | Phòng HCNS | HCNS | OK |
+
+**Nhân viên "nguyen tuan phuong" có `profiles.role = 'HCNS'`** → hệ thống coi là nhân sự → thấy toàn bộ nhân viên, lương, nghỉ phép. Code frontend hoạt động đúng — vấn đề là DATA sai.
+
+## Giải pháp: 2 việc cần làm
+
+### 1. Sửa role cho đúng ngay trong DB
+Migration update `profiles.role` cho user `09537abe-a5b4-48d1-b042-017c7c62f6a5` từ `HCNS` → `SALE_MICE`.
+
+### 2. Thêm cảnh báo UI khi role không khớp phòng ban
+Trong `EmployeeRoleTab.tsx`, thêm logic kiểm tra: nếu `department.name` chứa "Kinh Doanh" nhưng `profiles.role` là HCNS/KETOAN (hoặc ngược lại), hiện banner cảnh báo vàng:
+> "⚠️ Quyền hệ thống (HCNS) không khớp với phòng ban (Phòng KD MICE). Vui lòng kiểm tra lại."
+
+Điều này giúp Admin phát hiện lỗi gán role sai trong tương lai.
+
+### 3. Thêm hiển thị role hiện tại trong danh sách nhân viên
+Trong `Employees.tsx`, thêm cột "Quyền hệ thống" (join profiles.role) để Admin/HR nhìn nhanh role của từng người mà không cần vào chi tiết.
 
 ---
 
-## DIỄN GIẢI: ROLE LẤY TỪ ĐÂU?
-
-Hiện tại hệ thống có **4 trường riêng biệt** trong hồ sơ nhân viên, KHÔNG tự động liên kết với nhau:
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│  employees table (Hồ sơ nhân viên)                       │
-│  ├─ position    = "Chức vụ" (text tự do, VD: "NV KD")   │
-│  ├─ level       = "Cấp bậc" (C-LEVEL/DIRECTOR/MANAGER/  │
-│  │                 STAFF/INTERN)                          │
-│  ├─ department_id = "Phòng ban" (KD Nội địa, HCNS...)   │
-│  └─ (không quyết định quyền hệ thống)                   │
-│                                                          │
-│  profiles table (Tài khoản đăng nhập)                    │
-│  └─ role        = "Quyền hệ thống" ← CHỈ TRƯỜNG NÀY    │
-│                    quyết định phân quyền (SALE_DOMESTIC,  │
-│                    HCNS, ADMIN, INTERN_KETOAN...)         │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Vấn đề**: Phòng ban = "KD Nội địa" nhưng `profiles.role` = "HCNS" → nhân viên có quyền HCNS, không phải Sale. Ba trường `position`, `level`, `department_id` chỉ là thông tin HR, **không ảnh hưởng phân quyền**.
-
-**Role được gán ở 2 nơi**:
-1. Khi tạo tài khoản: Tab "Phân quyền nhân sự" trong chi tiết nhân viên → chọn "Quyền hệ thống" → set `profiles.role`
-2. Cài đặt → Tài khoản → tạo tài khoản mới → chọn role
-
----
-
-## Thay đổi 1: DB Migration — thêm 6 roles TTS + bổ sung thiếu
-
-Cập nhật `profiles_role_check` constraint thêm: `INTERN_DIEUHAN`, `INTERN_SALE_DOMESTIC`, `INTERN_SALE_OUTBOUND`, `INTERN_MKT`, `INTERN_HCNS`, `INTERN_KETOAN`, `SUPER_ADMIN`, `HR_MANAGER`, `HR_HEAD`, `SALE_MICE`.
-
-Cập nhật function `get_default_permissions_for_role()` thêm 6 WHEN clauses cho TTS (quyền view-only theo phòng ban).
-
-## Thay đổi 2: `src/hooks/usePermissions.ts`
-
-Thêm 6 entries DEFAULT_PERMISSIONS cho TTS roles:
-- INTERN_DIEUHAN: bookings.view, leave.view/create, sop.view
-- INTERN_SALE_DOMESTIC/OUTBOUND: customers.view, leads.view, bookings.view, leave.view/create, sop.view
-- INTERN_MKT: customers.view, leads.view, leave.view/create, sop.view
-- INTERN_HCNS: employees.view, leave.view/create, sop.view
-- INTERN_KETOAN: customers.view, bookings.view, payments.view, leave.view/create, sop.view
-
-## Thay đổi 3: `src/components/settings/SettingsAccountsTab.tsx`
-
-- Mở rộng ROLES từ 8 → 22 roles đầy đủ với label tiếng Việt
-- Thêm dropdown **đổi role** cho tài khoản đã tạo (update `profiles.role`)
-
-## Thay đổi 4: `src/components/employees/EmployeeRoleTab.tsx`
-
-Bổ sung roleOptions thêm: SUPER_ADMIN, HR_MANAGER, HR_HEAD, SALE_MICE, và 6 TTS roles.
-
-## Thay đổi 5: `src/components/settings/SettingsRolesTab.tsx`
-
-- Thêm 6 TTS roles vào bảng tham chiếu
-- Thêm **ghi chú diễn giải** rõ ràng: "Quyền hệ thống được xác định từ trường `profiles.role` (cột 'Quyền hệ thống' trong tab Phân quyền nhân sự của hồ sơ nhân viên). Các trường Chức vụ, Cấp bậc, Phòng ban chỉ là thông tin tổ chức, KHÔNG ảnh hưởng phân quyền."
-
-## Thay đổi 6: MANAGER truy cập tab Phân quyền (scoped theo phòng ban)
-
-- `src/pages/Settings.tsx`: Cho MANAGER thấy tab "Phân quyền"
-- `src/components/settings/SettingsPermissionsTab.tsx`: Filter nhân viên chỉ hiện cùng `department_id` với MANAGER. ADMIN/DIRECTOR thấy tất cả.
-
----
-
-## Tổng: 7 files thay đổi
-
-1. DB migration (constraint + function)
-2. `src/hooks/usePermissions.ts`
-3. `src/components/settings/SettingsAccountsTab.tsx`
-4. `src/components/employees/EmployeeRoleTab.tsx`
-5. `src/components/settings/SettingsRolesTab.tsx`
-6. `src/pages/Settings.tsx`
-7. `src/components/settings/SettingsPermissionsTab.tsx`
+## Tổng file thay đổi: 3
+1. **DB migration** — `UPDATE profiles SET role = 'SALE_MICE' WHERE id = '09537abe-...'`
+2. **`src/components/employees/EmployeeRoleTab.tsx`** — thêm banner cảnh báo role không khớp phòng ban
+3. **`src/pages/Employees.tsx`** — thêm cột hiển thị role hệ thống trong bảng danh sách
 
