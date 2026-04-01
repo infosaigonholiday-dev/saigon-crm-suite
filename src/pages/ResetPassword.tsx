@@ -43,7 +43,7 @@ export default function ResetPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast({ title: "Mật khẩu phải có ít nhất 6 ký tự", variant: "destructive" });
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
     if (password !== confirmPassword) {
