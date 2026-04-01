@@ -144,6 +144,7 @@ export default function EmployeeDetail() {
           <TabsTrigger value="leave">Nghỉ phép</TabsTrigger>
           <TabsTrigger value="overtime">Tăng ca</TabsTrigger>
           <TabsTrigger value="insurance">Bảo hiểm</TabsTrigger>
+          <TabsTrigger value="kpi">KPI</TabsTrigger>
           <TabsTrigger value="role">Phân quyền</TabsTrigger>
         </TabsList>
 
