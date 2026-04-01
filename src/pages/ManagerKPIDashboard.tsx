@@ -223,8 +223,7 @@ export default function ManagerKPIDashboard() {
       </>
     );
   }
-
-
+  const loading = !profile;
 
   if (loading) {
     return (
