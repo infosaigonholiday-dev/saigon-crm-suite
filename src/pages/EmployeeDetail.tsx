@@ -18,6 +18,7 @@ import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
 import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab";
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
+import { EmployeeKpiTab } from "@/components/employees/EmployeeKpiTab";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -143,6 +144,7 @@ export default function EmployeeDetail() {
           <TabsTrigger value="leave">Nghỉ phép</TabsTrigger>
           <TabsTrigger value="overtime">Tăng ca</TabsTrigger>
           <TabsTrigger value="insurance">Bảo hiểm</TabsTrigger>
+          <TabsTrigger value="kpi">KPI</TabsTrigger>
           <TabsTrigger value="role">Phân quyền</TabsTrigger>
         </TabsList>
 
@@ -197,6 +199,10 @@ export default function EmployeeDetail() {
 
         <TabsContent value="insurance" className="mt-4">
           <EmployeeInsuranceTab employeeId={id!} />
+        </TabsContent>
+
+        <TabsContent value="kpi" className="mt-4">
+          <EmployeeKpiTab employeeId={id!} />
         </TabsContent>
 
         <TabsContent value="role" className="mt-4">

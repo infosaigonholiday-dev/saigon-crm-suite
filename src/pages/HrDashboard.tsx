@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, CalendarOff, UserCheck, UserX } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { KpiCompanyOverview } from "@/components/kpi/KpiCompanyOverview";
 
 export default function HrDashboard() {
   const { data: employeeStats } = useQuery({
@@ -70,6 +71,8 @@ export default function HrDashboard() {
           </Card>
         ))}
       </div>
+
+      <KpiCompanyOverview />
     </div>
   );
 }

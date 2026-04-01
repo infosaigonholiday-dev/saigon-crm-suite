@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake, Circle, MapPin, Phone as PhoneIcon } from "lucide-react";
+import { KpiProgressCard } from "@/components/kpi/KpiProgressCard";
 import { usePersonalDashboardData } from "@/hooks/useDashboardData";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,6 +218,9 @@ export default function PersonalDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* KPI Card */}
+      <KpiProgressCard />
 
       {/* Follow-up Leads */}
       {followUpLeads.length > 0 && (

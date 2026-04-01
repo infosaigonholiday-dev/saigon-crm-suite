@@ -1,8 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarDays, Users, ClipboardList, TrendingUp, TrendingDown, Loader2, Target, Phone, Circle, MapPin } from "lucide-react";
+import { CalendarDays, Users, ClipboardList, TrendingUp, TrendingDown, Loader2, Target, Phone, Circle, MapPin, Plus, BarChart3 } from "lucide-react";
+import { KpiTeamTable } from "@/components/kpi/KpiTeamTable";
+import { KpiSetDialog } from "@/components/kpi/KpiSetDialog";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +21,7 @@ function formatVND(value: number) {
 export default function ManagerKPIDashboard() {
   const { user } = useAuth();
   const now = new Date();
+  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const startOfMonth = new Date(currentYear, now.getMonth(), 1).toISOString();
@@ -164,6 +169,60 @@ export default function ManagerKPIDashboard() {
     .map(([id, data]) => ({ id, name: profileMap.get(id) || "N/A", ...data }))
     .sort((a, b) => b.revenue - a.revenue);
 
+  // KPI section as inline component
+  function ManagerKpiSection({ departmentId, profileMap }: { departmentId: string; profileMap: Map<string, string> }) {
+    const [kpiOpen, setKpiOpen] = useState(false);
+    const { data: deptEmployees = [] } = useQuery({
+      queryKey: ["dept-employees-kpi", departmentId],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("employees")
+          .select("id, full_name, position, department_id")
+          .eq("department_id", departmentId)
+          .is("deleted_at", null);
+        return data || [];
+      },
+      enabled: !!departmentId,
+    });
+
+    const { data: teamKpis = [], refetch } = useQuery({
+      queryKey: ["team-kpis", departmentId, currentMonth, currentYear],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("employee_kpis")
+          .select("*")
+          .eq("department_id", departmentId)
+          .eq("period_type", "monthly")
+          .eq("period_year", currentYear)
+          .eq("period_value", currentMonth);
+        return data || [];
+      },
+      enabled: !!departmentId,
+    });
+
+    return (
+      <>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">KPI nhân viên tháng {currentMonth}</h2>
+          <Button size="sm" onClick={() => setKpiOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />Set KPI
+          </Button>
+        </div>
+        <KpiTeamTable
+          kpis={teamKpis}
+          employees={deptEmployees}
+          canEdit={true}
+          onRefetch={() => refetch()}
+        />
+        <KpiSetDialog
+          open={kpiOpen}
+          onOpenChange={setKpiOpen}
+          employees={deptEmployees}
+          onSuccess={() => refetch()}
+        />
+      </>
+    );
+  }
   const loading = !profile;
 
   if (loading) {
@@ -252,6 +311,9 @@ export default function ManagerKPIDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* KPI Section */}
+      <ManagerKpiSection departmentId={departmentId} profileMap={profileMap} />
 
       {/* Sales Ranking Table */}
       <Card>
