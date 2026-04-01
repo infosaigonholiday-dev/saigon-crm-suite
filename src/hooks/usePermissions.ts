@@ -14,6 +14,7 @@ export const ALL_PERMISSION_KEYS = [
   "payroll.view", "payroll.create", "payroll.edit",
   "finance.view", "finance.create", "finance.edit", "finance.submit",
   "settings.view", "settings.edit",
+  "sop.view", "sop.create",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
