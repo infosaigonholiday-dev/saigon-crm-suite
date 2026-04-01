@@ -28,7 +28,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   employees: { label: "Nhân sự", keys: ["employees.view", "employees.create", "employees.edit", "employees.delete"] },
   leave: { label: "Nghỉ phép", keys: ["leave.view", "leave.create", "leave.approve"] },
   payroll: { label: "Bảng lương", keys: ["payroll.view", "payroll.create", "payroll.edit"] },
-  finance: { label: "Tài chính", keys: ["finance.view", "finance.edit"] },
+  finance: { label: "Tài chính", keys: ["finance.view", "finance.edit", "finance.submit"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
 };
 
