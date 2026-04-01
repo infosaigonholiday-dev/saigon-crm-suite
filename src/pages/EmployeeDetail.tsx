@@ -212,6 +212,7 @@ export default function EmployeeDetail() {
             employeeName={employee.full_name}
             employeeEmail={employee.email}
             departmentId={employee.department_id}
+            departmentName={(employee.departments as any)?.name}
             onProfileLinked={() => refetch()}
           />
         </TabsContent>

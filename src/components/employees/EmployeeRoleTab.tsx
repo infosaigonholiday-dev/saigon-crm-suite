@@ -12,7 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Shield, Mail, UserCheck, KeyRound } from "lucide-react";
+import { Loader2, Shield, Mail, UserCheck, KeyRound, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Props {
   employeeId: string;
@@ -20,6 +21,7 @@ interface Props {
   employeeEmail?: string | null;
   employeeName?: string | null;
   departmentId?: string | null;
+  departmentName?: string | null;
   onProfileLinked?: () => void;
 }
 
@@ -50,7 +52,32 @@ const roleOptions = [
 
 const MANAGER_ROLES = ["ADMIN", "HCNS", "DIRECTOR", "SUPER_ADMIN"];
 
-export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, onProfileLinked }: Props) {
+function detectRoleMismatch(role: string, deptName?: string | null): string | null {
+  if (!deptName || !role) return null;
+  const deptLower = deptName.toLowerCase();
+  const isSaleDept = deptLower.includes("kinh doanh") || deptLower.includes("kd ");
+  const isHrDept = deptLower.includes("hcns") || deptLower.includes("nhân sự");
+  const isFinDept = deptLower.includes("kế toán") || deptLower.includes("tài chính");
+  
+  const hrRoles = ["HCNS", "HR_MANAGER", "HR_HEAD", "INTERN_HCNS"];
+  const finRoles = ["KETOAN", "INTERN_KETOAN"];
+  const saleRoles = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND"];
+  
+  const roleLabel = roleOptions.find(r => r.value === role)?.label ?? role;
+  
+  if (isSaleDept && (hrRoles.includes(role) || finRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  if (isHrDept && (saleRoles.includes(role) || finRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  if (isFinDept && (saleRoles.includes(role) || hrRoles.includes(role))) {
+    return `Quyền hệ thống "${roleLabel}" không khớp với phòng ban "${deptName}". Vui lòng kiểm tra lại.`;
+  }
+  return null;
+}
+
+export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, onProfileLinked }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -225,9 +252,18 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   if (!profile) return <Card><CardContent className="py-8 text-center text-muted-foreground">Không tìm thấy thông tin tài khoản</CardContent></Card>;
 
   const currentRoleLabel = roleOptions.find(r => r.value === profile.role)?.label ?? profile.role;
+  const roleMismatch = detectRoleMismatch(profile.role, departmentName);
 
   return (
     <div className="space-y-4">
+      {roleMismatch && (
+        <Alert className="border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning font-medium">
+            {roleMismatch}
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader><CardTitle className="text-base">Thông tin tài khoản</CardTitle></CardHeader>
         <CardContent className="space-y-3">

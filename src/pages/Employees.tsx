@@ -60,6 +60,16 @@ function getInitials(name: string): string {
   return name.substring(0, 2).toUpperCase();
 }
 
+const ROLE_LABEL_MAP: Record<string, string> = {
+  ADMIN: "Admin", SUPER_ADMIN: "Super Admin", DIRECTOR: "Giám đốc",
+  HCNS: "NV HCNS", HR_MANAGER: "Leader HCNS", HR_HEAD: "TP HCNS",
+  KETOAN: "Kế toán", MANAGER: "Trưởng phòng", DIEUHAN: "Điều hành",
+  SALE_DOMESTIC: "Sale NĐ", SALE_INBOUND: "Sale IB", SALE_OUTBOUND: "Sale OB", SALE_MICE: "Sale MICE",
+  TOUR: "HDV", MKT: "MKT", INTERN: "TTS",
+  INTERN_DIEUHAN: "TTS ĐH", INTERN_SALE_DOMESTIC: "TTS KD NĐ", INTERN_SALE_OUTBOUND: "TTS KD OB",
+  INTERN_MKT: "TTS MKT", INTERN_HCNS: "TTS HCNS", INTERN_KETOAN: "TTS KT",
+};
+
 const PAGE_SIZE = 20;
 
 // Roles that should only see their own profile
@@ -147,7 +157,7 @@ export default function Employees() {
     queryFn: async () => {
       let query = supabase
         .from("employees")
-        .select("id, employee_code, full_name, phone, email, position, level, status, employment_type, gender, department_id, departments(name)", { count: "exact" })
+        .select("id, employee_code, full_name, phone, email, position, level, status, employment_type, gender, department_id, profile_id, departments(name), profiles:profile_id(role)", { count: "exact" })
         .is("deleted_at" as any, null)
         .order("created_at", { ascending: false });
 
@@ -286,6 +296,7 @@ export default function Employees() {
                     <TableHead>Email</TableHead>
                     <TableHead>Vị trí</TableHead>
                     <TableHead>Phòng ban</TableHead>
+                    <TableHead>Quyền HT</TableHead>
                     <TableHead>Loại NV</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     {(canEdit || canDelete) && <TableHead className="w-[90px]">Thao tác</TableHead>}
@@ -295,6 +306,8 @@ export default function Employees() {
                   {employees.map((e) => {
                     const st = statusLabels[e.status ?? "ACTIVE"] ?? statusLabels.ACTIVE;
                     const deptName = (e.departments as any)?.name ?? "—";
+                    const profileRole = (e as any).profiles?.role as string | undefined;
+                    const roleLabel = profileRole ? (ROLE_LABEL_MAP[profileRole] ?? profileRole) : "—";
                     const lvlLabel = levelLabels[e.level ?? ""] ?? e.level ?? "";
                     const lvlClass = levelColors[e.level ?? ""] ?? "bg-muted text-muted-foreground";
                     return (
@@ -321,6 +334,9 @@ export default function Employees() {
                         <TableCell className="text-sm">{e.email ?? "—"}</TableCell>
                         <TableCell>{e.position ?? "—"}</TableCell>
                         <TableCell>{deptName}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{roleLabel}</Badge>
+                        </TableCell>
                         <TableCell className="text-xs">{employmentTypes[e.employment_type ?? ""] ?? e.employment_type ?? "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={st.className}>{st.label}</Badge>
@@ -345,7 +361,7 @@ export default function Employees() {
                     );
                   })}
                   {employees.length === 0 && (
-                    <TableRow><TableCell colSpan={(canEdit || canDelete) ? 9 : 8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={(canEdit || canDelete) ? 10 : 9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
