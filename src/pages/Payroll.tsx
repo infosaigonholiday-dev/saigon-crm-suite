@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, DollarSign, Users, TrendingUp } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formatVND = (v: number | null) => v ? v.toLocaleString("vi-VN") + "đ" : "—";
 const formatShort = (v: number | null) => {
@@ -22,11 +23,18 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Tháng ${i + 1}` }));
 
+// Roles that see full payroll table
+const FULL_VIEW_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "HR_HEAD", "HR_MANAGER", "HCNS", "KETOAN"];
+
 export default function Payroll() {
   const now = new Date();
+  const { userRole } = useAuth();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
 
+  const isFullView = FULL_VIEW_ROLES.includes(userRole ?? "");
+
+  // RLS already filters: non-full-view users only get their own payroll
   const { data: payrolls = [], isLoading } = useQuery({
     queryKey: ["payroll_list", month, year],
     queryFn: async () => {
@@ -45,6 +53,92 @@ export default function Payroll() {
   const totalGross = payrolls.reduce((s, p) => s + (p.gross_salary ?? 0), 0);
   const totalEmployerCost = payrolls.reduce((s, p) => s + (p.total_employer_cost ?? 0), 0);
 
+  // Personal payslip view for non-full-view roles
+  if (!isFullView) {
+    const myPayslip = payrolls[0]; // RLS returns only own record
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Phiếu lương của tôi</h1>
+            <p className="text-sm text-muted-foreground">Tháng {month}/{year}</p>
+          </div>
+          <div className="flex gap-2">
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : myPayslip ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Chi tiết phiếu lương</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Lương cơ bản</p>
+                  <p className="font-semibold">{formatVND(myPayslip.base_salary)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phụ cấp</p>
+                  <p className="font-semibold">{formatVND(myPayslip.total_allowance)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tăng ca</p>
+                  <p className="font-semibold">{formatVND(myPayslip.ot_pay)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">BHXH (NV)</p>
+                  <p className="font-semibold text-destructive">{formatVND((myPayslip.bhxh_employee ?? 0) + (myPayslip.bhyt_employee ?? 0) + (myPayslip.bhtn_employee ?? 0))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Thuế TNCN</p>
+                  <p className="font-semibold text-destructive">{formatVND(myPayslip.pit_amount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Khấu trừ</p>
+                  <p className="font-semibold text-destructive">{formatVND(myPayslip.deductions)}</p>
+                </div>
+                <div className="col-span-2 md:col-span-3 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">Thực lĩnh</p>
+                  <p className="text-2xl font-bold text-primary">{formatVND(myPayslip.net_salary)}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Badge variant="outline" className={statusConfig[myPayslip.status ?? "DRAFT"]?.className}>
+                  {statusConfig[myPayslip.status ?? "DRAFT"]?.label ?? myPayslip.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Chưa có phiếu lương cho tháng {month}/{year}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Full view for HR/Admin/Ketoan
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
