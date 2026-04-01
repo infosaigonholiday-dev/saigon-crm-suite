@@ -172,7 +172,7 @@ export default function PersonalDashboard() {
           </CardContent>
         </Card>
 
-        {/* Upcoming Events */}
+      {/* Upcoming Events */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -217,6 +217,55 @@ export default function PersonalDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Follow-up Leads */}
+      {followUpLeads.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <PhoneIcon className="h-4 w-4 text-primary" />
+              Lead cần follow-up ({followUpLeads.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {followUpLeads.map((lead) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const followDate = new Date(lead.follow_up_date!);
+                followDate.setHours(0, 0, 0, 0);
+                const diff = differenceInCalendarDays(followDate, today);
+                const tempColors: Record<string, string> = { hot: "text-red-500", warm: "text-orange-500", cold: "text-blue-500" };
+
+                return (
+                  <div
+                    key={lead.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate("/tiem-nang")}
+                  >
+                    <Circle className={`h-3 w-3 shrink-0 fill-current ${tempColors[lead.temperature ?? "warm"] || "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{lead.full_name}</p>
+                      {lead.destination && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />{lead.destination}
+                        </p>
+                      )}
+                    </div>
+                    {diff < 0 ? (
+                      <Badge variant="destructive" className="shrink-0 text-xs">Quá hạn {Math.abs(diff)} ngày</Badge>
+                    ) : diff === 0 ? (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 shrink-0 text-xs">Hôm nay</Badge>
+                    ) : (
+                      <Badge className="bg-blue-50 text-blue-600 border-blue-200 shrink-0 text-xs">Còn {diff} ngày</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
