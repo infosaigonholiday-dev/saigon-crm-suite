@@ -52,7 +52,7 @@ export default function Customers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
+        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
