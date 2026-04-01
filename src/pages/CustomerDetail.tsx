@@ -247,8 +247,13 @@ export default function CustomerDetail() {
                     }
                   />
                   <InfoRow label="Email công ty" value={customer.company_email} />
+                  <InfoRow label="SĐT người liên hệ" value={(customer as any).contact_person_phone} />
                   <InfoRow label="Ngày thành lập" value={fmtDate(customer.founded_date)} />
                   <InfoRow label="Quy mô nhân sự" value={customer.company_size ? `${customer.company_size} người` : null} />
+                  <InfoRow label="Tour quan tâm" value={(customer as any).tour_interest} />
+                  <InfoRow label="Tình trạng" value={(customer as any).contact_status} />
+                  <InfoRow label="Kết quả" value={(customer as any).result} />
+                  <InfoRow label="Vấn đề gặp phải" value={(customer as any).issue_faced} />
                 </div>
               </CardContent>
             </Card>
