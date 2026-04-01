@@ -9,6 +9,7 @@ import { getDashboardType, useBusinessDashboardData, getDataScope } from "@/hook
 import PersonalDashboard from "./PersonalDashboard";
 import HrDashboard from "./HrDashboard";
 import ManagerKPIDashboard from "./ManagerKPIDashboard";
+import { CeoDashboardCharts } from "@/components/dashboard/CeoDashboardCharts";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
