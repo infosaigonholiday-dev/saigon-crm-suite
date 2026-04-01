@@ -1,42 +1,31 @@
 
 
-## Tạo tab "Duyệt chi phí" cho Kế toán
+## Auto schedule cron job cho daily-reminders
 
-### Tổng quan
-Tạo component `ApprovalTab` chuyên dụng cho KETOAN/ADMIN/DIRECTOR để duyệt chi phí pending, với batch approve, filters, và badge count. Đồng thời cải thiện view HCNS để hiển thị rõ trạng thái từ chối + cho phép resubmit.
+### Vấn đề trước đó
+Không dùng migration vì SQL chứa anon key — nếu commit vào git sẽ lộ secret. Tuy nhiên anon key của project này đã public trong client code rồi (nằm trong `.env` với prefix `VITE_`), nên thực tế không có rủi ro thêm.
 
-### Kế hoạch
+### Giải pháp
+Dùng migration tool để tạo SQL tự động schedule cron job:
 
-**1. Tạo `src/components/finance/ApprovalTab.tsx`** (file mới)
+```sql
+SELECT cron.schedule(
+  'daily-reminders',
+  '0 0 * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/daily-reminders',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZWF6a2hucWtrcHF0Y3h1bnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjIwOTEsImV4cCI6MjA4OTk5ODA5MX0.uHPUBzQMIV69aL4KOWeaq6xwG9I5MuPv_DkQGzFsX8M"}'::jsonb,
+    body:=concat('{"time": "', now(), '"}')::jsonb
+  ) as request_id;
+  $$
+);
+```
 
-- Query: `transactions` where `approval_status = 'PENDING_REVIEW'`, join `profiles` on `submitted_by` để lấy `full_name`
-- Hiển thị: ngày, người nhập, danh mục, mô tả, số tiền, trạng thái
-- Filter: danh mục (Select), người nhập (Select từ distinct submitters), khoảng ngày (2 input date)
-- Sort: `created_at DESC`
-- Checkbox chọn nhiều dòng + nút "Duyệt hàng loạt"
-- Nút "Duyệt" (xanh): update `approval_status='APPROVED'`, `reviewed_by`, `reviewed_at`
-- Nút "Từ chối" (đỏ): mở Dialog nhập lý do → update `approval_status='REJECTED'`, `review_note`, `reviewed_by`, `reviewed_at`
-- Batch approve: dùng Promise.all update tất cả selected IDs
-
-**2. Cập nhật `src/pages/Finance.tsx`**
-
-- Import `ApprovalTab`
-- Thêm tab "Duyệt chi phí" với badge đỏ hiển thị pending count
-- Query count pending: `supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('approval_status', 'PENDING_REVIEW')`
-- Tab chỉ hiện khi `isFullAccess` (ADMIN/DIRECTOR/KETOAN)
-
-**3. Cập nhật `TransactionListTab.tsx` (submitter view)**
-
-- Khi `submitterOnly`: record bị REJECTED hiển thị badge đỏ + `review_note` rõ ràng hơn (không truncate quá ngắn)
-- Khi HCNS sửa record REJECTED và submit lại: trong `TransactionFormDialog`, nếu đang edit record có `approval_status = 'REJECTED'` → set lại thành `PENDING_REVIEW`
-
-**4. Cập nhật `TransactionFormDialog.tsx`**
-
-- Khi edit record có `approval_status = 'REJECTED'` bởi submitter → tự động set `approval_status = 'PENDING_REVIEW'` khi save (resubmit)
+### Thực hiện
+- 1 migration duy nhất chứa lệnh `cron.schedule` ở trên
+- Extensions `pg_cron` và `pg_net` đã được enable ở migration trước
 
 ### Files thay đổi
-- `src/components/finance/ApprovalTab.tsx` — mới
-- `src/pages/Finance.tsx` — thêm tab + badge count
-- `src/components/finance/TransactionFormDialog.tsx` — resubmit logic
-- `src/components/finance/TransactionListTab.tsx` — cải thiện rejected display
+- 1 migration file mới (SQL only)
 
