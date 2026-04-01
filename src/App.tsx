@@ -52,7 +52,7 @@ function ProtectedRoutes() {
         <Route path="/dat-tour" element={<PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard>} />
         <Route path="/dat-tour/:id" element={<PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard>} />
         <Route path="/nha-cung-cap" element={<Vendors />} />
-        <Route path="/hop-dong" element={<ComingSoon title="Hợp đồng" />} />
+        <Route path="/hop-dong" element={<PermissionGuard permission="bookings.view"><Contracts /></PermissionGuard>} />
         <Route path="/thanh-toan" element={<PermissionGuard permission="payments.view"><Payments /></PermissionGuard>} />
         <Route path="/nhan-su" element={<PermissionGuard permission="employees.view"><Employees /></PermissionGuard>} />
         <Route path="/nhan-su/:id" element={<PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard>} />
