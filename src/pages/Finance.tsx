@@ -12,6 +12,7 @@ import { SalaryCostTab } from "@/components/finance/SalaryCostTab";
 import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
 import { BudgetEstimatesTab } from "@/components/finance/BudgetEstimatesTab";
+import { BudgetSettlementsTab } from "@/components/finance/BudgetSettlementsTab";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -172,10 +173,11 @@ export default function Finance() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
           <TabsTrigger value="estimates">Dự toán</TabsTrigger>
+          <TabsTrigger value="settlements">Quyết toán</TabsTrigger>
           <TabsTrigger value="salary">CP Lương</TabsTrigger>
           <TabsTrigger value="office">CP Văn phòng</TabsTrigger>
           <TabsTrigger value="marketing">CP Marketing</TabsTrigger>
@@ -186,6 +188,7 @@ export default function Finance() {
         <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
+        <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>
         <TabsContent value="salary" className="mt-4"><SalaryCostTab /></TabsContent>
         <TabsContent value="office" className="mt-4">
           <ExpenseListTab title="Chi phí văn phòng" tableName="office_expenses" categories={OFFICE_CATEGORIES} queryKey="office-expenses" />

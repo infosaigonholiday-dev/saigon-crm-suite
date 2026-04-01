@@ -607,6 +607,111 @@ export type Database = {
           },
         ]
       }
+      budget_settlements: {
+        Row: {
+          accountant_approved_at: string | null
+          accountant_id: string | null
+          accountant_note: string | null
+          additional_amount: number | null
+          advance_amount: number | null
+          booking_id: string
+          ceo_approved_at: string | null
+          ceo_id: string | null
+          ceo_note: string | null
+          code: string | null
+          created_at: string | null
+          created_by: string
+          estimate_id: string
+          id: string
+          refund_amount: number | null
+          status: string | null
+          total_actual: number | null
+          total_estimated: number | null
+          variance: number | null
+          variance_pct: number | null
+        }
+        Insert: {
+          accountant_approved_at?: string | null
+          accountant_id?: string | null
+          accountant_note?: string | null
+          additional_amount?: number | null
+          advance_amount?: number | null
+          booking_id: string
+          ceo_approved_at?: string | null
+          ceo_id?: string | null
+          ceo_note?: string | null
+          code?: string | null
+          created_at?: string | null
+          created_by: string
+          estimate_id: string
+          id?: string
+          refund_amount?: number | null
+          status?: string | null
+          total_actual?: number | null
+          total_estimated?: number | null
+          variance?: number | null
+          variance_pct?: number | null
+        }
+        Update: {
+          accountant_approved_at?: string | null
+          accountant_id?: string | null
+          accountant_note?: string | null
+          additional_amount?: number | null
+          advance_amount?: number | null
+          booking_id?: string
+          ceo_approved_at?: string | null
+          ceo_id?: string | null
+          ceo_note?: string | null
+          code?: string | null
+          created_at?: string | null
+          created_by?: string
+          estimate_id?: string
+          id?: string
+          refund_amount?: number | null
+          status?: string | null
+          total_actual?: number | null
+          total_estimated?: number | null
+          variance?: number | null
+          variance_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_settlements_accountant_id_fkey"
+            columns: ["accountant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_settlements_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_settlements_ceo_id_fkey"
+            columns: ["ceo_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_settlements_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "budget_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_travel: {
         Row: {
           accommodation_cost: number | null
@@ -2899,6 +3004,50 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlement_items: {
+        Row: {
+          actual_amount: number | null
+          category: string
+          description: string | null
+          estimated_amount: number | null
+          id: string
+          receipt_url: string | null
+          settlement_id: string
+          sort_order: number | null
+          variance: number | null
+        }
+        Insert: {
+          actual_amount?: number | null
+          category: string
+          description?: string | null
+          estimated_amount?: number | null
+          id?: string
+          receipt_url?: string | null
+          settlement_id: string
+          sort_order?: number | null
+          variance?: number | null
+        }
+        Update: {
+          actual_amount?: number | null
+          category?: string
+          description?: string | null
+          estimated_amount?: number | null
+          id?: string
+          receipt_url?: string | null
+          settlement_id?: string
+          sort_order?: number | null
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "budget_settlements"
             referencedColumns: ["id"]
           },
         ]
