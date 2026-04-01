@@ -19,7 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2 } from "lucide-react";
 
 const ROLES = [
   "ADMIN", "DIRECTOR", "DIEUHAN", "HCNS",
@@ -55,6 +55,8 @@ export function SettingsAccountsTab() {
   const [resettingAll, setResettingAll] = useState(false);
   const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [orphanDetected, setOrphanDetected] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "",
   });
@@ -159,9 +161,17 @@ export function SettingsAccountsTab() {
         body: { action: "reset_password", user_id: userId, email: email ?? null },
       });
       if (error) throw error;
+      if (data?.orphan) {
+        setOrphanDetected(true);
+        toast.error("Profile này không có tài khoản auth tương ứng. Hãy dùng nút 'Dọn dẹp tài khoản lỗi' để xử lý.");
+        return;
+      }
       if (data?.error) throw new Error(data.error);
       toast.success(data.message || "Đã reset mật khẩu thành công");
     } catch (err: any) {
+      if (err.message?.includes("không tồn tại")) {
+        setOrphanDetected(true);
+      }
       toast.error(err.message || "Lỗi reset mật khẩu");
     } finally {
       setResettingId(null);
@@ -177,12 +187,39 @@ export function SettingsAccountsTab() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(data.message || "Đã reset tất cả mật khẩu");
+
+      if (data?.skipped && data.skipped.length > 0) {
+        setOrphanDetected(true);
+        toast.warning(
+          `${data.message}\n⚠️ Bỏ qua ${data.skipped.length} profile lỗi (không có auth): ${data.skipped.join(", ")}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success(data.message || "Đã reset tất cả mật khẩu");
+      }
     } catch (err: any) {
       toast.error(err.message || "Lỗi reset mật khẩu");
     } finally {
       setResettingAll(false);
       setConfirmResetAll(false);
+    }
+  }
+
+  async function handleCleanupOrphans() {
+    setCleaningUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action: "cleanup_orphans" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data.message || "Dọn dẹp hoàn tất");
+      setOrphanDetected(false);
+      await loadProfiles();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi dọn dẹp");
+    } finally {
+      setCleaningUp(false);
     }
   }
 
@@ -193,6 +230,12 @@ export function SettingsAccountsTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Quản lý tài khoản nhân viên</h2>
         <div className="flex gap-2">
+          {orphanDetected && (
+            <Button variant="destructive" onClick={handleCleanupOrphans} disabled={cleaningUp}>
+              {cleaningUp && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              <Trash2 className="h-4 w-4 mr-1" /> Dọn dẹp tài khoản lỗi
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setConfirmResetAll(true)} disabled={resettingAll}>
             {resettingAll && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
             <KeyRound className="h-4 w-4 mr-1" /> Reset tất cả MK
