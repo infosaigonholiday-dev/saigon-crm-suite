@@ -98,7 +98,7 @@ export default function BookingItineraryTab({ bookingId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: "Đã xóa ngày" });
+      toast.success("Đã xóa ngày");
     },
     onError: (e: any) => toast({ title: "Lỗi", description: e.message, variant: "destructive" }),
   });
