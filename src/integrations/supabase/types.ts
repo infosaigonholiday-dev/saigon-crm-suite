@@ -330,6 +330,54 @@ export type Database = {
           },
         ]
       }
+      booking_special_notes: {
+        Row: {
+          booking_id: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          note_type: string
+          priority: string | null
+          related_guest: string | null
+        }
+        Insert: {
+          booking_id: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note_type: string
+          priority?: string | null
+          related_guest?: string | null
+        }
+        Update: {
+          booking_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note_type?: string
+          priority?: string | null
+          related_guest?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_special_notes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_special_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           cancellation_fee: number | null
