@@ -5,7 +5,10 @@ import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, GripVertical, Phone, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Plus, GripVertical, Phone, Loader2, Thermometer, MapPin, Users, AlertTriangle, UserPlus,
+} from "lucide-react";
 
 type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "QUOTED" | "WON" | "LOST";
 
@@ -14,12 +17,27 @@ const columns: { id: LeadStatus; label: string; color: string }[] = [
   { id: "CONTACTED", label: "Đã liên hệ", color: "bg-accent/15" },
   { id: "QUALIFIED", label: "Đủ điều kiện", color: "bg-warning/15" },
   { id: "QUOTED", label: "Đã báo giá", color: "bg-primary/10" },
-  { id: "WON", label: "Thành công", color: "bg-success/15" },
+  { id: "WON", label: "Thành công", color: "bg-green-100" },
   { id: "LOST", label: "Thất bại", color: "bg-destructive/10" },
 ];
 
+const tempConfig: Record<string, { icon: string; className: string }> = {
+  hot: { icon: "🔥", className: "text-red-500" },
+  warm: { icon: "🟠", className: "text-orange-500" },
+  cold: { icon: "🔵", className: "text-blue-500" },
+};
+
+function isFollowUpOverdue(date: string | null): boolean {
+  if (!date) return false;
+  const d = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d <= today;
+}
+
 export default function Leads() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -28,7 +46,7 @@ export default function Leads() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
-        .select("id, full_name, phone, email, channel, interest_type, expected_value, status")
+        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, assigned_to, customer_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -41,6 +59,42 @@ export default function Leads() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const convertToCustomer = useMutation({
+    mutationFn: async (lead: any) => {
+      // Create customer
+      const { data: customer, error: custErr } = await supabase
+        .from("customers")
+        .insert({
+          full_name: lead.full_name,
+          phone: lead.phone || null,
+          email: lead.email || null,
+          company_name: lead.company_name || null,
+          assigned_sale_id: lead.assigned_to || null,
+          type: lead.company_name ? "Doanh nghiệp" : "Cá nhân",
+          source: lead.channel || null,
+        })
+        .select("id")
+        .single();
+      if (custErr) throw custErr;
+
+      // Update lead
+      const { error: leadErr } = await supabase
+        .from("leads")
+        .update({ customer_id: customer.id, status: "WON" })
+        .eq("id", lead.id);
+      if (leadErr) throw leadErr;
+
+      return customer;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast({ title: "Thành công", description: "Đã chuyển đổi thành khách hàng thành công" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Lỗi", description: err.message, variant: "destructive" });
+    },
   });
 
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
@@ -78,7 +132,7 @@ export default function Leads() {
         {columns.map((col) => {
           const colLeads = leads.filter((l) => l.status === col.id);
           return (
-            <div key={col.id} className="min-w-[260px] flex-1" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
+            <div key={col.id} className="min-w-[280px] flex-1" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
               <div className={`rounded-t-lg px-3 py-2 ${col.color}`}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{col.label}</span>
@@ -86,33 +140,86 @@ export default function Leads() {
                 </div>
               </div>
               <div className="bg-muted/30 rounded-b-lg min-h-[400px] p-2 space-y-2">
-                {colLeads.map((lead) => (
-                  <Card
-                    key={lead.id}
-                    draggable
-                    onDragStart={() => handleDragStart(lead.id)}
-                    className={`cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${draggedId === lead.id ? "opacity-50" : ""}`}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm truncate">{lead.full_name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{lead.interest_type ?? ""}</p>
-                          {lead.phone && (
-                            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                              <Phone className="h-3 w-3" />{lead.phone}
+                {colLeads.map((lead) => {
+                  const temp = tempConfig[lead.temperature ?? "warm"];
+                  const followUpDue = isFollowUpOverdue(lead.follow_up_date);
+                  const showConvert = (col.id === "QUOTED" || col.id === "QUALIFIED") && !lead.customer_id;
+
+                  return (
+                    <Card
+                      key={lead.id}
+                      draggable
+                      onDragStart={() => handleDragStart(lead.id)}
+                      className={`cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${draggedId === lead.id ? "opacity-50" : ""}`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            {/* Name + Temperature */}
+                            <div className="flex items-center gap-1.5">
+                              {temp && <span className="text-sm" title={lead.temperature ?? ""}>{temp.icon}</span>}
+                              <p className="font-medium text-sm truncate flex-1">{lead.full_name}</p>
                             </div>
-                          )}
-                          <div className="flex items-center justify-between mt-2">
-                            <Badge variant="outline" className="text-xs">{lead.channel ?? "—"}</Badge>
-                            <span className="text-xs font-semibold text-primary">{formatValue(lead.expected_value)}</span>
+
+                            {/* Destination */}
+                            {lead.destination && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{lead.destination}</span>
+                              </div>
+                            )}
+
+                            {/* Phone */}
+                            {lead.phone && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />{lead.phone}
+                              </div>
+                            )}
+
+                            {/* Follow-up alert */}
+                            {followUpDue && (
+                              <div className="flex items-center gap-1 text-xs text-destructive font-medium">
+                                <AlertTriangle className="h-3 w-3" />
+                                Cần follow-up!
+                              </div>
+                            )}
+
+                            {/* Bottom row: badges + values */}
+                            <div className="flex items-center flex-wrap gap-1.5 mt-1">
+                              <Badge variant="outline" className="text-xs">{lead.channel ?? "—"}</Badge>
+                              {lead.pax_count && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                  <Users className="h-3 w-3" />{lead.pax_count} khách
+                                </span>
+                              )}
+                              <span className="text-xs font-semibold text-primary ml-auto">
+                                {formatValue(lead.budget || lead.expected_value)}
+                              </span>
+                            </div>
+
+                            {/* Convert button */}
+                            {showConvert && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full mt-1 text-xs h-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  convertToCustomer.mutate(lead);
+                                }}
+                                disabled={convertToCustomer.isPending}
+                              >
+                                <UserPlus className="h-3 w-3 mr-1" />
+                                Chuyển thành KH
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           );
