@@ -124,6 +124,8 @@ function BusinessDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {canViewRevenue && <CeoDashboardCharts />}
     </div>
   );
 }
