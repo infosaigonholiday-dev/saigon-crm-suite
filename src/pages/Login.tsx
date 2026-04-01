@@ -35,7 +35,7 @@ export default function Login() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast({ title: "Đăng nhập thất bại", description: "Sai email hoặc mật khẩu. Nếu là tài khoản mới, hãy dùng Quên mật khẩu để đặt mật khẩu.", variant: "destructive" });
+      toast.error("Đăng nhập thất bại", { description: "Sai email hoặc mật khẩu. Nếu là tài khoản mới, hãy dùng Quên mật khẩu để đặt mật khẩu." });
     }
     setLoading(false);
   };
