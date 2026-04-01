@@ -188,6 +188,7 @@ export default function Finance() {
         <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
+        <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>
         <TabsContent value="salary" className="mt-4"><SalaryCostTab /></TabsContent>
         <TabsContent value="office" className="mt-4">
           <ExpenseListTab title="Chi phí văn phòng" tableName="office_expenses" categories={OFFICE_CATEGORIES} queryKey="office-expenses" />
