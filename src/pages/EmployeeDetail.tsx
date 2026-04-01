@@ -43,6 +43,7 @@ export default function EmployeeDetail() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { hasPermission } = usePermissions();
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],
