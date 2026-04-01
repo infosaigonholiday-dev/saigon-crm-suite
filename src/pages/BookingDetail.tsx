@@ -85,6 +85,7 @@ export default function BookingDetail() {
 
   const canEditNotes = hasPermission("bookings.edit");
   const canDeleteNotes = hasPermission("bookings.delete");
+  const isLocked = status === "COMPLETED" || status === "CANCELLED";
 
   return (
     <div className="space-y-6">
