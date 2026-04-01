@@ -45,6 +45,8 @@ const roleOptions = [
   { value: "INTERN_DIEUHAN", label: "TTS Điều hành", desc: "Xem booking" },
   { value: "INTERN_SALE_DOMESTIC", label: "TTS KD Nội địa", desc: "Xem KH, lead, booking" },
   { value: "INTERN_SALE_OUTBOUND", label: "TTS KD Outbound", desc: "Xem KH, lead, booking" },
+  { value: "INTERN_SALE_MICE", label: "TTS KD MICE", desc: "Xem KH, lead, booking" },
+  { value: "INTERN_SALE_INBOUND", label: "TTS KD Inbound", desc: "Xem KH, lead, booking" },
   { value: "INTERN_MKT", label: "TTS Marketing", desc: "Xem KH, lead" },
   { value: "INTERN_HCNS", label: "TTS HCNS", desc: "Xem nhân sự" },
   { value: "INTERN_KETOAN", label: "TTS Kế toán", desc: "Xem KH, booking, thanh toán" },
