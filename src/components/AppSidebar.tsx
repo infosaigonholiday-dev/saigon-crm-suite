@@ -15,6 +15,7 @@ import {
   Route,
   Hotel,
   Building2,
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -65,6 +66,10 @@ const financeItems: MenuItem[] = [
   { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, anyPermission: ["finance.view", "finance.submit"] },
 ];
 
+const sopItems: MenuItem[] = [
+  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "sop.view" },
+];
+
 const settingsItems: MenuItem[] = [
   { title: "Cài đặt", url: "/cai-dat", icon: Settings, permission: "settings.view" },
 ];
@@ -111,6 +116,7 @@ export function AppSidebar() {
   const visibleCrm = filterItems(crmItems);
   const visibleHr = filterItems(hrItems);
   const visibleFinance = filterItems(financeItems);
+  const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
 
   return (
@@ -152,12 +158,13 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {(visibleFinance.length > 0 || visibleSettings.length > 0) && (
+        {(visibleFinance.length > 0 || visibleSop.length > 0 || visibleSettings.length > 0) && (
           <SidebarGroup>
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {renderItems(visibleFinance)}
+                {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}
               </SidebarMenu>
             </SidebarGroupContent>
