@@ -60,6 +60,16 @@ function getInitials(name: string): string {
   return name.substring(0, 2).toUpperCase();
 }
 
+const ROLE_LABEL_MAP: Record<string, string> = {
+  ADMIN: "Admin", SUPER_ADMIN: "Super Admin", DIRECTOR: "Giám đốc",
+  HCNS: "NV HCNS", HR_MANAGER: "Leader HCNS", HR_HEAD: "TP HCNS",
+  KETOAN: "Kế toán", MANAGER: "Trưởng phòng", DIEUHAN: "Điều hành",
+  SALE_DOMESTIC: "Sale NĐ", SALE_INBOUND: "Sale IB", SALE_OUTBOUND: "Sale OB", SALE_MICE: "Sale MICE",
+  TOUR: "HDV", MKT: "MKT", INTERN: "TTS",
+  INTERN_DIEUHAN: "TTS ĐH", INTERN_SALE_DOMESTIC: "TTS KD NĐ", INTERN_SALE_OUTBOUND: "TTS KD OB",
+  INTERN_MKT: "TTS MKT", INTERN_HCNS: "TTS HCNS", INTERN_KETOAN: "TTS KT",
+};
+
 const PAGE_SIZE = 20;
 
 // Roles that should only see their own profile
