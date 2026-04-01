@@ -22,6 +22,7 @@ interface Props {
 export function ExpenseListTab({ title, tableName, categories, queryKey }: Props) {
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("finance.edit");
+  const canDelete = hasPermission("customers.delete");
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -104,9 +105,11 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => { setEditing(e); setDialogOpen(true); }}><Pencil className="h-3 w-3" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(e.id); }}>
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </Button>
+                          {canDelete && (
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(e.id); }}>
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}

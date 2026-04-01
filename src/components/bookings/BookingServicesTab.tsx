@@ -43,6 +43,7 @@ export default function BookingServicesTab({ bookingId }: Props) {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("bookings.edit");
+  const canDelete = hasPermission("bookings.delete");
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -206,9 +207,11 @@ export default function BookingServicesTab({ bookingId }: Props) {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(s.id); }}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
+                            {canDelete && (
+                              <Button variant="ghost" size="icon" onClick={() => { if (confirm("Xoá?")) deleteMutation.mutate(s.id); }}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       )}

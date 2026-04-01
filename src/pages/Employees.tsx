@@ -20,6 +20,7 @@ import { Search, Plus, Loader2, ChevronLeft, ChevronRight, Pencil, Trash2 } from
 import { useNavigate } from "react-router-dom";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -54,6 +55,8 @@ const PAGE_SIZE = 20;
 export default function Employees() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canDelete = hasPermission("employees.delete");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -237,9 +240,11 @@ export default function Employees() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => openEdit(e.id, ev)} title="Sửa">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                            {canDelete && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} title="Xóa">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

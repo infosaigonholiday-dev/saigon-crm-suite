@@ -16,6 +16,7 @@ import {
 import { CalendarIcon, Plus, Trash2, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ActivityFormDialog, { type Activity } from "./ActivityFormDialog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const typeIcons: Record<string, string> = {
   DiChuyen: "🚌",
@@ -48,6 +49,8 @@ interface Props {
 export default function BookingItineraryTab({ bookingId }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canDelete = hasPermission("bookings.delete");
   const queryKey = ["booking-itineraries", bookingId];
 
   const [activityDialog, setActivityDialog] = useState<{ open: boolean; dayId: string | null }>({ open: false, dayId: null });
@@ -214,30 +217,32 @@ export default function BookingItineraryTab({ bookingId }: Props) {
                   >
                     <Plus className="h-4 w-4 mr-1" /> Hoạt động
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Xóa Ngày {day.day_number}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tất cả hoạt động trong ngày này sẽ bị xóa. Không thể hoàn tác.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteDayMutation.mutate(day.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Xóa
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {canDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Xóa Ngày {day.day_number}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tất cả hoạt động trong ngày này sẽ bị xóa. Không thể hoàn tác.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteDayMutation.mutate(day.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Xóa
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             </CardHeader>
