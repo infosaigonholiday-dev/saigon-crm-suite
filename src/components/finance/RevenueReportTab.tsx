@@ -94,6 +94,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
             <p className="text-2xl font-bold mt-1">{totalBookings}</p>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <Card>
