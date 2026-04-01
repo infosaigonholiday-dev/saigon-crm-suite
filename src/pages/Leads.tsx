@@ -90,7 +90,7 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast({ title: "Thành công", description: "Đã chuyển đổi thành khách hàng thành công" });
+      toast.success("Thành công", { description: "Đã chuyển đổi thành khách hàng thành công" });
     },
     onError: (err: any) => {
       toast({ title: "Lỗi", description: err.message, variant: "destructive" });
