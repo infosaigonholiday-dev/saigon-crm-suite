@@ -87,7 +87,7 @@ export function ProfitReportTab() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                 <Legend />
                 <Line type="monotone" dataKey="grossProfit" name="LN gộp" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="netProfit" name="LN ròng" stroke="hsl(var(--success, 142 71% 45%))" strokeWidth={2} dot={{ r: 3 }} />
