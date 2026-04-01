@@ -29,6 +29,7 @@ export default function Vendors() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("bookings.edit");
+  const canDelete = hasPermission("bookings.delete");
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("ALL");
