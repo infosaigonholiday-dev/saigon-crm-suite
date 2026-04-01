@@ -83,8 +83,8 @@ export default function BookingDetail() {
   const cfg = statusConfig[status] ?? statusConfig.PENDING;
   const customer = booking.customers as any;
 
-  const canEditNotes = can("bookings.edit");
-  const canDeleteNotes = can("bookings.delete");
+  const canEditNotes = hasPermission("bookings.edit");
+  const canDeleteNotes = hasPermission("bookings.delete");
 
   return (
     <div className="space-y-6">
