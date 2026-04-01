@@ -43,6 +43,7 @@ export default function BookingServicesTab({ bookingId }: Props) {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission("bookings.edit");
+  const canDelete = hasPermission("bookings.delete");
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
