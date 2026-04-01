@@ -1,37 +1,53 @@
 
 
-# VẤN ĐỀ GỐC: Nhân viên KD vẫn thấy toàn bộ dữ liệu
+# Kế hoạch sửa phân quyền toàn diện
 
-## Nguyên nhân chính: `profiles.role` KHÔNG ĐÚNG
+## Phát hiện vấn đề
 
-Kiểm tra database cho thấy:
+### A. Thiếu 2 role INTERN trong hệ thống
+Hiện tại DB constraint `profiles_role_check` và code chỉ có:
+- INTERN_SALE_DOMESTIC, INTERN_SALE_OUTBOUND, INTERN_DIEUHAN, INTERN_MKT, INTERN_HCNS, INTERN_KETOAN
 
-| Nhân viên | Phòng ban | profiles.role | Đúng ra phải là |
-|-----------|-----------|---------------|-----------------|
-| nguyen tuan phuong | Phòng KD MICE | **HCNS** | SALE_MICE |
-| le thi thao linh | Phòng KD MICE | *(chưa có tài khoản)* | — |
-| Lê Thị Thủy Tiên | Phòng HCNS | HCNS | OK |
+**Thiếu**: `INTERN_SALE_MICE` và `INTERN_SALE_INBOUND` → nhân viên KD MICE/Inbound cấp TTS không có role phù hợp.
 
-**Nhân viên "nguyen tuan phuong" có `profiles.role = 'HCNS'`** → hệ thống coi là nhân sự → thấy toàn bộ nhân viên, lương, nghỉ phép. Code frontend hoạt động đúng — vấn đề là DATA sai.
-
-## Giải pháp: 2 việc cần làm
-
-### 1. Sửa role cho đúng ngay trong DB
-Migration update `profiles.role` cho user `09537abe-a5b4-48d1-b042-017c7c62f6a5` từ `HCNS` → `SALE_MICE`.
-
-### 2. Thêm cảnh báo UI khi role không khớp phòng ban
-Trong `EmployeeRoleTab.tsx`, thêm logic kiểm tra: nếu `department.name` chứa "Kinh Doanh" nhưng `profiles.role` là HCNS/KETOAN (hoặc ngược lại), hiện banner cảnh báo vàng:
-> "⚠️ Quyền hệ thống (HCNS) không khớp với phòng ban (Phòng KD MICE). Vui lòng kiểm tra lại."
-
-Điều này giúp Admin phát hiện lỗi gán role sai trong tương lai.
-
-### 3. Thêm hiển thị role hiện tại trong danh sách nhân viên
-Trong `Employees.tsx`, thêm cột "Quyền hệ thống" (join profiles.role) để Admin/HR nhìn nhanh role của từng người mà không cần vào chi tiết.
+### B. Dữ liệu sai
+| Tài khoản | Hiện tại | Cần sửa |
+|-----------|----------|---------|
+| nguyen tuan phuong (level=INTERN, Phòng KD MICE) | SALE_MICE | **INTERN_SALE_MICE** (role mới) |
+| gia bao - operator1@... (không liên kết NV) | HCNS | **MANAGER** + liên kết employee |
 
 ---
 
-## Tổng file thay đổi: 3
-1. **DB migration** — `UPDATE profiles SET role = 'SALE_MICE' WHERE id = '09537abe-...'`
-2. **`src/components/employees/EmployeeRoleTab.tsx`** — thêm banner cảnh báo role không khớp phòng ban
-3. **`src/pages/Employees.tsx`** — thêm cột hiển thị role hệ thống trong bảng danh sách
+## Thực hiện
+
+### Bước 1: DB Migration — Thêm 2 role INTERN mới
+- Drop + recreate constraint `profiles_role_check` thêm `INTERN_SALE_MICE`, `INTERN_SALE_INBOUND`
+- Cập nhật DB function `get_default_permissions_for_role` cho 2 role mới (quyền: customers.view, leads.view, bookings.view, leave.view/create, sop.view)
+
+### Bước 2: DB Data Update — Sửa role 2 tài khoản
+- `nguyen tuan phuong`: SALE_MICE → INTERN_SALE_MICE
+- `gia bao`: HCNS → MANAGER
+- Tạo employee record cho "gia bao" nếu chưa có, liên kết profile_id, gán phòng KD phù hợp
+
+### Bước 3: Code — Cập nhật 3 file
+1. **`src/hooks/usePermissions.ts`**: Thêm `INTERN_SALE_MICE` và `INTERN_SALE_INBOUND` vào `DEFAULT_PERMISSIONS`
+2. **`src/components/employees/EmployeeRoleTab.tsx`**: Thêm 2 role mới vào `roleOptions` + auto-suggest role theo phòng ban khi tạo tài khoản (bao gồm cả intern)
+3. **`src/components/settings/SettingsRolesTab.tsx`**: Thêm 2 role mới vào bảng tham chiếu
+
+### Quyền mặc định cho role mới
+
+```text
+INTERN_SALE_MICE:    customers.view, leads.view, bookings.view, leave.view, leave.create, sop.view
+INTERN_SALE_INBOUND: customers.view, leads.view, bookings.view, leave.view, leave.create, sop.view
+```
+(Giống INTERN_SALE_DOMESTIC — chỉ xem, không tạo/sửa)
+
+---
+
+## Tổng thay đổi: 5
+1. DB migration: thêm 2 role vào constraint + DB function
+2. DB data: sửa role nguyen tuan phuong
+3. DB data: sửa role gia bao + tạo/liên kết employee
+4. `usePermissions.ts`: thêm 2 role
+5. `EmployeeRoleTab.tsx` + `SettingsRolesTab.tsx`: thêm role + auto-suggest
 
