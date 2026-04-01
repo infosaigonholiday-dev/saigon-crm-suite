@@ -55,6 +55,20 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Báo cáo doanh thu</h2>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                  data.map(r => ({ Tháng: r.month, Booking: r.booking_count ?? 0, 'Doanh thu': r.gross_revenue ?? 0, 'Doanh thu ròng': r.net_revenue ?? 0 })),
+                  'bao-cao-doanh-thu'
+                )}>
+                  <Download className="h-4 w-4 mr-2" />Xuất CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
           <SelectTrigger className="w-28">
             <SelectValue />
