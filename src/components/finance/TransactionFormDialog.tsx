@@ -121,6 +121,9 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
       if (isSubmitter) {
         payload.submitted_by = user?.id;
         payload.approval_status = "PENDING_REVIEW";
+      } else if (isEdit && transaction?.approval_status === "REJECTED" && transaction?.submitted_by === user?.id) {
+        // Resubmit rejected record
+        payload.approval_status = "PENDING_REVIEW";
       } else {
         payload.approval_status = "DRAFT";
       }
@@ -135,7 +138,10 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
+      queryClient.invalidateQueries({ queryKey: ["pending-approval-count"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-transactions"] });
+      const isResubmit = isEdit && transaction?.approval_status === "REJECTED";
+      toast.success(isResubmit ? "Đã gửi lại chờ duyệt" : isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
       onOpenChange(false);
     },
     onError: () => toast.error("Lỗi khi lưu"),

@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { TransactionListTab } from "@/components/finance/TransactionListTab";
+import { ApprovalTab } from "@/components/finance/ApprovalTab";
 import { SalaryCostTab } from "@/components/finance/SalaryCostTab";
 import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
@@ -199,6 +200,19 @@ export default function Finance() {
   const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
   const isManager = userRole === "MANAGER";
 
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ["pending-approval-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("approval_status", "PENDING_REVIEW");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isFullAccess,
+  });
+
   if (!hasFinanceView && hasFinanceSubmit) {
     return <SubmitterView />;
   }
@@ -217,6 +231,16 @@ export default function Finance() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          {isFullAccess && (
+            <TabsTrigger value="approval" className="relative">
+              Duyệt chi phí
+              {pendingCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1">
+                  {pendingCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="cashbook">Sổ quỹ</TabsTrigger>
           <TabsTrigger value="estimates">Dự toán</TabsTrigger>
           <TabsTrigger value="settlements">Quyết toán</TabsTrigger>
@@ -233,6 +257,7 @@ export default function Finance() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
+        {isFullAccess && <TabsContent value="approval" className="mt-4"><ApprovalTab /></TabsContent>}
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
         <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>
