@@ -39,6 +39,7 @@ interface MenuItem {
   url: string;
   icon: any;
   permission?: PermissionKey;
+  anyPermission?: PermissionKey[];
 }
 
 const crmItems: MenuItem[] = [
@@ -61,7 +62,7 @@ const hrItems: MenuItem[] = [
 ];
 
 const financeItems: MenuItem[] = [
-  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, permission: "finance.view" },
+  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, anyPermission: ["finance.view", "finance.submit"] },
 ];
 
 const settingsItems: MenuItem[] = [
@@ -73,10 +74,13 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { userRole } = useAuth();
-  const { hasPermission, loading: permLoading } = usePermissions();
+  const { hasPermission, hasAnyPermission, loading: permLoading } = usePermissions();
 
   const filterItems = (items: MenuItem[]) =>
-    items.filter((item) => !item.permission || hasPermission(item.permission));
+    items.filter((item) => {
+      if (item.anyPermission) return hasAnyPermission(item.anyPermission);
+      return !item.permission || hasPermission(item.permission);
+    });
 
   const renderItems = (items: MenuItem[]) =>
     items.map((item) => (

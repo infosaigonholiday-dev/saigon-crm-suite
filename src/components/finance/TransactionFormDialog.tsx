@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,8 +34,10 @@ interface Props {
 
 export function TransactionFormDialog({ open, onOpenChange, transaction }: Props) {
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const isEdit = !!transaction;
+  const isSubmitter = hasPermission("finance.submit") && !hasPermission("finance.view");
 
   const [form, setForm] = useState({
     transaction_date: new Date().toISOString().split("T")[0],
@@ -101,7 +104,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         transaction_date: form.transaction_date,
         type: form.type,
         category: form.category,
@@ -113,8 +116,15 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
         reference_code: form.reference_code,
         notes: form.notes,
         recorded_by: user?.id,
-        approval_status: "DRAFT",
       };
+
+      if (isSubmitter) {
+        payload.submitted_by = user?.id;
+        payload.approval_status = "PENDING_REVIEW";
+      } else {
+        payload.approval_status = "DRAFT";
+      }
+
       if (isEdit) {
         const { error } = await supabase.from("transactions").update(payload).eq("id", transaction.id);
         if (error) throw error;
@@ -125,13 +135,12 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
+      toast.success(isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
       onOpenChange(false);
     },
     onError: () => toast.error("Lỗi khi lưu"),
   });
 
-  // Auto-set type based on category
   const handleCategoryChange = (cat: string) => {
     const catDef = CATEGORIES.find((c) => c.value === cat);
     setForm({ ...form, category: cat, type: catDef?.type || "EXPENSE" });
@@ -141,7 +150,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Sửa phiếu" : "Lập phiếu Thu/Chi"}</DialogTitle>
+          <DialogTitle>{isSubmitter ? "Nhập chi phí" : isEdit ? "Sửa phiếu" : "Lập phiếu Thu/Chi"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -217,7 +226,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? "Đang lưu..." : isEdit ? "Cập nhật" : "Tạo phiếu"}
+              {mutation.isPending ? "Đang lưu..." : isSubmitter ? "Gửi duyệt" : isEdit ? "Cập nhật" : "Tạo phiếu"}
             </Button>
           </div>
         </div>

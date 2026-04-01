@@ -12,7 +12,7 @@ export const ALL_PERMISSION_KEYS = [
   "employees.view", "employees.create", "employees.edit", "employees.delete",
   "leave.view", "leave.create", "leave.approve",
   "payroll.view", "payroll.create", "payroll.edit",
-  "finance.view", "finance.edit",
+  "finance.view", "finance.edit", "finance.submit",
   "settings.view", "settings.edit",
 ] as const;
 
@@ -28,14 +28,14 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   employees: { label: "Nhân sự", keys: ["employees.view", "employees.create", "employees.edit", "employees.delete"] },
   leave: { label: "Nghỉ phép", keys: ["leave.view", "leave.create", "leave.approve"] },
   payroll: { label: "Bảng lương", keys: ["payroll.view", "payroll.create", "payroll.edit"] },
-  finance: { label: "Tài chính", keys: ["finance.view", "finance.edit"] },
+  finance: { label: "Tài chính", keys: ["finance.view", "finance.edit", "finance.submit"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
 };
 
 // Default permissions per role (client-side mirror of DB function)
 const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
-  ADMIN: [...ALL_PERMISSION_KEYS],
-  SUPER_ADMIN: [...ALL_PERMISSION_KEYS],
+  ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
+  SUPER_ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
   DIRECTOR: [
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
@@ -48,10 +48,10 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.edit",
     "settings.view",
   ],
-  HCNS: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "payroll.view", "payroll.create", "settings.view"],
-  HR_MANAGER: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "settings.view"],
-  HR_HEAD: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "bookings.view", "quotations.view", "payments.view", "settings.view"],
-  KETOAN: ["customers.view", "bookings.view", "payments.view", "payments.create", "payments.edit", "payroll.view", "payroll.edit", "finance.view", "finance.edit", "settings.view"],
+  HCNS: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "payroll.view", "payroll.create", "finance.submit", "settings.view"],
+  HR_MANAGER: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "finance.submit", "settings.view"],
+  HR_HEAD: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "bookings.view", "quotations.view", "payments.view", "finance.submit", "settings.view"],
+  KETOAN: ["customers.view", "bookings.view", "payments.view", "payments.create", "payments.edit", "payroll.view", "payroll.edit", "finance.view", "finance.edit", "finance.submit", "settings.view"],
   MANAGER: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "bookings.edit", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "payments.create", "employees.view", "leave.view", "leave.approve"],
   DIEUHAN: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "bookings.edit", "bookings.approve", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "payments.create", "payments.edit"],
   SALE_DOMESTIC: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "quotations.view", "quotations.create", "quotations.edit", "payments.view"],

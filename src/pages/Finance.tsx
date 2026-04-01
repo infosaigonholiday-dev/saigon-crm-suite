@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
@@ -141,7 +142,27 @@ function OverviewTab() {
   );
 }
 
+function SubmitterView() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Nhập chi phí</h1>
+        <p className="text-sm text-muted-foreground">Nhập chi phí và gửi Kế toán duyệt</p>
+      </div>
+      <TransactionListTab submitterOnly />
+    </div>
+  );
+}
+
 export default function Finance() {
+  const { hasPermission } = usePermissions();
+  const hasFinanceView = hasPermission("finance.view");
+  const hasFinanceSubmit = hasPermission("finance.submit");
+
+  if (!hasFinanceView && hasFinanceSubmit) {
+    return <SubmitterView />;
+  }
+
   return (
     <div className="space-y-6">
       <div>
