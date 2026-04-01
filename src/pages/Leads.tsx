@@ -27,12 +27,15 @@ const tempConfig: Record<string, { icon: string; className: string }> = {
   cold: { icon: "🔵", className: "text-blue-500" },
 };
 
-function isFollowUpOverdue(date: string | null): boolean {
-  if (!date) return false;
+function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
+  if (!date) return null;
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return d <= today;
+  if (d.getTime() < today.getTime()) return "overdue";
+  if (d.getTime() === today.getTime()) return "today";
+  return null;
 }
 
 export default function Leads() {
