@@ -1,38 +1,43 @@
 
 
-## Cập nhật CustomerFormDialog
+## Cập nhật CustomerDetail - Hiển thị đầy đủ thông tin
 
-### Thay đổi chính
+### Hiện trạng
+Trang CustomerDetail hiện chỉ hiển thị: tên, phone, email, segment badge, 4 stat cards, và 3 tabs (Bookings, Payments, Chart). Thiếu hoàn toàn thông tin cá nhân mở rộng và thông tin doanh nghiệp.
 
-Form hiện tại đã có 2 tabs và hầu hết các trường. Cần điều chỉnh:
+### Kế hoạch
 
-**1. Tab "Thông tin cá nhân" (đổi tên từ "Thông tin cơ bản")**
-- Đổi nguồn từ hardcoded array → query `lead_sources` table
-- Giới tính: đổi từ RadioGroup → Select dropdown
-- Phân khúc: đổi từ Select editable → Badge read-only
-- Ngày sinh: thêm badge "Sinh nhật sắp tới" nếu trong 7 ngày
-- Phone validate: siết lại `^\d{10}$` (đúng 10 số)
-- Bỏ trường Zalo ID (không có trong spec), thay bằng CCCD/Passport (đã có)
+**1. Thêm tab "Hồ sơ" làm tab mặc định** (trước Bookings)
 
-**2. Tab "Thông tin doanh nghiệp" (đổi tên từ "Thông tin công ty")**
-- Thêm trường "Ngày sinh người liên hệ" (DatePicker) — map DB column `contact_birthday`
-- Map `employee_count` → `company_size` trong DB insert (DB có cả 2 cột, dùng `company_size`)
+Chia thành 2 Card:
 
-**3. Submit logic**
-- Thêm `contact_birthday` và `company_size` vào insert payload
-- Giữ `segment` mặc định "NEW" nhưng không cho user sửa
+**Card "Thông tin cá nhân"** — grid 2 cột hiển thị:
+- Ngày sinh (date_of_birth) + badge "Sinh nhật sắp tới" nếu trong 7 ngày
+- Giới tính (gender)
+- CCCD/Passport (id_number)
+- Địa chỉ (address)
+- Nguồn đến (source) — join `lead_sources` để lấy tên
+- Phân hạng (tier) — badge màu: Mới/Silver/Gold/Diamond
+- Phân khúc (segment) — badge hiện có
+- Ghi chú (notes)
+
+**Card "Thông tin doanh nghiệp"** — chỉ hiện khi `type === 'DOANH NGHIỆP'` hoặc có `company_name`:
+- Tên công ty (company_name)
+- MST (tax_code)
+- Địa chỉ công ty (company_address)
+- Người liên hệ (contact_person) + chức vụ (contact_position)
+- Ngày sinh người liên hệ (contact_birthday)
+- Email công ty (company_email)
+- Ngày thành lập (founded_date)
+- Quy mô nhân sự (company_size)
+
+**2. Cập nhật header**
+- Thêm tier badge cạnh segment badge
+- Thêm nút "Sửa" mở CustomerFormDialog (edit mode) — nếu chưa có edit mode, bỏ qua
+
+**3. Thêm query join lead_sources**
+- Sửa customer query: `.select("*, lead_sources(name)")` hoặc query riêng dựa trên `source_id`
 
 ### File thay đổi
-
-**`src/components/customers/CustomerFormDialog.tsx`**
-- Thêm `useQuery` cho `lead_sources`
-- Thay `sources` hardcoded → dynamic từ DB
-- Giới tính: `Select` thay `RadioGroup`
-- Phân khúc: render Badge read-only thay Select
-- Thêm helper `isBirthdayUpcoming(date)` — check 7 ngày tới
-- Thêm `contact_birthday` DatePicker trong tab company
-- Phone validation: `^\d{10}$`
-- Insert payload: thêm `contact_birthday`, dùng `company_size` thay `employee_count`
-
-### Không cần migration — tất cả cột đã tồn tại trong DB
+- `src/pages/CustomerDetail.tsx` — thêm tab Hồ sơ, tier badge, lead_sources join, helper `isBirthdayUpcoming`
 
