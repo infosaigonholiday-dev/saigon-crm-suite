@@ -13,6 +13,7 @@ import {
 import { Search, Plus, Loader2, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { exportToCSV } from "@/lib/exportUtils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const PAGE_SIZE = 20;
 
@@ -57,6 +58,7 @@ export default function Customers() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
 
   // Count query with filters
   const { data: totalCount = 0 } = useQuery({
@@ -124,23 +126,25 @@ export default function Customers() {
           <p className="text-sm text-muted-foreground">{totalCount} khách hàng</p>
         </div>
         <div className="flex gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV(
-                  customers.map(c => ({
-                    'Tên KH': c.full_name, 'Điện thoại': c.phone ?? '', Email: c.email ?? '',
-                    'Phân khúc': c.segment ?? '', 'Hạng': c.tier ?? '', 'Booking': c.total_bookings ?? 0,
-                    'Doanh thu': c.total_revenue ?? 0, 'Đã TT': c.total_paid ?? 0
-                  })),
-                  'danh-sach-khach-hang'
-                )}>
-                  <Download className="h-4 w-4 mr-2" />Xuất CSV
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {hasPermission("customers.export") && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                    customers.map(c => ({
+                      'Tên KH': c.full_name, 'Điện thoại': c.phone ?? '', Email: c.email ?? '',
+                      'Phân khúc': c.segment ?? '', 'Hạng': c.tier ?? '', 'Booking': c.total_bookings ?? 0,
+                      'Doanh thu': c.total_revenue ?? 0, 'Đã TT': c.total_paid ?? 0
+                    })),
+                    'danh-sach-khach-hang'
+                  )}>
+                    <Download className="h-4 w-4 mr-2" />Xuất CSV
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
         </div>
       </div>

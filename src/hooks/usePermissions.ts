@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // All permission keys in the system
 export const ALL_PERMISSION_KEYS = [
-  "customers.view", "customers.create", "customers.edit", "customers.delete",
+  "customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export",
   "leads.view", "leads.create", "leads.edit", "leads.delete",
   "bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve",
   "quotations.view", "quotations.create", "quotations.edit", "quotations.delete",
@@ -15,13 +15,14 @@ export const ALL_PERMISSION_KEYS = [
   "finance.view", "finance.create", "finance.edit", "finance.submit",
   "settings.view", "settings.edit",
   "sop.view", "sop.create",
+  "vendors.view",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
 
 // Permission groups for UI display
 export const PERMISSION_GROUPS: Record<string, { label: string; keys: PermissionKey[] }> = {
-  customers: { label: "Khách hàng", keys: ["customers.view", "customers.create", "customers.edit", "customers.delete"] },
+  customers: { label: "Khách hàng", keys: ["customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export"] },
   leads: { label: "Tiềm năng", keys: ["leads.view", "leads.create", "leads.edit", "leads.delete"] },
   bookings: { label: "Đặt tour", keys: ["bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve"] },
   quotations: { label: "Báo giá", keys: ["quotations.view", "quotations.create", "quotations.edit", "quotations.delete"] },
@@ -32,12 +33,13 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   finance: { label: "Tài chính", keys: ["finance.view", "finance.create", "finance.edit", "finance.submit"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
   sop: { label: "Quy trình", keys: ["sop.view", "sop.create"] },
+  vendors: { label: "Nhà cung cấp", keys: ["vendors.view"] },
 };
 
 // Default permissions per role (client-side mirror of DB function)
 const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
-  ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
-  SUPER_ADMIN: [...ALL_PERMISSION_KEYS] as PermissionKey[],
+  ADMIN: [...ALL_PERMISSION_KEYS] as unknown as PermissionKey[],
+  SUPER_ADMIN: [...ALL_PERMISSION_KEYS] as unknown as PermissionKey[],
   DIRECTOR: [
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
@@ -53,10 +55,10 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   HCNS: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "finance.create", "finance.submit", "settings.view", "sop.view", "sop.create"],
   HR_MANAGER: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "finance.submit", "settings.view", "sop.view", "sop.create"],
-  HR_HEAD: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "bookings.view", "quotations.view", "payments.view", "finance.submit", "settings.view", "sop.view", "sop.create"],
-  KETOAN: ["customers.view", "bookings.view", "payments.view", "payments.create", "payments.edit", "payroll.view", "payroll.edit", "finance.view", "finance.edit", "finance.submit", "settings.view", "sop.view"],
+  HR_HEAD: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "bookings.view", "quotations.view", "payments.view", "finance.submit", "settings.view", "sop.view", "sop.create", "vendors.view"],
+  KETOAN: ["customers.view", "bookings.view", "payments.view", "payments.create", "payments.edit", "payroll.view", "payroll.edit", "finance.view", "finance.edit", "finance.submit", "settings.view", "sop.view", "vendors.view"],
   MANAGER: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "bookings.edit", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "payments.create", "employees.view", "leave.view", "leave.approve", "finance.submit", "sop.view", "sop.create"],
-  DIEUHAN: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "bookings.edit", "bookings.approve", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "payments.create", "payments.edit", "finance.create", "finance.submit", "sop.view", "sop.create"],
+  DIEUHAN: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "bookings.edit", "bookings.approve", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "payments.create", "payments.edit", "finance.create", "finance.submit", "sop.view", "sop.create", "vendors.view"],
   SALE_DOMESTIC: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "leave.view", "leave.create", "sop.view"],
   SALE_INBOUND: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "leave.view", "leave.create", "sop.view"],
   SALE_OUTBOUND: ["customers.view", "customers.create", "customers.edit", "leads.view", "leads.create", "leads.edit", "bookings.view", "bookings.create", "quotations.view", "quotations.create", "quotations.edit", "payments.view", "leave.view", "leave.create", "sop.view"],

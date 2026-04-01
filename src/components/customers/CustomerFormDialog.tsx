@@ -48,6 +48,11 @@ const initial = {
   company_email: "",
   founded_date: null as Date | null,
   company_size: "",
+  contact_person_phone: "",
+  tour_interest: "",
+  contact_status: "",
+  issue_faced: "",
+  result: "",
 };
 
 const segmentLabels: Record<string, { label: string; className: string }> = {
@@ -147,6 +152,11 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         company_email: form.company_email || null,
         founded_date: form.founded_date ? format(form.founded_date, "yyyy-MM-dd") : null,
         company_size: form.company_size ? parseInt(form.company_size) : null,
+        contact_person_phone: form.contact_person_phone || null,
+        tour_interest: form.tour_interest || null,
+        contact_status: form.contact_status || null,
+        issue_faced: form.issue_faced || null,
+        result: form.result || null,
       } as any);
       if (error) throw error;
     },
@@ -392,6 +402,41 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
               <div className="space-y-1.5">
                 <Label>Quy mô nhân sự</Label>
                 <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} placeholder="Số nhân viên" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>SĐT người liên hệ</Label>
+                <Input value={form.contact_person_phone} onChange={(e) => set("contact_person_phone", e.target.value)} placeholder="10 chữ số" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tour quan tâm</Label>
+                <Input value={form.tour_interest} onChange={(e) => set("tour_interest", e.target.value)} placeholder="VD: Tour Nhật 5N4Đ" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tình trạng</Label>
+                <Select value={form.contact_status} onValueChange={(v) => set("contact_status", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn tình trạng" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Chưa liên hệ">Chưa liên hệ</SelectItem>
+                    <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
+                    <SelectItem value="Chốt deal">Chốt deal</SelectItem>
+                    <SelectItem value="Từ chối">Từ chối</SelectItem>
+                    <SelectItem value="Hẹn gọi lại">Hẹn gọi lại</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Kết quả</Label>
+                <Input value={form.result} onChange={(e) => set("result", e.target.value)} placeholder="VD: Đã chốt / Đang cân nhắc" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Vấn đề gặp phải</Label>
+                <Input value={form.issue_faced} onChange={(e) => set("issue_faced", e.target.value)} placeholder="VD: Giá cao, chưa quyết lịch" />
               </div>
             </div>
           </TabsContent>

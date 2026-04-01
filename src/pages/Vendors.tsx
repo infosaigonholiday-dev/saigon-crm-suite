@@ -11,6 +11,7 @@ import { Loader2, Plus, Search, Pencil, Trash2, Building2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { VendorFormDialog } from "@/components/vendors/VendorFormDialog";
+import { PermissionGuard } from "@/components/PermissionGuard";
 
 const CATEGORIES = [
   { value: "TRANSPORT", label: "Vận chuyển" },
@@ -64,6 +65,7 @@ export default function Vendors() {
   });
 
   return (
+    <PermissionGuard permission="vendors.view">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -148,5 +150,6 @@ export default function Vendors() {
 
       <VendorFormDialog open={dialogOpen} onOpenChange={setDialogOpen} vendor={editing} />
     </div>
+    </PermissionGuard>
   );
 }

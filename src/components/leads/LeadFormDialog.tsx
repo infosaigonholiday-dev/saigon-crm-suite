@@ -30,12 +30,19 @@ const initial = {
   channel: "",
   interest_type: "",
   company_name: "",
+  company_address: "",
   expected_value: "",
   budget: "",
   destination: "",
   pax_count: "",
   temperature: "warm",
   call_notes: "",
+  tour_interest: "",
+  contact_status: "",
+  issue_faced: "",
+  result: "",
+  assigned_staff_name: "",
+  assigned_staff_phone: "",
 };
 
 export default function LeadFormDialog({ open, onOpenChange }: Props) {
@@ -72,6 +79,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         channel: form.channel || null,
         interest_type: form.interest_type || null,
         company_name: form.company_name || null,
+        company_address: (form as any).company_address || null,
         expected_value: form.expected_value ? Number(form.expected_value) : null,
         budget: form.budget ? Number(form.budget) : null,
         destination: form.destination || null,
@@ -79,8 +87,14 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         temperature: form.temperature || "warm",
         follow_up_date: followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         call_notes: form.call_notes || null,
+        tour_interest: (form as any).tour_interest || null,
+        contact_status: (form as any).contact_status || null,
+        issue_faced: (form as any).issue_faced || null,
+        result: (form as any).result || null,
+        assigned_staff_name: (form as any).assigned_staff_name || null,
+        assigned_staff_phone: (form as any).assigned_staff_phone || null,
         status: "NEW",
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -213,6 +227,58 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
           <div className="space-y-1.5">
             <Label>Ghi chú cuộc gọi</Label>
             <Textarea rows={2} value={form.call_notes} onChange={(e) => set("call_notes", e.target.value)} />
+          </div>
+
+          {/* Business fields */}
+          <div className="border-t pt-4 mt-2">
+            <p className="text-sm font-semibold text-muted-foreground mb-3">Thông tin doanh nghiệp</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Địa chỉ công ty</Label>
+              <Input value={form.company_address} onChange={(e) => set("company_address", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tour quan tâm</Label>
+              <Input placeholder="VD: Tour Nhật 5N4Đ" value={form.tour_interest} onChange={(e) => set("tour_interest", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Tình trạng</Label>
+              <Select value={form.contact_status} onValueChange={(v) => set("contact_status", v)}>
+                <SelectTrigger><SelectValue placeholder="Chọn tình trạng" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Chưa liên hệ">Chưa liên hệ</SelectItem>
+                  <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
+                  <SelectItem value="Chốt deal">Chốt deal</SelectItem>
+                  <SelectItem value="Từ chối">Từ chối</SelectItem>
+                  <SelectItem value="Hẹn gọi lại">Hẹn gọi lại</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Kết quả</Label>
+              <Input placeholder="VD: Đã chốt / Đang cân nhắc" value={form.result} onChange={(e) => set("result", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Vấn đề gặp phải</Label>
+            <Textarea rows={2} value={form.issue_faced} onChange={(e) => set("issue_faced", e.target.value)} placeholder="VD: Giá cao, chưa quyết lịch..." />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Nhân sự phụ trách</Label>
+              <Input value={form.assigned_staff_name} onChange={(e) => set("assigned_staff_name", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>SĐT nhân sự phụ trách</Label>
+              <Input value={form.assigned_staff_phone} onChange={(e) => set("assigned_staff_phone", e.target.value)} />
+            </div>
           </div>
         </div>
         <DialogFooter>

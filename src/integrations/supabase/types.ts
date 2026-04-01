@@ -1322,7 +1322,9 @@ export type Database = {
           company_size: number | null
           contact_birthday: string | null
           contact_person: string | null
+          contact_person_phone: string | null
           contact_position: string | null
+          contact_status: string | null
           created_at: string | null
           created_by: string | null
           date_of_birth: string | null
@@ -1336,9 +1338,11 @@ export type Database = {
           id: string
           id_number: string | null
           is_blacklisted: boolean | null
+          issue_faced: string | null
           last_booking_date: string | null
           notes: string | null
           phone: string | null
+          result: string | null
           segment: string | null
           segment_updated_at: string | null
           source: string | null
@@ -1348,6 +1352,7 @@ export type Database = {
           total_bookings: number | null
           total_paid: number | null
           total_revenue: number | null
+          tour_interest: string | null
           type: string
           zalo_id: string | null
         }
@@ -1361,7 +1366,9 @@ export type Database = {
           company_size?: number | null
           contact_birthday?: string | null
           contact_person?: string | null
+          contact_person_phone?: string | null
           contact_position?: string | null
+          contact_status?: string | null
           created_at?: string | null
           created_by?: string | null
           date_of_birth?: string | null
@@ -1375,9 +1382,11 @@ export type Database = {
           id?: string
           id_number?: string | null
           is_blacklisted?: boolean | null
+          issue_faced?: string | null
           last_booking_date?: string | null
           notes?: string | null
           phone?: string | null
+          result?: string | null
           segment?: string | null
           segment_updated_at?: string | null
           source?: string | null
@@ -1387,6 +1396,7 @@ export type Database = {
           total_bookings?: number | null
           total_paid?: number | null
           total_revenue?: number | null
+          tour_interest?: string | null
           type: string
           zalo_id?: string | null
         }
@@ -1400,7 +1410,9 @@ export type Database = {
           company_size?: number | null
           contact_birthday?: string | null
           contact_person?: string | null
+          contact_person_phone?: string | null
           contact_position?: string | null
+          contact_status?: string | null
           created_at?: string | null
           created_by?: string | null
           date_of_birth?: string | null
@@ -1414,9 +1426,11 @@ export type Database = {
           id?: string
           id_number?: string | null
           is_blacklisted?: boolean | null
+          issue_faced?: string | null
           last_booking_date?: string | null
           notes?: string | null
           phone?: string | null
+          result?: string | null
           segment?: string | null
           segment_updated_at?: string | null
           source?: string | null
@@ -1426,6 +1440,7 @@ export type Database = {
           total_bookings?: number | null
           total_paid?: number | null
           total_revenue?: number | null
+          tour_interest?: string | null
           type?: string
           zalo_id?: string | null
         }
@@ -2166,11 +2181,15 @@ export type Database = {
       }
       leads: {
         Row: {
+          assigned_staff_name: string | null
+          assigned_staff_phone: string | null
           assigned_to: string | null
           budget: number | null
           call_notes: string | null
           channel: string | null
+          company_address: string | null
           company_name: string | null
+          contact_status: string | null
           created_at: string | null
           customer_id: string | null
           department_id: string | null
@@ -2181,22 +2200,29 @@ export type Database = {
           full_name: string
           id: string
           interest_type: string | null
+          issue_faced: string | null
           last_contact_at: string | null
           lost_reason: string | null
           next_followup_at: string | null
           pax_count: number | null
           phone: string | null
           probability_pct: number | null
+          result: string | null
           source_id: string | null
           status: string | null
           temperature: string | null
+          tour_interest: string | null
         }
         Insert: {
+          assigned_staff_name?: string | null
+          assigned_staff_phone?: string | null
           assigned_to?: string | null
           budget?: number | null
           call_notes?: string | null
           channel?: string | null
+          company_address?: string | null
           company_name?: string | null
+          contact_status?: string | null
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
@@ -2207,22 +2233,29 @@ export type Database = {
           full_name: string
           id?: string
           interest_type?: string | null
+          issue_faced?: string | null
           last_contact_at?: string | null
           lost_reason?: string | null
           next_followup_at?: string | null
           pax_count?: number | null
           phone?: string | null
           probability_pct?: number | null
+          result?: string | null
           source_id?: string | null
           status?: string | null
           temperature?: string | null
+          tour_interest?: string | null
         }
         Update: {
+          assigned_staff_name?: string | null
+          assigned_staff_phone?: string | null
           assigned_to?: string | null
           budget?: number | null
           call_notes?: string | null
           channel?: string | null
+          company_address?: string | null
           company_name?: string | null
+          contact_status?: string | null
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
@@ -2233,15 +2266,18 @@ export type Database = {
           full_name?: string
           id?: string
           interest_type?: string | null
+          issue_faced?: string | null
           last_contact_at?: string | null
           lost_reason?: string | null
           next_followup_at?: string | null
           pax_count?: number | null
           phone?: string | null
           probability_pct?: number | null
+          result?: string | null
           source_id?: string | null
           status?: string | null
           temperature?: string | null
+          tour_interest?: string | null
         }
         Relationships: [
           {
