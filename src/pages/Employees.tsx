@@ -16,7 +16,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Loader2, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Loader2, ChevronLeft, ChevronRight, Pencil, Trash2, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { exportToCSV } from "@/lib/exportUtils";
 import { useNavigate } from "react-router-dom";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { toast } from "sonner";
