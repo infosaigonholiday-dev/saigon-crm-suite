@@ -18,6 +18,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import logo from "@/assets/logo.jpg";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
