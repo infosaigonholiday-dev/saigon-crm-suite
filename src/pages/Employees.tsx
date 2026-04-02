@@ -61,7 +61,7 @@ function getInitials(name: string): string {
 }
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  ADMIN: "Admin", SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
   HCNS: "NV HCNS", HR_MANAGER: "Leader HCNS",
   KETOAN: "Kế toán", MANAGER: "Trưởng phòng", GDKD: "GĐ Kinh doanh", DIEUHAN: "Điều hành",
   SALE_DOMESTIC: "Sale NĐ", SALE_INBOUND: "Sale IB", SALE_OUTBOUND: "Sale OB", SALE_MICE: "Sale MICE",

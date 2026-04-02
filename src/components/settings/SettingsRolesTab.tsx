@@ -7,7 +7,6 @@ import {
 
 const rolesReference = [
   { role: "ADMIN", label: "Quản trị viên", desc: "Toàn quyền hệ thống: quản lý nhân sự, tài chính, cài đặt, tài khoản.", color: "bg-destructive/10 text-destructive border-destructive/20" },
-  { role: "SUPER_ADMIN", label: "Super Admin", desc: "Tương đương ADMIN, quyền cao nhất.", color: "bg-destructive/10 text-destructive border-destructive/20" },
   { role: "HCNS", label: "Nhân viên HCNS", desc: "Xem/tạo/sửa nhân viên, nghỉ phép, bảng lương. Không duyệt, không xóa.", color: "bg-accent/10 text-accent border-accent/20" },
   { role: "HR_MANAGER", label: "Leader HCNS", desc: "Toàn quyền nhân sự: thêm/sửa/xóa nhân viên, duyệt nghỉ phép, chỉnh lương.", color: "bg-accent/10 text-accent border-accent/20" },
   { role: "KETOAN", label: "Kế toán", desc: "Quản lý tài chính, thuế, công nợ, bảng lương, hóa đơn.", color: "bg-warning/10 text-warning border-warning/20" },

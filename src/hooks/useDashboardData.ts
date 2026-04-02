@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 type DataScope = "all" | "team" | "self";
 
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+const ADMIN_ROLES = ["ADMIN"];
 const MANAGER_ROLES = ["MANAGER", "GDKD", "DIEUHAN"];
 const FINANCE_ROLES = ["KETOAN"];
 const HR_ROLES = ["HCNS", "HR_MANAGER"];

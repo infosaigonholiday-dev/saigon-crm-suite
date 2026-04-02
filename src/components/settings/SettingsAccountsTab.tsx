@@ -23,7 +23,6 @@ import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2, Pencil } from 
 
 const ROLES: { value: string; label: string }[] = [
   { value: "ADMIN", label: "Quản trị viên" },
-  { value: "SUPER_ADMIN", label: "Super Admin" },
   { value: "HCNS", label: "Nhân viên HCNS" },
   { value: "HR_MANAGER", label: "Leader HCNS" },
   { value: "KETOAN", label: "Kế toán" },

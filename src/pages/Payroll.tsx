@@ -24,7 +24,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Tháng ${i + 1}` }));
 
 // Roles that see full payroll table
-const FULL_VIEW_ROLES = ["ADMIN", "SUPER_ADMIN", "HR_MANAGER", "HCNS", "KETOAN"];
+const FULL_VIEW_ROLES = ["ADMIN", "HR_MANAGER", "HCNS", "KETOAN"];
 
 export default function Payroll() {
   const now = new Date();
