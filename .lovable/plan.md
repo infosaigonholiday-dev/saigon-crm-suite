@@ -1,47 +1,53 @@
 
 
-# Xóa role SUPER_ADMIN khỏi hệ thống
+# Áp dụng pattern `admin_full_access` cho toàn bộ hệ thống
 
-## Tóm tắt
-Gộp SUPER_ADMIN vào ADMIN — không có user nào đang dùng SUPER_ADMIN. Mọi nơi check `SUPER_ADMIN` sẽ chỉ còn `ADMIN`.
+## Nguyên tắc
+Thêm 1 policy duy nhất `admin_full_access` (FOR ALL) cho **mỗi bảng** trong schema `public`. ADMIN có toàn quyền CRUD trên mọi bảng — không cần check thêm ở bất kỳ policy nào khác.
 
-## 1. Database Migration
+## Lưu ý kỹ thuật quan trọng
+- **Không dùng trực tiếp** `EXISTS (SELECT 1 FROM profiles ...)` trên bảng `profiles` vì sẽ gây **infinite recursion**.
+- Thay vào đó dùng function `has_role(auth.uid(), 'ADMIN')` (security definer, đã tồn tại) cho tất cả bảng.
+- Sau khi thêm `admin_full_access`, **loại bỏ `'ADMIN'`** khỏi mảng role trong các policy khác để tránh logic trùng lặp.
 
-### a. Cập nhật CHECK constraint
-Xóa `'SUPER_ADMIN'` khỏi `profiles_role_check`.
+## Phạm vi: 60 bảng
 
-### b. Cập nhật RLS policies (~25 policies)
-Xóa `'SUPER_ADMIN'` khỏi mảng role trong tất cả policies trên các bảng:
-- audit_logs, booking_itineraries, booking_special_notes, bookings, budget_estimates, budget_settlements, contracts, customers, department_sops, documents, employee_kpis, employee_permissions, employees, settlement_items
+### Nhóm A — Đã có admin trong policy phức tạp (cần refactor ~40 bảng)
+Thêm `admin_full_access` mới, sau đó xóa `'ADMIN'` khỏi `has_any_role()` trong các policy còn lại.
 
-### c. Cập nhật DB functions
-- `get_default_permissions_for_role`: xóa case SUPER_ADMIN
-- `prevent_role_change`: xóa `has_role(auth.uid(), 'SUPER_ADMIN')`
-- `prevent_profile_field_change`: xóa SUPER_ADMIN khỏi `has_any_role` check
-- `handle_new_user`: không ảnh hưởng (default là SALE_DOMESTIC)
+Ví dụ bảng `bookings` hiện tại:
+```text
+bookings_read (SELECT): has_any_role(..., ARRAY['ADMIN', 'DIEUHAN', ...])
+bookings_update (UPDATE): has_any_role(..., ARRAY['ADMIN', 'DIEUHAN', ...])
+bookings_delete (DELETE): has_any_role(..., ARRAY['ADMIN'])
+bookings_write (INSERT): non-admin logic
+```
+Sau refactor:
+```text
+admin_full_access (ALL): has_role(auth.uid(), 'ADMIN')
+bookings_read (SELECT): has_any_role(..., ARRAY['DIEUHAN', ...])  -- bỏ ADMIN
+bookings_update (UPDATE): has_any_role(..., ARRAY['DIEUHAN', ...])  -- bỏ ADMIN
+bookings_delete (DELETE): DROP (đã cover bởi admin_full_access)
+bookings_write (INSERT): giữ nguyên logic non-admin
+```
 
-## 2. Frontend — Sửa ~15 file
+### Nhóm B — Bảng chỉ có admin-only policy (chuyển sang pattern mới ~10 bảng)
+VD: `audit_logs`, `accounts_payable`, `cashflow_monthly`... — đổi tên/thay thế policy hiện tại thành `admin_full_access`.
 
-| File | Thay đổi |
-|------|----------|
-| `src/hooks/usePermissions.ts` | Xóa entry `SUPER_ADMIN` khỏi `DEFAULT_PERMISSIONS` |
-| `src/hooks/useDashboardData.ts` | `ADMIN_ROLES`: xóa SUPER_ADMIN → `["ADMIN"]` |
-| `src/pages/Settings.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
-| `src/pages/Dashboard.tsx` | `canViewRevenue` → `["ADMIN", "KETOAN"]` |
-| `src/pages/Finance.tsx` | `FULL_ACCESS_ROLES` → `["ADMIN", "KETOAN"]` |
-| `src/pages/LeaveManagement.tsx` | Xóa SUPER_ADMIN khỏi `APPROVER_ROLES`, `FULL_VIEW_ROLES` |
-| `src/pages/Payroll.tsx` | Xóa SUPER_ADMIN khỏi `FULL_VIEW_ROLES` |
-| `src/pages/SOPLibrary.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
-| `src/pages/Employees.tsx` | Xóa SUPER_ADMIN khỏi `ROLE_LABEL_MAP` |
-| `src/components/settings/SettingsAccountsTab.tsx` | Xóa option SUPER_ADMIN |
-| `src/components/settings/SettingsRolesTab.tsx` | Xóa card SUPER_ADMIN |
-| `src/components/settings/SettingsPermissionsTab.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
-| `src/components/settings/SettingsDepartmentsTab.tsx` | `isAdmin` chỉ check `"ADMIN"` |
-| `src/components/employees/EmployeeRoleTab.tsx` | Xóa option SUPER_ADMIN, `MANAGER_ROLES` → `["ADMIN", "HCNS"]` |
-| `src/components/employees/EmployeeKpiTab.tsx` | Xóa SUPER_ADMIN khỏi `canEval` |
-| `src/components/contracts/ContractDetailDialog.tsx` | Xóa SUPER_ADMIN khỏi `canChangeStatus` |
-| `src/components/finance/BudgetSettlementsTab.tsx` | Xóa SUPER_ADMIN khỏi `isKetoan`, `isCeo`; cũng xóa DIRECTOR khỏi `isCeo` (sót từ lần trước) |
-| `src/components/dashboard/CeoDashboardCharts.tsx` | Xóa SUPER_ADMIN và DIRECTOR khỏi `isCeo` → chỉ `["ADMIN"]` |
+### Nhóm C — Bảng `profiles` (đặc biệt)
+Giữ `has_role()` thay vì raw EXISTS. Cập nhật `profiles_admin_all` thành `admin_full_access` chỉ cho ADMIN (hiện đang bao gồm cả HR_MANAGER, HCNS — cần tách riêng).
 
-## Tổng: 1 migration + sửa ~15 file TypeScript
+### Nhóm D — Bảng `notifications`, `user_preferences` (personal data)
+Thêm `admin_full_access` nhưng giữ nguyên policy cá nhân.
+
+## Thực hiện: 1 migration SQL lớn
+
+Migration sẽ:
+1. Thêm policy `admin_full_access` FOR ALL USING `has_role(auth.uid(), 'ADMIN')` cho tất cả 60 bảng
+2. Cập nhật ~40 policy hiện tại: xóa `'ADMIN'` khỏi mảng role
+3. Drop các policy chỉ dành riêng cho ADMIN (đã redundant): VD `bookings_delete`, `booking_itineraries_delete`, `booking_notes_delete`...
+4. Đổi tên/thay thế policy admin-only hiện tại
+
+## Không thay đổi frontend
+Không cần sửa code frontend — chỉ restructure RLS policies.
 
