@@ -198,7 +198,7 @@ export default function Finance() {
   const hasFinanceView = hasPermission("finance.view");
   const hasFinanceSubmit = hasPermission("finance.submit");
   const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
-  const isManager = userRole === "MANAGER";
+  const isManager = ["MANAGER", "GDKD"].includes(userRole || "");
 
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ["pending-approval-count"],
