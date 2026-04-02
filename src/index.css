@@ -44,15 +44,15 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    --sidebar-background: 1 80% 35%;
+    --sidebar-background: 23 80% 28%;
     --sidebar-foreground: 15 20% 94%;
-    --sidebar-primary: 15 100% 65%;
+    --sidebar-primary: 30 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 1 70% 42%;
+    --sidebar-accent: 23 70% 35%;
     --sidebar-accent-foreground: 15 20% 94%;
-    --sidebar-border: 1 60% 45%;
-    --sidebar-ring: 15 100% 65%;
-    --sidebar-muted: 1 50% 50%;
+    --sidebar-border: 23 60% 38%;
+    --sidebar-ring: 30 100% 60%;
+    --sidebar-muted: 23 50% 45%;
   }
 }
 
