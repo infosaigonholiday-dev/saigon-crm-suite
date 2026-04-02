@@ -50,7 +50,7 @@ interface SettlementItemForm {
 export function BudgetSettlementsTab() {
   const { user, userRole } = useAuth();
   const { hasPermission } = usePermissions();
-  const canCreate = hasPermission("finance.edit");
+  const canCreate = hasPermission("finance", "edit");
   const isKetoan = userRole === "KETOAN" || userRole === "ADMIN";
   const isCeo = userRole === "ADMIN";
   const queryClient = useQueryClient();

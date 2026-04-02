@@ -105,7 +105,7 @@ export default function EmployeeDetail() {
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />Sửa
           </Button>
-          {hasPermission("staff.delete") && (
+          {hasPermission("staff", "delete") && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">

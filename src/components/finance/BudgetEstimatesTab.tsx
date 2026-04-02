@@ -50,8 +50,8 @@ interface EstimateItem {
 export function BudgetEstimatesTab() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  const canCreate = hasPermission("finance.edit");
-  const canReview = hasPermission("finance.edit");
+  const canCreate = hasPermission("finance", "edit");
+  const canReview = hasPermission("finance", "edit");
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState("all");

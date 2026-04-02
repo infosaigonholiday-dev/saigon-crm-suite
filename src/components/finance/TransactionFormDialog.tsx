@@ -37,7 +37,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const isEdit = !!transaction;
-  const isSubmitter = hasPermission("finance.submit") && !hasPermission("finance.view");
+  const isSubmitter = hasPermission("finance", "submit") && !hasPermission("finance", "view");
 
   const [form, setForm] = useState({
     transaction_date: new Date().toISOString().split("T")[0],
