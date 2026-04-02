@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, BookOpen, Plus, Check, AlertCircle, Filter, BarChart3, ChevronLeft } from "lucide-react";
+import { Loader2, BookOpen, Plus, Check, AlertCircle, Filter, BarChart3, ChevronLeft, FileText, ExternalLink, Upload, Link as LinkIcon, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const CATEGORIES = [
   { value: "general", label: "Chung" },
+  { value: "regulation", label: "Quy định công ty" },
   { value: "onboarding", label: "Onboarding" },
   { value: "daily", label: "Hàng ngày" },
   { value: "weekly", label: "Hàng tuần" },
@@ -53,6 +54,8 @@ interface SOP {
   created_by: string | null;
   created_at: string;
   acknowledged?: boolean;
+  file_url?: string | null;
+  file_name?: string | null;
 }
 
 interface Department {
@@ -147,7 +150,6 @@ export default function SOPLibrary() {
 
   async function loadStats() {
     setStatsLoading(true);
-    // Get required SOPs
     const { data: reqSops } = await supabase
       .from("department_sops")
       .select("id, title, department_id")
@@ -159,14 +161,12 @@ export default function SOPLibrary() {
       return;
     }
 
-    // Get all acks for required SOPs
     const sopIds = reqSops.map((s) => s.id);
     const { data: acks } = await supabase
       .from("sop_acknowledgements")
       .select("sop_id, employee_id")
       .in("sop_id", sopIds);
 
-    // Get employees
     const { data: employees } = await supabase
       .from("employees")
       .select("id, full_name, department_id")
@@ -221,11 +221,19 @@ export default function SOPLibrary() {
           <BookOpen className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Kho quy trình</h1>
         </div>
-        {canCreate && (
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Tạo quy trình
+        <div className="flex gap-2">
+          <Button
+            variant={filterCategory === "regulation" ? "default" : "outline"}
+            onClick={() => setFilterCategory(filterCategory === "regulation" ? "all" : "regulation")}
+          >
+            <Shield className="h-4 w-4 mr-1" /> Quy định công ty
           </Button>
-        )}
+          {canCreate && (
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Tạo quy trình
+            </Button>
+          )}
+        </div>
       </div>
 
       {(isAdmin || isManager) ? (
@@ -258,6 +266,23 @@ export default function SOPLibrary() {
             <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
               {selectedSop?.content}
             </div>
+            {selectedSop?.file_url && (
+              <div className="mt-4 p-3 border rounded-lg flex items-center gap-3 bg-muted/50">
+                <FileText className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{selectedSop.file_name || "File đính kèm"}</p>
+                </div>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={selectedSop.file_url} target="_blank" rel="noopener noreferrer">
+                    {selectedSop.file_url.startsWith("http") && !selectedSop.file_url.includes("supabase") ? (
+                      <><ExternalLink className="h-4 w-4 mr-1" /> Mở link</>
+                    ) : (
+                      <><FileText className="h-4 w-4 mr-1" /> Tải file</>
+                    )}
+                  </a>
+                </Button>
+              </div>
+            )}
           </ScrollArea>
           <DialogFooter>
             {selectedSop && !myAcks.has(selectedSop.id) && myEmployeeId && (
@@ -324,6 +349,7 @@ export default function SOPLibrary() {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base line-clamp-2">{sop.title}</CardTitle>
                     <div className="flex gap-1 shrink-0">
+                      {sop.file_url && <Badge variant="outline" className="text-[10px]"><FileText className="h-3 w-3" /></Badge>}
                       {sop.is_required && <Badge variant="destructive" className="text-[10px]">Bắt buộc</Badge>}
                       {myAcks.has(sop.id) ? (
                         <Badge variant="secondary" className="text-green-600 text-[10px]"><Check className="h-3 w-3" /></Badge>
@@ -410,6 +436,57 @@ function SOPFormDialog({
   const [isRequired, setIsRequired] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // File upload state
+  const [fileUploading, setFileUploading] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [externalLink, setExternalLink] = useState("");
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Chỉ hỗ trợ file PDF hoặc DOCX");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File không được vượt quá 10MB");
+      return;
+    }
+
+    setFileUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+    const { data, error } = await supabase.storage.from("sop-files").upload(filePath, file);
+    if (error) {
+      toast.error("Upload thất bại: " + error.message);
+      setFileUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("sop-files").getPublicUrl(data.path);
+    setUploadedFileUrl(urlData.publicUrl);
+    setUploadedFileName(file.name);
+    setExternalLink("");
+    setFileUploading(false);
+    toast.success("Upload thành công");
+  }
+
+  function handleRemoveFile() {
+    setUploadedFileUrl(null);
+    setUploadedFileName(null);
+  }
+
+  const finalFileUrl = uploadedFileUrl || (externalLink.trim() || null);
+  const finalFileName = uploadedFileName || (externalLink.trim() ? "Link bên ngoài" : null);
+
   async function handleSave() {
     if (!title.trim() || !content.trim()) {
       toast.error("Vui lòng nhập tiêu đề và nội dung");
@@ -425,7 +502,9 @@ function SOPFormDialog({
       category,
       is_required: isRequired,
       created_by: userId,
-    });
+      file_url: finalFileUrl,
+      file_name: finalFileName,
+    } as any);
     setSaving(false);
     if (error) {
       toast.error("Lỗi: " + error.message);
@@ -497,6 +576,46 @@ function SOPFormDialog({
             <Label>Nội dung *</Label>
             <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Viết nội dung quy trình..." rows={10} />
           </div>
+
+          {/* File Upload Section */}
+          <div className="space-y-3 border-t pt-4">
+            <Label className="text-base font-semibold">Đính kèm file / Link</Label>
+            
+            {/* Upload file */}
+            <div>
+              <Label className="text-sm text-muted-foreground">Tải file lên (PDF, DOCX — tối đa 10MB)</Label>
+              {uploadedFileUrl ? (
+                <div className="flex items-center gap-2 mt-1 p-2 border rounded-md bg-muted/50">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm flex-1 truncate">{uploadedFileName}</span>
+                  <Button size="sm" variant="ghost" onClick={handleRemoveFile}>Xóa</Button>
+                </div>
+              ) : (
+                <div className="mt-1">
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border rounded-md text-sm hover:bg-muted/50 transition-colors">
+                    {fileUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {fileUploading ? "Đang tải..." : "Chọn file"}
+                    <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={handleFileUpload} disabled={fileUploading} />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* External link */}
+            {!uploadedFileUrl && (
+              <div>
+                <Label className="text-sm text-muted-foreground">Hoặc dán link Google Drive / Google Sheet</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    value={externalLink}
+                    onChange={(e) => setExternalLink(e.target.value)}
+                    placeholder="https://docs.google.com/..."
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
@@ -508,4 +627,3 @@ function SOPFormDialog({
     </Dialog>
   );
 }
-

@@ -1552,6 +1552,8 @@ export type Database = {
           created_by: string | null
           department_id: string | null
           description: string | null
+          file_name: string | null
+          file_url: string | null
           id: string
           is_required: boolean | null
           level: string | null
@@ -1566,6 +1568,8 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           description?: string | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           is_required?: boolean | null
           level?: string | null
@@ -1580,6 +1584,8 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           description?: string | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           is_required?: boolean | null
           level?: string | null
