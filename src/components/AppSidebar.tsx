@@ -67,7 +67,7 @@ const financeItems: MenuItem[] = [
 ];
 
 const sopItems: MenuItem[] = [
-  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "sop.view" },
+  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "workflow.view" },
 ];
 
 const settingsItems: MenuItem[] = [
