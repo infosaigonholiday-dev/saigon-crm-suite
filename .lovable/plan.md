@@ -1,42 +1,82 @@
 
 
-# Phân tích: `staff_department_view` trên bảng `profiles`
+# Cập nhật ma trận phân quyền theo PERMISSION_MATRIX mới
 
-## Vấn đề nghiêm trọng
+## Tổng quan
 
-SQL bạn gửi sẽ **gây infinite recursion** vì dùng `EXISTS (SELECT 1 FROM profiles viewer ...)` ngay trên chính bảng `profiles` — Postgres sẽ áp dụng RLS khi đọc `profiles` bên trong policy, tạo vòng lặp vô hạn.
+Cập nhật hệ thống phân quyền client-side theo ma trận mới, bao gồm: đổi tên module, thêm module mới, cập nhật quyền mặc định cho từng role, và thêm hệ thống Scope (all/department/personal). Giữ nguyên cơ chế override từ `employee_permissions`.
 
-## Hiện trạng bảng `profiles`
+## Thay đổi chính
 
-| Policy | Command | Logic |
-|--------|---------|-------|
-| `admin_full_access` | ALL | `has_role(auth.uid(), 'ADMIN')` |
-| `hr_manage_profiles` | ALL | `has_any_role(auth.uid(), ['HR_MANAGER', 'HCNS'])` |
-| `profiles_self_read` | SELECT | `auth.uid() = id` |
-| `profiles_self_update` | UPDATE | `auth.uid() = id` (+ immutability check) |
+### 1. Đổi tên module (breaking)
+| Cũ | Mới |
+|---|---|
+| `employees.*` | `staff.*` |
+| `vendors.view` | `suppliers.*` (view/create/edit/delete) |
+| `sop.*` | `workflow.*` |
 
-## Phân tích yêu cầu
+### 2. Module mới cần thêm
+- `tour_packages.*` (view/create/edit/delete)
+- `accommodations.*` (view/create/edit/delete)  
+- `contracts.*` (view/create/edit/delete)
+- `dashboard.view`
 
-Bạn muốn: nhân viên cùng phòng ban có thể xem profile của nhau. Hiện tại chỉ có `profiles_self_read` (chỉ xem chính mình).
+### 3. Thay đổi quyền đáng chú ý
+- **GDKD**: thêm `bookings.approve`, `finance.view/edit`; bỏ `customers.edit`, `leads.edit`; thêm `staff.create/edit`
+- **MANAGER**: bỏ `customers.edit`, `payments.create`; bỏ `finance.view` (chỉ giữ `submit`)
+- **KETOAN**: thêm `finance.create`, `suppliers.create`; bỏ `payroll.create`
+- **HR_MANAGER**: bỏ `finance.view`; thêm `finance.create`
+- **MKT**: bỏ `customers.view`, `leads.view`
+- **SALE_***: bỏ `sop.view` → không có `workflow.view`? (Matrix có `workflow: ['view']`)
+- **INTERN_SALE_***: thêm `customers.create`, `leads.create`, `bookings.create`
+- **INTERN_MKT**: bỏ `customers.view`, `leads.view`; thêm `leads.create/edit`
 
-**Cách triển khai an toàn**: Dùng `get_my_department_id()` (security definer, không gây recursion) thay vì raw EXISTS:
+### 4. Thêm Scope system
+Hàm `getScope(module)` trả về `'all' | 'department' | 'personal'` theo role.
 
-```sql
-CREATE POLICY "profiles_department_read" ON profiles
-FOR SELECT USING (
-  auth.uid() = id                              -- xem chính mình
-  OR department_id = get_my_department_id()     -- xem cùng phòng ban
-);
-```
+## Các file cần sửa
 
-Policy này sẽ **thay thế** `profiles_self_read` hiện tại (vì đã bao gồm `auth.uid() = id`).
+### `src/hooks/usePermissions.ts` — thay đổi lớn
+- Cập nhật `ALL_PERMISSION_KEYS`: đổi tên + thêm keys mới
+- Cập nhật `PERMISSION_GROUPS`: đổi tên + thêm groups
+- Cập nhật `DEFAULT_PERMISSIONS`: theo PERMISSION_MATRIX mới
+- Thêm `SCOPE_RULES` và export `getScope()`
+- Thêm `getVisibleModules()` vào hook return
+- Giữ nguyên override logic từ `employee_permissions`
 
-ADMIN và HR đã được cover bởi `admin_full_access` và `hr_manage_profiles`.
+### `src/components/AppSidebar.tsx`
+- `employees.view` → `staff.view`
+- `vendors.view` → `suppliers.view`
+- `sop.view` → `workflow.view`
+- Thêm permission riêng cho Gói tour (`tour_packages.view`), Lịch trình, Lưu trú (`accommodations.view`), Hợp đồng (`contracts.view`)
 
-## Thực hiện
+### `src/App.tsx`
+- Route guards: `employees.view` → `staff.view`, `sop.view` → `workflow.view`
+- Thêm guards riêng cho `/goi-tour`, `/lich-trinh`, `/luu-tru`, `/hop-dong`, `/nha-cung-cap`
 
-1. **Drop** policy `profiles_self_read`
-2. **Tạo** policy `profiles_department_read` (SELECT) với logic: `auth.uid() = id OR department_id = get_my_department_id()`
+### `src/components/PermissionGuard.tsx`
+- Không thay đổi logic, chỉ type PermissionKey tự cập nhật
 
-## Không thay đổi frontend
+### `src/pages/Employees.tsx` & `src/pages/EmployeeDetail.tsx`
+- `employees.delete` → `staff.delete`, `employees.create` → `staff.create`, `employees.edit` → `staff.edit`
+
+### `src/pages/Vendors.tsx`
+- `bookings.edit` → `suppliers.edit`, `bookings.delete` → `suppliers.delete`
+
+### `src/components/settings/PermissionEditDialog.tsx` & `SettingsPermissionsTab.tsx`
+- Tự cập nhật theo `PERMISSION_GROUPS` và `ALL_PERMISSION_KEYS` mới
+
+### `src/components/finance/ExpenseListTab.tsx`
+- `customers.delete` → sửa thành key đúng nếu cần
+
+### `src/components/bookings/BookingItineraryTab.tsx`
+- Giữ nguyên `bookings.delete`
+
+### DB Migration
+- Cập nhật hàm `get_default_permissions_for_role` để đồng bộ với client
+
+## Không thay đổi
+- RLS policies (đã đúng, không liên quan đến key rename)
+- Override system (`employee_permissions` table)
+- Hook API signature (`hasPermission(key)` giữ format `"module.action"`)
 
