@@ -1,0 +1,1 @@
+UPDATE public.profiles SET email = 'nguyentuanphuong1990@gmail.com' WHERE id = '21587d06-9c1e-47c2-aa78-f7daadea4ddb';
