@@ -74,7 +74,7 @@ const ROLE_LABEL_MAP: Record<string, string> = {
 const PAGE_SIZE = 20;
 
 // Roles that should only see their own profile
-const SELF_ONLY_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR", "INTERN"];
+const SELF_ONLY_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR"];
 // Roles that see department-scoped list
 const DEPT_SCOPED_ROLES = ["MANAGER", "DIEUHAN"];
 

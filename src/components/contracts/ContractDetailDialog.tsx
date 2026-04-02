@@ -38,7 +38,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  const canChangeStatus = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "DIEUHAN"].includes(userRole ?? "");
+  const canChangeStatus = ["ADMIN", "SUPER_ADMIN", "DIEUHAN"].includes(userRole ?? "");
 
   const { data: contract, isLoading } = useQuery({
     queryKey: ["contract-detail", contractId],

@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 
 type DataScope = "all" | "team" | "self";
 
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR"];
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const MANAGER_ROLES = ["MANAGER", "GDKD", "DIEUHAN"];
 const FINANCE_ROLES = ["KETOAN"];
-const HR_ROLES = ["HCNS", "HR_MANAGER", "HR_HEAD"];
-const SELF_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR", "INTERN"];
+const HR_ROLES = ["HCNS", "HR_MANAGER"];
+const SELF_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR"];
 
 export function getDataScope(role: string | null): DataScope {
   if (!role) return "self";

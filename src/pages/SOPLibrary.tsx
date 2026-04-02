@@ -36,7 +36,7 @@ const LEVEL_OPTIONS = [
   { value: "INTERN", label: "Thực tập sinh" },
 ];
 
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "HR_HEAD"];
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const MANAGER_ROLES = ["MANAGER", "GDKD", "DIEUHAN"];
 const CAN_CREATE_ROLES = [...ADMIN_ROLES, ...MANAGER_ROLES];
 

@@ -55,17 +55,16 @@ export default function Settings() {
   }
 
   const isAdmin = ADMIN_ROLES.includes(role || "");
-  const isDirector = role === "DIRECTOR";
   const isHR = HR_ROLES.includes(role || "");
 
   // Determine visible tabs
   const showAccounts = isAdmin;
-  const showDepartments = isAdmin || isDirector || isHR;
-  const showLevels = isAdmin || isDirector || isHR;
+  const showDepartments = isAdmin || isHR;
+  const showLevels = isAdmin || isHR;
   const showRoles = true; // anyone with settings.view
   const isManager = ["MANAGER", "GDKD"].includes(role || "");
-  const showPermissions = isAdmin || isDirector || isManager;
-  const showAuditLog = isAdmin || isDirector;
+  const showPermissions = isAdmin || isManager;
+  const showAuditLog = isAdmin;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
