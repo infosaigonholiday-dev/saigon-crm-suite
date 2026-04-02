@@ -20,7 +20,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions, type PermissionKey } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import { getDashboardType } from "@/hooks/useDashboardData";
 import {
   Sidebar,
@@ -39,39 +39,38 @@ interface MenuItem {
   title: string;
   url: string;
   icon: any;
-  permission?: PermissionKey;
-  anyPermission?: PermissionKey[];
+  moduleKey?: string;
 }
 
 const crmItems: MenuItem[] = [
-  { title: "Khách hàng", url: "/khach-hang", icon: Users, permission: "customers.view" },
-  { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, permission: "leads.view" },
-  { title: "Báo giá", url: "/bao-gia", icon: FileText, permission: "quotations.view" },
-  { title: "Gói tour", url: "/goi-tour", icon: Package, permission: "tour_packages.view" },
-  { title: "Lịch trình", url: "/lich-trinh", icon: Route, permission: "itineraries.view" },
-  { title: "Lưu trú", url: "/luu-tru", icon: Hotel, permission: "accommodations.view" },
-  { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, permission: "suppliers.view" },
-  { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, permission: "bookings.view" },
-  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, permission: "contracts.view" },
-  { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, permission: "payments.view" },
+  { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
+  { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads" },
+  { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
+  { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
+  { title: "Lịch trình", url: "/lich-trinh", icon: Route, moduleKey: "itineraries" },
+  { title: "Lưu trú", url: "/luu-tru", icon: Hotel, moduleKey: "accommodations" },
+  { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, moduleKey: "suppliers" },
+  { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, moduleKey: "bookings" },
+  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, moduleKey: "contracts" },
+  { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, moduleKey: "payments" },
 ];
 
 const hrItems: MenuItem[] = [
-  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "staff.view" },
-  { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, permission: "leave.view" },
-  { title: "Bảng lương", url: "/bang-luong", icon: Banknote, permission: "payroll.view" },
+  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, moduleKey: "staff" },
+  { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, moduleKey: "leave" },
+  { title: "Bảng lương", url: "/bang-luong", icon: Banknote, moduleKey: "payroll" },
 ];
 
 const financeItems: MenuItem[] = [
-  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, anyPermission: ["finance.view", "finance.submit"] },
+  { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, moduleKey: "finance" },
 ];
 
 const sopItems: MenuItem[] = [
-  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "workflow.view" },
+  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, moduleKey: "workflow" },
 ];
 
 const settingsItems: MenuItem[] = [
-  { title: "Cài đặt", url: "/cai-dat", icon: Settings, permission: "settings.view" },
+  { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
 ];
 
 export function AppSidebar() {
@@ -79,13 +78,12 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { userRole } = useAuth();
-  const { hasPermission, hasAnyPermission, loading: permLoading } = usePermissions();
+  const { getVisibleModules, loading: permLoading } = usePermissions();
+
+  const visibleModules = getVisibleModules();
 
   const filterItems = (items: MenuItem[]) =>
-    items.filter((item) => {
-      if (item.anyPermission) return hasAnyPermission(item.anyPermission);
-      return !item.permission || hasPermission(item.permission);
-    });
+    items.filter((item) => !item.moduleKey || visibleModules.includes(item.moduleKey));
 
   const renderItems = (items: MenuItem[]) =>
     items.map((item) => (
