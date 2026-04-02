@@ -60,7 +60,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-2">
-          <img src={logo} alt="Saigon Holiday" className="w-16 h-16 rounded-xl object-contain mx-auto" />
+          <img src={logo} alt="Saigon Holiday" className="w-24 h-24 rounded-xl object-contain mx-auto" />
           <CardTitle className="text-xl">Saigon Holiday CRM</CardTitle>
           <p className="text-sm text-muted-foreground">Đăng nhập để tiếp tục</p>
         </CardHeader>
