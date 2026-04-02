@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const PAGE_SIZE = 20;
 
@@ -42,33 +45,51 @@ function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
 
 export default function Leads() {
   const queryClient = useQueryClient();
+  const { getScope } = usePermissions();
+  const { user } = useAuth();
+
+  const scope = getScope("leads");
+  const { data: myDeptId } = useMyDepartmentId(scope === "department");
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
 
+  function applyScopeFilter(q: any) {
+    if (scope === "personal" && user?.id) {
+      q = q.eq("assigned_to", user.id);
+    } else if (scope === "department" && myDeptId) {
+      q = q.eq("department_id", myDeptId);
+    }
+    return q;
+  }
+
   const { data: totalCount = 0 } = useQuery({
-    queryKey: ["leads-count"],
+    queryKey: ["leads-count", scope, myDeptId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true });
+      let q = supabase.from("leads").select("*", { count: "exact", head: true });
+      q = applyScopeFilter(q);
+      const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["leads", page],
+    queryKey: ["leads", page, scope, myDeptId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("leads")
         .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, assigned_to, customer_id")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      q = applyScopeFilter(q);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   const updateStatus = useMutation({

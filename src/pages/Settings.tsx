@@ -11,27 +11,19 @@ import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 
-const ADMIN_ROLES = ["ADMIN"];
-const HR_ROLES = ["HCNS", "HR_MANAGER"];
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+const HR_ROLES = ["HR_MANAGER", "HCNS"];
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { hasPermission, loading: permLoading } = usePermissions();
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        setRole(data?.role || null);
-        setLoading(false);
-      });
-  }, [user]);
+    // Just wait for userRole to be available
+    setLoading(false);
+  }, [user, userRole]);
 
   if (loading || permLoading) {
     return (
@@ -42,6 +34,7 @@ export default function Settings() {
   }
 
   const canView = hasPermission("settings", "view");
+  const canEdit = hasPermission("settings", "edit");
   if (!canView) {
     return (
       <div className="space-y-6">
@@ -54,16 +47,15 @@ export default function Settings() {
     );
   }
 
-  const isAdmin = ADMIN_ROLES.includes(role || "");
-  const isHR = HR_ROLES.includes(role || "");
+  const isAdmin = ADMIN_ROLES.includes(userRole || "");
+  const isHR = HR_ROLES.includes(userRole || "");
 
   // Determine visible tabs
   const showAccounts = isAdmin;
   const showDepartments = isAdmin || isHR;
   const showLevels = isAdmin || isHR;
   const showRoles = true; // anyone with settings.view
-  const isManager = ["MANAGER", "GDKD"].includes(role || "");
-  const showPermissions = isAdmin || isManager;
+  const showPermissions = isAdmin || ["MANAGER", "GDKD"].includes(userRole || "");
   const showAuditLog = isAdmin;
 
   const tabs = [

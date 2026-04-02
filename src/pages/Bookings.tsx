@@ -10,6 +10,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Plus, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const PAGE_SIZE = 20;
 
@@ -35,29 +38,47 @@ export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
+  const { getScope } = usePermissions();
+  const { user } = useAuth();
+
+  const scope = getScope("bookings");
+  const { data: myDeptId } = useMyDepartmentId(scope === "department");
+
+  function applyScopeFilter(q: any) {
+    if (scope === "personal" && user?.id) {
+      q = q.eq("sale_id", user.id);
+    } else if (scope === "department" && myDeptId) {
+      q = q.eq("department_id", myDeptId);
+    }
+    return q;
+  }
 
   const { data: totalCount = 0 } = useQuery({
-    queryKey: ["bookings-count"],
+    queryKey: ["bookings-count", scope, myDeptId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("bookings")
-        .select("*", { count: "exact", head: true });
+      let q = supabase.from("bookings").select("*", { count: "exact", head: true });
+      q = applyScopeFilter(q);
+      const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["bookings", page],
+    queryKey: ["bookings", page, scope, myDeptId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("bookings")
         .select("id, code, customer_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      q = applyScopeFilter(q);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   const { data: highNoteMap = {} } = useQuery({

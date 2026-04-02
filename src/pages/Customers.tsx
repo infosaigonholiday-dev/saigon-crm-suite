@@ -14,6 +14,8 @@ import { Search, Plus, Loader2, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { exportToCSV } from "@/lib/exportUtils";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const PAGE_SIZE = 20;
 
@@ -58,28 +60,45 @@ export default function Customers() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, getScope } = usePermissions();
+  const { user } = useAuth();
+
+  const scope = getScope("customers");
+  const { data: myDeptId } = useMyDepartmentId(scope === "department");
+
+  // Helper to apply scope filter
+  function applyScopeFilter(q: any) {
+    if (scope === "personal" && user?.id) {
+      q = q.or(`assigned_sale_id.eq.${user.id},created_by.eq.${user.id}`);
+    } else if (scope === "department" && myDeptId) {
+      q = q.eq("department_id", myDeptId);
+    }
+    return q;
+  }
 
   // Count query with filters
   const { data: totalCount = 0 } = useQuery({
-    queryKey: ["customers-count", filter, search],
+    queryKey: ["customers-count", filter, search, scope, myDeptId],
     queryFn: async () => {
       let q = supabase.from("customers").select("*", { count: "exact", head: true });
+      q = applyScopeFilter(q);
       if (filter !== "ALL") q = q.eq("segment", filter);
       if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
       const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   const { data: customers = [], isLoading } = useQuery({
-    queryKey: ["customers", filter, search, page],
+    queryKey: ["customers", filter, search, page, scope, myDeptId],
     queryFn: async () => {
       let q = supabase
         .from("customers")
         .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
         .order("created_at", { ascending: false });
+      q = applyScopeFilter(q);
       if (filter !== "ALL") q = q.eq("segment", filter);
       if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
       q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -87,6 +106,7 @@ export default function Customers() {
       if (error) throw error;
       return data;
     },
+    enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
   // Fetch sale profiles for display
@@ -145,7 +165,9 @@ export default function Customers() {
               </Tooltip>
             </TooltipProvider>
           )}
-          <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+          {hasPermission("customers", "create") && (
+            <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
+          )}
         </div>
       </div>
       <CustomerFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />

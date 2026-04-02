@@ -24,6 +24,7 @@ import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -73,21 +74,19 @@ const ROLE_LABEL_MAP: Record<string, string> = {
 
 const PAGE_SIZE = 20;
 
-// Roles that should only see their own profile
-const SELF_ONLY_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR"];
-// Roles that see department-scoped list
-const DEPT_SCOPED_ROLES = ["MANAGER", "DIEUHAN"];
-
 export default function Employees() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, getScope } = usePermissions();
   const { userRole, user } = useAuth();
   const canDelete = hasPermission("staff", "delete");
   const canCreate = hasPermission("staff", "create");
   const canEdit = hasPermission("staff", "edit");
-  const isSelfOnly = SELF_ONLY_ROLES.includes(userRole ?? "");
-  const isDeptScoped = DEPT_SCOPED_ROLES.includes(userRole ?? "");
+
+  const scope = getScope("staff");
+  const isSelfOnly = scope === "personal";
+  const isDeptScoped = scope === "department";
+  const { data: myDeptId } = useMyDepartmentId(isDeptScoped);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -154,13 +153,18 @@ export default function Employees() {
   });
 
   const { data: result, isLoading, refetch } = useQuery({
-    queryKey: ["employees", search, statusFilter, deptFilter, typeFilter, page],
+    queryKey: ["employees", search, statusFilter, deptFilter, typeFilter, page, scope, myDeptId],
     queryFn: async () => {
       let query = supabase
         .from("employees")
         .select("id, employee_code, full_name, phone, email, position, level, status, employment_type, gender, department_id, profile_id, departments(name), profiles:profile_id(role)", { count: "exact" })
         .is("deleted_at" as any, null)
         .order("created_at", { ascending: false });
+
+      // Apply scope filter
+      if (isDeptScoped && myDeptId) {
+        query = query.eq("department_id", myDeptId);
+      }
 
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,employee_code.ilike.%${search}%,email.ilike.%${search}%`);
@@ -174,7 +178,7 @@ export default function Employees() {
       if (error) throw error;
       return { data: data ?? [], count: count ?? 0 };
     },
-    enabled: !isSelfOnly,
+    enabled: !isSelfOnly && (scope === "all" || (isDeptScoped && !!myDeptId)),
   });
 
   const employees = result?.data ?? [];

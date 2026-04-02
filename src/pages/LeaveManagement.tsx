@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const leaveTypes: Record<string, string> = {
   ANNUAL: "Phép năm", SICK: "Ốm đau", COMPENSATORY: "Phép bù",
@@ -22,32 +24,34 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   REJECTED: { label: "Từ chối", className: "bg-destructive/10 text-destructive" },
 };
 
-// Roles that can approve
-const APPROVER_ROLES = ["ADMIN", "HR_MANAGER", "HCNS", "MANAGER", "DIEUHAN"];
-// Roles that see all requests
-const FULL_VIEW_ROLES = ["ADMIN", "HR_MANAGER", "HCNS"];
-// Roles that see department-scoped
-const DEPT_SCOPED_ROLES = ["MANAGER", "DIEUHAN"];
-
 export default function LeaveManagement() {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
+  const { hasPermission, getScope } = usePermissions();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
-  const isFullView = FULL_VIEW_ROLES.includes(userRole ?? "");
-  const isDeptScoped = DEPT_SCOPED_ROLES.includes(userRole ?? "");
-  const canApprove = APPROVER_ROLES.includes(userRole ?? "");
-  const showTeamTab = isFullView || isDeptScoped;
+  const scope = getScope("leave");
+  const canApprove = hasPermission("leave", "approve");
+  const showTeamTab = scope === "all" || scope === "department";
+
+  const { data: myDeptId } = useMyDepartmentId(scope === "department");
 
   // RLS already filters data appropriately
   const { data: allRequests = [], isLoading } = useQuery({
-    queryKey: ["all_leave_requests"],
+    queryKey: ["all_leave_requests", scope, myDeptId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("leave_requests")
-        .select("*, employees(full_name, employee_code, departments(name))")
+        .select("*, employees(full_name, employee_code, department_id, departments(name))")
         .order("created_at", { ascending: false });
+
+      // For department scope, we'll filter client-side after fetching
+      const { data, error } = await q;
       if (error) throw error;
+
+      if (scope === "department" && myDeptId) {
+        return (data || []).filter((r: any) => r.employees?.department_id === myDeptId);
+      }
       return data;
     },
   });
@@ -84,7 +88,7 @@ export default function LeaveManagement() {
   });
 
   const myRequests = allRequests.filter(r => r.employee_id === myEmpId);
-  const teamRequests = allRequests; // RLS already filters
+  const teamRequests = allRequests;
   const pendingCount = teamRequests.filter(r => r.status === "PENDING").length;
 
   function renderTable(requests: any[], showApproveButtons: boolean) {
@@ -180,7 +184,7 @@ export default function LeaveManagement() {
               <div className="px-4 pt-2">
                 <TabsList>
                   <TabsTrigger value="team">
-                    {isDeptScoped ? "Đơn phòng tôi" : "Tất cả đơn"}
+                    {scope === "department" ? "Đơn phòng tôi" : "Tất cả đơn"}
                     {pendingCount > 0 && <Badge variant="destructive" className="ml-2 text-[10px] h-5">{pendingCount}</Badge>}
                   </TabsTrigger>
                   <TabsTrigger value="mine">Đơn của tôi</TabsTrigger>
