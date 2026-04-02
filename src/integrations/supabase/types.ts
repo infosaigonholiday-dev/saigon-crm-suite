@@ -3791,7 +3791,7 @@ export type Database = {
     }
     Functions: {
       get_default_permissions_for_role: {
-        Args: { _role: string }
+        Args: { p_role: string }
         Returns: string[]
       }
       get_my_department_id: { Args: never; Returns: string }
