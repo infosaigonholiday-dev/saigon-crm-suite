@@ -114,7 +114,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "contracts.view",
     "payments.view", "payments.create",
     "staff.view",
-    "leave.view", "leave.create", "leave.approve",
+    "leave.view", "leave.approve",
     "payroll.view",
     "finance.view", "finance.submit",
     "workflow.view", "workflow.create",
