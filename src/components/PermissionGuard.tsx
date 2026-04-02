@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { usePermissions, PermissionKey } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface Props {
   module?: string;

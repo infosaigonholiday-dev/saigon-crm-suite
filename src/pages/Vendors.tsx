@@ -29,8 +29,8 @@ const categoryLabel = (cat: string) => CATEGORIES.find((c) => c.value === cat)?.
 export default function Vendors() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
-  const canEdit = hasPermission("suppliers.edit");
-  const canDelete = hasPermission("suppliers.delete");
+  const canEdit = hasPermission("suppliers", "edit");
+  const canDelete = hasPermission("suppliers", "delete");
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("ALL");

@@ -83,8 +83,8 @@ export default function BookingDetail() {
   const cfg = statusConfig[status] ?? statusConfig.PENDING;
   const customer = booking.customers as any;
 
-  const canEditNotes = hasPermission("bookings.edit");
-  const canDeleteNotes = hasPermission("bookings.delete");
+  const canEditNotes = hasPermission("bookings", "edit");
+  const canDeleteNotes = hasPermission("bookings", "delete");
   const isLocked = status === "COMPLETED" || status === "CANCELLED";
 
   return (

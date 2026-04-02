@@ -44,9 +44,9 @@ interface Props {
 export function TransactionListTab({ submitterOnly }: Props) {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  const canEdit = hasPermission("finance.edit");
-  const canDelete = hasPermission("customers.delete");
-  const canReview = hasPermission("finance.edit");
+  const canEdit = hasPermission("finance", "edit");
+  const canDelete = hasPermission("customers", "delete");
+  const canReview = hasPermission("finance", "edit");
   const queryClient = useQueryClient();
 
   const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth() + 1));

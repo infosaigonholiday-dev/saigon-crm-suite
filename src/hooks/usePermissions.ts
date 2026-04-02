@@ -300,12 +300,12 @@ export function usePermissions() {
   }, [user, userRole]);
 
   const hasPermission = useCallback(
-    (key: PermissionKey) => permissions.has(key),
+    (module: string, action: string) => permissions.has(`${module}.${action}` as PermissionKey),
     [permissions]
   );
 
   const hasAnyPermission = useCallback(
-    (keys: PermissionKey[]) => keys.some((k) => permissions.has(k)),
+    (pairs: [string, string][]) => pairs.some(([m, a]) => permissions.has(`${m}.${a}` as PermissionKey)),
     [permissions]
   );
 

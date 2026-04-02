@@ -44,25 +44,25 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-        <Route path="/khach-hang" element={<ErrorBoundary><PermissionGuard permission="customers.view"><Customers /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/khach-hang/:id" element={<ErrorBoundary><PermissionGuard permission="customers.view"><CustomerDetail /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/tiem-nang" element={<ErrorBoundary><PermissionGuard permission="leads.view"><Leads /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/bao-gia" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Quotations /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard permission="tour_packages.view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard permission="itineraries.view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard permission="accommodations.view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard permission="suppliers.view"><Vendors /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard permission="contracts.view"><Contracts /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard permission="payments.view"><Payments /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard permission="staff.view"><Employees /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nhan-su/:id" element={<ErrorBoundary><PermissionGuard permission="staff.view"><EmployeeDetail /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nghi-phep" element={<ErrorBoundary><PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/bang-luong" element={<ErrorBoundary><PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={["finance.view", "finance.submit"]}><Finance /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard permission="settings.view"><Settings /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard permission="workflow.view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/khach-hang" element={<ErrorBoundary><PermissionGuard module="customers" action="view"><Customers /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/khach-hang/:id" element={<ErrorBoundary><PermissionGuard module="customers" action="view"><CustomerDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/tiem-nang" element={<ErrorBoundary><PermissionGuard module="leads" action="view"><Leads /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/bao-gia" element={<ErrorBoundary><PermissionGuard module="quotations" action="view"><Quotations /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard module="tour_packages" action="view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard module="itineraries" action="view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard module="accommodations" action="view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><Bookings /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard module="suppliers" action="view"><Vendors /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard module="contracts" action="view"><Contracts /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard module="payments" action="view"><Payments /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard module="staff" action="view"><Employees /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su/:id" element={<ErrorBoundary><PermissionGuard module="staff" action="view"><EmployeeDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nghi-phep" element={<ErrorBoundary><PermissionGuard module="leave" action="view"><LeaveManagement /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/bang-luong" element={<ErrorBoundary><PermissionGuard module="payroll" action="view"><Payroll /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={[["finance", "view"], ["finance", "submit"]]}><Finance /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard module="settings" action="view"><Settings /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard module="workflow" action="view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -41,7 +41,7 @@ export default function Settings() {
     );
   }
 
-  const canView = hasPermission("settings.view");
+  const canView = hasPermission("settings", "view");
   if (!canView) {
     return (
       <div className="space-y-6">

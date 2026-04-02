@@ -83,9 +83,9 @@ export default function Employees() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const { userRole, user } = useAuth();
-  const canDelete = hasPermission("staff.delete");
-  const canCreate = hasPermission("staff.create");
-  const canEdit = hasPermission("staff.edit");
+  const canDelete = hasPermission("staff", "delete");
+  const canCreate = hasPermission("staff", "create");
+  const canEdit = hasPermission("staff", "edit");
   const isSelfOnly = SELF_ONLY_ROLES.includes(userRole ?? "");
   const isDeptScoped = DEPT_SCOPED_ROLES.includes(userRole ?? "");
 

@@ -51,7 +51,7 @@ export default function BookingItineraryTab({ bookingId, readOnly = false }: Pro
   
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
-  const canDelete = hasPermission("bookings.delete");
+  const canDelete = hasPermission("bookings", "delete");
   const queryKey = ["booking-itineraries", bookingId];
 
   const [activityDialog, setActivityDialog] = useState<{ open: boolean; dayId: string | null }>({ open: false, dayId: null });

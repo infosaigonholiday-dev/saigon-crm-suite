@@ -126,7 +126,7 @@ export default function Customers() {
           <p className="text-sm text-muted-foreground">{totalCount} khách hàng</p>
         </div>
         <div className="flex gap-2">
-          {hasPermission("customers.export") && (
+          {hasPermission("customers", "export") && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

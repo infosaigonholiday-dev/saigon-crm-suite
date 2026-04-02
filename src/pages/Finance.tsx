@@ -195,8 +195,8 @@ function ManagerFinanceView() {
 export default function Finance() {
   const { hasPermission } = usePermissions();
   const { userRole } = useAuth();
-  const hasFinanceView = hasPermission("finance.view");
-  const hasFinanceSubmit = hasPermission("finance.submit");
+  const hasFinanceView = hasPermission("finance", "view");
+  const hasFinanceSubmit = hasPermission("finance", "submit");
   const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
   const isManager = ["MANAGER", "GDKD"].includes(userRole || "");
 
