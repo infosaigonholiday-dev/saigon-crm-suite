@@ -328,7 +328,7 @@ const SCOPE_RULES: Record<string, Record<string, ScopeLevel>> = {
     leads: "department",
     staff: "department",
     leave: "department",
-    payroll: "personal",
+    payroll: "department",
     finance: "department",
   },
   DIEUHAN: { default: "all", staff: "personal", leave: "personal", payroll: "personal" },
