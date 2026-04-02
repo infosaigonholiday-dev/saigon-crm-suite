@@ -61,12 +61,13 @@ function getInitials(name: string): string {
 }
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  ADMIN: "Admin", SUPER_ADMIN: "Super Admin", DIRECTOR: "Giám đốc",
-  HCNS: "NV HCNS", HR_MANAGER: "Leader HCNS", HR_HEAD: "TP HCNS",
-  KETOAN: "Kế toán", MANAGER: "Trưởng phòng", DIEUHAN: "Điều hành",
+  ADMIN: "Admin", SUPER_ADMIN: "Super Admin",
+  HCNS: "NV HCNS", HR_MANAGER: "Leader HCNS",
+  KETOAN: "Kế toán", MANAGER: "Trưởng phòng", GDKD: "GĐ Kinh doanh", DIEUHAN: "Điều hành",
   SALE_DOMESTIC: "Sale NĐ", SALE_INBOUND: "Sale IB", SALE_OUTBOUND: "Sale OB", SALE_MICE: "Sale MICE",
-  TOUR: "HDV", MKT: "MKT", INTERN: "TTS",
+  TOUR: "HDV", MKT: "MKT",
   INTERN_DIEUHAN: "TTS ĐH", INTERN_SALE_DOMESTIC: "TTS KD NĐ", INTERN_SALE_OUTBOUND: "TTS KD OB",
+  INTERN_SALE_MICE: "TTS KD MICE", INTERN_SALE_INBOUND: "TTS KD IB",
   INTERN_MKT: "TTS MKT", INTERN_HCNS: "TTS HCNS", INTERN_KETOAN: "TTS KT",
 };
 
