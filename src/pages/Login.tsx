@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import logo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,9 +60,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mx-auto">
-            SH
-          </div>
+          <img src={logo} alt="Saigon Holiday" className="w-16 h-16 rounded-xl object-contain mx-auto" />
           <CardTitle className="text-xl">Saigon Holiday CRM</CardTitle>
           <p className="text-sm text-muted-foreground">Đăng nhập để tiếp tục</p>
         </CardHeader>

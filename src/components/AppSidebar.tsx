@@ -18,6 +18,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import logo from "@/assets/logo.jpg";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -121,9 +122,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm shrink-0">
-            SH
-          </div>
+          <img src={logo} alt="Saigon Holiday" className="w-8 h-8 rounded-lg object-contain shrink-0" />
           {!collapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-sm text-sidebar-foreground leading-tight">
