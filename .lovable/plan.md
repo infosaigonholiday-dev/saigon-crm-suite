@@ -1,34 +1,44 @@
 
 
-# Refactor Sidebar: dùng `getVisibleModules()` thay vì `hasPermission` từng item
+# Refactor PermissionGuard sang API `hasPermission(module, action)`
+
+## Tổng quan
+
+Chuyển đổi `PermissionGuard` và `usePermissions` từ format `"module.action"` sang `hasPermission(module, action)` theo đề xuất của user. Cập nhật tất cả call sites.
 
 ## Thay đổi
 
-### `src/components/AppSidebar.tsx`
+### 1. `src/hooks/usePermissions.ts`
 
-Thay thế cơ chế filter hiện tại (dùng `hasPermission`/`hasAnyPermission` check từng item) bằng `getVisibleModules()`:
+- Thay `hasPermission(key: PermissionKey)` → `hasPermission(module: string, action: string)` kiểm tra `permissions.has(\`${module}.${action}\`)`
+- Thay `hasAnyPermission(keys)` → `hasAnyPermission(pairs: [string, string][])` 
+- Giữ nguyên `ALL_PERMISSION_KEYS`, `DEFAULT_PERMISSIONS`, `SCOPE_RULES`, override logic
 
-1. **Thêm `moduleKey`** vào interface `MenuItem` và gán cho mỗi item (vd: `"customers"`, `"leads"`, `"finance"`, ...)
-2. **Thay `filterItems`** bằng logic mới:
-   ```ts
-   const visibleModules = getVisibleModules();
-   const filterItems = (items: MenuItem[]) =>
-     items.filter(item => !item.moduleKey || visibleModules.includes(item.moduleKey));
-   ```
-3. **Bỏ** import `hasPermission`, `hasAnyPermission` — chỉ dùng `getVisibleModules` từ `usePermissions()`
-4. **Bỏ** `PermissionKey` type import (không cần nữa)
-5. **Bỏ** `permission` và `anyPermission` fields khỏi MenuItem interface
+### 2. `src/components/PermissionGuard.tsx`
 
-**Mapping moduleKey cho từng item:**
-- Dashboard: không cần moduleKey (luôn hiện)
-- CRM items: `customers`, `leads`, `quotations`, `tour_packages`, `itineraries`, `accommodations`, `suppliers`, `bookings`, `contracts`, `payments`
-- HR items: `staff`, `leave`, `payroll`
-- Finance: `finance`
-- SOP: `workflow`
-- Settings: `settings`
+- Props: `permission?: PermissionKey` → `module?: string; action?: string`
+- Props: `anyOf?: PermissionKey[]` → `anyOf?: [string, string][]`
+- Logic: `hasPermission(module, action)` thay vì `hasPermission("module.action")`
 
-**Trường hợp đặc biệt — Finance**: Hiện dùng `anyPermission: ["finance.view", "finance.submit"]`. Với `getVisibleModules()`, nếu role có bất kỳ quyền nào trong module `finance` (vd: chỉ `finance.submit`), module `"finance"` sẽ xuất hiện trong `getVisibleModules()` — logic tương đương, không cần xử lý riêng.
+### 3. `src/App.tsx` — Route guards
 
-## File thay đổi
-- `src/components/AppSidebar.tsx` — refactor duy nhất
+Thay `permission="customers.view"` → `module="customers" action="view"` cho tất cả routes. `anyOf={["finance.view", "finance.submit"]}` → `anyOf={[["finance", "view"], ["finance", "submit"]]}`.
+
+### 4. Tất cả pages/components dùng `hasPermission` (14+ files)
+
+Thay mọi `hasPermission("module.action")` → `hasPermission("module", "action")`:
+- `Employees.tsx`: `hasPermission("staff", "delete")`, etc.
+- `Customers.tsx`: `hasPermission("customers", "export")`
+- `Finance.tsx`: `hasPermission("finance", "view")`, etc.
+- `Vendors.tsx`: `hasPermission("suppliers", "edit")`, etc.
+- `BookingItineraryTab.tsx`, `BookingServicesTab.tsx`, `BudgetEstimatesTab.tsx`, `BudgetSettlementsTab.tsx`, `TransactionFormDialog.tsx`, `ExpenseListTab.tsx`, `SOPLibrary.tsx`, `Settings.tsx`, `Payroll.tsx`
+
+### 5. Thêm `/unauthorized` route (optional)
+
+User snippet dùng `<Navigate to="/unauthorized" />`. Hiện tại redirect về `/`. Có thể thêm route này hoặc giữ redirect về `/` như cũ.
+
+## Không thay đổi
+- `DEFAULT_PERMISSIONS`, `ALL_PERMISSION_KEYS` (vẫn lưu format `"module.action"`)
+- Override logic, Scope system, DB function
+- `AppSidebar.tsx` (đã dùng `getVisibleModules()`)
 
