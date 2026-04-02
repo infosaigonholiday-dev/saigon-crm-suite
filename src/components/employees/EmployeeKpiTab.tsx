@@ -40,7 +40,7 @@ export function EmployeeKpiTab({ employeeId }: Props) {
   const [evalNote, setEvalNote] = useState("");
   const [evalKpiId, setEvalKpiId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const canEval = ["ADMIN", "SUPER_ADMIN", "MANAGER", "GDKD", "DIEUHAN"].includes(userRole || "");
+  const canEval = ["ADMIN", "MANAGER", "GDKD", "DIEUHAN"].includes(userRole || "");
 
   const { data: kpis = [], isLoading } = useQuery({
     queryKey: ["employee-kpis", employeeId, year],

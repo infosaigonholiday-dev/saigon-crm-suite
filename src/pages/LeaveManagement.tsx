@@ -23,9 +23,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 // Roles that can approve
-const APPROVER_ROLES = ["ADMIN", "SUPER_ADMIN", "HR_MANAGER", "HCNS", "MANAGER", "DIEUHAN"];
+const APPROVER_ROLES = ["ADMIN", "HR_MANAGER", "HCNS", "MANAGER", "DIEUHAN"];
 // Roles that see all requests
-const FULL_VIEW_ROLES = ["ADMIN", "SUPER_ADMIN", "HR_MANAGER", "HCNS"];
+const FULL_VIEW_ROLES = ["ADMIN", "HR_MANAGER", "HCNS"];
 // Roles that see department-scoped
 const DEPT_SCOPED_ROLES = ["MANAGER", "DIEUHAN"];
 

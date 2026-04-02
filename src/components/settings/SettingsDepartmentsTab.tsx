@@ -30,7 +30,7 @@ interface Department {
 export function SettingsDepartmentsTab() {
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
-  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isAdmin = userRole === "ADMIN";
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);

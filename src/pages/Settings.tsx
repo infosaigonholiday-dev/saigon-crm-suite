@@ -11,7 +11,7 @@ import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+const ADMIN_ROLES = ["ADMIN"];
 const HR_ROLES = ["HCNS", "HR_MANAGER"];
 
 export default function Settings() {

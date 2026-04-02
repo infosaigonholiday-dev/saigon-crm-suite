@@ -14,7 +14,7 @@ import { PermissionEditDialog } from "./PermissionEditDialog";
 import { getDefaultPermissions, ALL_PERMISSION_KEYS, type PermissionKey } from "@/hooks/usePermissions";
 
 const DELETE_KEYS = ALL_PERMISSION_KEYS.filter(k => k.endsWith(".delete"));
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+const ADMIN_ROLES = ["ADMIN"];
 
 type FilterMode = "ALL" | "HAS_DELETE" | "NO_DELETE" | "CUSTOM_ONLY";
 

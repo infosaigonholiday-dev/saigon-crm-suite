@@ -34,7 +34,7 @@ const formatVND = (v: number) => {
 export function CeoDashboardCharts() {
   const { userRole } = useAuth();
   const currentYear = new Date().getFullYear();
-  const isCeo = ["ADMIN", "SUPER_ADMIN", "DIRECTOR"].includes(userRole || "");
+  const isCeo = userRole === "ADMIN";
 
   // Revenue by department (last 3 months)
   const { data: deptRevenue = [] } = useQuery({

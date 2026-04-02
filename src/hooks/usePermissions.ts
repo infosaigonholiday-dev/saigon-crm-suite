@@ -39,7 +39,6 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
 // Default permissions per role (client-side mirror of DB function)
 const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ADMIN: [...ALL_PERMISSION_KEYS] as unknown as PermissionKey[],
-  SUPER_ADMIN: [...ALL_PERMISSION_KEYS] as unknown as PermissionKey[],
   HCNS: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "finance.create", "finance.submit", "settings.view", "sop.view", "sop.create"],
   HR_MANAGER: ["employees.view", "employees.create", "employees.edit", "leave.view", "leave.create", "leave.approve", "payroll.view", "payroll.create", "payroll.edit", "finance.submit", "settings.view", "sop.view", "sop.create"],
   KETOAN: ["customers.view", "bookings.view", "payments.view", "payments.create", "payments.edit", "payroll.view", "payroll.edit", "finance.view", "finance.edit", "finance.submit", "settings.view", "sop.view", "vendors.view"],

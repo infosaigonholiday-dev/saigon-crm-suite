@@ -51,8 +51,8 @@ export function BudgetSettlementsTab() {
   const { user, userRole } = useAuth();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission("finance.edit");
-  const isKetoan = userRole === "KETOAN" || userRole === "ADMIN" || userRole === "SUPER_ADMIN";
-  const isCeo = userRole === "DIRECTOR" || userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isKetoan = userRole === "KETOAN" || userRole === "ADMIN";
+  const isCeo = userRole === "ADMIN";
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState("all");
