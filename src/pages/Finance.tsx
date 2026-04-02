@@ -54,8 +54,6 @@ const OTHER_CATEGORIES = [
   { value: "OTHER", label: "Khác" },
 ];
 
-const FULL_ACCESS_ROLES = ["ADMIN", "KETOAN"];
-
 function OverviewTab() {
   const currentYear = new Date().getFullYear();
 
@@ -193,12 +191,13 @@ function ManagerFinanceView() {
 }
 
 export default function Finance() {
-  const { hasPermission } = usePermissions();
-  const { userRole } = useAuth();
+  const { hasPermission, getScope } = usePermissions();
   const hasFinanceView = hasPermission("finance", "view");
   const hasFinanceSubmit = hasPermission("finance", "submit");
-  const isFullAccess = FULL_ACCESS_ROLES.includes(userRole || "");
-  const isManager = ["MANAGER", "GDKD"].includes(userRole || "");
+
+  const scope = getScope("finance");
+  const isFullAccess = scope === "all";
+  const isDeptScope = scope === "department";
 
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ["pending-approval-count"],
@@ -213,11 +212,18 @@ export default function Finance() {
     enabled: isFullAccess,
   });
 
+  // Personal scope: only submitter view
+  if (scope === "personal" && hasFinanceSubmit) {
+    return <SubmitterView />;
+  }
+
+  // No view permission and only submit → submitter view
   if (!hasFinanceView && hasFinanceSubmit) {
     return <SubmitterView />;
   }
 
-  if (isManager && !isFullAccess) {
+  // Department scope → manager finance view
+  if (isDeptScope && !isFullAccess) {
     return <ManagerFinanceView />;
   }
 

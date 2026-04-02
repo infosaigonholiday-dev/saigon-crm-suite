@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, DollarSign, Users, TrendingUp } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useMyDepartmentId, useMyEmployeeId } from "@/hooks/useScopedQuery";
 
 const formatVND = (v: number | null) => v ? v.toLocaleString("vi-VN") + "đ" : "—";
 const formatShort = (v: number | null) => {
@@ -23,39 +24,54 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Tháng ${i + 1}` }));
 
-// Roles that see full payroll table
-const FULL_VIEW_ROLES = ["ADMIN", "HR_MANAGER", "HCNS", "KETOAN"];
-
 export default function Payroll() {
   const now = new Date();
-  const { userRole } = useAuth();
+  const { getScope } = usePermissions();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
 
-  const isFullView = FULL_VIEW_ROLES.includes(userRole ?? "");
+  const scope = getScope("payroll");
+  const isFullView = scope === "all";
+  const isDeptView = scope === "department";
+  const isPersonalView = scope === "personal";
 
-  // RLS already filters: non-full-view users only get their own payroll
+  const { data: myDeptId } = useMyDepartmentId(isDeptView);
+  const { data: myEmployeeId } = useMyEmployeeId(isPersonalView);
+
   const { data: payrolls = [], isLoading } = useQuery({
-    queryKey: ["payroll_list", month, year],
+    queryKey: ["payroll_list", month, year, scope, myDeptId, myEmployeeId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("payroll")
-        .select("*, employees(full_name, employee_code, departments(name))")
+        .select("*, employees(full_name, employee_code, department_id, departments(name))")
         .eq("month", parseInt(month))
         .eq("year", parseInt(year))
         .order("created_at", { ascending: false });
+
+      if (isPersonalView && myEmployeeId) {
+        q = q.eq("employee_id", myEmployeeId);
+      } else if (isDeptView && myDeptId) {
+        q = q.eq("employees.department_id", myDeptId);
+      }
+
+      const { data, error } = await q;
       if (error) throw error;
+      // For department scope, filter client-side since nested filter may not work
+      if (isDeptView && myDeptId) {
+        return (data || []).filter((p: any) => p.employees?.department_id === myDeptId);
+      }
       return data;
     },
+    enabled: isFullView || (isPersonalView && !!myEmployeeId) || (isDeptView && !!myDeptId),
   });
 
   const totalNet = payrolls.reduce((s, p) => s + (p.net_salary ?? 0), 0);
   const totalGross = payrolls.reduce((s, p) => s + (p.gross_salary ?? 0), 0);
   const totalEmployerCost = payrolls.reduce((s, p) => s + (p.total_employer_cost ?? 0), 0);
 
-  // Personal payslip view for non-full-view roles
-  if (!isFullView) {
-    const myPayslip = payrolls[0]; // RLS returns only own record
+  // Personal payslip view
+  if (isPersonalView) {
+    const myPayslip = payrolls[0];
 
     return (
       <div className="space-y-6">
@@ -138,7 +154,7 @@ export default function Payroll() {
     );
   }
 
-  // Full view for HR/Admin/Ketoan
+  // Full/department view for HR/Admin/Ketoan/GDKD
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
