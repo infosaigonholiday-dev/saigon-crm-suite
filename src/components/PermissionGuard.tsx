@@ -5,16 +5,17 @@ import { toast } from "sonner";
 import { usePermissions, PermissionKey } from "@/hooks/usePermissions";
 
 interface Props {
-  permission?: PermissionKey;
-  anyOf?: PermissionKey[];
+  module?: string;
+  action?: string;
+  anyOf?: [string, string][];
   children: React.ReactNode;
 }
 
-export function PermissionGuard({ permission, anyOf, children }: Props) {
+export function PermissionGuard({ module, action, anyOf, children }: Props) {
   const { hasPermission, hasAnyPermission, loading } = usePermissions();
   const toastFired = useRef(false);
 
-  const allowed = anyOf ? hasAnyPermission(anyOf) : permission ? hasPermission(permission) : false;
+  const allowed = anyOf ? hasAnyPermission(anyOf) : (module && action) ? hasPermission(module, action) : false;
 
   useEffect(() => {
     if (!loading && !allowed && !toastFired.current) {
