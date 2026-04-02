@@ -243,6 +243,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── UPDATE EMAIL ───
+    if (action === "update_email") {
+      const { user_id, old_email, new_email } = payload;
+      if (!new_email) {
+        return jsonResponse({ error: "Thiếu email mới" }, 400);
+      }
+
+      // Find auth user
+      const authUserId = await findAuthUser(adminClient, user_id, old_email);
+      if (!authUserId) {
+        return jsonResponse({ error: "Không tìm thấy tài khoản auth" }, 400);
+      }
+
+      // Update email in auth.users
+      const { error: authError } = await adminClient.auth.admin.updateUserById(authUserId, {
+        email: new_email,
+        email_confirm: true,
+      });
+      if (authError) {
+        return jsonResponse({ error: authError.message }, 400);
+      }
+
+      // Update email in profiles
+      await adminClient.from("profiles").update({ email: new_email }).eq("id", authUserId);
+
+      return jsonResponse({
+        success: true,
+        message: `Đã đổi email thành ${new_email}. Dùng email mới để đăng nhập và reset mật khẩu.`,
+      });
+    }
+
     // ─── CLEANUP ORPHANS ───
     if (action === "cleanup_orphans") {
       const { data: allProfiles } = await adminClient
