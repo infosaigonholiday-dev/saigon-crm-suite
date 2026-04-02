@@ -1,53 +1,30 @@
 
 
-# Áp dụng pattern `admin_full_access` cho toàn bộ hệ thống
+# Phân tích yêu cầu
 
-## Nguyên tắc
-Thêm 1 policy duy nhất `admin_full_access` (FOR ALL) cho **mỗi bảng** trong schema `public`. ADMIN có toàn quyền CRUD trên mọi bảng — không cần check thêm ở bất kỳ policy nào khác.
+Bạn muốn thêm policy `department_scope` cho bảng `customers`. Tuy nhiên, **hệ thống hiện tại đã có sẵn logic này**:
 
-## Lưu ý kỹ thuật quan trọng
-- **Không dùng trực tiếp** `EXISTS (SELECT 1 FROM profiles ...)` trên bảng `profiles` vì sẽ gây **infinite recursion**.
-- Thay vào đó dùng function `has_role(auth.uid(), 'ADMIN')` (security definer, đã tồn tại) cho tất cả bảng.
-- Sau khi thêm `admin_full_access`, **loại bỏ `'ADMIN'`** khỏi mảng role trong các policy khác để tránh logic trùng lặp.
-
-## Phạm vi: 60 bảng
-
-### Nhóm A — Đã có admin trong policy phức tạp (cần refactor ~40 bảng)
-Thêm `admin_full_access` mới, sau đó xóa `'ADMIN'` khỏi `has_any_role()` trong các policy còn lại.
-
-Ví dụ bảng `bookings` hiện tại:
-```text
-bookings_read (SELECT): has_any_role(..., ARRAY['ADMIN', 'DIEUHAN', ...])
-bookings_update (UPDATE): has_any_role(..., ARRAY['ADMIN', 'DIEUHAN', ...])
-bookings_delete (DELETE): has_any_role(..., ARRAY['ADMIN'])
-bookings_write (INSERT): non-admin logic
-```
-Sau refactor:
-```text
-admin_full_access (ALL): has_role(auth.uid(), 'ADMIN')
-bookings_read (SELECT): has_any_role(..., ARRAY['DIEUHAN', ...])  -- bỏ ADMIN
-bookings_update (UPDATE): has_any_role(..., ARRAY['DIEUHAN', ...])  -- bỏ ADMIN
-bookings_delete (DELETE): DROP (đã cover bởi admin_full_access)
-bookings_write (INSERT): giữ nguyên logic non-admin
+## Hiện trạng `customers_read`
+```sql
+customers_read (SELECT):
+  assigned_sale_id = auth.uid()
+  OR created_by = auth.uid()
+  OR has_any_role(..., ARRAY['DIEUHAN', 'KETOAN'])
+  OR (department_id = get_my_department_id() AND has_any_role(..., ARRAY['MANAGER', 'GDKD']))
 ```
 
-### Nhóm B — Bảng chỉ có admin-only policy (chuyển sang pattern mới ~10 bảng)
-VD: `audit_logs`, `accounts_payable`, `cashflow_monthly`... — đổi tên/thay thế policy hiện tại thành `admin_full_access`.
+- Dòng cuối **đã chính xác là department_scope** cho GDKD/MANAGER — dùng `get_my_department_id()` (security definer, không gây recursion).
+- ADMIN đã được cover bởi `admin_full_access` (FOR ALL).
 
-### Nhóm C — Bảng `profiles` (đặc biệt)
-Giữ `has_role()` thay vì raw EXISTS. Cập nhật `profiles_admin_all` thành `admin_full_access` chỉ cho ADMIN (hiện đang bao gồm cả HR_MANAGER, HCNS — cần tách riêng).
+## Vấn đề với SQL bạn gửi
 
-### Nhóm D — Bảng `notifications`, `user_preferences` (personal data)
-Thêm `admin_full_access` nhưng giữ nguyên policy cá nhân.
+1. **Redundant**: Phần `OR EXISTS (... role = 'ADMIN')` không cần — đã có `admin_full_access`.
+2. **Dùng raw EXISTS trên profiles**: Có thể gây recursion nếu áp dụng trên bảng `profiles`. Hệ thống hiện dùng `get_my_department_id()` và `has_any_role()` (security definer) — an toàn hơn.
+3. **Trùng logic**: Thêm policy SELECT mới sẽ chồng chéo với `customers_read` đã có.
 
-## Thực hiện: 1 migration SQL lớn
+## Kết luận
 
-Migration sẽ:
-1. Thêm policy `admin_full_access` FOR ALL USING `has_role(auth.uid(), 'ADMIN')` cho tất cả 60 bảng
-2. Cập nhật ~40 policy hiện tại: xóa `'ADMIN'` khỏi mảng role
-3. Drop các policy chỉ dành riêng cho ADMIN (đã redundant): VD `bookings_delete`, `booking_itineraries_delete`, `booking_notes_delete`...
-4. Đổi tên/thay thế policy admin-only hiện tại
+**Không cần thay đổi gì** — bảng `customers` đã có department_scope cho GDKD/MANAGER trong policy `customers_read`. Pattern đang dùng (`get_my_department_id()` + `has_any_role()`) tốt hơn raw EXISTS.
 
-## Không thay đổi frontend
-Không cần sửa code frontend — chỉ restructure RLS policies.
+Nếu bạn muốn áp dụng pattern tương tự cho **bảng khác chưa có department_scope**, hãy cho biết bảng nào cần thêm.
 
