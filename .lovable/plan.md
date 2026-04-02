@@ -1,106 +1,47 @@
 
 
-# Xóa role DIRECTOR, HR_HEAD, INTERN khỏi hệ thống
+# Xóa role SUPER_ADMIN khỏi hệ thống
 
 ## Tóm tắt
-Xóa hoàn toàn 3 role: **DIRECTOR**, **HR_HEAD**, **INTERN** (generic). User DIRECTOR hiện tại (marketing@) chuyển sang GDKD. Không có user nào đang dùng HR_HEAD hoặc INTERN. Các role INTERN_* (INTERN_DIEUHAN, INTERN_SALE_DOMESTIC, v.v.) vẫn giữ nguyên.
+Gộp SUPER_ADMIN vào ADMIN — không có user nào đang dùng SUPER_ADMIN. Mọi nơi check `SUPER_ADMIN` sẽ chỉ còn `ADMIN`.
 
-## Lưu ý quan trọng
-- User marketing@ sẽ **mất quyền truy cập toàn bộ** (global scope) → chỉ thấy dữ liệu phòng ban (team scope) như MANAGER/GDKD.
-- Quyền global giờ chỉ còn: ADMIN, SUPER_ADMIN, KETOAN (tài chính), DIEUHAN (vận hành).
+## 1. Database Migration
 
----
+### a. Cập nhật CHECK constraint
+Xóa `'SUPER_ADMIN'` khỏi `profiles_role_check`.
 
-## 1. Migration SQL — Cập nhật RLS, constraint, functions
+### b. Cập nhật RLS policies (~25 policies)
+Xóa `'SUPER_ADMIN'` khỏi mảng role trong tất cả policies trên các bảng:
+- audit_logs, booking_itineraries, booking_special_notes, bookings, budget_estimates, budget_settlements, contracts, customers, department_sops, documents, employee_kpis, employee_permissions, employees, settlement_items
 
-### a. Xóa CHECK constraint cũ, tạo mới không có DIRECTOR/HR_HEAD/INTERN
-```
-Giữ lại: ADMIN, SUPER_ADMIN, HCNS, HR_MANAGER, KETOAN, MANAGER, GDKD, DIEUHAN,
-SALE_DOMESTIC/INBOUND/OUTBOUND/MICE, TOUR, MKT,
-INTERN_DIEUHAN, INTERN_SALE_*, INTERN_MKT, INTERN_HCNS, INTERN_KETOAN
-```
+### c. Cập nhật DB functions
+- `get_default_permissions_for_role`: xóa case SUPER_ADMIN
+- `prevent_role_change`: xóa `has_role(auth.uid(), 'SUPER_ADMIN')`
+- `prevent_profile_field_change`: xóa SUPER_ADMIN khỏi `has_any_role` check
+- `handle_new_user`: không ảnh hưởng (default là SALE_DOMESTIC)
 
-### b. Cập nhật ~30 RLS policies
-Xóa `'DIRECTOR'` và `'HR_HEAD'` khỏi tất cả mảng role trong các policy trên các bảng:
-- accommodations, bookings, booking_itineraries, booking_special_notes
-- customers, contracts, employee_kpis, employee_permissions
-- department_sops, audit_logs, documents
-- Và các bảng HR: employee_salaries, commission_*, career_paths, business_travel, leave_requests, payroll_*
+## 2. Frontend — Sửa ~15 file
 
-### c. Cập nhật hàm `get_default_permissions_for_role`
-- Xóa case DIRECTOR, HR_HEAD, INTERN
+| File | Thay đổi |
+|------|----------|
+| `src/hooks/usePermissions.ts` | Xóa entry `SUPER_ADMIN` khỏi `DEFAULT_PERMISSIONS` |
+| `src/hooks/useDashboardData.ts` | `ADMIN_ROLES`: xóa SUPER_ADMIN → `["ADMIN"]` |
+| `src/pages/Settings.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
+| `src/pages/Dashboard.tsx` | `canViewRevenue` → `["ADMIN", "KETOAN"]` |
+| `src/pages/Finance.tsx` | `FULL_ACCESS_ROLES` → `["ADMIN", "KETOAN"]` |
+| `src/pages/LeaveManagement.tsx` | Xóa SUPER_ADMIN khỏi `APPROVER_ROLES`, `FULL_VIEW_ROLES` |
+| `src/pages/Payroll.tsx` | Xóa SUPER_ADMIN khỏi `FULL_VIEW_ROLES` |
+| `src/pages/SOPLibrary.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
+| `src/pages/Employees.tsx` | Xóa SUPER_ADMIN khỏi `ROLE_LABEL_MAP` |
+| `src/components/settings/SettingsAccountsTab.tsx` | Xóa option SUPER_ADMIN |
+| `src/components/settings/SettingsRolesTab.tsx` | Xóa card SUPER_ADMIN |
+| `src/components/settings/SettingsPermissionsTab.tsx` | `ADMIN_ROLES` → `["ADMIN"]` |
+| `src/components/settings/SettingsDepartmentsTab.tsx` | `isAdmin` chỉ check `"ADMIN"` |
+| `src/components/employees/EmployeeRoleTab.tsx` | Xóa option SUPER_ADMIN, `MANAGER_ROLES` → `["ADMIN", "HCNS"]` |
+| `src/components/employees/EmployeeKpiTab.tsx` | Xóa SUPER_ADMIN khỏi `canEval` |
+| `src/components/contracts/ContractDetailDialog.tsx` | Xóa SUPER_ADMIN khỏi `canChangeStatus` |
+| `src/components/finance/BudgetSettlementsTab.tsx` | Xóa SUPER_ADMIN khỏi `isKetoan`, `isCeo`; cũng xóa DIRECTOR khỏi `isCeo` (sót từ lần trước) |
+| `src/components/dashboard/CeoDashboardCharts.tsx` | Xóa SUPER_ADMIN và DIRECTOR khỏi `isCeo` → chỉ `["ADMIN"]` |
 
-### d. Cập nhật hàm `prevent_role_change`
-- Xóa `has_role(auth.uid(), 'HR_HEAD')` (giữ HR_MANAGER, HCNS)
-
-### e. Cập nhật trigger `prevent_profile_field_change`
-- Không thay đổi (chỉ check ADMIN/SUPER_ADMIN)
-
-## 2. Data update (INSERT tool)
-```sql
-UPDATE profiles SET role = 'GDKD' WHERE role = 'DIRECTOR';
-```
-(Không có user HR_HEAD/INTERN nên không cần update thêm)
-
-## 3. Frontend — Sửa ~15 file
-
-### `src/hooks/usePermissions.ts`
-- Xóa entry `DIRECTOR`, `HR_HEAD`, `INTERN` khỏi `DEFAULT_PERMISSIONS`
-
-### `src/hooks/useDashboardData.ts`
-- Xóa `HR_HEAD` khỏi `HR_ROLES` (giữ HCNS, HR_MANAGER)
-- Xóa `INTERN` khỏi `SELF_ROLES` (các INTERN_* đã được handle riêng)
-
-### `src/pages/Settings.tsx`
-- Xóa `isDirector` logic
-- Xóa `HR_HEAD` khỏi `HR_ROLES`
-- `showDepartments/showLevels`: chỉ `isAdmin || isHR`
-- `showPermissions`: `isAdmin || isManager`
-- `showAuditLog`: chỉ `isAdmin`
-
-### `src/pages/Finance.tsx`
-- `FULL_ACCESS_ROLES`: xóa DIRECTOR → `["ADMIN", "SUPER_ADMIN", "KETOAN"]`
-
-### `src/pages/Dashboard.tsx`
-- `canViewRevenue`: xóa DIRECTOR → `["ADMIN", "SUPER_ADMIN", "KETOAN"]`
-
-### `src/pages/LeaveManagement.tsx`
-- Xóa DIRECTOR, HR_HEAD khỏi `APPROVER_ROLES` và `FULL_VIEW_ROLES`
-
-### `src/pages/Payroll.tsx`
-- Xóa DIRECTOR, HR_HEAD khỏi `FULL_VIEW_ROLES`
-
-### `src/pages/SOPLibrary.tsx`
-- Xóa DIRECTOR, HR_HEAD khỏi `ADMIN_ROLES`
-
-### `src/pages/Employees.tsx`
-- Xóa DIRECTOR khỏi `levelLabels/levelColors` (đây là employee level, không phải role — **giữ nguyên** vì level và role khác nhau)
-- Xóa HR_HEAD khỏi `ROLE_LABEL_MAP`
-- Xóa `INTERN` khỏi `SELF_ONLY_ROLES`
-
-### `src/components/settings/SettingsAccountsTab.tsx`
-- Xóa option DIRECTOR, HR_HEAD, INTERN khỏi danh sách role select
-
-### `src/components/settings/SettingsRolesTab.tsx`
-- Xóa card DIRECTOR, HR_HEAD, INTERN
-
-### `src/components/settings/SettingsPermissionsTab.tsx`
-- Xóa DIRECTOR khỏi `ADMIN_ROLES`
-
-### `src/components/employees/EmployeeRoleTab.tsx`
-- Xóa option DIRECTOR, HR_HEAD, INTERN
-
-### `src/components/employees/EmployeeKpiTab.tsx`
-- Xóa DIRECTOR, HR_HEAD khỏi `canEval` (thay bằng GDKD nếu cần)
-
-### `src/components/employees/EmployeeFormDialog.tsx`
-- Xóa DIRECTOR, INTERN khỏi danh sách role (giữ INTERN_* roles)
-- **Giữ nguyên** INTERN trong employment_type và status vì đó là loại hợp đồng/trạng thái, không phải role
-
-### `src/components/contracts/ContractDetailDialog.tsx`
-- Xóa DIRECTOR khỏi `canChangeStatus`
-
----
-
-## Tổng: 1 migration + 1 data update + sửa ~15 file TypeScript
+## Tổng: 1 migration + sửa ~15 file TypeScript
 
