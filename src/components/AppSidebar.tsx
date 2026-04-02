@@ -47,17 +47,17 @@ const crmItems: MenuItem[] = [
   { title: "Khách hàng", url: "/khach-hang", icon: Users, permission: "customers.view" },
   { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, permission: "leads.view" },
   { title: "Báo giá", url: "/bao-gia", icon: FileText, permission: "quotations.view" },
-  { title: "Gói tour", url: "/goi-tour", icon: Package, permission: "quotations.view" },
-  { title: "Lịch trình", url: "/lich-trinh", icon: Route, permission: "quotations.view" },
-  { title: "Lưu trú", url: "/luu-tru", icon: Hotel, permission: "quotations.view" },
-  { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, permission: "vendors.view" },
+  { title: "Gói tour", url: "/goi-tour", icon: Package, permission: "tour_packages.view" },
+  { title: "Lịch trình", url: "/lich-trinh", icon: Route, permission: "itineraries.view" },
+  { title: "Lưu trú", url: "/luu-tru", icon: Hotel, permission: "accommodations.view" },
+  { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, permission: "suppliers.view" },
   { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, permission: "bookings.view" },
-  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, permission: "bookings.view" },
+  { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, permission: "contracts.view" },
   { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, permission: "payments.view" },
 ];
 
 const hrItems: MenuItem[] = [
-  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "employees.view" },
+  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "staff.view" },
   { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, permission: "leave.view" },
   { title: "Bảng lương", url: "/bang-luong", icon: Banknote, permission: "payroll.view" },
 ];
@@ -67,7 +67,7 @@ const financeItems: MenuItem[] = [
 ];
 
 const sopItems: MenuItem[] = [
-  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "sop.view" },
+  { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, permission: "workflow.view" },
 ];
 
 const settingsItems: MenuItem[] = [

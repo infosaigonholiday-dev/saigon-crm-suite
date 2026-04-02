@@ -48,21 +48,21 @@ function ProtectedRoutes() {
         <Route path="/khach-hang/:id" element={<ErrorBoundary><PermissionGuard permission="customers.view"><CustomerDetail /></PermissionGuard></ErrorBoundary>} />
         <Route path="/tiem-nang" element={<ErrorBoundary><PermissionGuard permission="leads.view"><Leads /></PermissionGuard></ErrorBoundary>} />
         <Route path="/bao-gia" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Quotations /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard permission="quotations.view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard permission="tour_packages.view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard permission="itineraries.view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard permission="accommodations.view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
         <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Bookings /></PermissionGuard></ErrorBoundary>} />
         <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Vendors /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard permission="bookings.view"><Contracts /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard permission="suppliers.view"><Vendors /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard permission="contracts.view"><Contracts /></PermissionGuard></ErrorBoundary>} />
         <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard permission="payments.view"><Payments /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard permission="employees.view"><Employees /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/nhan-su/:id" element={<ErrorBoundary><PermissionGuard permission="employees.view"><EmployeeDetail /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su" element={<ErrorBoundary><PermissionGuard permission="staff.view"><Employees /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/nhan-su/:id" element={<ErrorBoundary><PermissionGuard permission="staff.view"><EmployeeDetail /></PermissionGuard></ErrorBoundary>} />
         <Route path="/nghi-phep" element={<ErrorBoundary><PermissionGuard permission="leave.view"><LeaveManagement /></PermissionGuard></ErrorBoundary>} />
         <Route path="/bang-luong" element={<ErrorBoundary><PermissionGuard permission="payroll.view"><Payroll /></PermissionGuard></ErrorBoundary>} />
         <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={["finance.view", "finance.submit"]}><Finance /></PermissionGuard></ErrorBoundary>} />
         <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard permission="settings.view"><Settings /></PermissionGuard></ErrorBoundary>} />
-        <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard permission="sop.view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard permission="workflow.view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
