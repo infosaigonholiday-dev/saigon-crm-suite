@@ -27,7 +27,6 @@ interface Props {
 
 const roleOptions = [
   { value: "ADMIN", label: "Quản trị viên", desc: "Toàn quyền hệ thống" },
-  { value: "SUPER_ADMIN", label: "Super Admin", desc: "Quyền cao nhất" },
   { value: "HCNS", label: "Nhân viên HCNS", desc: "Quản lý nhân sự cơ bản" },
   { value: "HR_MANAGER", label: "Leader HCNS", desc: "Toàn quyền nhân sự" },
   { value: "KETOAN", label: "Kế toán", desc: "Quản lý tài chính" },
