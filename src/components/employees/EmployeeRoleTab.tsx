@@ -50,7 +50,7 @@ const roleOptions = [
   { value: "INTERN_KETOAN", label: "TTS Kế toán", desc: "Xem KH, booking, thanh toán" },
 ];
 
-const MANAGER_ROLES = ["ADMIN", "HCNS", "DIRECTOR", "SUPER_ADMIN"];
+const MANAGER_ROLES = ["ADMIN", "HCNS", "SUPER_ADMIN"];
 
 function detectRoleMismatch(role: string, deptName?: string | null): string | null {
   if (!deptName || !role) return null;
