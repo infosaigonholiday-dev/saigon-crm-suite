@@ -54,7 +54,7 @@ const OTHER_CATEGORIES = [
   { value: "OTHER", label: "Khác" },
 ];
 
-const FULL_ACCESS_ROLES = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "KETOAN"];
+const FULL_ACCESS_ROLES = ["ADMIN", "SUPER_ADMIN", "KETOAN"];
 
 function OverviewTab() {
   const currentYear = new Date().getFullYear();

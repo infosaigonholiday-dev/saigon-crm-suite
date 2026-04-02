@@ -22,7 +22,7 @@ function BusinessDashboard() {
   const scope = getDataScope(userRole);
   const { stats, revenueByMonth, deadlines, loading } = useBusinessDashboardData();
 
-  const canViewRevenue = ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "KETOAN"].includes(userRole || "");
+  const canViewRevenue = ["ADMIN", "SUPER_ADMIN", "KETOAN"].includes(userRole || "");
 
   const scopeLabel = scope === "all" ? "toàn công ty" : scope === "team" ? "phòng ban" : "cá nhân";
 
