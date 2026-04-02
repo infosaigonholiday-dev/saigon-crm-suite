@@ -57,7 +57,7 @@ const crmItems: MenuItem[] = [
 ];
 
 const hrItems: MenuItem[] = [
-  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "employees.view" },
+  { title: "Nhân sự", url: "/nhan-su", icon: UserCog, permission: "staff.view" },
   { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, permission: "leave.view" },
   { title: "Bảng lương", url: "/bang-luong", icon: Banknote, permission: "payroll.view" },
 ];
