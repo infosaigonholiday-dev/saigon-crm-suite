@@ -50,7 +50,7 @@ export function useBusinessDashboardData() {
         .single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const departmentId = profile?.department_id;
