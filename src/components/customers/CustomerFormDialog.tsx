@@ -28,7 +28,7 @@ interface Props {
 
 const initial = {
   full_name: "",
-  type: "CÁ NHÂN",
+  type: "INDIVIDUAL",
   phone: "",
   email: "",
   date_of_birth: null as Date | null,
