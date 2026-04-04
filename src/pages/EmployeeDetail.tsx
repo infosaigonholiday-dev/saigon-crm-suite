@@ -100,7 +100,7 @@ export default function EmployeeDetail() {
             <h1 className="text-2xl font-bold">{employee.full_name}</h1>
             <Badge variant="outline" className={st.className}>{st.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{employee.employee_code} • {employee.position ?? "Chưa có chức vụ"}</p>
+          <p className="text-sm text-muted-foreground">{employee.employee_code} • {positionOptions.find(p => p.value === employee.position)?.label ?? employee.position ?? "Chưa có chức vụ"}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setEditOpen(true)}>
