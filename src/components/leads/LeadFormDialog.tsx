@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { user } = useAuth();
   
   const qc = useQueryClient();
 
@@ -93,6 +95,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         result: (form as any).result || null,
         assigned_staff_name: (form as any).assigned_staff_name || null,
         assigned_staff_phone: (form as any).assigned_staff_phone || null,
+        assigned_to: user?.id || null,
         status: "NEW",
       } as any);
       if (error) throw error;
