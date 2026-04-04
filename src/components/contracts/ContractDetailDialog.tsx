@@ -239,17 +239,26 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
                 ) : (
                   <div className="space-y-2">
                     {documents.map((doc: any) => (
-                      <a
+                      <button
                         key={doc.id}
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 text-sm transition-colors"
+                        onClick={async () => {
+                          let path = doc.file_url;
+                          const prefix = "/storage/v1/object/public/contract-files/";
+                          const idx = path.indexOf(prefix);
+                          if (idx !== -1) path = path.substring(idx + prefix.length);
+                          const { data, error } = await supabase.storage.from("contract-files").createSignedUrl(path, 3600);
+                          if (error || !data?.signedUrl) {
+                            toast.error("Không thể tạo link tải file");
+                            return;
+                          }
+                          window.open(data.signedUrl, "_blank");
+                        }}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 text-sm transition-colors w-full text-left"
                       >
                         <FileText className="h-4 w-4 text-primary shrink-0" />
                         <span className="truncate flex-1">{doc.name}</span>
                         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}

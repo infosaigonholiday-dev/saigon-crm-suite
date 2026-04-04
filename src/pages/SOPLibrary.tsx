@@ -272,15 +272,29 @@ export default function SOPLibrary() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{selectedSop.file_name || "File đính kèm"}</p>
                 </div>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={selectedSop.file_url} target="_blank" rel="noopener noreferrer">
-                    {selectedSop.file_url.startsWith("http") && !selectedSop.file_url.includes("supabase") ? (
-                      <><ExternalLink className="h-4 w-4 mr-1" /> Mở link</>
-                    ) : (
-                      <><FileText className="h-4 w-4 mr-1" /> Tải file</>
-                    )}
-                  </a>
-                </Button>
+                {selectedSop.file_url.startsWith("http") && !selectedSop.file_url.includes("supabase") ? (
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={selectedSop.file_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-1" /> Mở link
+                    </a>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    // Extract storage path from full URL or use as-is
+                    let path = selectedSop.file_url!;
+                    const bucketPrefix = "/storage/v1/object/public/sop-files/";
+                    const idx = path.indexOf(bucketPrefix);
+                    if (idx !== -1) path = path.substring(idx + bucketPrefix.length);
+                    const { data, error } = await supabase.storage.from("sop-files").createSignedUrl(path, 3600);
+                    if (error || !data?.signedUrl) {
+                      toast.error("Không thể tạo link tải file");
+                      return;
+                    }
+                    window.open(data.signedUrl, "_blank");
+                  }}>
+                    <FileText className="h-4 w-4 mr-1" /> Tải file
+                  </Button>
+                )}
               </div>
             )}
           </ScrollArea>
