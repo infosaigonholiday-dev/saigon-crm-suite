@@ -170,7 +170,20 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
   });
 
   const update = (key: string, value: string) => {
-    setForm(f => ({ ...f, [key]: value }));
+    setForm(f => {
+      const next = { ...f, [key]: value };
+      // Auto-suggest system_role when position or department changes (new employee only)
+      if (!isEdit && (key === "position" || key === "department_id")) {
+        const dept = departments.find(d => d.id === (key === "department_id" ? value : f.department_id));
+        const pos = key === "position" ? value : f.position;
+        if (dept && pos) {
+          const deptCode = (dept as any).code ?? "";
+          const suggested = suggestRole(pos, deptCode);
+          if (suggested) next.system_role = suggested;
+        }
+      }
+      return next;
+    });
     if (errors[key as keyof ValidationErrors]) setErrors(e => ({ ...e, [key]: undefined }));
   };
 
