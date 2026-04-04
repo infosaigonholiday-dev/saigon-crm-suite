@@ -126,6 +126,12 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Sync employees.department_id after account creation
+      if (data?.profile_id && departmentId) {
+        await supabase.from("employees").update({ profile_id: data.profile_id, department_id: departmentId }).eq("id", employeeId);
+      }
+
       setAccountCreated(true);
       toast.success(data.message || "Tạo tài khoản thành công");
       onProfileLinked?.();
