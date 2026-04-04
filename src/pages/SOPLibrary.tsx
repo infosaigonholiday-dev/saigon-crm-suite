@@ -471,8 +471,9 @@ function SOPFormDialog({
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("sop-files").getPublicUrl(data.path);
-    setUploadedFileUrl(urlData.publicUrl);
+    // Bucket is private — store the path, not a public URL
+    const storagePath = data.path;
+    setUploadedFileUrl(storagePath);
     setUploadedFileName(file.name);
     setExternalLink("");
     setFileUploading(false);
