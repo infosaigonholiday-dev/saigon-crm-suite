@@ -12,6 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Loader2, Phone, Mail, MapPin, Calendar, Building, User, Trash2 } from "lucide-react";
+import { positionOptions } from "@/lib/positionRoleMapping";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { EmployeeSalaryTab } from "@/components/employees/EmployeeSalaryTab";
 import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
