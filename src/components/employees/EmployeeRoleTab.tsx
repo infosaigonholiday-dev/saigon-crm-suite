@@ -275,6 +275,21 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
           </AlertDescription>
         </Alert>
       )}
+      {showSuggestion && (
+        <Alert className="border-primary/50 bg-primary/5">
+          <Lightbulb className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-primary font-medium flex items-center justify-between">
+            <span>
+              Gợi ý: Vị trí "{positionOptions.find(p => p.value === employeePosition)?.label}" nên gán quyền "{roleOptions.find(r => r.value === suggestedRole)?.label}"
+            </span>
+            <Button variant="outline" size="sm" className="ml-2 shrink-0" onClick={() => {
+              setSelectedRole(suggestedRole!);
+            }}>
+              Áp dụng
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader><CardTitle className="text-base">Thông tin tài khoản</CardTitle></CardHeader>
         <CardContent className="space-y-3">
