@@ -50,6 +50,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { user } = useAuth();
   
   const qc = useQueryClient();
 
