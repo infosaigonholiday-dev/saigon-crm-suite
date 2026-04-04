@@ -12,8 +12,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Shield, Mail, UserCheck, KeyRound, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, Mail, UserCheck, KeyRound, AlertTriangle, Lightbulb } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { positionOptions, suggestRole, detectPositionRoleMismatch } from "@/lib/positionRoleMapping";
 
 interface Props {
   employeeId: string;
@@ -22,6 +23,8 @@ interface Props {
   employeeName?: string | null;
   departmentId?: string | null;
   departmentName?: string | null;
+  departmentCode?: string | null;
+  employeePosition?: string | null;
   onProfileLinked?: () => void;
 }
 
@@ -76,7 +79,7 @@ function detectRoleMismatch(role: string, deptName?: string | null): string | nu
   return null;
 }
 
-export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, onProfileLinked }: Props) {
+export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, departmentCode, employeePosition, onProfileLinked }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -257,7 +260,10 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   if (!profile) return <Card><CardContent className="py-8 text-center text-muted-foreground">Không tìm thấy thông tin tài khoản</CardContent></Card>;
 
   const currentRoleLabel = roleOptions.find(r => r.value === profile.role)?.label ?? profile.role;
-  const roleMismatch = detectRoleMismatch(profile.role, departmentName);
+  const roleMismatch = detectPositionRoleMismatch(employeePosition ?? null, departmentCode ?? null, profile.role, currentRoleLabel)
+    || detectRoleMismatch(profile.role, departmentName);
+  const suggestedRole = (employeePosition && departmentCode) ? suggestRole(employeePosition, departmentCode) : null;
+  const showSuggestion = suggestedRole && suggestedRole !== profile.role && isManager;
 
   return (
     <div className="space-y-4">
@@ -266,6 +272,21 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
           <AlertTriangle className="h-4 w-4 text-warning" />
           <AlertDescription className="text-warning font-medium">
             {roleMismatch}
+          </AlertDescription>
+        </Alert>
+      )}
+      {showSuggestion && (
+        <Alert className="border-primary/50 bg-primary/5">
+          <Lightbulb className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-primary font-medium flex items-center justify-between">
+            <span>
+              Gợi ý: Vị trí "{positionOptions.find(p => p.value === employeePosition)?.label}" nên gán quyền "{roleOptions.find(r => r.value === suggestedRole)?.label}"
+            </span>
+            <Button variant="outline" size="sm" className="ml-2 shrink-0" onClick={() => {
+              setSelectedRole(suggestedRole!);
+            }}>
+              Áp dụng
+            </Button>
           </AlertDescription>
         </Alert>
       )}

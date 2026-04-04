@@ -52,7 +52,7 @@ export default function EmployeeDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("*, departments(name)")
+        .select("*, departments(name, code)")
         .eq("id", id!)
         .single();
       if (error) throw error;
@@ -213,6 +213,8 @@ export default function EmployeeDetail() {
             employeeEmail={employee.email}
             departmentId={employee.department_id}
             departmentName={(employee.departments as any)?.name}
+            departmentCode={(employee.departments as any)?.code}
+            employeePosition={employee.position}
             onProfileLinked={() => refetch()}
           />
         </TabsContent>

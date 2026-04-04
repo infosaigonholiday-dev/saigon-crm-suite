@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { positionOptions, suggestRole } from "@/lib/positionRoleMapping";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -130,7 +131,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
-      const { data } = await supabase.from("departments").select("id, name").order("name");
+      const { data } = await supabase.from("departments").select("id, name, code").order("name");
       return data ?? [];
     },
   });
@@ -169,7 +170,20 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
   });
 
   const update = (key: string, value: string) => {
-    setForm(f => ({ ...f, [key]: value }));
+    setForm(f => {
+      const next = { ...f, [key]: value };
+      // Auto-suggest system_role when position or department changes (new employee only)
+      if (!isEdit && (key === "position" || key === "department_id")) {
+        const dept = departments.find(d => d.id === (key === "department_id" ? value : f.department_id));
+        const pos = key === "position" ? value : f.position;
+        if (dept && pos) {
+          const deptCode = (dept as any).code ?? "";
+          const suggested = suggestRole(pos, deptCode);
+          if (suggested) next.system_role = suggested;
+        }
+      }
+      return next;
+    });
     if (errors[key as keyof ValidationErrors]) setErrors(e => ({ ...e, [key]: undefined }));
   };
 
@@ -331,7 +345,12 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           <TabsContent value="work" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Chức vụ">
-                <Input value={form.position} onChange={e => update("position", e.target.value)} />
+                <Select value={form.position} onValueChange={v => update("position", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn chức vụ" /></SelectTrigger>
+                  <SelectContent>
+                    {positionOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Cấp bậc">
                 <Select value={form.level} onValueChange={v => update("level", v)}>
