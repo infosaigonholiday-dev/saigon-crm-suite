@@ -95,6 +95,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         result: (form as any).result || null,
         assigned_staff_name: (form as any).assigned_staff_name || null,
         assigned_staff_phone: (form as any).assigned_staff_phone || null,
+        assigned_to: user?.id || null,
         status: "NEW",
       } as any);
       if (error) throw error;
