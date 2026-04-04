@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { format, differenceInDays, setYear } from "date-fns";
+import { format, parse, isValid, differenceInDays, setYear } from "date-fns";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ const initial = {
   phone: "",
   email: "",
   date_of_birth: null as Date | null,
+  date_of_birth_text: "",
   gender: "",
   id_number: "",
   address: "",
@@ -45,8 +47,10 @@ const initial = {
   contact_person: "",
   contact_position: "",
   contact_birthday: null as Date | null,
+  contact_birthday_text: "",
   company_email: "",
   founded_date: null as Date | null,
+  founded_date_text: "",
   company_size: "",
   contact_person_phone: "",
   tour_interest: "",
@@ -67,15 +71,81 @@ function isBirthdayUpcoming(dob: Date): boolean {
   const thisYearBday = setYear(dob, today.getFullYear());
   const diff = differenceInDays(thisYearBday, today);
   if (diff >= 0 && diff <= 7) return true;
-  // Also check next year wrap
   const nextYearBday = setYear(dob, today.getFullYear() + 1);
   const diff2 = differenceInDays(nextYearBday, today);
   return diff2 >= 0 && diff2 <= 7;
 }
 
+function parseDateText(text: string): Date | null {
+  if (!text || text.length < 10) return null;
+  const parsed = parse(text, "dd/MM/yyyy", new Date());
+  return isValid(parsed) ? parsed : null;
+}
+
+function DateInput({ value, textValue, onChange, onTextChange, label, badge, disabled, error }: {
+  value: Date | null;
+  textValue: string;
+  onChange: (d: Date | null) => void;
+  onTextChange: (t: string) => void;
+  label: string;
+  badge?: React.ReactNode;
+  disabled?: (date: Date) => boolean;
+  error?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-2">
+        {label}
+        {badge}
+      </Label>
+      <div className="flex gap-1">
+        <Input
+          placeholder="dd/MM/yyyy"
+          value={textValue}
+          onChange={(e) => {
+            const t = e.target.value;
+            onTextChange(t);
+            const parsed = parseDateText(t);
+            if (parsed) {
+              if (!disabled || !disabled(parsed)) {
+                onChange(parsed);
+              }
+            } else if (t === "") {
+              onChange(null);
+            }
+          }}
+          className="flex-1"
+        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="shrink-0">
+              <CalendarIcon className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={value ?? undefined}
+              onSelect={(d) => {
+                onChange(d ?? null);
+                onTextChange(d ? format(d, "dd/MM/yyyy") : "");
+              }}
+              disabled={disabled}
+              initialFocus
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { user } = useAuth();
   
   const qc = useQueryClient();
 
@@ -120,10 +190,16 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
       e.email = "Email không hợp lệ";
     if (form.date_of_birth && form.date_of_birth >= new Date())
       e.date_of_birth = "Ngày sinh phải nhỏ hơn hôm nay";
+    if (form.date_of_birth_text && !form.date_of_birth)
+      e.date_of_birth = "Ngày không hợp lệ (dd/MM/yyyy)";
     if (form.tax_code && !/^\d{10}$/.test(form.tax_code))
       e.tax_code = "MST phải là 10 chữ số";
     if (form.company_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.company_email))
       e.company_email = "Email không hợp lệ";
+    if (form.contact_birthday_text && !form.contact_birthday)
+      e.contact_birthday = "Ngày không hợp lệ (dd/MM/yyyy)";
+    if (form.founded_date_text && !form.founded_date)
+      e.founded_date = "Ngày không hợp lệ (dd/MM/yyyy)";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -157,6 +233,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         contact_status: form.contact_status || null,
         issue_faced: form.issue_faced || null,
         result: form.result || null,
+        created_by: user?.id || null,
       } as any);
       if (error) throw error;
     },
@@ -185,12 +262,111 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Thêm khách hàng</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="personal" className="w-full">
+        <Tabs defaultValue="company" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="personal">Thông tin cá nhân</TabsTrigger>
             <TabsTrigger value="company">Thông tin doanh nghiệp</TabsTrigger>
+            <TabsTrigger value="personal">Thông tin cá nhân</TabsTrigger>
           </TabsList>
 
+          {/* === TAB DOANH NGHIỆP (TRƯỚC) === */}
+          <TabsContent value="company" className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tên công ty</Label>
+                <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mã số thuế</Label>
+                <Input value={form.tax_code} onChange={(e) => set("tax_code", e.target.value)} placeholder="10 chữ số" />
+                {errors.tax_code && <p className="text-xs text-destructive">{errors.tax_code}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Địa chỉ công ty</Label>
+              <Input value={form.company_address} onChange={(e) => set("company_address", e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Người liên hệ chính</Label>
+                <Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Chức vụ</Label>
+                <Input value={form.contact_position} onChange={(e) => set("contact_position", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <DateInput
+                label="Ngày sinh người liên hệ"
+                value={form.contact_birthday}
+                textValue={form.contact_birthday_text}
+                onChange={(d) => set("contact_birthday", d)}
+                onTextChange={(t) => set("contact_birthday_text", t)}
+                disabled={(date) => date > new Date()}
+                error={errors.contact_birthday}
+              />
+              <div className="space-y-1.5">
+                <Label>Email công ty</Label>
+                <Input type="email" value={form.company_email} onChange={(e) => set("company_email", e.target.value)} />
+                {errors.company_email && <p className="text-xs text-destructive">{errors.company_email}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <DateInput
+                label="Ngày thành lập"
+                value={form.founded_date}
+                textValue={form.founded_date_text}
+                onChange={(d) => set("founded_date", d)}
+                onTextChange={(t) => set("founded_date_text", t)}
+                error={errors.founded_date}
+              />
+              <div className="space-y-1.5">
+                <Label>Quy mô nhân sự</Label>
+                <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} placeholder="Số nhân viên" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>SĐT người liên hệ</Label>
+                <Input value={form.contact_person_phone} onChange={(e) => set("contact_person_phone", e.target.value)} placeholder="10 chữ số" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tour quan tâm</Label>
+                <Input value={form.tour_interest} onChange={(e) => set("tour_interest", e.target.value)} placeholder="VD: Tour Nhật 5N4Đ" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tình trạng</Label>
+                <Select value={form.contact_status} onValueChange={(v) => set("contact_status", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn tình trạng" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Chưa liên hệ">Chưa liên hệ</SelectItem>
+                    <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
+                    <SelectItem value="Chốt deal">Chốt deal</SelectItem>
+                    <SelectItem value="Từ chối">Từ chối</SelectItem>
+                    <SelectItem value="Hẹn gọi lại">Hẹn gọi lại</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Kết quả</Label>
+                <Input value={form.result} onChange={(e) => set("result", e.target.value)} placeholder="VD: Đã chốt / Đang cân nhắc" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Vấn đề gặp phải</Label>
+                <Input value={form.issue_faced} onChange={(e) => set("issue_faced", e.target.value)} placeholder="VD: Giá cao, chưa quyết lịch" />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* === TAB CÁ NHÂN (SAU) === */}
           <TabsContent value="personal" className="space-y-4 mt-4">
             {/* Row 1: Name + Type */}
             <div className="grid grid-cols-2 gap-4">
@@ -227,33 +403,18 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
 
             {/* Row 3: DOB + Gender */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-2">
-                  Ngày sinh
-                  {form.date_of_birth && isBirthdayUpcoming(form.date_of_birth) && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">🎂 Sinh nhật sắp tới</Badge>
-                  )}
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.date_of_birth && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.date_of_birth ? format(form.date_of_birth, "dd/MM/yyyy") : "Chọn ngày"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={form.date_of_birth ?? undefined}
-                      onSelect={(d) => set("date_of_birth", d ?? null)}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                {errors.date_of_birth && <p className="text-xs text-destructive">{errors.date_of_birth}</p>}
-              </div>
+              <DateInput
+                label="Ngày sinh"
+                value={form.date_of_birth}
+                textValue={form.date_of_birth_text}
+                onChange={(d) => set("date_of_birth", d)}
+                onTextChange={(t) => set("date_of_birth_text", t)}
+                disabled={(date) => date > new Date()}
+                badge={form.date_of_birth && isBirthdayUpcoming(form.date_of_birth) ? (
+                  <Badge variant="default" className="text-[10px] px-1.5 py-0">🎂 Sinh nhật sắp tới</Badge>
+                ) : undefined}
+                error={errors.date_of_birth}
+              />
               <div className="space-y-1.5">
                 <Label>Giới tính</Label>
                 <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
@@ -317,127 +478,6 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
             <div className="space-y-1.5">
               <Label>Ghi chú</Label>
               <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="company" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Tên công ty</Label>
-                <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mã số thuế</Label>
-                <Input value={form.tax_code} onChange={(e) => set("tax_code", e.target.value)} placeholder="10 chữ số" />
-                {errors.tax_code && <p className="text-xs text-destructive">{errors.tax_code}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Địa chỉ công ty</Label>
-              <Input value={form.company_address} onChange={(e) => set("company_address", e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Người liên hệ chính</Label>
-                <Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Chức vụ</Label>
-                <Input value={form.contact_position} onChange={(e) => set("contact_position", e.target.value)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Ngày sinh người liên hệ</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.contact_birthday && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.contact_birthday ? format(form.contact_birthday, "dd/MM/yyyy") : "Chọn ngày"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={form.contact_birthday ?? undefined}
-                      onSelect={(d) => set("contact_birthday", d ?? null)}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Email công ty</Label>
-                <Input type="email" value={form.company_email} onChange={(e) => set("company_email", e.target.value)} />
-                {errors.company_email && <p className="text-xs text-destructive">{errors.company_email}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Ngày thành lập</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !form.founded_date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.founded_date ? format(form.founded_date, "dd/MM/yyyy") : "Chọn ngày"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={form.founded_date ?? undefined}
-                      onSelect={(d) => set("founded_date", d ?? null)}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Quy mô nhân sự</Label>
-                <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} placeholder="Số nhân viên" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>SĐT người liên hệ</Label>
-                <Input value={form.contact_person_phone} onChange={(e) => set("contact_person_phone", e.target.value)} placeholder="10 chữ số" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Tour quan tâm</Label>
-                <Input value={form.tour_interest} onChange={(e) => set("tour_interest", e.target.value)} placeholder="VD: Tour Nhật 5N4Đ" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Tình trạng</Label>
-                <Select value={form.contact_status} onValueChange={(v) => set("contact_status", v)}>
-                  <SelectTrigger><SelectValue placeholder="Chọn tình trạng" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Chưa liên hệ">Chưa liên hệ</SelectItem>
-                    <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
-                    <SelectItem value="Chốt deal">Chốt deal</SelectItem>
-                    <SelectItem value="Từ chối">Từ chối</SelectItem>
-                    <SelectItem value="Hẹn gọi lại">Hẹn gọi lại</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Kết quả</Label>
-                <Input value={form.result} onChange={(e) => set("result", e.target.value)} placeholder="VD: Đã chốt / Đang cân nhắc" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Vấn đề gặp phải</Label>
-                <Input value={form.issue_faced} onChange={(e) => set("issue_faced", e.target.value)} placeholder="VD: Giá cao, chưa quyết lịch" />
-              </div>
             </div>
           </TabsContent>
         </Tabs>

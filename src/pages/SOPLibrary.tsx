@@ -88,7 +88,7 @@ export default function SOPLibrary() {
 
   const isAdmin = ADMIN_ROLES.includes(userRole || "");
   const isManager = MANAGER_ROLES.includes(userRole || "");
-  const canCreate = CAN_CREATE_ROLES.includes(userRole || "");
+  const canCreate = hasPermission('workflow', 'create');
 
   useEffect(() => {
     loadData();
