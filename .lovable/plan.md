@@ -1,63 +1,40 @@
 
 
-# Plan: Fix slow loading, white screen after login, and module switching errors
+# Khắc phục trùng lặp giữa "Vị trí" và "Quyền hệ thống"
 
-## Root cause analysis
+## Vấn đề
 
-Three interconnected issues stem from the authentication and permission loading waterfall:
+Hiện tại hệ thống có 2 trường gần giống nhau:
+- `employees.position` (text tự do) — hiển thị trong hồ sơ nhân viên, VD: "Trưởng phòng", "Nhân viên"
+- `profiles.role` (enum cố định) — quyết định toàn bộ phân quyền hệ thống, VD: `MANAGER`, `HCNS`
 
-```text
-Login success
-  → onAuthStateChange fires → sets session → sets loading=false IMMEDIATELY
-  → fetchRole runs async in setTimeout → userRole is still null
-  → App renders ProtectedRoutes → PermissionGuard mounts
-  → usePermissions sees userRole=null → returns empty permissions → loading=false
-  → PermissionGuard redirects to "/" or shows blank
-  → fetchRole finishes → userRole updates → but PermissionGuard already redirected
-```
+Hai trường này dễ bị lệch nhau (VD: position = "Trưởng phòng" nhưng role = `HCNS`), gây nhầm lẫn.
 
-**Problem 1 - White screen after login**: `loading` is set to `false` before `fetchRole` completes. Components render with `userRole=null`, causing PermissionGuard to fail or redirect.
+## Giải pháp đề xuất: Tự động gợi ý role khi chọn Vị trí
 
-**Problem 2 - Slow module switching**: `usePermissions` runs 2 sequential DB queries (employees → employee_permissions) on EVERY route mount. Not cached at context level, so switching modules re-fetches each time.
+Thay vì xóa bỏ trường nào, giữ cả hai nhưng **liên kết chúng thông minh hơn**:
 
-**Problem 3 - Race condition**: Both `onAuthStateChange` and `getSession` independently set session and call fetchRole, causing duplicate fetches.
+### 1. Chuyển "Vị trí" từ text tự do thành dropdown có sẵn
+- Thay `<Input>` bằng `<Select>` với danh sách chức vụ chuẩn: Trưởng phòng, Phó phòng, Nhân viên, Thực tập sinh, Giám đốc, v.v.
+- File: `src/components/employees/EmployeeFormDialog.tsx`
 
-## Solution
+### 2. Tự động gợi ý quyền hệ thống phù hợp
+- Khi chọn vị trí + phòng ban, hệ thống tự gợi ý role phù hợp trong tab "Quyền hệ thống"
+- VD: Vị trí "Trưởng phòng" + Phòng HCNS → gợi ý `HR_MANAGER`
+- VD: Vị trí "Nhân viên" + Phòng KD Nội địa → gợi ý `SALE_DOMESTIC`
 
-### 1. Fix AuthContext - wait for role before setting loading=false
+### 3. Cảnh báo khi role và position không khớp
+- Logic `detectRoleMismatch` hiện có trong `EmployeeRoleTab.tsx` sẽ được mở rộng để so sánh chính xác hơn dựa trên mapping position → role
 
-- Set up `onAuthStateChange` listener BEFORE calling `getSession` (already correct)
-- On INITIAL_SESSION and SIGNED_IN events: fetch role FIRST, then set loading=false
-- Remove the `setTimeout` wrapper around `fetchRole` - it's causing the race
-- Remove the duplicate `getSession().then()` call - rely solely on `onAuthStateChange` with INITIAL_SESSION event
-- Add an `authReady` flag that only becomes true when both session AND role are resolved
+### Files cần sửa
 
-### 2. Create PermissionsContext - fetch once, cache globally
+| File | Thay đổi |
+|------|----------|
+| `EmployeeFormDialog.tsx` | Đổi trường "Chức vụ" từ Input thành Select với danh sách chuẩn |
+| `EmployeeRoleTab.tsx` | Thêm logic auto-suggest role dựa trên position + department, mở rộng cảnh báo mismatch |
 
-- Move `usePermissions` logic into a React Context (`PermissionsProvider`)
-- Wrap it inside `AuthProvider` children in App.tsx
-- The context fetches permissions ONCE when userRole changes (not per-route)
-- All `PermissionGuard` and `AppSidebar` components consume from context (no duplicate queries)
-- Use React Query with a long staleTime for the employee/permissions lookup
-
-### 3. Gate dashboard queries with auth readiness
-
-- Add `enabled: !!user && !!userRole` to all dashboard useQuery calls
-- This prevents queries from firing before auth is ready (which causes RLS errors with null auth.uid())
-
-## Files to modify
-
-| # | File | Change |
-|---|------|--------|
-| 1 | `src/contexts/AuthContext.tsx` | Fix loading state to wait for role; remove race condition; handle INITIAL_SESSION properly |
-| 2 | `src/contexts/PermissionsContext.tsx` | NEW - global permissions context with one-time fetch and caching |
-| 3 | `src/hooks/usePermissions.ts` | Refactor to consume from PermissionsContext instead of fetching independently |
-| 4 | `src/App.tsx` | Wrap with PermissionsProvider |
-| 5 | `src/hooks/useDashboardData.ts` | Add `enabled: !!user && !!userRole` gates to all queries |
-
-## Expected result
-
-- Login → immediate transition to dashboard (no white screen, no reload needed)
-- Module switching is instant (permissions cached in context, not re-fetched)
-- No more RLS errors from premature queries with null auth.uid()
+### Kết quả
+- Giảm thiểu lỗi nhập liệu sai vị trí
+- Tự động gợi ý quyền phù hợp, giảm thao tác thủ công
+- Cảnh báo rõ ràng khi vị trí và quyền không đồng bộ
 
