@@ -181,6 +181,18 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
       return;
     }
 
+    // Validate duplicate email
+    const emailToCheck = form.email?.trim() || form.login_email?.trim();
+    if (emailToCheck) {
+      const query = supabase.from("employees").select("id, full_name").eq("email", emailToCheck).is("deleted_at", null);
+      if (isEdit) query.neq("id", employeeId!);
+      const { data: dupEmps } = await query;
+      if (dupEmps && dupEmps.length > 0) {
+        toast.error(`Email "${emailToCheck}" đã được sử dụng bởi nhân viên "${dupEmps[0].full_name}"`);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -210,6 +222,15 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
       if (isEdit) {
         const { error } = await supabase.from("employees").update(payload).eq("id", employeeId!);
         if (error) throw error;
+
+        // Sync profiles.department_id if employee has a linked profile
+        if (form.department_id) {
+          const { data: emp } = await supabase.from("employees").select("profile_id").eq("id", employeeId!).single();
+          if (emp?.profile_id) {
+            await supabase.from("profiles").update({ department_id: form.department_id }).eq("id", emp.profile_id);
+          }
+        }
+
         toast.success("Cập nhật thành công");
       } else {
         const { data: emp, error } = await supabase.from("employees").insert(payload).select("id").single();

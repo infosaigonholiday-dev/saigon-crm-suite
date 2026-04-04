@@ -142,6 +142,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.create", "finance.submit",
     "settings.view",
     "workflow.view", "workflow.create",
+    "tour_packages.view",
+    "contracts.view",
   ],
   KETOAN: [
     "dashboard.view",

@@ -262,14 +262,29 @@ export function SettingsAccountsTab() {
     if (!editProfile) return;
     setSaving(true);
     try {
+      const newDeptId = editData.department_id || null;
       const { error } = await supabase
         .from("profiles")
         .update({
-          department_id: editData.department_id || null,
+          department_id: newDeptId,
           role: editData.role,
         })
         .eq("id", editProfile.id);
       if (error) throw error;
+
+      // Sync employees.department_id when Admin changes department in profile
+      if (newDeptId) {
+        const { data: linkedEmp } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("profile_id", editProfile.id)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (linkedEmp) {
+          await supabase.from("employees").update({ department_id: newDeptId }).eq("id", linkedEmp.id);
+        }
+      }
+
       toast.success("Cập nhật tài khoản thành công");
       setEditDialogOpen(false);
       await loadProfiles();
