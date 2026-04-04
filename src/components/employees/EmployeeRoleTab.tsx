@@ -23,6 +23,8 @@ interface Props {
   employeeName?: string | null;
   departmentId?: string | null;
   departmentName?: string | null;
+  departmentCode?: string | null;
+  employeePosition?: string | null;
   onProfileLinked?: () => void;
 }
 
