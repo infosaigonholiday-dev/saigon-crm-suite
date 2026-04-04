@@ -124,7 +124,7 @@ export default function CustomerDetail() {
   }
 
   const tier = customer.tier ?? "Mới";
-  const showCompany = customer.type === "Doanh nghiệp" || !!customer.company_name;
+  const showCompany = customer.type === "CORPORATE" || !!customer.company_name;
 
   const stats = [
     { label: "Tổng booking", value: customer.total_bookings ?? 0, icon: CalendarDays },
