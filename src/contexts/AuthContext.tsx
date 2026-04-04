@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // For INITIAL_SESSION, handle the full flow including role fetch
         if (event === "INITIAL_SESSION") {
           if (newSession?.user) {
-            setSession(newSession);
             const role = await fetchRole(newSession.user.id);
+            setSession(newSession);
             setUserRole(role);
           } else {
             setSession(null);
@@ -58,8 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!initializedRef.current) return;
 
         if (event === "SIGNED_IN" && newSession?.user) {
-          setSession(newSession);
+          setLoading(true);
           const role = await fetchRole(newSession.user.id);
+          setSession(newSession);
           setUserRole(role);
           setLoading(false);
           return;
