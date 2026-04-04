@@ -167,7 +167,7 @@ export default function EmployeeDetail() {
               <CardHeader><CardTitle className="text-base">Thông tin công việc</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <InfoItem icon={Building} label="Phòng ban" value={(employee.departments as any)?.name} />
-                <InfoItem icon={User} label="Chức vụ" value={employee.position} />
+                <InfoItem icon={User} label="Chức vụ" value={positionOptions.find(p => p.value === employee.position)?.label ?? employee.position} />
                 <InfoItem icon={User} label="Cấp bậc" value={employee.level} />
                 <InfoItem icon={Calendar} label="Ngày vào làm" value={employee.hire_date} />
                 <InfoItem icon={Calendar} label="Hết hạn thử việc" value={employee.probation_end_date} />

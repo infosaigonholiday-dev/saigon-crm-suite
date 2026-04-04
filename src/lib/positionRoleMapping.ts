@@ -16,7 +16,7 @@ export const positionOptions = [
 /** Department code → role mapping by position */
 const deptRoleMap: Record<string, Record<string, string>> = {
   // Kinh doanh Nội địa
-  KD_NOIDIA: {
+  DOMESTIC: {
     GIAM_DOC: "GDKD",
     PHO_GIAM_DOC: "GDKD",
     TRUONG_PHONG: "MANAGER",
@@ -25,7 +25,7 @@ const deptRoleMap: Record<string, Record<string, string>> = {
     THUC_TAP_SINH: "INTERN_SALE_DOMESTIC",
   },
   // Kinh doanh Outbound
-  KD_OUTBOUND: {
+  OUTBOUND: {
     GIAM_DOC: "GDKD",
     PHO_GIAM_DOC: "GDKD",
     TRUONG_PHONG: "MANAGER",
@@ -34,7 +34,7 @@ const deptRoleMap: Record<string, Record<string, string>> = {
     THUC_TAP_SINH: "INTERN_SALE_OUTBOUND",
   },
   // Kinh doanh MICE
-  KD_MICE: {
+  MICE: {
     GIAM_DOC: "GDKD",
     PHO_GIAM_DOC: "GDKD",
     TRUONG_PHONG: "MANAGER",
@@ -42,8 +42,8 @@ const deptRoleMap: Record<string, Record<string, string>> = {
     NHAN_VIEN: "SALE_MICE",
     THUC_TAP_SINH: "INTERN_SALE_MICE",
   },
-  // Kinh doanh Inbound
-  KD_INBOUND: {
+  // Kinh doanh Inbound (dự phòng)
+  INBOUND: {
     GIAM_DOC: "GDKD",
     PHO_GIAM_DOC: "GDKD",
     TRUONG_PHONG: "MANAGER",
@@ -70,7 +70,17 @@ const deptRoleMap: Record<string, Record<string, string>> = {
     THUC_TAP_SINH: "INTERN_KETOAN",
   },
   // Điều hành Tour
-  DIEUHAN: {
+  OPS: {
+    GIAM_DOC: "DIEUHAN",
+    PHO_GIAM_DOC: "DIEUHAN",
+    TRUONG_PHONG: "MANAGER",
+    PHO_PHONG: "DIEUHAN",
+    NHAN_VIEN: "DIEUHAN",
+    THUC_TAP_SINH: "INTERN_DIEUHAN",
+    HUONG_DAN_VIEN: "TOUR",
+  },
+  // Điều hành Outbound
+  OP_OUTBOUND: {
     GIAM_DOC: "DIEUHAN",
     PHO_GIAM_DOC: "DIEUHAN",
     TRUONG_PHONG: "MANAGER",
@@ -89,7 +99,7 @@ const deptRoleMap: Record<string, Record<string, string>> = {
     THUC_TAP_SINH: "INTERN_MKT",
   },
   // Ban Giám đốc
-  BGD: {
+  BOD: {
     GIAM_DOC: "ADMIN",
     PHO_GIAM_DOC: "ADMIN",
     TRUONG_PHONG: "ADMIN",
