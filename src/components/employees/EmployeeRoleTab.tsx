@@ -260,7 +260,10 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   if (!profile) return <Card><CardContent className="py-8 text-center text-muted-foreground">Không tìm thấy thông tin tài khoản</CardContent></Card>;
 
   const currentRoleLabel = roleOptions.find(r => r.value === profile.role)?.label ?? profile.role;
-  const roleMismatch = detectRoleMismatch(profile.role, departmentName);
+  const roleMismatch = detectPositionRoleMismatch(employeePosition ?? null, departmentCode ?? null, profile.role, currentRoleLabel)
+    || detectRoleMismatch(profile.role, departmentName);
+  const suggestedRole = (employeePosition && departmentCode) ? suggestRole(employeePosition, departmentCode) : null;
+  const showSuggestion = suggestedRole && suggestedRole !== profile.role && isManager;
 
   return (
     <div className="space-y-4">
