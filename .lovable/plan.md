@@ -1,30 +1,50 @@
 
 
-# Các vấn đề bảo mật còn lại
+# Ke hoach fix tong the — Ban chinh thuc
 
-Sau khi bỏ qua "Leaked Password Protection", còn **3 cảnh báo**:
+## Van de 1: Loi RLS khi them khach hang va lead
 
-## 1. `audit_logs` — policies dùng TO public (warn)
-Bảng `audit_logs` chứa dữ liệu nhạy cảm (IP, user ID, dữ liệu cũ/mới). Policy `admin_full_access` hiện áp dụng cho `public` (bao gồm anon). Cần đổi thành `TO authenticated`.
-
-**Fix**: Migration drop + recreate policy với `TO authenticated`.
-
-## 2. `customer_segment_rules` — chỉ admin truy cập được (warn)
-Bảng chỉ có policy `admin_full_access`, không có SELECT policy cho các role khác (GDKD, DIEUHAN, SALE...). Hiện tại mặc định deny — an toàn nhưng có thể là thiếu sót.
-
-**Fix**: Thêm SELECT policy cho authenticated users hoặc đánh dấu "intentional" nếu chỉ admin cần dùng.
-
-## 3. `profiles` — rủi ro privilege escalation (warn)
-RLS dùng `has_role()` đọc từ chính bảng `profiles`. Policy `profiles_self_update` cho phép user update row của mình. Tuy có trigger `prevent_role_change` ngăn đổi role, nhưng vẫn có rủi ro TOCTOU lý thuyết.
-
-**Đánh giá**: Hệ thống đã có trigger `prevent_role_change()` kiểm tra quyền ADMIN/HR_MANAGER/HCNS trước khi cho đổi role hoặc department_id. Kết hợp với `enforce_role_immutability`, rủi ro thực tế rất thấp. Có thể đánh dấu "accepted risk" với ghi chú giải thích.
+**Fix**:
+- **Migration SQL**: Them default `auth.uid()` cho `customers.created_by` va `leads.assigned_to`
+- **`CustomerFormDialog.tsx`**: Import `useAuth`, them `created_by: user?.id` vao insert
+- **`LeadFormDialog.tsx`**: Import `useAuth`, them `assigned_to: user?.id` vao insert
 
 ---
 
-## Kế hoạch thực hiện
+## Van de 2: Form khach hang — UI/UX
 
-1. **Đánh dấu bỏ qua** "Leaked Password Protection" (theo yêu cầu)
-2. **Fix audit_logs**: Migration đổi policy sang `TO authenticated`
-3. **Xử lý customer_segment_rules**: Thêm SELECT policy hoặc đánh dấu intentional
-4. **Xử lý profiles escalation**: Đánh dấu accepted risk với giải thích về các trigger bảo vệ đã có
+### 2a. Doi thu tu tab: Doanh nghiep TRUOC, Ca nhan SAU
+
+Hien tai form co 2 tab:
+- Tab 1 (default): "Thong tin ca nhan" — chua ho ten, SDT, email, ngay sinh, gioi tinh, CCCD, dia chi, nguon den, sale phu trach, phan khuc, ghi chu
+- Tab 2: "Thong tin doanh nghiep" — chua ten cong ty, MST, dia chi cong ty, nguoi lien he, chuc vu, ngay sinh nguoi lien he, email cong ty, ngay thanh lap, quy mo, tour quan tam, tinh trang, ket qua, van de gap phai
+
+**Yeu cau**: Doi nguyen bo noi dung tab "Thong tin doanh nghiep" len lam tab mac dinh hien thi truoc, tab "Thong tin ca nhan" xuong sau. Cu the:
+
+- `defaultValue` doi tu `"personal"` sang `"company"`
+- Thu tu `TabsTrigger`: "Thong tin doanh nghiep" truoc, "Thong tin ca nhan" sau
+- Thu tu `TabsContent`: block `company` dat truoc block `personal` trong code
+
+Toan bo noi dung (fields) cua moi tab **giu nguyen**, chi doi vi tri hien thi.
+
+### 2b. Date picker cho phep go tay (dd/MM/yyyy)
+- 3 truong ngay: ngay sinh, ngay sinh nguoi lien he, ngay thanh lap
+- Them Input text cho phep go truc tiep `dd/MM/yyyy`, kem icon lich mo Calendar popover
+
+---
+
+## Van de 3: Kho quy trinh — quyen tao quy dinh cong ty
+
+- `SOPLibrary.tsx` dong 91: doi `canCreate` sang `hasPermission('workflow', 'create')`
+
+---
+
+## Tong hop files thay doi
+
+| # | File | Thay doi |
+|---|------|----------|
+| 1 | Migration SQL | Default `auth.uid()` cho `customers.created_by`, `leads.assigned_to` |
+| 2 | `CustomerFormDialog.tsx` | Them `created_by`; **doi thu tu tab** (doanh nghiep truoc, ca nhan sau — doi `defaultValue`, doi thu tu `TabsTrigger` va `TabsContent`); input go ngay |
+| 3 | `LeadFormDialog.tsx` | Them `assigned_to: user?.id` |
+| 4 | `SOPLibrary.tsx` | Doi `canCreate` sang `hasPermission('workflow', 'create')` |
 
