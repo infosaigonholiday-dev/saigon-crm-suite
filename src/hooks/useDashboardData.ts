@@ -137,7 +137,7 @@ export function useBusinessDashboardData() {
       const { data } = await query;
       return groupByMonth(data || []);
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: deadlines } = useQuery({
