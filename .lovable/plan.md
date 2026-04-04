@@ -1,40 +1,71 @@
 
 
-# Khắc phục trùng lặp giữa "Vị trí" và "Quyền hệ thống"
+# Fix toàn bộ hệ thống trước khi publish
 
-## Vấn đề
+## Vấn đề phát hiện
 
-Hiện tại hệ thống có 2 trường gần giống nhau:
-- `employees.position` (text tự do) — hiển thị trong hồ sơ nhân viên, VD: "Trưởng phòng", "Nhân viên"
-- `profiles.role` (enum cố định) — quyết định toàn bộ phân quyền hệ thống, VD: `MANAGER`, `HCNS`
+### 1. Department code KHÔNG KHỚP giữa DB và mapping (CRITICAL)
+Mã phòng ban thực tế trong DB hoàn toàn khác với mã trong `positionRoleMapping.ts`:
 
-Hai trường này dễ bị lệch nhau (VD: position = "Trưởng phòng" nhưng role = `HCNS`), gây nhầm lẫn.
+```text
+DB thực tế          → Mapping hiện tại (SAI)
+─────────────────────────────────────────────
+BOD                 → BGD
+DOMESTIC            → KD_NOIDIA
+OUTBOUND            → KD_OUTBOUND
+MICE                → KD_MICE
+OPS                 → DIEUHAN
+(không có KD_INBOUND trong DB)
+OP_OUTBOUND         → không có mapping
+HCNS, KETOAN, MKT   → đúng
+```
 
-## Giải pháp đề xuất: Tự động gợi ý role khi chọn Vị trí
+**Hậu quả**: Tính năng auto-suggest role KHÔNG BAO GIỜ hoạt động (trừ HCNS/KETOAN/MKT), mismatch warning cũng không hiện đúng.
 
-Thay vì xóa bỏ trường nào, giữ cả hai nhưng **liên kết chúng thông minh hơn**:
+### 2. Position data không nhất quán (MEDIUM)
+- Dữ liệu cũ lưu tiếng Việt: `"Trưởng phòng"`
+- Code mới (EmployeeFormDialog Select) lưu enum: `"TRUONG_PHONG"`
+- EmployeeDetail hiển thị raw value → nếu lưu enum sẽ hiện `TRUONG_PHONG` thay vì `Trưởng phòng`
 
-### 1. Chuyển "Vị trí" từ text tự do thành dropdown có sẵn
-- Thay `<Input>` bằng `<Select>` với danh sách chức vụ chuẩn: Trưởng phòng, Phó phòng, Nhân viên, Thực tập sinh, Giám đốc, v.v.
-- File: `src/components/employees/EmployeeFormDialog.tsx`
+### 3. Department sync lệch (LOW)
+Nhân viên `nguyen tuan phuong`: employee.department_id = MICE nhưng profile.department_id = HCNS
 
-### 2. Tự động gợi ý quyền hệ thống phù hợp
-- Khi chọn vị trí + phòng ban, hệ thống tự gợi ý role phù hợp trong tab "Quyền hệ thống"
-- VD: Vị trí "Trưởng phòng" + Phòng HCNS → gợi ý `HR_MANAGER`
-- VD: Vị trí "Nhân viên" + Phòng KD Nội địa → gợi ý `SALE_DOMESTIC`
+### 4. Console warning AlertDialog ref (LOW)
+Warning React ref trên SettingsAccountsTab — không ảnh hưởng chức năng nhưng gây noise
 
-### 3. Cảnh báo khi role và position không khớp
-- Logic `detectRoleMismatch` hiện có trong `EmployeeRoleTab.tsx` sẽ được mở rộng để so sánh chính xác hơn dựa trên mapping position → role
+## Kế hoạch sửa
+
+### Step 1: Fix `positionRoleMapping.ts` — cập nhật department codes đúng DB
+Thay toàn bộ key trong `deptRoleMap` cho khớp DB thực tế:
+- `BGD` → `BOD`
+- `KD_NOIDIA` → `DOMESTIC`
+- `KD_OUTBOUND` → `OUTBOUND`
+- `KD_MICE` → `MICE`
+- `KD_INBOUND` → giữ cho trường hợp thêm phòng ban sau
+- `DIEUHAN` → `OPS`
+- Thêm `OP_OUTBOUND` mapping
+
+### Step 2: Fix EmployeeDetail hiển thị position label
+Import `positionOptions` và map `employee.position` từ enum value sang label tiếng Việt. Fallback hiển thị raw value nếu không match (cho dữ liệu cũ).
+
+### Step 3: Fix SettingsAccountsTab console warning
+`AlertDialog` component đang nhận ref không đúng. Kiểm tra và wrap bằng `forwardRef` hoặc sửa cách sử dụng.
+
+### Step 4: Fix department sync cho profile lệch
+Thêm logic trong `EmployeeFormDialog` khi edit: nếu thay đổi department_id, đồng bộ cả profile.department_id.
 
 ### Files cần sửa
 
-| File | Thay đổi |
-|------|----------|
-| `EmployeeFormDialog.tsx` | Đổi trường "Chức vụ" từ Input thành Select với danh sách chuẩn |
-| `EmployeeRoleTab.tsx` | Thêm logic auto-suggest role dựa trên position + department, mở rộng cảnh báo mismatch |
+| # | File | Thay đổi |
+|---|------|----------|
+| 1 | `src/lib/positionRoleMapping.ts` | Cập nhật department codes khớp DB thực tế |
+| 2 | `src/pages/EmployeeDetail.tsx` | Hiển thị position label thay vì raw enum |
+| 3 | `src/components/settings/SettingsAccountsTab.tsx` | Fix AlertDialog ref warning |
 
-### Kết quả
-- Giảm thiểu lỗi nhập liệu sai vị trí
-- Tự động gợi ý quyền phù hợp, giảm thao tác thủ công
-- Cảnh báo rõ ràng khi vị trí và quyền không đồng bộ
+### Kết quả mong đợi
+- Auto-suggest role hoạt động chính xác khi chọn phòng ban + vị trí
+- Mismatch warning hiển thị đúng
+- EmployeeDetail hiện tên chức vụ tiếng Việt
+- Không còn console warning
+- Hệ thống sẵn sàng publish
 
