@@ -331,7 +331,12 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           <TabsContent value="work" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Chức vụ">
-                <Input value={form.position} onChange={e => update("position", e.target.value)} />
+                <Select value={form.position} onValueChange={v => update("position", v)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn chức vụ" /></SelectTrigger>
+                  <SelectContent>
+                    {positionOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Cấp bậc">
                 <Select value={form.level} onValueChange={v => update("level", v)}>
