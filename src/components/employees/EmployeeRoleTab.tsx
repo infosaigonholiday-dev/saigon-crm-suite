@@ -79,7 +79,7 @@ function detectRoleMismatch(role: string, deptName?: string | null): string | nu
   return null;
 }
 
-export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, onProfileLinked }: Props) {
+export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employeeName, departmentId, departmentName, departmentCode, employeePosition, onProfileLinked }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
