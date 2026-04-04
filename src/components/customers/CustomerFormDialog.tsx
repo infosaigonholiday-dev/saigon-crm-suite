@@ -28,7 +28,7 @@ interface Props {
 
 const initial = {
   full_name: "",
-  type: "CÁ NHÂN",
+  type: "INDIVIDUAL",
   phone: "",
   email: "",
   date_of_birth: null as Date | null,
@@ -380,8 +380,8 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
                 <Select value={form.type} onValueChange={(v) => set("type", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CÁ NHÂN">Cá nhân</SelectItem>
-                    <SelectItem value="DOANH NGHIỆP">Doanh nghiệp</SelectItem>
+                    <SelectItem value="INDIVIDUAL">Cá nhân</SelectItem>
+                    <SelectItem value="CORPORATE">Doanh nghiệp</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

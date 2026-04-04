@@ -110,7 +110,7 @@ export default function Leads() {
           email: lead.email || null,
           company_name: lead.company_name || null,
           assigned_sale_id: lead.assigned_to || null,
-          type: lead.company_name ? "Doanh nghiệp" : "Cá nhân",
+          type: lead.company_name ? "CORPORATE" : "INDIVIDUAL",
           source: lead.channel || null,
         })
         .select("id")
