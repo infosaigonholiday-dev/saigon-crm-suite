@@ -1,50 +1,71 @@
 
+Mục tiêu: sửa dứt điểm lỗi “không thêm được khách hàng”.
 
-# Ke hoach fix tong the — Ban chinh thuc
+Do I know what the issue is? Có.
 
-## Van de 1: Loi RLS khi them khach hang va lead
+Nguyên nhân chính
+- Lỗi hiện tại không còn là RLS nữa.
+- Database đang có constraint `customers_type_check` với rule:
+```text
+type chỉ được là: INDIVIDUAL hoặc CORPORATE
+```
+- Nhưng frontend đang gửi sai giá trị:
+  - `src/components/customers/CustomerFormDialog.tsx`: gửi `"CÁ NHÂN"` / `"DOANH NGHIỆP"`
+  - `src/pages/Leads.tsx` khi convert lead sang customer: gửi `"Cá nhân"` / `"Doanh nghiệp"`
+- Vì vậy insert bị chặn ngay ở database, đúng như toast trong ảnh.
 
-**Fix**:
-- **Migration SQL**: Them default `auth.uid()` cho `customers.created_by` va `leads.assigned_to`
-- **`CustomerFormDialog.tsx`**: Import `useAuth`, them `created_by: user?.id` vao insert
-- **`LeadFormDialog.tsx`**: Import `useAuth`, them `assigned_to: user?.id` vao insert
+Kế hoạch fix tổng thể
+1. Chuẩn hóa field `customers.type` trên toàn hệ thống
+- Dùng 2 giá trị chuẩn duy nhất cho DB:
+  - `INDIVIDUAL`
+  - `CORPORATE`
+- UI vẫn hiển thị tiếng Việt:
+  - `INDIVIDUAL` = Cá nhân
+  - `CORPORATE` = Doanh nghiệp
 
----
+2. Sửa form thêm khách hàng
+- `src/components/customers/CustomerFormDialog.tsx`
+  - đổi `initial.type` từ `"CÁ NHÂN"` sang `"INDIVIDUAL"`
+  - đổi `SelectItem value` từ chuỗi tiếng Việt sang:
+    - `INDIVIDUAL`
+    - `CORPORATE`
+  - giữ label hiển thị cho người dùng là “Cá nhân” / “Doanh nghiệp”
+  - insert customer sẽ gửi đúng code DB thay vì label tiếng Việt
 
-## Van de 2: Form khach hang — UI/UX
+3. Sửa luồng convert Lead -> Customer
+- `src/pages/Leads.tsx`
+  - đổi logic:
+```text
+lead.company_name ? "CORPORATE" : "INDIVIDUAL"
+```
+- tránh lỗi khi chuyển lead thành khách hàng
 
-### 2a. Doi thu tu tab: Doanh nghiep TRUOC, Ca nhan SAU
+4. Sửa chỗ đọc dữ liệu khách hàng sau khi chuẩn hóa
+- `src/pages/CustomerDetail.tsx`
+  - đổi điều kiện hiển thị block doanh nghiệp từ so sánh `"Doanh nghiệp"` sang `"CORPORATE"`
+  - nếu có chỗ nào hiển thị loại khách hàng thì dùng map label thay vì hardcode chuỗi tiếng Việt
 
-Hien tai form co 2 tab:
-- Tab 1 (default): "Thong tin ca nhan" — chua ho ten, SDT, email, ngay sinh, gioi tinh, CCCD, dia chi, nguon den, sale phu trach, phan khuc, ghi chu
-- Tab 2: "Thong tin doanh nghiep" — chua ten cong ty, MST, dia chi cong ty, nguoi lien he, chuc vu, ngay sinh nguoi lien he, email cong ty, ngay thanh lap, quy mo, tour quan tam, tinh trang, ket qua, van de gap phai
+5. Thêm migration dọn dữ liệu cũ để tránh lỗi lặp lại
+- tạo migration SQL để convert mọi giá trị legacy nếu đang tồn tại:
+  - `"CÁ NHÂN"` / `"Cá nhân"` -> `INDIVIDUAL`
+  - `"DOANH NGHIỆP"` / `"Doanh nghiệp"` -> `CORPORATE`
+- giữ nguyên constraint hiện tại, vì constraint DB đang đúng; dữ liệu gửi lên mới là phần sai
 
-**Yeu cau**: Doi nguyen bo noi dung tab "Thong tin doanh nghiep" len lam tab mac dinh hien thi truoc, tab "Thong tin ca nhan" xuong sau. Cu the:
+Files sẽ sửa
+- `src/components/customers/CustomerFormDialog.tsx`
+- `src/pages/Leads.tsx`
+- `src/pages/CustomerDetail.tsx`
+- `supabase/migrations/...sql`
 
-- `defaultValue` doi tu `"personal"` sang `"company"`
-- Thu tu `TabsTrigger`: "Thong tin doanh nghiep" truoc, "Thong tin ca nhan" sau
-- Thu tu `TabsContent`: block `company` dat truoc block `personal` trong code
+Kết quả sau fix
+- Thêm khách hàng mới sẽ không còn bị lỗi `customers_type_check`
+- Convert lead sang customer cũng không còn fail
+- Dữ liệu khách hàng doanh nghiệp vẫn hiển thị đúng
+- Tránh tình trạng mỗi màn dùng một kiểu chuỗi khác nhau
 
-Toan bo noi dung (fields) cua moi tab **giu nguyen**, chi doi vi tri hien thi.
-
-### 2b. Date picker cho phep go tay (dd/MM/yyyy)
-- 3 truong ngay: ngay sinh, ngay sinh nguoi lien he, ngay thanh lap
-- Them Input text cho phep go truc tiep `dd/MM/yyyy`, kem icon lich mo Calendar popover
-
----
-
-## Van de 3: Kho quy trinh — quyen tao quy dinh cong ty
-
-- `SOPLibrary.tsx` dong 91: doi `canCreate` sang `hasPermission('workflow', 'create')`
-
----
-
-## Tong hop files thay doi
-
-| # | File | Thay doi |
-|---|------|----------|
-| 1 | Migration SQL | Default `auth.uid()` cho `customers.created_by`, `leads.assigned_to` |
-| 2 | `CustomerFormDialog.tsx` | Them `created_by`; **doi thu tu tab** (doanh nghiep truoc, ca nhan sau — doi `defaultValue`, doi thu tu `TabsTrigger` va `TabsContent`); input go ngay |
-| 3 | `LeadFormDialog.tsx` | Them `assigned_to: user?.id` |
-| 4 | `SOPLibrary.tsx` | Doi `canCreate` sang `hasPermission('workflow', 'create')` |
-
+Chi tiết kỹ thuật
+```text
+DB value      -> UI label
+INDIVIDUAL    -> Cá nhân
+CORPORATE     -> Doanh nghiệp
+```
