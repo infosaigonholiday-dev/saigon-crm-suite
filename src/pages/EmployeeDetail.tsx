@@ -12,6 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Loader2, Phone, Mail, MapPin, Calendar, Building, User, Trash2 } from "lucide-react";
+import { positionOptions } from "@/lib/positionRoleMapping";
 import { EmployeeFormDialog } from "@/components/employees/EmployeeFormDialog";
 import { EmployeeSalaryTab } from "@/components/employees/EmployeeSalaryTab";
 import { EmployeeLeaveTab } from "@/components/employees/EmployeeLeaveTab";
@@ -99,7 +100,7 @@ export default function EmployeeDetail() {
             <h1 className="text-2xl font-bold">{employee.full_name}</h1>
             <Badge variant="outline" className={st.className}>{st.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{employee.employee_code} • {employee.position ?? "Chưa có chức vụ"}</p>
+          <p className="text-sm text-muted-foreground">{employee.employee_code} • {positionOptions.find(p => p.value === employee.position)?.label ?? employee.position ?? "Chưa có chức vụ"}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setEditOpen(true)}>
@@ -166,7 +167,7 @@ export default function EmployeeDetail() {
               <CardHeader><CardTitle className="text-base">Thông tin công việc</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <InfoItem icon={Building} label="Phòng ban" value={(employee.departments as any)?.name} />
-                <InfoItem icon={User} label="Chức vụ" value={employee.position} />
+                <InfoItem icon={User} label="Chức vụ" value={positionOptions.find(p => p.value === employee.position)?.label ?? employee.position} />
                 <InfoItem icon={User} label="Cấp bậc" value={employee.level} />
                 <InfoItem icon={Calendar} label="Ngày vào làm" value={employee.hire_date} />
                 <InfoItem icon={Calendar} label="Hết hạn thử việc" value={employee.probation_end_date} />
