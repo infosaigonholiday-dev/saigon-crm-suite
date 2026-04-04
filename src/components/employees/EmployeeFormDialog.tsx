@@ -131,7 +131,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
-      const { data } = await supabase.from("departments").select("id, name").order("name");
+      const { data } = await supabase.from("departments").select("id, name, code").order("name");
       return data ?? [];
     },
   });
