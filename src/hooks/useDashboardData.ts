@@ -111,7 +111,7 @@ export function useBusinessDashboardData() {
       const { count } = await query;
       return count || 0;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: revenueByMonth, isLoading: loadingRevenue } = useQuery({
