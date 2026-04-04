@@ -93,11 +93,10 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
       const { error: upErr } = await supabase.storage.from("contract-files").upload(filePath, file);
       if (upErr) throw upErr;
 
-      const { data: urlData } = supabase.storage.from("contract-files").getPublicUrl(filePath);
-
+      // Store the path (bucket is private, we'll use signed URLs to read)
       const { error: docErr } = await supabase.from("documents").insert({
         name: file.name,
-        file_url: urlData.publicUrl,
+        file_url: filePath,
         file_type: file.type,
         file_size: file.size,
         entity_type: "contract",
