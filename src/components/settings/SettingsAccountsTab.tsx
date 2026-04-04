@@ -465,16 +465,14 @@ export function SettingsAccountsTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-                onClick={() => confirmResetProfile && handleResetPassword(confirmResetProfile.id, confirmResetProfile.email)}
-                disabled={!confirmResetProfile || resettingId === confirmResetProfile.id}
-              >
-                {confirmResetProfile && resettingId === confirmResetProfile.id && (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                )}
-                Xác nhận reset
-              </Button>
+            <AlertDialogAction
+              onClick={() => confirmResetProfile && handleResetPassword(confirmResetProfile.id, confirmResetProfile.email)}
+              disabled={!confirmResetProfile || resettingId === confirmResetProfile?.id}
+            >
+              {confirmResetProfile && resettingId === confirmResetProfile.id && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
+              Xác nhận reset
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
