@@ -187,7 +187,7 @@ export function useBusinessDashboardData() {
 
       return items;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const monthlyRevenue = (bookingStats || []).reduce((s, b) => s + (Number(b.total_value) || 0), 0);
