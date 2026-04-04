@@ -1,71 +1,25 @@
 
-Mục tiêu: sửa dứt điểm lỗi “không thêm được khách hàng”.
+# Kế hoạch fix - ĐÃ HOÀN THÀNH
 
-Do I know what the issue is? Có.
+## Các vấn đề đã fix
 
-Nguyên nhân chính
-- Lỗi hiện tại không còn là RLS nữa.
-- Database đang có constraint `customers_type_check` với rule:
-```text
-type chỉ được là: INDIVIDUAL hoặc CORPORATE
-```
-- Nhưng frontend đang gửi sai giá trị:
-  - `src/components/customers/CustomerFormDialog.tsx`: gửi `"CÁ NHÂN"` / `"DOANH NGHIỆP"`
-  - `src/pages/Leads.tsx` khi convert lead sang customer: gửi `"Cá nhân"` / `"Doanh nghiệp"`
-- Vì vậy insert bị chặn ngay ở database, đúng như toast trong ảnh.
+### 1. Đồng bộ dữ liệu giữa module Nhân sự và Cài đặt ✅
+- `EmployeeFormDialog.tsx`: Khi lưu nhân viên có profile_id, tự động cập nhật profiles.department_id
+- `SettingsAccountsTab.tsx`: Khi Admin đổi department, tự động cập nhật employees.department_id
+- `EmployeeRoleTab.tsx`: Sau khi tạo tài khoản, đồng bộ employees.profile_id và department_id
 
-Kế hoạch fix tổng thể
-1. Chuẩn hóa field `customers.type` trên toàn hệ thống
-- Dùng 2 giá trị chuẩn duy nhất cho DB:
-  - `INDIVIDUAL`
-  - `CORPORATE`
-- UI vẫn hiển thị tiếng Việt:
-  - `INDIVIDUAL` = Cá nhân
-  - `CORPORATE` = Doanh nghiệp
+### 2. Validate email trùng ✅
+- `EmployeeFormDialog.tsx`: Kiểm tra email trùng trước khi lưu, hiện lỗi rõ ràng
 
-2. Sửa form thêm khách hàng
-- `src/components/customers/CustomerFormDialog.tsx`
-  - đổi `initial.type` từ `"CÁ NHÂN"` sang `"INDIVIDUAL"`
-  - đổi `SelectItem value` từ chuỗi tiếng Việt sang:
-    - `INDIVIDUAL`
-    - `CORPORATE`
-  - giữ label hiển thị cho người dùng là “Cá nhân” / “Doanh nghiệp”
-  - insert customer sẽ gửi đúng code DB thay vì label tiếng Việt
+### 3. HR_MANAGER thêm quyền xem Gói tour và Hợp đồng ✅
+- `usePermissions.ts`: Thêm tour_packages.view, contracts.view
+- DB function `get_default_permissions_for_role`: Đồng bộ tương ứng
 
-3. Sửa luồng convert Lead -> Customer
-- `src/pages/Leads.tsx`
-  - đổi logic:
-```text
-lead.company_name ? "CORPORATE" : "INDIVIDUAL"
-```
-- tránh lỗi khi chuyển lead thành khách hàng
+### 4. Dọn dẹp phòng ban ✅
+- Đổi "Phòng Điều hành Tour" → "OP Outbound" (code: OP_OUTBOUND)
+- Xóa 4 phòng ban trùng: Ban Giám đốc (BGD), KD MICE, KD Nội địa, KD Outbound
+- Còn lại 9 phòng ban chuẩn
 
-4. Sửa chỗ đọc dữ liệu khách hàng sau khi chuẩn hóa
-- `src/pages/CustomerDetail.tsx`
-  - đổi điều kiện hiển thị block doanh nghiệp từ so sánh `"Doanh nghiệp"` sang `"CORPORATE"`
-  - nếu có chỗ nào hiển thị loại khách hàng thì dùng map label thay vì hardcode chuỗi tiếng Việt
-
-5. Thêm migration dọn dữ liệu cũ để tránh lỗi lặp lại
-- tạo migration SQL để convert mọi giá trị legacy nếu đang tồn tại:
-  - `"CÁ NHÂN"` / `"Cá nhân"` -> `INDIVIDUAL`
-  - `"DOANH NGHIỆP"` / `"Doanh nghiệp"` -> `CORPORATE`
-- giữ nguyên constraint hiện tại, vì constraint DB đang đúng; dữ liệu gửi lên mới là phần sai
-
-Files sẽ sửa
-- `src/components/customers/CustomerFormDialog.tsx`
-- `src/pages/Leads.tsx`
-- `src/pages/CustomerDetail.tsx`
-- `supabase/migrations/...sql`
-
-Kết quả sau fix
-- Thêm khách hàng mới sẽ không còn bị lỗi `customers_type_check`
-- Convert lead sang customer cũng không còn fail
-- Dữ liệu khách hàng doanh nghiệp vẫn hiển thị đúng
-- Tránh tình trạng mỗi màn dùng một kiểu chuỗi khác nhau
-
-Chi tiết kỹ thuật
-```text
-DB value      -> UI label
-INDIVIDUAL    -> Cá nhân
-CORPORATE     -> Doanh nghiệp
-```
+## Lưu ý cho Admin
+- Cập nhật email riêng cho "lê thị thảo linh" (SHT-002) — đang dùng chung email với SHT-004
+- Kiểm tra level/position cho "mai xuân khánh" (SHT-005) cho khớp với role GDKD
