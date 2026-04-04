@@ -1,6 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { usePermissionsContext } from "@/contexts/PermissionsContext";
 
 // All permission keys in the system
 export const ALL_PERMISSION_KEYS = [
@@ -45,6 +43,9 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   workflow: { label: "Quy trình", keys: ["workflow.view", "workflow.create"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
 };
+
+// Scope rules
+export type ScopeLevel = "all" | "department" | "personal";
 
 // Default permissions per role (client-side mirror of DB function)
 const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
@@ -309,128 +310,11 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
 };
 
-// Scope rules: determines data visibility scope per role/module
-export type ScopeLevel = "all" | "department" | "personal";
-
-const SCOPE_RULES: Record<string, Record<string, ScopeLevel>> = {
-  ADMIN: { default: "all" },
-  SUPER_ADMIN: { default: "all" },
-  GDKD: {
-    default: "department",
-    customers: "department",
-    leads: "department",
-    staff: "department",
-    leave: "department",
-    payroll: "department",
-    finance: "department",
-  },
-  MANAGER: {
-    default: "department",
-    customers: "department",
-    leads: "department",
-    staff: "department",
-    leave: "department",
-    payroll: "department",
-    finance: "department",
-  },
-  DIEUHAN: { default: "all", staff: "personal", leave: "personal", payroll: "personal" },
-  HR_MANAGER: { default: "all", staff: "all", leave: "all", payroll: "all", finance: "personal" },
-  KETOAN: { default: "all", staff: "personal", leave: "personal", payroll: "all", finance: "all" },
-  MKT: { default: "personal" },
-  HCNS: { default: "all", staff: "all", leave: "all", payroll: "all", finance: "personal" },
-  SALE_DOMESTIC: { default: "personal" },
-  SALE_INBOUND: { default: "personal" },
-  SALE_OUTBOUND: { default: "personal" },
-  SALE_MICE: { default: "personal" },
-  TOUR: { default: "personal" },
-  INTERN_SALE_DOMESTIC: { default: "personal" },
-  INTERN_SALE_OUTBOUND: { default: "personal" },
-  INTERN_SALE_MICE: { default: "personal" },
-  INTERN_SALE_INBOUND: { default: "personal" },
-  INTERN_DIEUHAN: { default: "personal" },
-  INTERN_MKT: { default: "personal" },
-  INTERN_HCNS: { default: "personal" },
-  INTERN_KETOAN: { default: "personal" },
-};
-
 export function getDefaultPermissions(role: string): PermissionKey[] {
   return DEFAULT_PERMISSIONS[role] || [];
 }
 
+// Re-export from context - this is now the main hook
 export function usePermissions() {
-  const { user, userRole } = useAuth();
-  const [permissions, setPermissions] = useState<Set<PermissionKey>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user || !userRole) {
-      setPermissions(new Set());
-      setLoading(false);
-      return;
-    }
-
-    async function load() {
-      // Start with role defaults
-      const defaults = new Set<PermissionKey>(getDefaultPermissions(userRole!));
-
-      // Fetch custom overrides from employee_permissions
-      const { data: employee } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("profile_id", user!.id)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-      if (employee) {
-        const { data: overrides } = await supabase
-          .from("employee_permissions")
-          .select("permission_key, granted")
-          .eq("employee_id", employee.id);
-
-        if (overrides) {
-          for (const o of overrides) {
-            const key = o.permission_key as PermissionKey;
-            if (o.granted) {
-              defaults.add(key);
-            } else {
-              defaults.delete(key);
-            }
-          }
-        }
-      }
-
-      setPermissions(defaults);
-      setLoading(false);
-    }
-
-    load();
-  }, [user, userRole]);
-
-  const hasPermission = useCallback(
-    (module: string, action: string) => permissions.has(`${module}.${action}` as PermissionKey),
-    [permissions]
-  );
-
-  const hasAnyPermission = useCallback(
-    (pairs: [string, string][]) => pairs.some(([m, a]) => permissions.has(`${m}.${a}` as PermissionKey)),
-    [permissions]
-  );
-
-  const getScope = useCallback(
-    (module: string): ScopeLevel => {
-      const roleScope = SCOPE_RULES[userRole || ""];
-      if (!roleScope) return "personal";
-      return roleScope[module] || roleScope.default || "personal";
-    },
-    [userRole]
-  );
-
-  const getVisibleModules = useCallback((): string[] => {
-    const rolePerms = DEFAULT_PERMISSIONS[userRole || ""];
-    if (!rolePerms) return [];
-    const modules = new Set(rolePerms.map((k) => k.split(".")[0]));
-    return Array.from(modules);
-  }, [userRole]);
-
-  return { permissions, hasPermission, hasAnyPermission, loading, getScope, getVisibleModules };
+  return usePermissionsContext();
 }

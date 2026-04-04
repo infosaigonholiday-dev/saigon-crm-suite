@@ -50,7 +50,7 @@ export function useBusinessDashboardData() {
         .single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const departmentId = profile?.department_id;
@@ -73,7 +73,7 @@ export function useBusinessDashboardData() {
       const { data } = await query;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: leadStats, isLoading: loadingLeads } = useQuery({
@@ -94,7 +94,7 @@ export function useBusinessDashboardData() {
       const { data } = await query;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: customerCount, isLoading: loadingCustomers } = useQuery({
@@ -111,7 +111,7 @@ export function useBusinessDashboardData() {
       const { count } = await query;
       return count || 0;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: revenueByMonth, isLoading: loadingRevenue } = useQuery({
@@ -137,7 +137,7 @@ export function useBusinessDashboardData() {
       const { data } = await query;
       return groupByMonth(data || []);
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: deadlines } = useQuery({
@@ -187,7 +187,7 @@ export function useBusinessDashboardData() {
 
       return items;
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const monthlyRevenue = (bookingStats || []).reduce((s, b) => s + (Number(b.total_value) || 0), 0);
