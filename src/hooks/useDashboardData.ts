@@ -73,7 +73,7 @@ export function useBusinessDashboardData() {
       const { data } = await query;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!userRole,
   });
 
   const { data: leadStats, isLoading: loadingLeads } = useQuery({
