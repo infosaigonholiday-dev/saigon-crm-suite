@@ -116,7 +116,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center space-y-4">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <CheckCircle className="h-12 w-12 text-primary mx-auto" />
             <h2 className="text-lg font-semibold">Đổi mật khẩu thành công!</h2>
             <p className="text-sm text-muted-foreground">Bạn có thể đăng nhập với mật khẩu mới.</p>
             <Button className="w-full" onClick={() => navigate("/login")}>
