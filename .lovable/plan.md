@@ -1,63 +1,35 @@
 
 
-# Fix: Email reset không gửi được
+# Scaffold Auth Email Templates cho Saigon Holiday
 
-## Nguyên nhân
+## Tổng quan
 
-Edge function `manage-employee-accounts` đang dùng `generateLink({ type: "recovery" })` — API này chỉ tạo token/link và trả về, **không gửi email**. Cần đổi sang `resetPasswordForEmail()` — API thực sự gửi email qua hệ thống mặc định của Supabase.
+Thiết lập hệ thống email xác thực có thương hiệu Saigon Holiday, sử dụng domain `notify.app.saigonholiday.vn` đã cấu hình. DNS đang chờ xác minh nhưng không ảnh hưởng đến việc tạo templates -- email sẽ tự động hoạt động khi DNS verified.
 
-## Phạm vi thay đổi
+## Các bước thực hiện
 
-**Chỉ 1 file duy nhất:** `supabase/functions/manage-employee-accounts/index.ts`
+### Bước 1: Scaffold auth email templates
+Tạo 6 email templates (signup, recovery, magic-link, invite, email-change, reauthentication) cùng edge function `auth-email-hook`.
 
-**Chỉ 2 đoạn code thay đổi**, không ảnh hưởng gì khác:
+### Bước 2: Áp dụng thương hiệu Saigon Holiday
+Chỉnh sửa templates với:
+- Màu chủ đạo cam `#E8963A` (primary từ CSS: hsl 30, 88%, 65%)
+- Tên thương hiệu "Saigon Holiday"
+- Font Arial, nền trắng #ffffff
+- Button cam với chữ trắng, bo góc 8px
 
-### Thay đổi 1 — Action `reset_password` (dòng 188-201)
+### Bước 3: Deploy edge function
+Deploy `auth-email-hook` để kích hoạt hệ thống.
 
-Thay:
-```ts
-const { error: linkErr } = await adminClient.auth.admin.generateLink({
-  type: "recovery",
-  email: targetEmail,
-});
-```
-Bằng:
-```ts
-const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
-  targetEmail,
-  { redirectTo: "https://app.saigonholiday.vn/reset-password" }
-);
-```
+## Phạm vi ảnh hưởng
 
-### Thay đổi 2 — Action `reset_all_passwords` (dòng 271-277)
+- Tạo mới: `supabase/functions/auth-email-hook/` và `supabase/functions/_shared/email-templates/`
+- Cập nhật: `supabase/config.toml` (thêm cấu hình hook)
+- Không thay đổi frontend, database, hay business logic hiện tại
+- Email reset mật khẩu, xác minh email, magic link sẽ có giao diện thương hiệu Saigon Holiday
 
-Thay:
-```ts
-const { error: linkErr } = await adminClient.auth.admin.generateLink({
-  type: "recovery",
-  email: profile.email,
-});
-```
-Bằng:
-```ts
-const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
-  profile.email,
-  { redirectTo: "https://app.saigonholiday.vn/reset-password" }
-);
-```
+## Sau khi hoàn thành
 
-## Không thay đổi gì khác
-
-- Không thay đổi database/migration
-- Không thay đổi frontend (AuthContext, App.tsx, Login, ResetPassword, FirstLoginChangePassword)
-- Không thay đổi business logic (mật khẩu mặc định, must_change_password, routing)
-- Không cần cấu hình email domain hay SMTP — dùng default sender `no-reply@auth.lovable.cloud`
-
-## Sau khi sửa
-
-Deploy lại edge function và test: Admin bấm "Reset mật khẩu" → nhân sự nhận được email có link reset.
-
-## Cập nhật plan.md
-
-Sửa dòng mô tả B2 và B3 trong plan để ghi rõ dùng `resetPasswordForEmail` thay vì `generateLink`.
+- Theo dõi trạng thái DNS tại Cloud -> Emails
+- Khi DNS verified, email sẽ tự động gửi từ `notify.app.saigonholiday.vn`
 
