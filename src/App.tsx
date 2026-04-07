@@ -29,16 +29,27 @@ import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
 import SOPLibrary from "./pages/SOPLibrary";
 import ResetPassword from "./pages/ResetPassword";
+import FirstLoginChangePassword from "./pages/FirstLoginChangePassword";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { session } = useAuth();
+  const { session, mustChangePassword } = useAuth();
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Force password change on first login
+  if (mustChangePassword) {
+    return (
+      <Routes>
+        <Route path="/first-login-change-password" element={<FirstLoginChangePassword />} />
+        <Route path="*" element={<Navigate to="/first-login-change-password" replace />} />
+      </Routes>
+    );
   }
 
   return (
