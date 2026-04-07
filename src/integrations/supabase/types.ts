@@ -2855,10 +2855,12 @@ export type Database = {
           department_id: string | null
           email: string
           employee_id: string | null
+          first_login_at: string | null
           full_name: string
           id: string
           is_active: boolean | null
           last_login: string | null
+          must_change_password: boolean | null
           phone: string | null
           role: string
         }
@@ -2868,10 +2870,12 @@ export type Database = {
           department_id?: string | null
           email: string
           employee_id?: string | null
+          first_login_at?: string | null
           full_name: string
           id: string
           is_active?: boolean | null
           last_login?: string | null
+          must_change_password?: boolean | null
           phone?: string | null
           role?: string
         }
@@ -2881,10 +2885,12 @@ export type Database = {
           department_id?: string | null
           email?: string
           employee_id?: string | null
+          first_login_at?: string | null
           full_name?: string
           id?: string
           is_active?: boolean | null
           last_login?: string | null
+          must_change_password?: boolean | null
           phone?: string | null
           role?: string
         }
