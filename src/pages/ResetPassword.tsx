@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,52 +14,74 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
-  
+  const [expired, setExpired] = useState(false);
+  const resolvedRef = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const navigate = useNavigate();
 
-  const [expired, setExpired] = useState(false);
+  const markReady = () => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    setReady(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const markExpired = () => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    setExpired(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
 
   useEffect(() => {
     const init = async () => {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
+      const code = params.get("code");
+
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-          setReady(true);
-          return;
+        if (error) {
+          markExpired();
+        } else {
+          markReady();
         }
+        return;
       }
-      if (window.location.hash.includes('type=recovery')) {
-        setReady(true);
+
+      // Legacy hash-based recovery
+      if (window.location.hash.includes("type=recovery")) {
+        markReady();
+        return;
       }
     };
+
     init();
 
+    // Listen for PASSWORD_RECOVERY event (hash-based flow)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
-        setReady(true);
+        markReady();
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-
-    const timeout = setTimeout(() => {
-      setExpired(true);
-    }, 15000);
+    // Timeout: 60s fallback if no resolution
+    timeoutRef.current = setTimeout(() => {
+      if (!resolvedRef.current) {
+        markExpired();
+      }
+    }, 60000);
 
     return () => {
       subscription.unsubscribe();
-      clearTimeout(timeout);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
+    if (password.length < 8) {
+      toast.error("Mật khẩu phải có ít nhất 8 ký tự");
       return;
     }
     if (password !== confirmPassword) {
@@ -70,9 +92,22 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       toast.error("Lỗi đặt lại mật khẩu", { description: error.message });
-    } else {
-      setSuccess(true);
+      setLoading(false);
+      return;
     }
+
+    // Update profile: must_change_password = false
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ must_change_password: false })
+        .eq("id", user.id);
+    }
+
+    setSuccess(true);
+    // Sign out so user re-logs with new password
+    await supabase.auth.signOut();
     setLoading(false);
   };
 
@@ -81,7 +116,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center space-y-4">
-            <CheckCircle className="h-12 w-12 text-success mx-auto" />
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
             <h2 className="text-lg font-semibold">Đổi mật khẩu thành công!</h2>
             <p className="text-sm text-muted-foreground">Bạn có thể đăng nhập với mật khẩu mới.</p>
             <Button className="w-full" onClick={() => navigate("/login")}>
@@ -132,7 +167,7 @@ export default function ResetPassword() {
             SH
           </div>
           <CardTitle className="text-xl">Đặt mật khẩu mới</CardTitle>
-          <p className="text-sm text-muted-foreground">Nhập mật khẩu mới cho tài khoản của bạn</p>
+          <p className="text-sm text-muted-foreground">Nhập mật khẩu mới cho tài khoản của bạn (tối thiểu 8 ký tự)</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReset} className="space-y-4">
@@ -145,7 +180,7 @@ export default function ResetPassword() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
             <div className="space-y-2">

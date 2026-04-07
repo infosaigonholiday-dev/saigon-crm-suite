@@ -83,6 +83,12 @@ Deno.serve(async (req) => {
 
         createdUserId = authUser.user.id;
 
+        // Set must_change_password = true for the new profile
+        await adminClient
+          .from("profiles")
+          .update({ must_change_password: true })
+          .eq("id", createdUserId);
+
         if (department_id) {
           const { error: profileError } = await adminClient
             .from("profiles")
@@ -111,16 +117,12 @@ Deno.serve(async (req) => {
             .is("email", null);
         }
 
-        try {
-          await adminClient.auth.admin.generateLink({ type: "recovery", email });
-        } catch (_linkErr) {
-          // Non-critical
-        }
+        // DO NOT send recovery email on create — user will use default password for first login
 
         return jsonResponse({
           success: true,
           user_id: createdUserId,
-          message: `Tài khoản đã được tạo cho ${email}. Email đặt mật khẩu đã được gửi tự động.`,
+          message: `Tài khoản đã được tạo cho ${email} với mật khẩu mặc định nội bộ. Nhân viên cần đăng nhập lần đầu và đổi mật khẩu mới.`,
         });
       } catch (err) {
         // Cleanup: delete BOTH auth user AND orphan profile
@@ -144,7 +146,7 @@ Deno.serve(async (req) => {
     if (action === "activate") {
       const { user_id } = payload;
       await adminClient.auth.admin.updateUserById(user_id, { ban_duration: "none" });
-      await adminClient.from("profiles").update({ is_active: true }).eq("id", user_id);
+      await adminClient.from("profiles").update({ is_active: true, must_change_password: true }).eq("id", user_id);
       return jsonResponse({ success: true });
     }
 
@@ -165,6 +167,7 @@ Deno.serve(async (req) => {
         }, 400);
       }
 
+      // Step 1: Reset password to default
       const { error: resetError } = await adminClient.auth.admin.updateUserById(authUser, {
         password: DEFAULT_PASSWORD,
       });
@@ -173,9 +176,37 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: resetError.message }, 400);
       }
 
+      // Step 2: Set must_change_password = true
+      await adminClient.from("profiles").update({ must_change_password: true }).eq("id", authUser);
+
+      // Step 3: Send recovery email
+      const targetEmail = email || (await getAuthUserEmail(adminClient, authUser));
+      let emailSent = false;
+      let emailError: string | null = null;
+
+      if (targetEmail) {
+        try {
+          const { error: linkErr } = await adminClient.auth.admin.generateLink({
+            type: "recovery",
+            email: targetEmail,
+          });
+          if (linkErr) {
+            emailError = linkErr.message;
+          } else {
+            emailSent = true;
+          }
+        } catch (err) {
+          emailError = (err as Error).message;
+        }
+      }
+
       return jsonResponse({
         success: true,
-        message: "Đã reset mật khẩu về mặc định. Nhân viên cần dùng chức năng Quên mật khẩu để đặt lại.",
+        email_sent: emailSent,
+        email_error: emailError,
+        message: emailSent
+          ? `Đã reset mật khẩu. Email đặt lại mật khẩu đã được gửi đến ${targetEmail}. Nhân viên dùng link trong email hoặc đăng nhập bằng mật khẩu mặc định để đổi mật khẩu.`
+          : `Đã reset mật khẩu về mặc định. ${emailError ? "Lỗi gửi email: " + emailError + ". " : ""}Nhân viên cần đăng nhập bằng mật khẩu mặc định và đổi mật khẩu mới.`,
       });
     }
 
@@ -205,6 +236,7 @@ Deno.serve(async (req) => {
       );
 
       let resetCount = 0;
+      let emailSentCount = 0;
       const errors: string[] = [];
       const skipped: string[] = [];
 
@@ -231,13 +263,27 @@ Deno.serve(async (req) => {
           errors.push(`${profile.email ?? profile.id}: ${resetErr.message}`);
         } else {
           resetCount++;
+          // Set must_change_password = true
+          await adminClient.from("profiles").update({ must_change_password: true }).eq("id", targetUserId);
+
+          // Try to send recovery email
+          if (profile.email) {
+            try {
+              const { error: linkErr } = await adminClient.auth.admin.generateLink({
+                type: "recovery",
+                email: profile.email,
+              });
+              if (!linkErr) emailSentCount++;
+            } catch (_) {}
+          }
         }
       }
 
       return jsonResponse({
         success: true,
-        message: `Đã reset ${resetCount}/${allProfiles.length} tài khoản. Nhân viên cần dùng Quên mật khẩu để đặt lại.`,
+        message: `Đã reset ${resetCount}/${allProfiles.length} tài khoản. Gửi email recovery: ${emailSentCount}. Nhân viên cần đăng nhập bằng mật khẩu mặc định hoặc dùng link email để đổi mật khẩu.`,
         count: resetCount,
+        email_sent_count: emailSentCount,
         errors: errors.length > 0 ? errors : undefined,
         skipped: skipped.length > 0 ? skipped : undefined,
       });
@@ -342,4 +388,13 @@ async function findAuthUser(
   }
 
   return null;
+}
+
+/** Get email for an auth user by ID */
+async function getAuthUserEmail(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string
+): Promise<string | null> {
+  const { data } = await adminClient.auth.admin.getUserById(userId);
+  return data?.user?.email ?? null;
 }
