@@ -186,10 +186,10 @@ Deno.serve(async (req) => {
 
       if (targetEmail) {
         try {
-          const { error: linkErr } = await adminClient.auth.admin.generateLink({
-            type: "recovery",
-            email: targetEmail,
-          });
+          const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
+            targetEmail,
+            { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+          );
           if (linkErr) {
             emailError = linkErr.message;
           } else {
@@ -269,10 +269,10 @@ Deno.serve(async (req) => {
           // Try to send recovery email
           if (profile.email) {
             try {
-              const { error: linkErr } = await adminClient.auth.admin.generateLink({
-                type: "recovery",
-                email: profile.email,
-              });
+              const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
+                profile.email,
+                { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+              );
               if (!linkErr) emailSentCount++;
             } catch (_) {}
           }
