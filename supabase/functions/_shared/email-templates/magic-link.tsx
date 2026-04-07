@@ -22,21 +22,21 @@ export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
 }: MagicLinkEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Link đăng nhập Saigon Holiday</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
+        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Heading style={h1}>Link đăng nhập của bạn</Heading>
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
+          Nhấn nút bên dưới để đăng nhập vào Saigon Holiday. Link này sẽ hết hạn sau một thời gian ngắn.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Log In
+          Đăng nhập
         </Button>
         <Text style={footer}>
-          If you didn't request this link, you can safely ignore this email.
+          Nếu bạn không yêu cầu link này, vui lòng bỏ qua email này.
         </Text>
       </Container>
     </Body>
@@ -47,20 +47,27 @@ export default MagicLinkEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
+const brand = {
+  fontSize: '18px',
+  fontWeight: 'bold' as const,
+  color: '#E8963A',
+  margin: '0 0 24px',
+  letterSpacing: '1px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#3d2a14',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: '#6b6352',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#E8963A',
   color: '#ffffff',
   fontSize: '14px',
   borderRadius: '8px',

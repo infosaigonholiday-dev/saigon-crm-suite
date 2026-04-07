@@ -17,17 +17,17 @@ interface ReauthenticationEmailProps {
 }
 
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Your verification code</Preview>
+    <Preview>Mã xác thực Saigon Holiday</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm reauthentication</Heading>
-        <Text style={text}>Use the code below to confirm your identity:</Text>
+        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Heading style={h1}>Xác nhận danh tính</Heading>
+        <Text style={text}>Sử dụng mã bên dưới để xác nhận danh tính của bạn:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code will expire shortly. If you didn't request this, you can
-          safely ignore this email.
+          Mã này sẽ hết hạn sau một thời gian ngắn. Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.
         </Text>
       </Container>
     </Body>
@@ -38,15 +38,22 @@ export default ReauthenticationEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
+const brand = {
+  fontSize: '18px',
+  fontWeight: 'bold' as const,
+  color: '#E8963A',
+  margin: '0 0 24px',
+  letterSpacing: '1px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#3d2a14',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: '#6b6352',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
@@ -54,7 +61,7 @@ const codeStyle = {
   fontFamily: 'Courier, monospace',
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#E8963A',
   margin: '0 0 30px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

@@ -25,26 +25,25 @@ export const InviteEmail = ({
   siteUrl,
   confirmationUrl,
 }: InviteEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
+    <Preview>Bạn được mời tham gia Saigon Holiday</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
+        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Heading style={h1}>Lời mời tham gia</Heading>
         <Text style={text}>
-          You've been invited to join{' '}
+          Bạn được mời tham gia{' '}
           <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
+            <strong>Saigon Holiday</strong>
           </Link>
-          . Click the button below to accept the invitation and create your
-          account.
+          . Nhấn nút bên dưới để chấp nhận lời mời và tạo tài khoản.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Accept Invitation
+          Chấp nhận lời mời
         </Button>
         <Text style={footer}>
-          If you weren't expecting this invitation, you can safely ignore this
-          email.
+          Nếu bạn không mong đợi lời mời này, vui lòng bỏ qua email này.
         </Text>
       </Container>
     </Body>
@@ -55,21 +54,28 @@ export default InviteEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
+const brand = {
+  fontSize: '18px',
+  fontWeight: 'bold' as const,
+  color: '#E8963A',
+  margin: '0 0 24px',
+  letterSpacing: '1px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#3d2a14',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: '#6b6352',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#E8963A',
   color: '#ffffff',
   fontSize: '14px',
   borderRadius: '8px',

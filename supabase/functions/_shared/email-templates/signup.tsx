@@ -27,31 +27,32 @@ export const SignupEmail = ({
   recipient,
   confirmationUrl,
 }: SignupEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>Xác nhận email cho Saigon Holiday</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
+        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Heading style={h1}>Xác nhận email của bạn</Heading>
         <Text style={text}>
-          Thanks for signing up for{' '}
+          Cảm ơn bạn đã đăng ký tài khoản tại{' '}
           <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
+            <strong>Saigon Holiday</strong>
           </Link>
           !
         </Text>
         <Text style={text}>
-          Please confirm your email address (
+          Vui lòng xác nhận địa chỉ email (
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          ) by clicking the button below:
+          ) bằng cách nhấn nút bên dưới:
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Verify Email
+          Xác nhận email
         </Button>
         <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
+          Nếu bạn không tạo tài khoản, vui lòng bỏ qua email này.
         </Text>
       </Container>
     </Body>
@@ -62,21 +63,28 @@ export default SignupEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
+const brand = {
+  fontSize: '18px',
+  fontWeight: 'bold' as const,
+  color: '#E8963A',
+  margin: '0 0 24px',
+  letterSpacing: '1px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#3d2a14',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
+  color: '#6b6352',
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#E8963A',
   color: '#ffffff',
   fontSize: '14px',
   borderRadius: '8px',
