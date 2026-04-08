@@ -24,6 +24,7 @@ function BusinessDashboard() {
   const { stats, revenueByMonth, deadlines, loading } = useBusinessDashboardData();
 
   const canViewRevenue = ["ADMIN", "KETOAN"].includes(userRole || "");
+  const isCeo = ["ADMIN", "SUPER_ADMIN"].includes(userRole || "");
 
   const scopeLabel = scope === "all" ? "toàn công ty" : scope === "team" ? "phòng ban" : "cá nhân";
 
