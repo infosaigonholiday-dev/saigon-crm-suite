@@ -49,11 +49,17 @@ const PermissionsContext = createContext<PermissionsContextType>({
 export const usePermissionsContext = () => useContext(PermissionsContext);
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const { user, userRole } = useAuth();
+  const { user, userRole, isReady } = useAuth();
   const [permissions, setPermissions] = useState<Set<PermissionKey>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Don't load permissions until auth is fully ready
+    if (!isReady) {
+      setLoading(true);
+      return;
+    }
+
     if (!user || !userRole) {
       setPermissions(new Set());
       setLoading(false);
@@ -104,7 +110,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     load();
 
     return () => { cancelled = true; };
-  }, [user?.id, userRole]);
+  }, [user?.id, userRole, isReady]);
 
   const hasPermission = useCallback(
     (module: string, action: string) => permissions.has(`${module}.${action}` as PermissionKey),
