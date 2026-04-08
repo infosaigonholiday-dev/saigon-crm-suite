@@ -10,6 +10,7 @@ import PersonalDashboard from "./PersonalDashboard";
 import HrDashboard from "./HrDashboard";
 import ManagerKPIDashboard from "./ManagerKPIDashboard";
 import { CeoDashboardCharts } from "@/components/dashboard/CeoDashboardCharts";
+import { CeoCustomerOverview } from "@/components/dashboard/CeoCustomerOverview";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
@@ -23,6 +24,7 @@ function BusinessDashboard() {
   const { stats, revenueByMonth, deadlines, loading } = useBusinessDashboardData();
 
   const canViewRevenue = ["ADMIN", "KETOAN"].includes(userRole || "");
+  const isCeo = ["ADMIN", "SUPER_ADMIN"].includes(userRole || "");
 
   const scopeLabel = scope === "all" ? "toàn công ty" : scope === "team" ? "phòng ban" : "cá nhân";
 
@@ -126,6 +128,7 @@ function BusinessDashboard() {
       </div>
 
       {canViewRevenue && <CeoDashboardCharts />}
+      {isCeo && <CeoCustomerOverview />}
     </div>
   );
 }
