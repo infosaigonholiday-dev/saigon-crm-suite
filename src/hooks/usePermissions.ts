@@ -89,7 +89,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   GDKD: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create", "bookings.edit", "bookings.approve",
     "quotations.view", "quotations.create", "quotations.edit",
@@ -106,7 +106,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   MANAGER: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
     "bookings.view", "bookings.create", "bookings.edit",
     "quotations.view", "quotations.create", "quotations.edit",
@@ -238,7 +238,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_DOMESTIC: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
     "leave.view", "leave.create",
@@ -248,7 +248,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
     "leave.view", "leave.create",
@@ -258,7 +258,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
     "leave.view", "leave.create",
@@ -268,7 +268,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_INBOUND: [
     "dashboard.view",
-    "customers.view", "customers.create",
+    "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
     "leave.view", "leave.create",
