@@ -1,14 +1,22 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Shield, Users, Briefcase, GraduationCap, Route as RouteIcon } from "lucide-react";
+import {
+  BookOpen, Shield, Users, Briefcase, GraduationCap,
+  Route as RouteIcon, Calculator, Megaphone, Map,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HR_MANAGER", "HCNS"];
-const SALES_ROLES = ["GDKD", "MANAGER", "SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE"];
-const INTERN_ROLES = ["INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND", "INTERN_SALE_MICE", "INTERN_SALE_INBOUND"];
 const OPS_ROLES = ["DIEUHAN", "INTERN_DIEUHAN"];
+const SALES_MGR_ROLES = ["GDKD", "MANAGER"];
+const SALES_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE"];
+const INTERN_ROLES = ["INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND", "INTERN_SALE_MICE", "INTERN_SALE_INBOUND"];
+const KETOAN_ROLES = ["KETOAN"];
+const MKT_ROLES = ["MARKETING"];
+const HDV_ROLES = ["TOUR_GUIDE"];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -28,275 +36,418 @@ function Step({ n, text }: { n: number; text: string }) {
   );
 }
 
-function AccountCreationGuide() {
+function Workflow({ title, icon, steps }: { title: string; icon: React.ReactNode; steps: string[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Shield className="h-5 w-5 text-primary" />
-          Quy trình tạo tài khoản & nhân sự mới
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Section title="Bước 1: Tạo hồ sơ nhân viên (Admin hoặc HCNS)">
-          <Step n={1} text="Vào menu Nhân sự → Nhấn nút 'Thêm nhân viên'" />
-          <Step n={2} text="Điền đầy đủ thông tin: Họ tên, Email, Phòng ban, Chức vụ, Ngày vào làm" />
-          <Step n={3} text="Hệ thống sẽ tự động tạo mã nhân viên (SHT-xxx)" />
-          <Step n={4} text="Nhấn Lưu để tạo hồ sơ nhân viên" />
-        </Section>
-
-        <Section title="Bước 2: Tạo tài khoản đăng nhập (Chỉ Admin)">
-          <Step n={1} text="Vào Cài đặt → Tab 'Tài khoản'" />
-          <Step n={2} text="Nhấn 'Tạo tài khoản' → Điền Email (cùng email với hồ sơ nhân viên)" />
-          <Step n={3} text="Chọn Vai trò phù hợp (hệ thống sẽ gợi ý dựa trên chức vụ và phòng ban)" />
-          <Step n={4} text="Chọn Phòng ban → Nhấn Tạo" />
-          <Step n={5} text="Hệ thống tự động gửi email mời, nhân viên mới đăng nhập lần đầu sẽ được yêu cầu đổi mật khẩu" />
-        </Section>
-
-        <Section title="Bước 3: Liên kết tài khoản với hồ sơ nhân viên">
-          <Step n={1} text="Vào hồ sơ nhân viên vừa tạo → Tab 'Vai trò'" />
-          <Step n={2} text="Chọn Profile ID (tài khoản đăng nhập) tương ứng" />
-          <Step n={3} text="Kiểm tra: Chức vụ ↔ Vai trò hệ thống có khớp không (hệ thống sẽ cảnh báo nếu sai lệch)" />
-        </Section>
-
-        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 text-sm">
-          <strong className="text-amber-700 dark:text-amber-400">⚠️ Lưu ý quan trọng:</strong>
-          <ul className="list-disc pl-5 mt-1 space-y-1 text-amber-600 dark:text-amber-300">
-            <li>HCNS có thể tạo hồ sơ nhân viên, nhưng <strong>chỉ Admin</strong> mới tạo được tài khoản đăng nhập</li>
-            <li>Email tài khoản và email nhân viên phải trùng nhau để liên kết tự động</li>
-            <li>Sau khi tạo, nhân viên mới sẽ phải đổi mật khẩu lần đầu đăng nhập</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+    <Section title={title}>
+      {steps.map((s, i) => <Step key={i} n={i + 1} text={s} />)}
+    </Section>
   );
 }
 
+/* ═══════════════ ADMIN ═══════════════ */
 function AdminGuide() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Shield className="h-5 w-5 text-primary" />
-          Hướng dẫn cho Admin
+          Quản trị hệ thống
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Section title="Quản lý tài khoản">
-          <p>• Tạo/sửa/vô hiệu hóa tài khoản đăng nhập cho nhân viên</p>
-          <p>• Thay đổi vai trò và phòng ban của tài khoản</p>
-          <p>• Reset mật khẩu cho nhân viên khi cần</p>
-        </Section>
-        <Section title="Quản lý phòng ban & cấp bậc">
-          <p>• Tạo/sửa phòng ban, gán trưởng phòng</p>
-          <p>• Thiết lập cấp bậc nhân viên</p>
-        </Section>
-        <Section title="Phân quyền">
-          <p>• Xem và chỉnh sửa ma trận phân quyền cho từng vai trò</p>
-          <p>• Bật/tắt quyền truy cập module cho từng nhóm</p>
-        </Section>
-        <Section title="Tài chính & Báo cáo">
-          <p>• Toàn quyền xem/tạo/sửa tất cả dữ liệu tài chính</p>
-          <p>• Duyệt dự toán và quyết toán</p>
-          <p>• Xuất dữ liệu khách hàng (CSV)</p>
-        </Section>
-        <Section title="Nhật ký xóa">
-          <p>• Xem lịch sử tất cả hành động xóa dữ liệu trong hệ thống</p>
-          <p>• Chỉ Admin mới có quyền xóa bản ghi trên toàn bộ module</p>
-        </Section>
+        <Workflow title="Tạo tài khoản nhân viên mới" icon={null} steps={[
+          "Vào Cài đặt → Tab 'Tài khoản'",
+          "Nhấn 'Tạo tài khoản' → Điền Email nhân viên",
+          "Chọn Vai trò phù hợp (hệ thống gợi ý theo chức vụ)",
+          "Chọn Phòng ban → Nhấn Tạo",
+          "Nhân viên nhận email mời, đăng nhập lần đầu sẽ đổi mật khẩu",
+        ]} />
+        <Workflow title="Tạo hồ sơ nhân viên" icon={null} steps={[
+          "Vào Nhân sự → Nhấn 'Thêm nhân viên'",
+          "Điền: Họ tên, Email (trùng với tài khoản), Phòng ban, Chức vụ, Ngày vào làm",
+          "Nhấn Lưu → Hệ thống tự tạo mã nhân viên (SHT-xxx)",
+          "Vào hồ sơ nhân viên → Tab 'Vai trò' → Chọn Profile ID tương ứng để liên kết",
+        ]} />
+        <Workflow title="Quản lý phòng ban" icon={null} steps={[
+          "Vào Cài đặt → Tab 'Phòng ban'",
+          "Thêm mới hoặc sửa phòng ban",
+          "Gán Trưởng phòng cho từng phòng ban",
+        ]} />
+        <Workflow title="Phân quyền" icon={null} steps={[
+          "Vào Cài đặt → Tab 'Phân quyền'",
+          "Chọn vai trò cần chỉnh sửa",
+          "Bật/tắt quyền truy cập từng module",
+        ]} />
+        <Workflow title="Xem nhật ký xóa" icon={null} steps={[
+          "Vào Cài đặt → Tab 'Nhật ký'",
+          "Xem lịch sử: ai xóa gì, bảng nào, thời gian nào",
+        ]} />
+        <Workflow title="Xuất dữ liệu khách hàng" icon={null} steps={[
+          "Vào Khách hàng → Nhấn nút 'Xuất CSV' phía trên bảng",
+          "File CSV tải về máy, mở được bằng Excel / Google Sheet",
+        ]} />
+        <Workflow title="Xem Dashboard CEO" icon={null} steps={[
+          "Vào Tổng quan (trang chủ)",
+          "Xem biểu đồ doanh thu, KH mới trong tháng, tỷ lệ chuyển đổi Lead → KH",
+          "Xem danh sách Top KH theo doanh thu và KH cần chăm sóc lại",
+        ]} />
       </CardContent>
     </Card>
   );
 }
 
+/* ═══════════════ HCNS ═══════════════ */
 function HCNSGuide() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Users className="h-5 w-5 text-primary" />
-          Hướng dẫn cho HCNS
+          Nhân sự & Hành chính
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Section title="Quản lý nhân sự">
-          <p>• Tạo và chỉnh sửa hồ sơ nhân viên (thông tin cá nhân, hợp đồng, bảo hiểm)</p>
-          <p>• Xem danh sách nhân viên toàn công ty</p>
-          <p>• Quản lý KPI nhân viên</p>
-        </Section>
-        <Section title="Nghỉ phép">
-          <p>• Xem và tạo đơn nghỉ phép</p>
-          <p>• Duyệt đơn nghỉ phép của nhân viên</p>
-          <p>• Theo dõi số ngày phép còn lại</p>
-        </Section>
-        <Section title="Bảng lương">
-          <p>• Tạo và chỉnh sửa bảng lương hàng tháng</p>
-          <p>• Tính phụ cấp, khấu trừ, tăng ca</p>
-        </Section>
-        <Section title="Tài chính (hạn chế)">
-          <p>• Xem báo cáo tài chính</p>
-          <p>• Tạo và gửi phiếu chi phí</p>
-        </Section>
-        <Section title="Cài đặt">
-          <p>• Quản lý phòng ban và cấp bậc</p>
-          <p>• Xem quyền hạn (không chỉnh sửa được phân quyền)</p>
-        </Section>
+        <Workflow title="Tạo hồ sơ nhân viên mới" icon={null} steps={[
+          "Vào Nhân sự → Nhấn 'Thêm nhân viên'",
+          "Điền: Họ tên, Email, Phòng ban, Chức vụ, Ngày vào làm",
+          "Nhấn Lưu → Mã nhân viên tự động tạo",
+        ]} />
+        <Workflow title="Cập nhật hồ sơ nhân viên" icon={null} steps={[
+          "Vào Nhân sự → Chọn nhân viên cần sửa",
+          "Chỉnh sửa thông tin cá nhân, hợp đồng LĐ, bảo hiểm",
+          "Nhấn Lưu để cập nhật",
+        ]} />
+        <Workflow title="Quản lý nghỉ phép" icon={null} steps={[
+          "Vào Nghỉ phép → Xem danh sách đơn nghỉ",
+          "Tạo đơn nghỉ mới hoặc duyệt đơn nghỉ của nhân viên",
+          "Theo dõi số ngày phép còn lại",
+        ]} />
+        <Workflow title="Tạo bảng lương" icon={null} steps={[
+          "Vào Bảng lương → Nhấn 'Thêm phiếu lương'",
+          "Chọn nhân viên → Nhập lương cơ bản, phụ cấp, khấu trừ",
+          "Kiểm tra tổng lương → Nhấn Lưu",
+        ]} />
+        <Workflow title="Nhập chi phí phòng ban" icon={null} steps={[
+          "Vào Tài chính → Nhấn 'Tạo phiếu chi'",
+          "Điền nội dung chi, số tiền, đính kèm chứng từ",
+          "Gửi duyệt → HR_MANAGER duyệt lần 1 → Kế toán duyệt lần 2",
+        ]} />
+        <Workflow title="Xem hợp đồng" icon={null} steps={[
+          "Vào Hợp đồng → Xem danh sách hợp đồng",
+          "Tạo hoặc sửa hợp đồng lao động cho nhân viên",
+        ]} />
+        <Workflow title="Tra cứu thanh toán & nhà cung cấp" icon={null} steps={[
+          "Vào Thanh toán hoặc Nhà cung cấp",
+          "Tìm kiếm thông tin cần thiết",
+        ]} />
       </CardContent>
     </Card>
   );
 }
 
+/* ═══════════════ ĐIỀU HÀNH ═══════════════ */
 function OpsGuide() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <RouteIcon className="h-5 w-5 text-primary" />
-          Hướng dẫn cho Điều hành
+          Vận hành Tour
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Section title="Quản lý Booking">
-          <p>• Tạo, sửa và duyệt đặt tour</p>
-          <p>• Quản lý lịch trình chi tiết theo ngày</p>
-          <p>• Ghi chú đặc biệt cho từng booking</p>
-        </Section>
-        <Section title="Dự toán & Quyết toán">
-          <p>• Tạo dự toán chi phí cho tour</p>
-          <p>• Gửi duyệt và theo dõi trạng thái</p>
-          <p>• Tạo quyết toán sau khi tour hoàn thành</p>
-        </Section>
-        <Section title="Nhà cung cấp">
-          <p>• Xem danh sách nhà cung cấp (khách sạn, xe, nhà hàng...)</p>
-          <p>• Không có quyền tạo mới hoặc sửa nhà cung cấp</p>
-        </Section>
-        <Section title="Khách hàng">
-          <p>• Xem, tạo và sửa thông tin khách hàng</p>
-          <p>• Quản lý báo giá</p>
-        </Section>
-        <Section title="Thanh toán">
-          <p>• Tạo và chỉnh sửa phiếu thanh toán</p>
-          <p>• Theo dõi công nợ nhà cung cấp</p>
-        </Section>
+        <Workflow title="Nhận booking từ Sale" icon={null} steps={[
+          "Vào Đặt tour → Xem danh sách booking",
+          "Chọn booking cần xử lý → Kiểm tra thông tin KH, số khách, ngày đi",
+        ]} />
+        <Workflow title="Lập lịch trình tour" icon={null} steps={[
+          "Vào Đặt tour → Chọn booking → Tab 'Lịch trình'",
+          "Thêm hoạt động cho từng ngày: điểm đến, giờ, phương tiện",
+          "Sắp xếp thứ tự các hoạt động → Nhấn Lưu",
+        ]} />
+        <Workflow title="Tạo dự toán chi phí" icon={null} steps={[
+          "Vào Tài chính → Tab 'Dự toán' → Nhấn 'Tạo mới'",
+          "Chọn booking → Liệt kê từng hạng mục chi phí dự kiến",
+          "Điền nhà cung cấp, số lượng, đơn giá → Nhấn 'Gửi duyệt'",
+        ]} />
+        <Workflow title="Quyết toán sau tour" icon={null} steps={[
+          "Vào Tài chính → Tab 'Quyết toán' → Nhấn 'Tạo mới'",
+          "Chọn dự toán đã duyệt → Nhập chi phí thực tế cho từng hạng mục",
+          "Hệ thống tự tính chênh lệch → Gửi duyệt",
+        ]} />
+        <Workflow title="Duyệt hợp đồng" icon={null} steps={[
+          "Vào Hợp đồng → Chọn HĐ có trạng thái 'Chờ duyệt'",
+          "Xem chi tiết → Nhấn Duyệt hoặc Từ chối",
+        ]} />
+        <Workflow title="Tạo khách hàng mới" icon={null} steps={[
+          "Vào Khách hàng → Nhấn 'Thêm mới'",
+          "Điền tên, SĐT, email → Lưu (cho KH đặt trực tiếp với Điều hành)",
+        ]} />
+        <Workflow title="Tra cứu nhà cung cấp" icon={null} steps={[
+          "Vào Nhà cung cấp → Tìm khách sạn, xe, nhà hàng phù hợp",
+          "Xem thông tin liên hệ, địa chỉ, ghi chú",
+        ]} />
+        <Workflow title="Xin nghỉ phép" icon={null} steps={[
+          "Vào Nghỉ phép → Nhấn 'Tạo đơn nghỉ'",
+          "Chọn ngày nghỉ, lý do → Gửi đơn → Chờ duyệt",
+        ]} />
       </CardContent>
     </Card>
   );
 }
 
+/* ═══════════════ GDKD & MANAGER ═══════════════ */
+function SalesMgrGuide() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Briefcase className="h-5 w-5 text-primary" />
+          Quản lý Kinh doanh
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Workflow title="Quản lý khách hàng phòng ban" icon={null} steps={[
+          "Vào Khách hàng → Xem danh sách KH trong phòng ban",
+          "Tạo KH mới hoặc sửa KH do mình phụ trách",
+        ]} />
+        <Workflow title="Quản lý leads" icon={null} steps={[
+          "Vào Tiềm năng → Tạo lead mới hoặc xem lead trong phòng",
+          "Phân công lead cho nhân viên → Theo dõi tiến độ chuyển đổi",
+        ]} />
+        <Workflow title="Tạo & duyệt booking" icon={null} steps={[
+          "Vào Đặt tour → Tạo booking mới → Chọn KH, tour, ngày đi",
+          "Sửa chi tiết booking khi cần",
+          "GDKD: Duyệt booking của nhân viên trong phòng",
+        ]} />
+        <Workflow title="Tạo báo giá" icon={null} steps={[
+          "Vào Báo giá → Nhấn 'Tạo mới'",
+          "Chọn tour, điền giá, điều khoản → Gửi cho khách hàng",
+        ]} />
+        <Workflow title="Duyệt hợp đồng" icon={null} steps={[
+          "Vào Hợp đồng → Chọn HĐ trạng thái 'Chờ duyệt'",
+          "Xem chi tiết → Duyệt hoặc Từ chối",
+        ]} />
+        <Workflow title="Duyệt nghỉ phép nhân viên" icon={null} steps={[
+          "Vào Nghỉ phép → Xem danh sách đơn nghỉ của nhân viên phòng ban",
+          "Chọn đơn → Duyệt hoặc Từ chối",
+        ]} />
+        <Workflow title="Gửi chi phí" icon={null} steps={[
+          "Vào Tài chính → Tạo phiếu chi → Điền nội dung, số tiền",
+          "Gửi duyệt → Chờ Kế toán duyệt",
+        ]} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════ SALE ═══════════════ */
 function SalesGuide() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Briefcase className="h-5 w-5 text-primary" />
-          Hướng dẫn cho GDKD & Trưởng phòng KD
+          Bán tour
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Section title="Khách hàng">
-          <p>• Xem khách hàng trong phòng ban của mình</p>
-          <p>• Tạo khách hàng mới</p>
-          <p>• <strong>Chỉ sửa được khách hàng do mình tạo hoặc được phân công</strong> — không sửa được của người khác</p>
-        </Section>
-        <Section title="Tiềm năng (Leads)">
-          <p>• Quản lý khách hàng tiềm năng trong phòng ban</p>
-          <p>• Phân bổ leads cho nhân viên</p>
-        </Section>
-        <Section title="Đặt tour & Báo giá">
-          <p>• Tạo và sửa booking</p>
-          <p>• Tạo báo giá cho khách hàng</p>
-          <p>• GDKD có quyền duyệt booking</p>
-        </Section>
-        <Section title="Quản lý nhân sự phòng ban">
-          <p>• GDKD: Xem, tạo, sửa hồ sơ nhân viên trong phòng ban</p>
-          <p>• MANAGER: Chỉ xem hồ sơ nhân viên</p>
-          <p>• Duyệt nghỉ phép của nhân viên</p>
-        </Section>
+        <Workflow title="Tạo khách hàng mới" icon={null} steps={[
+          "Vào Khách hàng → Nhấn 'Thêm mới'",
+          "Điền tên, SĐT, email, nguồn khách → Nhấn Lưu",
+        ]} />
+        <Workflow title="Sửa thông tin khách hàng" icon={null} steps={[
+          "Vào Khách hàng → Chọn KH cần sửa",
+          "Cập nhật thông tin liên hệ, ghi chú → Nhấn Lưu",
+        ]} />
+        <Workflow title="Nhập lead mới" icon={null} steps={[
+          "Vào Tiềm năng → Nhấn 'Thêm mới'",
+          "Điền thông tin KH tiềm năng, nguồn, nhu cầu tour",
+          "Cập nhật trạng thái lead khi có tiến triển",
+        ]} />
+        <Workflow title="Tạo booking" icon={null} steps={[
+          "Vào Đặt tour → Nhấn 'Tạo mới'",
+          "Chọn KH, tour, ngày đi, số khách → Nhấn Lưu",
+        ]} />
+        <Workflow title="Tạo báo giá" icon={null} steps={[
+          "Vào Báo giá → Nhấn 'Tạo mới'",
+          "Chọn tour, điền giá, điều kiện → Gửi cho KH",
+        ]} />
+        <Workflow title="Xem hợp đồng" icon={null} steps={[
+          "Vào Hợp đồng → Xem HĐ của KH mình phụ trách",
+          "Kiểm tra trạng thái HĐ, giá trị, điều khoản",
+        ]} />
+        <Workflow title="Xem thanh toán" icon={null} steps={[
+          "Vào Thanh toán → Kiểm tra tình trạng thanh toán của KH",
+        ]} />
+        <Workflow title="Xin nghỉ phép" icon={null} steps={[
+          "Vào Nghỉ phép → Nhấn 'Tạo đơn nghỉ'",
+          "Chọn ngày, lý do → Gửi đơn → Chờ trưởng phòng duyệt",
+        ]} />
       </CardContent>
     </Card>
   );
 }
 
+/* ═══════════════ THỰC TẬP SINH ═══════════════ */
 function InternGuide() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <GraduationCap className="h-5 w-5 text-primary" />
-          Hướng dẫn cho Thực tập sinh Kinh doanh
+          Học việc Kinh doanh
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Section title="Khách hàng">
-          <p>• Xem danh sách khách hàng (chỉ khách hàng của mình)</p>
-          <p>• Tạo khách hàng mới</p>
-          <p>• <strong>Chỉ sửa được khách hàng do mình tạo</strong> — cố sửa khách hàng của người khác sẽ bị hệ thống chặn</p>
-        </Section>
-        <Section title="Tiềm năng (Leads)">
-          <p>• Xem và tạo leads mới</p>
-          <p>• Chỉ thấy leads do mình tạo hoặc được phân công</p>
-        </Section>
-        <Section title="Đặt tour">
-          <p>• Xem danh sách booking</p>
-          <p>• Tạo booking mới (không có quyền sửa)</p>
-        </Section>
-        <Section title="Nghỉ phép">
-          <p>• Tạo đơn xin nghỉ phép</p>
-          <p>• Xem trạng thái đơn nghỉ</p>
-        </Section>
-        <Section title="Quy trình (SOP)">
-          <p>• Đọc tài liệu quy trình làm việc của phòng ban</p>
-        </Section>
-
-        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
-          <strong className="text-blue-700 dark:text-blue-400">💡 Lưu ý:</strong>
-          <ul className="list-disc pl-5 mt-1 space-y-1 text-blue-600 dark:text-blue-300">
-            <li>Bạn chỉ thấy dữ liệu do mình tạo ra, không xem được dữ liệu của người khác</li>
-            <li>Không có quyền xóa bất kỳ dữ liệu nào</li>
-            <li>Không có quyền xuất dữ liệu (Export CSV)</li>
-          </ul>
-        </div>
+        <Workflow title="Tạo khách hàng mới" icon={null} steps={[
+          "Vào Khách hàng → Nhấn 'Thêm mới'",
+          "Điền đầy đủ: tên, SĐT, email, nguồn → Nhấn Lưu",
+        ]} />
+        <Workflow title="Cập nhật KH của mình" icon={null} steps={[
+          "Vào Khách hàng → Chọn KH mình đã tạo",
+          "Sửa thông tin liên hệ, ghi chú → Nhấn Lưu",
+        ]} />
+        <Workflow title="Nhập lead mới" icon={null} steps={[
+          "Vào Tiềm năng → Nhấn 'Thêm mới'",
+          "Điền thông tin KH tiềm năng → Theo dõi trạng thái",
+        ]} />
+        <Workflow title="Tạo booking" icon={null} steps={[
+          "Vào Đặt tour → Nhấn 'Tạo mới'",
+          "Chọn KH của mình, tour, ngày đi → Nhấn Lưu",
+        ]} />
+        <Workflow title="Xin nghỉ phép" icon={null} steps={[
+          "Vào Nghỉ phép → Nhấn 'Tạo đơn nghỉ'",
+          "Chọn ngày, lý do → Gửi đơn",
+        ]} />
+        <Workflow title="Đọc quy trình (SOP)" icon={null} steps={[
+          "Vào Quy trình → Xem tài liệu hướng dẫn của phòng ban",
+          "Đọc kỹ quy trình trước khi thực hiện công việc",
+        ]} />
       </CardContent>
     </Card>
   );
 }
 
+/* ═══════════════ KẾ TOÁN ═══════════════ */
+function KetoanGuide() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Calculator className="h-5 w-5 text-primary" />
+          Quản lý Tài chính
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Workflow title="Quản lý thanh toán" icon={null} steps={[
+          "Vào Thanh toán → Tạo phiếu thu/chi mới hoặc sửa phiếu hiện có",
+          "Điền nội dung, số tiền, phương thức thanh toán",
+          "Theo dõi công nợ khách hàng và nhà cung cấp",
+        ]} />
+        <Workflow title="Tạo & kiểm tra bảng lương" icon={null} steps={[
+          "Vào Bảng lương → Tạo hoặc sửa phiếu lương",
+          "Kiểm tra lương cơ bản, phụ cấp, khấu trừ → Chốt lương",
+        ]} />
+        <Workflow title="Duyệt chi phí (lần 2)" icon={null} steps={[
+          "Vào Tài chính → Tab chi phí → Xem phiếu chi đã được HR_MANAGER duyệt lần 1",
+          "Kiểm tra chứng từ → Nhấn 'Duyệt' hoặc 'Từ chối'",
+        ]} />
+        <Workflow title="Xem báo cáo tài chính" icon={null} steps={[
+          "Vào Tài chính → Chọn tab báo cáo cần xem",
+          "Xem doanh thu, chi phí, lợi nhuận, dòng tiền theo tháng/quý",
+        ]} />
+        <Workflow title="Quản lý nhà cung cấp" icon={null} steps={[
+          "Vào Nhà cung cấp → Tạo mới hoặc sửa thông tin NCC",
+          "Cập nhật SĐT, email, ghi chú thanh toán",
+        ]} />
+        <Workflow title="Đối chiếu hợp đồng" icon={null} steps={[
+          "Vào Hợp đồng → Xem chi tiết HĐ",
+          "So sánh giá trị HĐ với thanh toán thực tế",
+        ]} />
+        <Workflow title="Xin nghỉ phép" icon={null} steps={[
+          "Vào Nghỉ phép → Tạo đơn nghỉ → Gửi duyệt",
+        ]} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════ MKT & HDV ═══════════════ */
+function MktHdvGuide() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Megaphone className="h-5 w-5 text-primary" />
+          Marketing & Hướng dẫn viên
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Section title="Marketing">
+          <Workflow title="Quản lý leads" icon={null} steps={[
+            "Vào Tiềm năng → Tạo lead mới từ các nguồn (Facebook, Google, referral...)",
+            "Sửa thông tin lead → Cập nhật trạng thái chuyển đổi",
+            "Theo dõi nguồn khách nào hiệu quả nhất",
+          ]} />
+          <Workflow title="Xin nghỉ phép" icon={null} steps={[
+            "Vào Nghỉ phép → Tạo đơn nghỉ → Gửi duyệt",
+          ]} />
+        </Section>
+
+        <Section title="Hướng dẫn viên">
+          <Workflow title="Xem booking được phân công" icon={null} steps={[
+            "Vào Đặt tour → Xem booking/lịch trình tour được giao",
+            "Kiểm tra chi tiết: điểm đến, giờ, hoạt động từng ngày",
+          ]} />
+          <Workflow title="Xem thông tin khách hàng" icon={null} steps={[
+            "Vào Khách hàng → Xem SĐT, ghi chú đặc biệt của đoàn",
+          ]} />
+          <Workflow title="Xin nghỉ phép" icon={null} steps={[
+            "Vào Nghỉ phép → Tạo đơn nghỉ → Gửi duyệt",
+          ]} />
+        </Section>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════ MAIN PAGE ═══════════════ */
 export default function UserGuide() {
   const { userRole } = useAuth();
 
   const isAdmin = ADMIN_ROLES.includes(userRole || "");
   const isHR = HR_ROLES.includes(userRole || "");
   const isOps = OPS_ROLES.includes(userRole || "");
+  const isSalesMgr = SALES_MGR_ROLES.includes(userRole || "");
   const isSales = SALES_ROLES.includes(userRole || "");
   const isIntern = INTERN_ROLES.includes(userRole || "");
+  const isKetoan = KETOAN_ROLES.includes(userRole || "");
+  const isMkt = MKT_ROLES.includes(userRole || "");
+  const isHdv = HDV_ROLES.includes(userRole || "");
 
-  // Build visible tabs
   const tabs: { value: string; label: string; icon: React.ReactNode }[] = [];
 
-  if (isAdmin || isHR) {
-    tabs.push({ value: "account", label: "Tạo tài khoản", icon: <Shield className="h-4 w-4" /> });
-  }
-  if (isAdmin) {
-    tabs.push({ value: "admin", label: "Admin", icon: <Shield className="h-4 w-4" /> });
-  }
-  if (isHR) {
-    tabs.push({ value: "hcns", label: "HCNS", icon: <Users className="h-4 w-4" /> });
-  }
-  if (isOps) {
-    tabs.push({ value: "ops", label: "Điều hành", icon: <RouteIcon className="h-4 w-4" /> });
-  }
-  if (isSales) {
-    tabs.push({ value: "sales", label: "Kinh doanh", icon: <Briefcase className="h-4 w-4" /> });
-  }
-  if (isIntern) {
-    tabs.push({ value: "intern", label: "Thực tập sinh", icon: <GraduationCap className="h-4 w-4" /> });
-  }
+  if (isAdmin) tabs.push({ value: "admin", label: "Admin", icon: <Shield className="h-4 w-4" /> });
+  if (isHR) tabs.push({ value: "hcns", label: "HCNS", icon: <Users className="h-4 w-4" /> });
+  if (isOps) tabs.push({ value: "ops", label: "Điều hành", icon: <RouteIcon className="h-4 w-4" /> });
+  if (isSalesMgr) tabs.push({ value: "salesmgr", label: "GDKD/Manager", icon: <Briefcase className="h-4 w-4" /> });
+  if (isSales) tabs.push({ value: "sales", label: "Sale", icon: <Briefcase className="h-4 w-4" /> });
+  if (isIntern) tabs.push({ value: "intern", label: "Thực tập sinh", icon: <GraduationCap className="h-4 w-4" /> });
+  if (isKetoan) tabs.push({ value: "ketoan", label: "Kế toán", icon: <Calculator className="h-4 w-4" /> });
+  if (isMkt || isHdv) tabs.push({ value: "mkthdv", label: "MKT & HDV", icon: <Megaphone className="h-4 w-4" /> });
 
-  // Fallback: show all guides if no specific role matched
+  // Fallback: show all tabs if no specific role matched
   if (tabs.length === 0) {
     tabs.push(
-      { value: "account", label: "Tạo tài khoản", icon: <Shield className="h-4 w-4" /> },
+      { value: "admin", label: "Admin", icon: <Shield className="h-4 w-4" /> },
+      { value: "hcns", label: "HCNS", icon: <Users className="h-4 w-4" /> },
+      { value: "ops", label: "Điều hành", icon: <RouteIcon className="h-4 w-4" /> },
+      { value: "salesmgr", label: "GDKD/Manager", icon: <Briefcase className="h-4 w-4" /> },
+      { value: "sales", label: "Sale", icon: <Briefcase className="h-4 w-4" /> },
       { value: "intern", label: "Thực tập sinh", icon: <GraduationCap className="h-4 w-4" /> },
+      { value: "ketoan", label: "Kế toán", icon: <Calculator className="h-4 w-4" /> },
+      { value: "mkthdv", label: "MKT & HDV", icon: <Megaphone className="h-4 w-4" /> },
     );
   }
 
@@ -308,21 +459,26 @@ export default function UserGuide() {
       </div>
 
       <Tabs defaultValue={tabs[0]?.value} className="w-full">
-        <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-          {tabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} className="flex items-center gap-1.5">
-              {t.icon}
-              <span>{t.label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-max">
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="flex items-center gap-1.5">
+                {t.icon}
+                <span>{t.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-        <TabsContent value="account" className="mt-4"><AccountCreationGuide /></TabsContent>
         <TabsContent value="admin" className="mt-4"><AdminGuide /></TabsContent>
         <TabsContent value="hcns" className="mt-4"><HCNSGuide /></TabsContent>
         <TabsContent value="ops" className="mt-4"><OpsGuide /></TabsContent>
+        <TabsContent value="salesmgr" className="mt-4"><SalesMgrGuide /></TabsContent>
         <TabsContent value="sales" className="mt-4"><SalesGuide /></TabsContent>
         <TabsContent value="intern" className="mt-4"><InternGuide /></TabsContent>
+        <TabsContent value="ketoan" className="mt-4"><KetoanGuide /></TabsContent>
+        <TabsContent value="mkthdv" className="mt-4"><MktHdvGuide /></TabsContent>
       </Tabs>
     </div>
   );
