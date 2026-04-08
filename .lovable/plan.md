@@ -1,95 +1,54 @@
 
+Mục tiêu
+- Sửa triệt để lỗi đăng nhập xong bị trang trắng, phải F5 mới chạy.
 
-## Kế hoạch: Viết lại hướng dẫn sử dụng theo hướng thực hành
+Tôi đã xác định được lỗi chính
+1. `src/contexts/AuthContext.tsx` đang `await fetchProfile()` trực tiếp bên trong `supabase.auth.onAuthStateChange(...)`. Đây là pattern dễ gây race/deadlock sau `signInWithPassword`, nhất là khi callback auth lại gọi tiếp query Supabase.
+2. App đang phụ thuộc vào timing của `INITIAL_SESSION`, chưa bootstrap phiên bằng `supabase.auth.getSession()` sau khi đăng ký listener.
+3. Trong lúc session/role/permissions chưa đồng bộ xong, app có thể render Dashboard/Sidebar/Guard ở trạng thái nửa chừng, dẫn tới trắng trang hoặc trạng thái sai cho đến khi refresh.
 
-### Vấn đề hiện tại
+Kế hoạch sửa
+1. Sửa gốc ở `src/contexts/AuthContext.tsx`
+- Tách logic đồng bộ session + profile thành hàm riêng, ví dụ `syncAuthState(session)`.
+- Trong `onAuthStateChange`, không `await` nữa; chỉ nhận event rồi gọi `void syncAuthState(...)`.
+- Đăng ký listener trước, sau đó gọi `supabase.auth.getSession()` để khôi phục phiên ổn định ngay lần đầu.
+- Bọc `fetchProfile` bằng `try/catch/finally`; dù query profile lỗi vẫn phải hạ `loading` để app không treo.
+- Thêm cơ chế chống race (request id hoặc cancel flag) để response cũ không ghi đè state mới.
 
-Nội dung hướng dẫn hiện tại chỉ liệt kê "được xem gì, không được làm gì" — đây là tài liệu phân quyền, **không phải hướng dẫn sử dụng**. Nhân viên cần biết **cách làm việc trên hệ thống**, không cần biết mình bị hạn chế gì.
+2. Siết lại `src/contexts/PermissionsContext.tsx`
+- Không trả permissions rỗng khi auth/profile còn đang khởi tạo.
+- Nếu đã có `user` nhưng auth/profile chưa ready thì giữ `loading=true`, chưa kết luận “không có quyền”.
+- Chỉ load permission overrides sau khi auth state đã ổn định.
 
-### Nguyên tắc viết lại
+3. Chặn render sớm ở các điểm nhạy cảm
+- `src/App.tsx`: chỉ render protected routes khi auth đã ready thật sự.
+- `src/pages/Dashboard.tsx`: không chọn loại dashboard khi `userRole` còn chưa resolve xong.
+- `src/components/AppSidebar.tsx`: tránh render menu rỗng trong lúc permissions còn loading.
 
-- Mỗi phòng ban = 1 tab hướng dẫn riêng, viết theo **quy trình công việc thực tế**
-- Dùng Step-by-step: "Vào đâu → Nhấn gì → Điền gì → Kết quả"
-- Bỏ hết các dòng kiểu "không có quyền xem...", "bị hệ thống chặn..."
-- Tập trung vào CÁI NHÂN VIÊN CẦN LÀM, không giải thích hệ thống chặn gì
+4. Rà query phụ thuộc auth
+- `src/hooks/useDashboardData.ts`: giữ hoặc tăng điều kiện `enabled` theo `user`, `userRole`, và trạng thái auth-ready.
+- Soát các query dùng `user!.id` / `departmentId` để tránh chạy lúc session vừa đổi.
 
-### Nội dung từng phòng ban
+File dự kiến chỉnh
+- `src/contexts/AuthContext.tsx`
+- `src/contexts/PermissionsContext.tsx`
+- `src/App.tsx`
+- `src/pages/Dashboard.tsx`
+- `src/components/AppSidebar.tsx`
+- Có thể rà thêm `src/hooks/useDashboardData.ts`
 
-#### 1. Admin — "Quản trị hệ thống"
-- **Tạo tài khoản nhân viên mới**: Cài đặt → Tài khoản → Tạo → Điền email + chọn vai trò + phòng ban
-- **Quản lý phòng ban**: Cài đặt → Phòng ban → Thêm/sửa phòng ban, gán trưởng phòng
-- **Phân quyền**: Cài đặt → Phân quyền → Bật/tắt quyền cho từng vai trò
-- **Xem nhật ký**: Cài đặt → Nhật ký xóa → Kiểm tra ai xóa gì, khi nào
-- **Xuất dữ liệu khách hàng**: Khách hàng → Nút "Xuất CSV"
-- **Dashboard CEO**: Tổng quan → Xem biểu đồ doanh thu, KH mới, chuyển đổi lead
+Kết quả mong đợi
+- Login xong vào app ngay, không cần F5
+- Không còn trắng trang do race auth
+- Sidebar, dashboard, route guard hiện đúng ngay lần đầu
+- Logout/login nhiều lần vẫn ổn định
 
-#### 2. HCNS — "Nhân sự & Hành chính"
-- **Tạo hồ sơ nhân viên mới**: Nhân sự → Thêm nhân viên → Điền họ tên, email, phòng ban, chức vụ, ngày vào
-- **Cập nhật hồ sơ**: Nhân sự → Chọn nhân viên → Sửa thông tin cá nhân, hợp đồng LĐ, bảo hiểm
-- **Quản lý nghỉ phép**: Nghỉ phép → Xem/tạo đơn → Duyệt đơn nghỉ
-- **Tạo bảng lương**: Bảng lương → Thêm phiếu lương → Nhập lương cơ bản, phụ cấp, khấu trừ
-- **Nhập chi phí phòng ban**: Tài chính → Tạo phiếu chi → Điền chi tiết → Gửi duyệt (HR_MANAGER duyệt lần 1)
-- **Xem hợp đồng**: Hợp đồng → Tạo/sửa hợp đồng lao động
-- **Xem thanh toán & NCC**: Thanh toán / Nhà cung cấp → Tra cứu thông tin
+Kiểm tra sau khi làm
+1. Login từ `/login` với ít nhất 1 role admin và 1 role nghiệp vụ
+2. Xác nhận vào thẳng dashboard, không trắng trang, không cần refresh
+3. Chuyển qua vài module có guard quyền để chắc không còn race
+4. Logout rồi login lại nhiều lần liên tiếp để xác nhận hết lỗi
 
-#### 3. Điều hành — "Vận hành Tour"
-- **Nhận booking từ Sale**: Đặt tour → Xem booking được chuyển sang → Kiểm tra chi tiết
-- **Lập lịch trình tour**: Đặt tour → Chọn booking → Tab Lịch trình → Thêm hoạt động theo ngày
-- **Tạo dự toán**: Tài chính → Dự toán → Tạo mới → Liệt kê chi phí dự kiến → Gửi duyệt
-- **Quyết toán sau tour**: Tài chính → Quyết toán → Tạo mới → Nhập chi phí thực tế
-- **Duyệt hợp đồng**: Hợp đồng → Chọn HĐ chờ duyệt → Duyệt/Từ chối
-- **Tạo khách hàng**: Khách hàng → Thêm mới (cho KH đặt trực tiếp với ĐH)
-- **Tra cứu NCC**: Nhà cung cấp → Tìm khách sạn/xe/nhà hàng phù hợp
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn nghỉ
-
-#### 4. GDKD & Trưởng phòng KD — "Quản lý kinh doanh"
-- **Quản lý khách hàng phòng ban**: Khách hàng → Xem danh sách KH trong phòng → Tạo mới / Sửa KH của mình
-- **Quản lý leads**: Tiềm năng → Tạo lead mới → Phân công cho nhân viên → Theo dõi tiến độ
-- **Tạo & duyệt booking**: Đặt tour → Tạo booking → Sửa chi tiết → GDKD duyệt booking
-- **Tạo báo giá**: Báo giá → Tạo mới → Điền tour, giá, điều khoản → Gửi khách
-- **Duyệt hợp đồng**: Hợp đồng → Xem HĐ chờ duyệt → Duyệt/Từ chối
-- **Duyệt nghỉ phép**: Nghỉ phép → Duyệt đơn nghỉ của nhân viên phòng ban
-- **Gửi chi phí**: Tài chính → Tạo phiếu chi → Gửi duyệt
-
-#### 5. Nhân viên Kinh doanh (Sale) — "Bán tour"
-- **Tạo khách hàng mới**: Khách hàng → Thêm mới → Điền tên, SĐT, email, nguồn
-- **Sửa thông tin KH**: Khách hàng → Chọn KH → Cập nhật thông tin liên hệ, ghi chú
-- **Nhập lead mới**: Tiềm năng → Thêm mới → Điền thông tin KH tiềm năng → Cập nhật trạng thái
-- **Tạo booking**: Đặt tour → Tạo mới → Chọn KH, tour, ngày → Lưu
-- **Tạo báo giá**: Báo giá → Tạo mới → Chọn tour, giá, điều kiện → Gửi cho KH
-- **Xem hợp đồng**: Hợp đồng → Xem HĐ của KH mình phụ trách
-- **Xem thanh toán**: Thanh toán → Kiểm tra tình trạng thanh toán của KH
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn nghỉ → Chờ trưởng phòng duyệt
-
-#### 6. Thực tập sinh KD — "Học việc kinh doanh"
-- **Tạo khách hàng**: Khách hàng → Thêm mới → Điền đầy đủ thông tin
-- **Sửa KH của mình**: Khách hàng → Chọn KH mình tạo → Cập nhật
-- **Nhập lead**: Tiềm năng → Thêm lead mới → Theo dõi trạng thái
-- **Tạo booking**: Đặt tour → Tạo mới cho KH của mình
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn
-
-#### 7. Kế toán — "Quản lý tài chính"
-- **Quản lý thanh toán**: Thanh toán → Tạo/sửa phiếu thu chi → Theo dõi công nợ
-- **Bảng lương**: Bảng lương → Tạo/sửa phiếu lương → Kiểm tra trước khi chốt
-- **Tài chính**: Tài chính → Xem/tạo/sửa báo cáo → Duyệt chi phí (duyệt lần 2 sau HR_MANAGER)
-- **Nhà cung cấp**: Nhà cung cấp → Tạo mới → Quản lý thông tin NCC
-- **Đối chiếu hợp đồng**: Hợp đồng → Xem chi tiết HĐ → So sánh với thanh toán
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn nghỉ
-
-#### 8. Marketing — "Quản lý nguồn khách"
-- **Quản lý leads**: Tiềm năng → Tạo/sửa lead → Theo dõi nguồn khách (Facebook, Google, referral...)
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn
-
-#### 9. Hướng dẫn viên (Tour) — "Thực hiện tour"
-- **Xem booking được phân công**: Đặt tour → Xem lịch trình tour của mình
-- **Xem thông tin KH**: Khách hàng → Xem SĐT, ghi chú đặc biệt
-- **Xin nghỉ phép**: Nghỉ phép → Tạo đơn
-
-### File thay đổi
-
-| File | Hành động |
-|------|-----------|
-| `src/pages/UserGuide.tsx` | Viết lại toàn bộ nội dung 9 phòng ban, bỏ nội dung giải thích phân quyền |
-
-Thêm 3 tab mới: **Sale**, **Kế toán**, **MKT & HDV**. Sửa lại nội dung các tab cũ (Admin, HCNS, Điều hành, GDKD, Thực tập sinh) theo hướng thực hành.
-
+Chi tiết kỹ thuật
+- Trọng tâm là bỏ `await` trong `onAuthStateChange` và thêm bootstrap `getSession()`.
+- Nếu vẫn giữ callback auth async như hiện tại, lỗi này rất dễ tái phát dù đã “fix” trước đó.
