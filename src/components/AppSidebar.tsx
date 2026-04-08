@@ -121,6 +121,7 @@ export function AppSidebar() {
   const visibleFinance = filterItems(financeItems);
   const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
+  const visibleGuide = guideItems; // always visible for all roles
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
