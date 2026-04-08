@@ -1,39 +1,92 @@
 
 
-## Kế hoạch triển khai (đã cập nhật)
+## Kế hoạch: Cập nhật hệ thống phân quyền (8 thay đổi)
 
-### Nguyên tắc
+### Tổng quan
 
-Thực tập sinh KD, Trưởng phòng KD (MANAGER), và Giám đốc KD (GDKD) đều **chỉ được sửa khách hàng do chính mình tạo hoặc được phân công** — không được sửa khách hàng của người khác. Database RLS đã bảo vệ điều này sẵn.
+Cập nhật đồng bộ 3 nơi: `DEFAULT_PERMISSIONS` (frontend), `SCOPE_RULES` (frontend), và `get_default_permissions_for_role()` (DB function). Thêm permission key mới `finance.approve` và `contracts.approve`. Xây thêm section "Tổng quan Khách hàng" trên CEO Dashboard.
 
-### Phần 1: Thêm quyền `customers.edit` (frontend + DB)
+### Phần A: Thêm permission keys mới
 
-**Các vai trò cần thêm `customers.edit`:**
-- `GDKD` (Giám đốc Kinh doanh)
-- `MANAGER` (Trưởng phòng)
-- `INTERN_SALE_DOMESTIC`, `INTERN_SALE_OUTBOUND`, `INTERN_SALE_MICE`, `INTERN_SALE_INBOUND`
+**File:** `src/hooks/usePermissions.ts`
 
-**File thay đổi:**
-- `src/hooks/usePermissions.ts` — thêm `"customers.edit"` vào 6 nhóm trên
-- **Migration SQL** — cập nhật hàm `get_default_permissions_for_role` thêm `'customers.edit'` vào các case tương ứng
+Thêm vào `ALL_PERMISSION_KEYS`:
+- `"finance.approve"` 
+- `"contracts.approve"`
 
-**Bảo vệ phía database (đã có sẵn):**
-RLS policy `customers_update` chỉ cho phép UPDATE khi `created_by = auth.uid()` hoặc `assigned_sale_id = auth.uid()`. Nếu cố sửa khách hàng của người khác → bị database chặn.
+Cập nhật `PERMISSION_GROUPS`:
+- finance: thêm `"finance.approve"`
+- contracts: thêm `"contracts.approve"`
 
-### Phần 2: Tạo file PDF hướng dẫn sử dụng
+---
 
-Tạo tại `/mnt/documents/` — nội dung tiếng Việt:
+### Phần B: Cập nhật DEFAULT_PERMISSIONS (8 thay đổi)
 
-1. **Quy trình tạo tài khoản & nhân sự mới** (Admin, HCNS)
-2. **Hướng dẫn theo vai trò:**
-   - **ADMIN**: Toàn quyền quản trị hệ thống
-   - **HCNS**: Nhân sự, nghỉ phép, bảng lương
-   - **Điều hành (DIEUHAN)**: Booking, dự toán, nhà cung cấp, khách hàng
-   - **Thực tập sinh KD**: Xem/tạo/sửa khách hàng **của mình**, leads, đặt tour
-   - **GDKD & MANAGER**: Quản lý phòng ban, xem/tạo/sửa khách hàng **của mình**
+**File:** `src/hooks/usePermissions.ts`
 
-### Phần 3: Trang hướng dẫn trong app
+| # | Role | Thay đổi |
+|---|------|----------|
+| 1 | DIEUHAN | customers: bỏ `edit` → `[view, create]`; leads: bỏ `edit` → `[view, create]`; payments: bỏ `create, edit` → `[view]`; thêm `contracts.approve` |
+| 2 | KETOAN | Thêm `finance.approve`; giữ nguyên phần còn lại (đã đúng) |
+| 3 | SALE_* (4 loại) | Thêm `contracts.view` (hiện thiếu); phần còn lại đã đúng |
+| 4 | TOUR | Đã đúng, không đổi |
+| 5 | HCNS | Bỏ `finance.view`; thêm `contracts.view`, `contracts.create`, `contracts.edit`, `payments.view`, `suppliers.view` |
+| 6 | HR_MANAGER | Thêm `finance.approve`; thêm `contracts.create`, `contracts.edit`; thêm `payments.view`, `suppliers.view` |
+| 6 | GDKD | Thêm `contracts.approve`; bỏ `payments.create` nếu không cần (giữ nguyên theo yêu cầu) |
+| 6 | MANAGER | Thêm `contracts.approve` |
 
-- Tạo `src/pages/UserGuide.tsx` — hiển thị hướng dẫn theo role hiện tại
-- Thêm route `/huong-dan` và mục "Hướng dẫn" vào sidebar
+---
+
+### Phần C: Cập nhật SCOPE_RULES
+
+**File:** `src/contexts/PermissionsContext.tsx`
+
+Scope rules hiện tại cho GDKD và MANAGER đã là `default: "department"`, SALE_* và INTERN_SALE_* đã là `default: "personal"` — **đã đúng theo yêu cầu #7**.
+
+DIEUHAN hiện có `default: "all"` — giữ nguyên vì DIEUHAN cần xem booking toàn bộ để điều hành tour.
+
+---
+
+### Phần D: Migration SQL — đồng bộ DB function
+
+Tạo migration cập nhật `get_default_permissions_for_role()` khớp chính xác với DEFAULT_PERMISSIONS mới:
+- DIEUHAN: bỏ `customers.edit`, `leads.edit`, `payments.create`, `payments.edit`; thêm `contracts.approve`
+- KETOAN: thêm `finance.approve`
+- HCNS: bỏ `finance.view`; thêm `contracts.view/create/edit`, `payments.view`, `suppliers.view`
+- HR_MANAGER: thêm `finance.approve`, `contracts.create/edit`, `payments.view`, `suppliers.view`
+- GDKD: thêm `contracts.approve`
+- MANAGER: thêm `contracts.approve`
+- SALE_*: thêm `contracts.view`
+
+---
+
+### Phần E: CEO Dashboard — Section "Tổng quan Khách hàng"
+
+**File:** `src/components/dashboard/CeoCustomerOverview.tsx` (mới)
+
+Component hiển thị cho ADMIN/SUPER_ADMIN:
+1. **Tổng KH toàn công ty** — `SELECT count(*) FROM customers`
+2. **KH mới tháng này** (so sánh % với tháng trước)
+3. **Top 5 KH doanh thu cao nhất** — `ORDER BY total_revenue DESC LIMIT 5`
+4. **Tỷ lệ chuyển đổi Lead → KH** — `leads (status=CONVERTED) / total leads`
+5. **KH bỏ quên** (không booking > 3 tháng) — `WHERE last_booking_date < now() - interval '3 months'`
+6. **Biểu đồ so sánh hiệu quả giữa các nhánh KD** — nhóm theo department
+
+Data lấy từ bảng `customers`, `leads`, `bookings` — không tạo bảng mới.
+
+**File:** `src/pages/Dashboard.tsx`
+
+Import và render `CeoCustomerOverview` sau `CeoDashboardCharts`, chỉ khi `canViewRevenue` (ADMIN/KETOAN). Hoặc chính xác hơn: chỉ ADMIN/SUPER_ADMIN.
+
+---
+
+### Tóm tắt file thay đổi
+
+| File | Hành động |
+|------|-----------|
+| `src/hooks/usePermissions.ts` | Thêm keys, cập nhật 10+ role |
+| `src/contexts/PermissionsContext.tsx` | Không đổi (scope đã đúng) |
+| `src/components/dashboard/CeoCustomerOverview.tsx` | Tạo mới |
+| `src/pages/Dashboard.tsx` | Import + render component mới |
+| Migration SQL | Cập nhật DB function |
 
