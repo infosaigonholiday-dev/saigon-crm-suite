@@ -128,6 +128,7 @@ function BusinessDashboard() {
       </div>
 
       {canViewRevenue && <CeoDashboardCharts />}
+      {isCeo && <CeoCustomerOverview />}
     </div>
   );
 }
