@@ -70,6 +70,10 @@ const sopItems: MenuItem[] = [
   { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, moduleKey: "workflow" },
 ];
 
+const guideItems: MenuItem[] = [
+  { title: "Hướng dẫn", url: "/huong-dan", icon: BookOpen },
+];
+
 const settingsItems: MenuItem[] = [
   { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
 ];
