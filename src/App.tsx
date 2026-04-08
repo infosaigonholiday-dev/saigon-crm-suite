@@ -84,9 +84,9 @@ function ProtectedRoutes() {
 }
 
 function AppRoutes() {
-  const { session, loading } = useAuth();
+  const { session, loading, isReady } = useAuth();
 
-  if (loading) {
+  if (loading || !isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -9,6 +9,7 @@ interface AuthContextType {
   userRole: string | null;
   mustChangePassword: boolean;
   loading: boolean;
+  isReady: boolean;
   signOut: () => Promise<void>;
   setMustChangePassword: (value: boolean) => void;
 }
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   userRole: null,
   mustChangePassword: false,
   loading: true,
+  isReady: false,
   signOut: async () => {},
   setMustChangePassword: () => {},
 });
@@ -32,53 +34,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
-  const initializedRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
+  const syncIdRef = useRef(0);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("role, must_change_password")
-      .eq("id", userId)
-      .single();
-    return {
-      role: data?.role ?? null,
-      mustChangePassword: data?.must_change_password ?? false,
-    };
+  const syncAuthState = useCallback(async (newSession: Session | null, source: string) => {
+    const id = ++syncIdRef.current;
+
+    if (!newSession?.user) {
+      if (id !== syncIdRef.current) return;
+      setSession(null);
+      setUserRole(null);
+      setMustChangePassword(false);
+      setLoading(false);
+      setIsReady(true);
+
+      if (source === "SIGNED_OUT" && !RECOVERY_PATHS.includes(window.location.pathname)) {
+        toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
+        window.location.href = "/login";
+      }
+      return;
+    }
+
+    // Set session immediately so queries can use the token
+    if (id !== syncIdRef.current) return;
+    setSession(newSession);
+
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role, must_change_password")
+        .eq("id", newSession.user.id)
+        .single();
+
+      if (id !== syncIdRef.current) return;
+      setUserRole(data?.role ?? null);
+      setMustChangePassword(data?.must_change_password ?? false);
+    } catch {
+      if (id !== syncIdRef.current) return;
+      setUserRole(null);
+      setMustChangePassword(false);
+    } finally {
+      if (id === syncIdRef.current) {
+        setLoading(false);
+        setIsReady(true);
+      }
+    }
   }, []);
 
   useEffect(() => {
+    // 1. Register listener FIRST (non-blocking)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (event === "INITIAL_SESSION") {
-          if (newSession?.user) {
-            const profile = await fetchProfile(newSession.user.id);
-            setSession(newSession);
-            setUserRole(profile.role);
-            setMustChangePassword(profile.mustChangePassword);
-          } else {
-            setSession(null);
-            setUserRole(null);
-            setMustChangePassword(false);
-          }
-          setLoading(false);
-          initializedRef.current = true;
-          return;
-        }
-
-        if (!initializedRef.current) return;
-
-        if (event === "SIGNED_IN" && newSession?.user) {
-          // Skip loading state if we're on recovery pages to avoid flicker
-          const isRecoveryPage = RECOVERY_PATHS.includes(window.location.pathname);
-          if (!isRecoveryPage) setLoading(true);
-          
-          const profile = await fetchProfile(newSession.user.id);
-          setSession(newSession);
-          setUserRole(profile.role);
-          setMustChangePassword(profile.mustChangePassword);
-          if (!isRecoveryPage) setLoading(false);
-          return;
-        }
+      (event, newSession) => {
+        // Skip INITIAL_SESSION — we handle it via getSession() below
+        if (event === "INITIAL_SESSION") return;
 
         if (event === "TOKEN_REFRESHED") {
           if (newSession) {
@@ -90,24 +98,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (event === "SIGNED_OUT") {
-          setSession(null);
-          setUserRole(null);
-          setMustChangePassword(false);
-          setLoading(false);
-          if (!RECOVERY_PATHS.includes(window.location.pathname)) {
-            toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
-            window.location.href = "/login";
-          }
-          return;
-        }
-
-        setSession(newSession);
+        // For SIGNED_IN, SIGNED_OUT, etc. — fire and forget
+        void syncAuthState(newSession, event);
       }
     );
 
+    // 2. Bootstrap session from storage
+    supabase.auth.getSession().then(({ data: { session: restored }, error }) => {
+      if (error) {
+        console.error("Failed to restore session:", error);
+        setLoading(false);
+        setIsReady(true);
+        return;
+      }
+      void syncAuthState(restored, "BOOTSTRAP");
+    });
+
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [syncAuthState]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -120,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userRole,
       mustChangePassword,
       loading,
+      isReady,
       signOut,
       setMustChangePassword,
     }}>
