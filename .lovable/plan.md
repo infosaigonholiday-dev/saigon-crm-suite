@@ -1,35 +1,39 @@
 
 
-# Scaffold Auth Email Templates cho Saigon Holiday
+## Kế hoạch triển khai (đã cập nhật)
 
-## Tổng quan
+### Nguyên tắc
 
-Thiết lập hệ thống email xác thực có thương hiệu Saigon Holiday, sử dụng domain `notify.app.saigonholiday.vn` đã cấu hình. DNS đang chờ xác minh nhưng không ảnh hưởng đến việc tạo templates -- email sẽ tự động hoạt động khi DNS verified.
+Thực tập sinh KD, Trưởng phòng KD (MANAGER), và Giám đốc KD (GDKD) đều **chỉ được sửa khách hàng do chính mình tạo hoặc được phân công** — không được sửa khách hàng của người khác. Database RLS đã bảo vệ điều này sẵn.
 
-## Các bước thực hiện
+### Phần 1: Thêm quyền `customers.edit` (frontend + DB)
 
-### Bước 1: Scaffold auth email templates
-Tạo 6 email templates (signup, recovery, magic-link, invite, email-change, reauthentication) cùng edge function `auth-email-hook`.
+**Các vai trò cần thêm `customers.edit`:**
+- `GDKD` (Giám đốc Kinh doanh)
+- `MANAGER` (Trưởng phòng)
+- `INTERN_SALE_DOMESTIC`, `INTERN_SALE_OUTBOUND`, `INTERN_SALE_MICE`, `INTERN_SALE_INBOUND`
 
-### Bước 2: Áp dụng thương hiệu Saigon Holiday
-Chỉnh sửa templates với:
-- Màu chủ đạo cam `#E8963A` (primary từ CSS: hsl 30, 88%, 65%)
-- Tên thương hiệu "Saigon Holiday"
-- Font Arial, nền trắng #ffffff
-- Button cam với chữ trắng, bo góc 8px
+**File thay đổi:**
+- `src/hooks/usePermissions.ts` — thêm `"customers.edit"` vào 6 nhóm trên
+- **Migration SQL** — cập nhật hàm `get_default_permissions_for_role` thêm `'customers.edit'` vào các case tương ứng
 
-### Bước 3: Deploy edge function
-Deploy `auth-email-hook` để kích hoạt hệ thống.
+**Bảo vệ phía database (đã có sẵn):**
+RLS policy `customers_update` chỉ cho phép UPDATE khi `created_by = auth.uid()` hoặc `assigned_sale_id = auth.uid()`. Nếu cố sửa khách hàng của người khác → bị database chặn.
 
-## Phạm vi ảnh hưởng
+### Phần 2: Tạo file PDF hướng dẫn sử dụng
 
-- Tạo mới: `supabase/functions/auth-email-hook/` và `supabase/functions/_shared/email-templates/`
-- Cập nhật: `supabase/config.toml` (thêm cấu hình hook)
-- Không thay đổi frontend, database, hay business logic hiện tại
-- Email reset mật khẩu, xác minh email, magic link sẽ có giao diện thương hiệu Saigon Holiday
+Tạo tại `/mnt/documents/` — nội dung tiếng Việt:
 
-## Sau khi hoàn thành
+1. **Quy trình tạo tài khoản & nhân sự mới** (Admin, HCNS)
+2. **Hướng dẫn theo vai trò:**
+   - **ADMIN**: Toàn quyền quản trị hệ thống
+   - **HCNS**: Nhân sự, nghỉ phép, bảng lương
+   - **Điều hành (DIEUHAN)**: Booking, dự toán, nhà cung cấp, khách hàng
+   - **Thực tập sinh KD**: Xem/tạo/sửa khách hàng **của mình**, leads, đặt tour
+   - **GDKD & MANAGER**: Quản lý phòng ban, xem/tạo/sửa khách hàng **của mình**
 
-- Theo dõi trạng thái DNS tại Cloud -> Emails
-- Khi DNS verified, email sẽ tự động gửi từ `notify.app.saigonholiday.vn`
+### Phần 3: Trang hướng dẫn trong app
+
+- Tạo `src/pages/UserGuide.tsx` — hiển thị hướng dẫn theo role hiện tại
+- Thêm route `/huong-dan` và mục "Hướng dẫn" vào sidebar
 
