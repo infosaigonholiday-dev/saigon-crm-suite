@@ -28,6 +28,7 @@ import Accommodations from "./pages/Accommodations";
 import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
 import SOPLibrary from "./pages/SOPLibrary";
+import UserGuide from "./pages/UserGuide";
 import ResetPassword from "./pages/ResetPassword";
 import FirstLoginChangePassword from "./pages/FirstLoginChangePassword";
 import NotFound from "./pages/NotFound";
@@ -75,6 +76,7 @@ function ProtectedRoutes() {
         <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={[["finance", "view"], ["finance", "submit"]]}><Finance /></PermissionGuard></ErrorBoundary>} />
         <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard module="settings" action="view"><Settings /></PermissionGuard></ErrorBoundary>} />
         <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard module="workflow" action="view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/huong-dan" element={<ErrorBoundary><UserGuide /></ErrorBoundary>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

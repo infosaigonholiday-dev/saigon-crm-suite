@@ -70,6 +70,10 @@ const sopItems: MenuItem[] = [
   { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, moduleKey: "workflow" },
 ];
 
+const guideItems: MenuItem[] = [
+  { title: "Hướng dẫn", url: "/huong-dan", icon: BookOpen },
+];
+
 const settingsItems: MenuItem[] = [
   { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
 ];
@@ -117,6 +121,7 @@ export function AppSidebar() {
   const visibleFinance = filterItems(financeItems);
   const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
+  const visibleGuide = guideItems; // always visible for all roles
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -155,13 +160,14 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {(visibleFinance.length > 0 || visibleSop.length > 0 || visibleSettings.length > 0) && (
+        {(visibleFinance.length > 0 || visibleSop.length > 0 || visibleSettings.length > 0 || visibleGuide.length > 0) && (
           <SidebarGroup>
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {renderItems(visibleFinance)}
                 {renderItems(visibleSop)}
+                {renderItems(visibleGuide)}
                 {renderItems(visibleSettings)}
               </SidebarMenu>
             </SidebarGroupContent>
