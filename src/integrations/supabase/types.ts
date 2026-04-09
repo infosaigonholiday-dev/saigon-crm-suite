@@ -2266,6 +2266,7 @@ export type Database = {
           contact_person: string | null
           contact_position: string | null
           contact_status: string | null
+          converted_customer_id: string | null
           created_at: string | null
           created_by: string | null
           customer_id: string | null
@@ -2307,6 +2308,7 @@ export type Database = {
           contact_person?: string | null
           contact_position?: string | null
           contact_status?: string | null
+          converted_customer_id?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
@@ -2348,6 +2350,7 @@ export type Database = {
           contact_person?: string | null
           contact_position?: string | null
           contact_status?: string | null
+          converted_customer_id?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
@@ -2381,6 +2384,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_converted_customer_id_fkey"
+            columns: ["converted_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
