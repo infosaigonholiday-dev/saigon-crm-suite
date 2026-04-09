@@ -32,7 +32,7 @@ export function WeeklyTrendChart({ departmentId }: Props) {
     queryKey: ["weekly-trend", departmentId],
     queryFn: async () => {
       // Get leads created in last 4 weeks
-      let leadsQ = supabase.from("leads").select("id, created_at, status, updated_at")
+      let leadsQ = supabase.from("leads").select("id, created_at, status")
         .gte("created_at", earliest);
       if (departmentId) leadsQ = leadsQ.eq("department_id", departmentId);
       const { data: leads } = await leadsQ;
@@ -54,8 +54,8 @@ export function WeeklyTrendChart({ departmentId }: Props) {
         }).length;
 
         const won = (leads || []).filter(l => {
-          if (l.status !== "WON" || !l.updated_at) return false;
-          const d = new Date(l.updated_at);
+          if (l.status !== "WON" || !l.created_at) return false;
+          const d = new Date(l.created_at);
           return d >= w.start && d <= w.end;
         }).length;
 
