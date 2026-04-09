@@ -3253,6 +3253,92 @@ export type Database = {
           },
         ]
       }
+      raw_contacts: {
+        Row: {
+          assigned_to: string | null
+          call_count: number | null
+          company_name: string | null
+          contact_type: string | null
+          converted_lead_id: string | null
+          created_at: string | null
+          created_by: string
+          department_id: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          last_called_at: string | null
+          note: string | null
+          phone: string
+          source: string | null
+          status: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          call_count?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_lead_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          department_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          last_called_at?: string | null
+          note?: string | null
+          phone: string
+          source?: string | null
+          status?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          call_count?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_lead_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          department_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          last_called_at?: string | null
+          note?: string | null
+          phone?: string
+          source?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_contacts_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_contacts_converted_lead_id_fkey"
+            columns: ["converted_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_contacts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_records: {
         Row: {
           avg_deal_size: number | null
