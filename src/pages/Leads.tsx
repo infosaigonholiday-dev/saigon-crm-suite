@@ -15,13 +15,14 @@ import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const PAGE_SIZE = 20;
 
-type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "QUOTED" | "WON" | "LOST";
+type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "QUOTE_SENT" | "NEGOTIATING" | "WON" | "LOST";
 
 const columns: { id: LeadStatus; label: string; color: string }[] = [
   { id: "NEW", label: "Mới", color: "bg-secondary" },
   { id: "CONTACTED", label: "Đã liên hệ", color: "bg-accent/15" },
   { id: "QUALIFIED", label: "Đủ điều kiện", color: "bg-warning/15" },
-  { id: "QUOTED", label: "Đã báo giá", color: "bg-primary/10" },
+  { id: "QUOTE_SENT", label: "Đã báo giá", color: "bg-primary/10" },
+  { id: "NEGOTIATING", label: "Đang đàm phán", color: "bg-orange-100" },
   { id: "WON", label: "Thành công", color: "bg-green-100" },
   { id: "LOST", label: "Thất bại", color: "bg-destructive/10" },
 ];
@@ -182,7 +183,7 @@ export default function Leads() {
                 {colLeads.map((lead) => {
                   const temp = tempConfig[lead.temperature ?? "warm"];
                   const followUpStatus = getFollowUpStatus(lead.follow_up_date);
-                  const showConvert = (col.id === "QUOTED" || col.id === "QUALIFIED") && !lead.customer_id;
+                  const showConvert = (col.id === "QUOTE_SENT" || col.id === "QUALIFIED" || col.id === "NEGOTIATING") && !lead.customer_id;
 
                   const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
                     ? "border-l-[3px] border-l-red-500"

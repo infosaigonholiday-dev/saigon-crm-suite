@@ -109,6 +109,30 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
+
+  const checkDuplicate = async (): Promise<string | null> => {
+    const phone = form.phone.trim();
+    const email = form.email.trim();
+    if (!phone && !email) return null;
+
+    let q = supabase.from("leads").select("id, full_name, phone, email").limit(1);
+    if (phone && email) {
+      q = q.or(`phone.eq.${phone},email.eq.${email}`);
+    } else if (phone) {
+      q = q.eq("phone", phone);
+    } else {
+      q = q.eq("email", email);
+    }
+    const { data } = await q;
+    if (data && data.length > 0) {
+      const match = data[0];
+      return `Lead "${match.full_name}" đã tồn tại với ${match.phone === phone ? `SĐT ${phone}` : `email ${email}`}. Bạn vẫn muốn tạo?`;
+    }
+    return null;
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       const normalizedChannel = normalizeLeadChannel(form.channel) ?? "ZALO";
@@ -144,6 +168,8 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
       toast.success("Thành công", { description: "Đã thêm lead mới" });
       setForm(initial);
       setFollowUpDate(undefined);
+      setDuplicateWarning(null);
+      setPendingSubmit(false);
       onOpenChange(false);
     },
     onError: (err: any) => {
@@ -151,8 +177,20 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     },
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
+
+    if (!pendingSubmit) {
+      const warning = await checkDuplicate();
+      if (warning) {
+        setDuplicateWarning(warning);
+        setPendingSubmit(true);
+        return;
+      }
+    }
+
+    setDuplicateWarning(null);
+    setPendingSubmit(false);
     mutation.mutate();
   };
 
@@ -202,7 +240,14 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Quan tâm</Label>
-              <Input placeholder="VD: Tour Nhật Bản" value={form.interest_type} onChange={(e) => set("interest_type", e.target.value)} />
+              <Select value={form.interest_type} onValueChange={(v) => set("interest_type", v)}>
+                <SelectTrigger><SelectValue placeholder="Chọn loại" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MICE">MICE</SelectItem>
+                  <SelectItem value="DOMESTIC">Nội địa</SelectItem>
+                  <SelectItem value="OUTBOUND">Outbound</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Điểm đến</Label>
@@ -322,6 +367,18 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
         </div>
+        {duplicateWarning && (
+          <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+            <p>{duplicateWarning}</p>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="outline" onClick={() => { setDuplicateWarning(null); setPendingSubmit(false); }}>Huỷ</Button>
+              <Button size="sm" onClick={handleSubmit} disabled={mutation.isPending}>
+                {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Vẫn tạo
+              </Button>
+            </div>
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending}>
