@@ -148,6 +148,12 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { user, userRole } = useAuth();
   const { getScope } = usePermissionsContext();
+  
+  const qc = useQueryClient();
+
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isGDKDOrManager = userRole === "GDKD" || userRole === "MANAGER";
+  const isSaleOrIntern = (userRole ?? "").startsWith("SALE_") || (userRole ?? "").startsWith("INTERN_");
 
   // Auto-fill assigned_sale_id for SALE/INTERN roles
   useEffect(() => {
@@ -155,12 +161,6 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
       setForm((p) => ({ ...p, assigned_sale_id: user.id }));
     }
   }, [isSaleOrIntern, user?.id]);
-  
-  const qc = useQueryClient();
-
-  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
-  const isGDKDOrManager = userRole === "GDKD" || userRole === "MANAGER";
-  const isSaleOrIntern = (userRole ?? "").startsWith("SALE_") || (userRole ?? "").startsWith("INTERN_");
 
   const { data: myProfile } = useQuery({
     queryKey: ["my-profile-dept", user?.id],
