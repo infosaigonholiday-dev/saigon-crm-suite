@@ -1,87 +1,96 @@
 
 
-## Dashboard Hiệu Suất & Hệ Thống Cảnh Báo cho Admin
+## Module "Kho Data" (raw_contacts)
 
-### Phân tích hiện trạng
+### Tổng quan
 
-**Đã có:**
-- Bảng `notifications` (user_id, type, title, message, entity_type, entity_id, is_read) + NotificationBell component
-- Edge function `daily-reminders` ghi birthday/follow-up notifications
-- Dashboard phân loại theo role: Business (ADMIN/KETOAN), Manager (GDKD/MANAGER), Personal (SALE_*), HR
-- `convertToCustomer` mutation trong Leads.tsx (đơn giản, chỉ copy vài field)
-- `customer_id` trên leads (KHÔNG có `converted_customer_id`)
-- `lead_care_history` table + triggers
-- PersonalDashboard có weekly stats, pipeline funnel, follow-up reminders
-
-**Chưa có:**
-- `converted_customer_id` trên leads (cần thêm để liên kết ngược)
-- Giới hạn tạo Customer trực tiếp (chỉ ADMIN)
-- Dashboard hiệu suất NV (bảng xếp hạng, funnel toàn phòng, trend tuần)
-- Cảnh báo tự động cho lead bỏ quên, sửa đổi bất thường
-- Báo cáo tuần tự động
+Tạo module mới cho NV telesale nhập data thô hàng ngày. Data thô trải qua vòng đời: nhập → gọi → chuyển Lead (hoặc loại bỏ). Module tuân thủ cây phân quyền hiện có.
 
 ---
 
-### Thay đổi chi tiết
-
-#### Migration 1: Schema
+### 1. Migration — Tạo bảng + RLS + Cập nhật permissions
 
 ```sql
--- Thêm converted_customer_id vào leads
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS converted_customer_id UUID REFERENCES customers(id);
+-- Bảng raw_contacts
+CREATE TABLE raw_contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name text,
+  phone text NOT NULL,
+  email text,
+  company_name text,
+  contact_type text DEFAULT 'personal' CHECK (contact_type IN ('personal','b2b')),
+  source text,
+  note text,
+  status text DEFAULT 'new' CHECK (status IN ('new','called_no_answer','called_not_interested','called_interested','converted_to_lead','duplicate','invalid')),
+  call_count integer DEFAULT 0,
+  last_called_at timestamptz,
+  assigned_to uuid REFERENCES profiles(id),
+  created_by uuid REFERENCES profiles(id) NOT NULL DEFAULT auth.uid(),
+  department_id uuid REFERENCES departments(id),
+  converted_lead_id uuid REFERENCES leads(id),
+  created_at timestamptz DEFAULT now()
+);
 
--- Cập nhật data cũ: sync customer_id → converted_customer_id
-UPDATE leads SET converted_customer_id = customer_id WHERE customer_id IS NOT NULL AND converted_customer_id IS NULL;
+-- Unique phone index (exclude invalid/duplicate)
+CREATE UNIQUE INDEX idx_raw_contacts_phone ON raw_contacts(phone) WHERE status NOT IN ('duplicate','invalid');
+
+-- RLS
+ALTER TABLE raw_contacts ENABLE ROW LEVEL SECURITY;
+-- 4 policies: read (personal/dept/admin), insert (own), update (own+assigned+manager+admin), admin_full_access
 ```
 
-#### Phần 1: Lead → Customer flow
+Cập nhật DB function `get_default_permissions_for_role()`:
+- Thêm `raw_contacts.view`, `raw_contacts.create`, `raw_contacts.edit` cho ADMIN, GDKD, MANAGER, SALE_*, INTERN_SALE_*
+- Thêm `raw_contacts.delete` cho ADMIN
+
+### 2. Frontend — Permission Matrix & Scope
 
 | File | Thay đổi |
 |------|----------|
-| `src/pages/Customers.tsx` | Ẩn nút "Tạo KH mới" cho role != ADMIN |
-| `src/pages/Leads.tsx` | Nâng cấp `convertToCustomer`: validate WON, auto-fill đầy đủ (company, contact_person, contact_position, source, tour_interest, type), set `converted_customer_id`, redirect sang tạo Booking |
-| `src/pages/CustomerDetail.tsx` | Thêm section "Nguồn gốc" — query leads WHERE converted_customer_id = customer.id, hiện link về lead gốc + ngày chuyển đổi |
+| `src/hooks/usePermissions.ts` | Thêm `raw_contacts.*` vào `ALL_PERMISSION_KEYS`, `PERMISSION_GROUPS`, `DEFAULT_PERMISSIONS` cho các role tương ứng |
+| `src/contexts/PermissionsContext.tsx` | Thêm scope rule `raw_contacts` — ADMIN/SUPER_ADMIN: all, GDKD/MANAGER: department, SALE_*/INTERN_SALE_*: personal |
 
-#### Phần 2: Dashboard hiệu suất (BusinessDashboard mở rộng)
-
-| File | Thay đổi |
-|------|----------|
-| `src/components/dashboard/SalePerformanceTable.tsx` | **Tạo mới** — Bảng xếp hạng NV: leads mới, lượt liên hệ, tỷ lệ nhấc máy, leads quan tâm, tour chốt, conversion %, badge trạng thái |
-| `src/components/dashboard/PipelineFunnel.tsx` | **Tạo mới** — Funnel chart toàn phòng: NEW → CONTACTED → INTERESTED → QUOTE_SENT → WON với tỷ lệ chuyển đổi mỗi bước |
-| `src/components/dashboard/WeeklyTrendChart.tsx` | **Tạo mới** — Line chart 4 tuần: leads mới, lượt liên hệ, tour chốt |
-| `src/pages/Dashboard.tsx` | ADMIN/GDKD dashboard: 4 KPI cards (leads mới, lượt chăm sóc, leads quan tâm, tour chốt) + dropdown chọn phòng ban (ADMIN) + tích hợp 3 components trên |
-
-**KPI cards tính toán:**
-- Leads mới: COUNT leads created_at >= đầu tháng, filter by dept
-- Lượt chăm sóc: COUNT lead_care_history contacted_at >= đầu tháng
-- Leads quan tâm: COUNT leads WHERE status IN (INTERESTED, PROFILE_SENT, QUOTE_SENT, NEGOTIATING)
-- Tour chốt: COUNT leads WHERE status = WON AND updated_at >= đầu tháng
-
-**Bảng xếp hạng — Badge logic:**
-- Tốt (xanh): conversion ≥ 2% HOẶC tour chốt ≥ 1
-- Trung bình (vàng): conversion ≥ 1% HOẶC leads quan tâm ≥ 5
-- Cần hỗ trợ (đỏ): lượt liên hệ > 100 nhưng conversion = 0%
-
-#### Phần 3: Cảnh báo tự động
+### 3. Sidebar + Route
 
 | File | Thay đổi |
 |------|----------|
-| `supabase/functions/daily-reminders/index.ts` | Mở rộng thêm 3 loại cảnh báo: (1) Lead bỏ quên > 7 ngày → thông báo NV + Leader nếu > 14 ngày, (2) Follow-up quá hạn, (3) Sắp đến ngày đi tour (≤ 60 ngày). Dùng notifications table hiện có (user_id, type, entity_type, entity_id) |
+| `src/components/AppSidebar.tsx` | Thêm menu "Kho Data" (icon: Database) trước "Tiềm năng", moduleKey: `raw_contacts` |
+| `src/App.tsx` | Thêm route `/kho-data` → `RawContacts` với PermissionGuard `raw_contacts.view` |
 
-**KHÔNG tạo cron job mới** — tận dụng edge function `daily-reminders` đã có cron schedule. Thêm logic vào cuối function hiện tại.
+### 4. Trang RawContacts.tsx (tạo mới)
 
-**KHÔNG tạo trigger abnormal_edit** — quá phức tạp, dễ gây performance issue. Thay vào đó thêm widget "Sửa đổi gần đây" trên admin dashboard query từ audit_logs.
+**Tab "Data của tôi"** (mặc định, tất cả role):
+- Bảng: Tên, SĐT, Công ty, Trạng thái (badge màu), Số lần gọi, Lần gọi cuối, Ngày nhập
+- Nút "Thêm data" → Dialog form nhanh (Tên + SĐT bắt buộc, Công ty, Loại, Nguồn, Ghi chú)
+- Check trùng SĐT realtime khi nhập: query raw_contacts + leads + customers → hiện cảnh báo inline
+- Scope filter: personal → `created_by = user.id OR assigned_to = user.id`
 
-#### Phần 4: Notifications — không cần thay đổi
+**Tab "Data phòng"** (GDKD/MANAGER/ADMIN):
+- Cùng bảng, filter theo department_id
+- ADMIN thấy dropdown chọn phòng ban
 
-NotificationBell đã hoạt động, bảng notifications đã có. Sidebar badge cho leads đã có. Chỉ cần thêm type mới vào `typeIcons` trong NotificationBell.
+**Mỗi row — nút "Ghi nhận gọi"**:
+- Mini dialog: dropdown kết quả (Không bắt máy / Không quan tâm / Quan tâm / Sai số) + ghi chú
+- Lưu: call_count += 1, last_called_at = now(), status map theo kết quả
 
-### Thứ tự thực hiện
+**Nút "Chuyển thành Lead"** (hiện khi status = `called_interested`):
+- Tạo lead mới: copy full_name, phone, email, company_name, source, assigned_to, department_id
+- Set lead_type = 'b2b' nếu contact_type = 'b2b'
+- Update raw_contacts: status = 'converted_to_lead', converted_lead_id = lead.id
+- Toast thành công
 
-1. Migration (converted_customer_id + sync data cũ)
-2. Lead→Customer conversion flow (Leads.tsx, Customers.tsx, CustomerDetail.tsx)
-3. Dashboard components (SalePerformanceTable, PipelineFunnel, WeeklyTrendChart)
-4. Dashboard.tsx tích hợp cho ADMIN/GDKD
-5. Mở rộng daily-reminders edge function
-6. NotificationBell cập nhật icons
+### 5. Dashboard cards
+
+| File | Thay đổi |
+|------|----------|
+| `src/pages/PersonalDashboard.tsx` | Thêm 1 card "Data hôm nay": số data mới nhập, số cuộc gọi, số chuyển Lead — query raw_contacts + filter created_at/last_called_at = today |
+| `src/pages/Dashboard.tsx` | Thêm section thống kê raw_contacts cho ADMIN/GDKD: tổng data, tỷ lệ gọi được, tỷ lệ chuyển Lead, top NV nhập data |
+
+### 6. Thứ tự thực hiện
+
+1. Migration (bảng + RLS + update DB function)
+2. Permission matrix + scope rules (usePermissions.ts, PermissionsContext.tsx)
+3. Sidebar + route (AppSidebar.tsx, App.tsx)
+4. RawContacts.tsx (bảng + form + check trùng + ghi nhận gọi + chuyển Lead)
+5. Dashboard cards (PersonalDashboard.tsx, Dashboard.tsx)
 
