@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Users, ClipboardList, CalendarDays, Loader2 } from "lucide-react";
+import { TrendingUp, Users, ClipboardList, CalendarDays, Loader2, Phone, Target } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDashboardType, useBusinessDashboardData, getDataScope } from "@/hooks/useDashboardData";
 import PersonalDashboard from "./PersonalDashboard";
@@ -11,6 +14,11 @@ import HrDashboard from "./HrDashboard";
 import ManagerKPIDashboard from "./ManagerKPIDashboard";
 import { CeoDashboardCharts } from "@/components/dashboard/CeoDashboardCharts";
 import { CeoCustomerOverview } from "@/components/dashboard/CeoCustomerOverview";
+import { SalePerformanceTable } from "@/components/dashboard/SalePerformanceTable";
+import { PipelineFunnel } from "@/components/dashboard/PipelineFunnel";
+import { WeeklyTrendChart } from "@/components/dashboard/WeeklyTrendChart";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
@@ -19,12 +27,71 @@ function formatVND(value: number) {
 }
 
 function BusinessDashboard() {
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const scope = getDataScope(userRole);
   const { stats, revenueByMonth, deadlines, loading } = useBusinessDashboardData();
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
 
   const canViewRevenue = ["ADMIN", "KETOAN"].includes(userRole || "");
   const isCeo = ["ADMIN", "SUPER_ADMIN"].includes(userRole || "");
+  const isAdmin = userRole === "ADMIN";
+
+  // Fetch departments for ADMIN dropdown
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("departments").select("id, name").order("name");
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  // Fetch my department for non-admin
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile-dept", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("department_id").eq("id", user!.id).single();
+      return data;
+    },
+    enabled: !!user && !isAdmin,
+  });
+
+  const activeDeptId = isAdmin ? selectedDeptId : myProfile?.department_id;
+
+  // KPI stats for leads
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data: leadKpis } = useQuery({
+    queryKey: ["lead-kpis", activeDeptId, startOfMonth],
+    queryFn: async () => {
+      let leadsQ = supabase.from("leads").select("id, status, created_at");
+      if (activeDeptId) leadsQ = leadsQ.eq("department_id", activeDeptId);
+      leadsQ = leadsQ.gte("created_at", startOfMonth);
+      const { data: newLeads } = await leadsQ;
+
+      let careQ = supabase.from("lead_care_history").select("id, contacted_at")
+        .gte("contacted_at", startOfMonth);
+      const { data: careCount } = await careQ;
+
+      let intQ = supabase.from("leads").select("id, status")
+        .in("status", ["INTERESTED", "PROFILE_SENT", "QUOTE_SENT", "NEGOTIATING"]);
+      if (activeDeptId) intQ = intQ.eq("department_id", activeDeptId);
+      const { data: interested } = await intQ;
+
+      let wonQ = supabase.from("leads").select("id, status")
+        .eq("status", "WON");
+      if (activeDeptId) wonQ = wonQ.eq("department_id", activeDeptId);
+      const { data: won } = await wonQ;
+
+      return {
+        newLeads: newLeads?.length || 0,
+        careCount: careCount?.length || 0,
+        interested: interested?.length || 0,
+        won: won?.length || 0,
+      };
+    },
+  });
 
   const scopeLabel = scope === "all" ? "toàn công ty" : scope === "team" ? "phòng ban" : "cá nhân";
 
@@ -36,26 +103,48 @@ function BusinessDashboard() {
     );
   }
 
+  const kpiCards = [
+    { label: "Leads mới", value: String(leadKpis?.newLeads || stats.newLeads), icon: ClipboardList, color: "text-blue-600" },
+    { label: "Lượt chăm sóc", value: String(leadKpis?.careCount || 0), icon: Phone, color: "text-green-600" },
+    { label: "Leads quan tâm", value: String(leadKpis?.interested || 0), icon: Target, color: "text-amber-600" },
+    { label: "Tour chốt", value: String(leadKpis?.won || 0), icon: TrendingUp, color: "text-emerald-600" },
+  ];
+
   const statCards = [
     ...(canViewRevenue
       ? [{ label: "Doanh thu tháng", value: formatVND(stats.monthlyRevenue), icon: TrendingUp }]
       : []),
     { label: "Booking mới", value: String(stats.newBookings), icon: CalendarDays },
-    { label: "Lead mới", value: String(stats.newLeads), icon: ClipboardList },
     { label: "Khách hàng", value: new Intl.NumberFormat("vi-VN").format(stats.customerCount), icon: Users },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Tổng quan</h1>
-        <p className="text-muted-foreground text-sm">
-          Dữ liệu {scopeLabel} — tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Tổng quan hiệu suất</h1>
+          <p className="text-muted-foreground text-sm">
+            Dữ liệu {scopeLabel} — tháng {now.getMonth() + 1}/{now.getFullYear()}
+          </p>
+        </div>
+        {isAdmin && departments.length > 0 && (
+          <Select value={selectedDeptId || "all"} onValueChange={(v) => setSelectedDeptId(v === "all" ? null : v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Tất cả phòng ban" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả phòng ban</SelectItem>
+              {departments.map(d => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${statCards.length} gap-4`}>
-        {statCards.map((stat) => (
+      {/* KPI Cards — Lead performance */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {kpiCards.map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -64,7 +153,7 @@ function BusinessDashboard() {
                   <p className="text-2xl font-bold mt-1">{stat.value}</p>
                 </div>
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="h-5 w-5 text-primary" />
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
               </div>
             </CardContent>
@@ -72,6 +161,37 @@ function BusinessDashboard() {
         ))}
       </div>
 
+      {/* Revenue stats */}
+      {canViewRevenue && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {statCards.map((stat) => (
+            <Card key={stat.label}>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <stat.icon className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Sale Performance Table */}
+      <SalePerformanceTable departmentId={activeDeptId} month={now} />
+
+      {/* Funnel + Trend side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PipelineFunnel departmentId={activeDeptId} />
+        <WeeklyTrendChart departmentId={activeDeptId} />
+      </div>
+
+      {/* Revenue chart + Deadlines */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {canViewRevenue && (
           <Card className="lg:col-span-2">

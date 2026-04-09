@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
@@ -52,6 +53,7 @@ function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
 
 export default function Leads() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { getScope } = usePermissions();
   const { user } = useAuth();
 
@@ -118,6 +120,9 @@ export default function Leads() {
 
   const convertToCustomer = useMutation({
     mutationFn: async (lead: any) => {
+      if (lead.status !== "WON") {
+        throw new Error("Chỉ có thể chuyển đổi lead có trạng thái 'Chốt tour' (WON)");
+      }
       const { data: customer, error: custErr } = await supabase
         .from("customers")
         .insert({
@@ -125,10 +130,17 @@ export default function Leads() {
           phone: lead.phone || null,
           email: lead.email || null,
           company_name: lead.company_name || null,
+          company_address: lead.company_address || null,
+          contact_person: lead.contact_person || null,
+          contact_position: lead.contact_position || null,
           assigned_sale_id: lead.assigned_to || null,
+          department_id: lead.department_id || null,
           type: lead.company_name ? "CORPORATE" : "INDIVIDUAL",
           source: lead.channel || null,
-          tour_interest: lead.interest_type || null,
+          tour_interest: lead.interest_type || lead.destination || null,
+          notes: lead.call_notes || null,
+          tax_code: lead.tax_code || null,
+          company_size: lead.company_size || null,
         })
         .select("id")
         .single();
@@ -136,14 +148,16 @@ export default function Leads() {
 
       const { error: leadErr } = await supabase
         .from("leads")
-        .update({ customer_id: customer.id, status: "WON" })
+        .update({ customer_id: customer.id, converted_customer_id: customer.id } as any)
         .eq("id", lead.id);
       if (leadErr) throw leadErr;
       return customer;
     },
-    onSuccess: () => {
+    onSuccess: (customer) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Đã chuyển đổi thành khách hàng");
+      // Navigate to create booking for the new customer
+      navigate(`/khach-hang/${customer.id}`);
     },
     onError: (err: any) => toast.error("Lỗi", { description: err.message }),
   });

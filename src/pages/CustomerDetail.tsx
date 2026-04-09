@@ -12,8 +12,9 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift } from "lucide-react";
+import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink } from "lucide-react";
 import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
+import { Link } from "react-router-dom";
 
 function fmt(n: number | null) {
   if (!n) return "0";
@@ -80,6 +81,22 @@ export default function CustomerDetail() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
+    },
+    enabled: !!id,
+  });
+
+  // Query lead origin
+  const { data: originLead } = useQuery({
+    queryKey: ["customer-origin-lead", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("leads")
+        .select("id, full_name, created_at") as any)
+        .eq("converted_customer_id", id!)
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data as { id: string; full_name: string; created_at: string } | null;
     },
     enabled: !!id,
   });
@@ -182,6 +199,29 @@ export default function CustomerDetail() {
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-4">
+          {/* Origin Lead Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Nguồn gốc</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {originLead ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Chuyển đổi từ lead:</span>
+                  <Link to={`/tiem-nang`} className="text-primary hover:underline inline-flex items-center gap-1 font-medium">
+                    {originLead.full_name}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                  <span className="text-muted-foreground">
+                    vào ngày {new Date(originLead.created_at).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Không có thông tin lead gốc</p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Thông tin cá nhân</CardTitle>
