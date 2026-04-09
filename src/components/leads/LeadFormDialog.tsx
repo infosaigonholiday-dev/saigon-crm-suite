@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -17,12 +17,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Loader2, Info } from "lucide-react";
+import { CalendarIcon, Loader2, Info, User, Building2 } from "lucide-react";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type LeadType = "INDIVIDUAL" | "CORPORATE";
 
 const channelOptions = [
   { value: "ZALO", label: "Zalo" },
@@ -53,14 +55,12 @@ const initial = {
   channel: "ZALO",
   interest_type: "",
   temperature: "warm",
-  // Business
   company_name: "",
   company_address: "",
   contact_person: "",
   contact_position: "",
   company_size: "",
   tax_code: "",
-  // Tour needs
   destination: "",
   pax_count: "",
   budget: "",
@@ -69,6 +69,7 @@ const initial = {
 };
 
 export default function LeadFormDialog({ open, onOpenChange }: Props) {
+  const [leadType, setLeadType] = useState<LeadType>("INDIVIDUAL");
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
   const [plannedTravelDate, setPlannedTravelDate] = useState<Date | undefined>();
@@ -87,10 +88,22 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     ? new Date(plannedTravelDate.getTime() - 60 * 24 * 60 * 60 * 1000)
     : null;
 
+  const isB2B = leadType === "CORPORATE";
+
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.full_name.trim()) e.full_name = "Bắt buộc";
-    if (!form.phone.trim()) e.phone = "Bắt buộc";
+
+    if (isB2B) {
+      // B2B: company_name + contact_person + phone bắt buộc
+      if (!form.company_name.trim()) e.company_name = "Bắt buộc";
+      if (!form.contact_person.trim()) e.contact_person = "Bắt buộc";
+      if (!form.phone.trim()) e.phone = "Bắt buộc";
+    } else {
+      // Cá nhân: full_name + phone bắt buộc
+      if (!form.full_name.trim()) e.full_name = "Bắt buộc";
+      if (!form.phone.trim()) e.phone = "Bắt buộc";
+    }
+
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Email không hợp lệ";
     if (form.phone && !/^[0-9+\-\s()]{8,15}$/.test(form.phone))
@@ -108,24 +121,36 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     const email = form.email.trim();
     const taxCode = form.tax_code.trim();
 
-    // Check leads
-    if (phone || email) {
-      let q = supabase.from("leads").select("id, full_name, phone, email").limit(1);
-      if (phone && email) {
-        q = q.or(`phone.eq.${phone},email.eq.${email}`);
-      } else if (phone) {
-        q = q.eq("phone", phone);
-      } else {
-        q = q.eq("email", email!);
+    if (isB2B) {
+      // B2B: check company_name + contact_person + phone
+      if (form.company_name.trim() && form.contact_person.trim() && phone) {
+        const { data } = await supabase
+          .from("leads")
+          .select("id, full_name, company_name, contact_person, phone")
+          .eq("company_name", form.company_name.trim())
+          .eq("contact_person", form.contact_person.trim())
+          .eq("phone", phone)
+          .limit(1);
+        if (data && data.length > 0) {
+          return `Lead doanh nghiệp "${data[0].company_name}" (LH: ${data[0].contact_person}, SĐT: ${phone}) đã tồn tại. Không cho phép tạo trùng.`;
+        }
       }
-      const { data } = await q;
-      if (data && data.length > 0) {
-        const match = data[0];
-        return `Lead "${match.full_name}" đã tồn tại với ${match.phone === phone ? `SĐT ${phone}` : `email ${email}`}. Không cho phép tạo trùng.`;
+    } else {
+      // Cá nhân: check full_name + phone
+      if (form.full_name.trim() && phone) {
+        const { data } = await supabase
+          .from("leads")
+          .select("id, full_name, phone")
+          .eq("full_name", form.full_name.trim())
+          .eq("phone", phone)
+          .limit(1);
+        if (data && data.length > 0) {
+          return `Lead "${data[0].full_name}" với SĐT ${phone} đã tồn tại. Không cho phép tạo trùng.`;
+        }
       }
     }
 
-    // Check customers
+    // Check customers by phone
     if (phone) {
       const { data } = await supabase.from("customers").select("id, full_name, phone").eq("phone", phone).limit(1);
       if (data && data.length > 0) {
@@ -145,8 +170,13 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      // For B2B without full_name, use company_name as full_name
+      const fullName = isB2B
+        ? (form.full_name.trim() || form.company_name.trim())
+        : form.full_name.trim();
+
       const { error } = await supabase.from("leads").insert({
-        full_name: form.full_name.trim(),
+        full_name: fullName,
         phone: form.phone || null,
         email: form.email || null,
         channel: form.channel,
@@ -175,6 +205,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
       qc.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Đã thêm lead mới");
       setForm(initial);
+      setLeadType("INDIVIDUAL");
       setFollowUpDate(undefined);
       setPlannedTravelDate(undefined);
       setDuplicateWarning(null);
@@ -205,40 +236,132 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Thêm lead mới</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 py-2">
-          {/* SECTION 1: Thông tin cơ bản */}
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-3">📋 Thông tin cơ bản</p>
+          {/* TYPE SELECTOR */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={leadType === "INDIVIDUAL" ? "default" : "outline"}
+              className="flex-1 gap-2"
+              onClick={() => { setLeadType("INDIVIDUAL"); setErrors({}); }}
+            >
+              <User className="h-4 w-4" />
+              Khách cá nhân
+            </Button>
+            <Button
+              type="button"
+              variant={leadType === "CORPORATE" ? "default" : "outline"}
+              className="flex-1 gap-2"
+              onClick={() => { setLeadType("CORPORATE"); setErrors({}); }}
+            >
+              <Building2 className="h-4 w-4" />
+              Khách doanh nghiệp
+            </Button>
+          </div>
+
+          {/* SECTION: Cá nhân */}
+          {!isB2B && (
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-3">👤 Thông tin khách hàng</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Họ tên <span className="text-destructive">*</span></Label>
+                  <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+                  {errors.full_name && <p className="text-xs text-destructive">{errors.full_name}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Số điện thoại <span className="text-destructive">*</span></Label>
+                  <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                  {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+                  {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kênh nguồn</Label>
+                  <Select value={form.channel} onValueChange={(v) => set("channel", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {channelOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION: Doanh nghiệp */}
+          {isB2B && (
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-3">🏢 Thông tin doanh nghiệp</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Tên công ty <span className="text-destructive">*</span></Label>
+                  <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
+                  {errors.company_name && <p className="text-xs text-destructive">{errors.company_name}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Địa chỉ công ty</Label>
+                  <Input value={form.company_address} onChange={(e) => set("company_address", e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="space-y-1.5">
+                  <Label>Người liên hệ <span className="text-destructive">*</span></Label>
+                  <Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
+                  {errors.contact_person && <p className="text-xs text-destructive">{errors.contact_person}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>SĐT liên hệ <span className="text-destructive">*</span></Label>
+                  <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                  {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="space-y-1.5">
+                  <Label>Chức vụ</Label>
+                  <Input value={form.contact_position} onChange={(e) => set("contact_position", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+                  {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-3">
+                <div className="space-y-1.5">
+                  <Label>Quy mô nhân sự</Label>
+                  <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Mã số thuế</Label>
+                  <Input value={form.tax_code} onChange={(e) => set("tax_code", e.target.value)} />
+                  {errors.tax_code && <p className="text-xs text-destructive">{errors.tax_code}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kênh nguồn</Label>
+                  <Select value={form.channel} onValueChange={(v) => set("channel", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {channelOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION: Chung - Quan tâm & Mức độ */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-semibold text-foreground mb-3">📋 Phân loại</p>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Họ tên <span className="text-destructive">*</span></Label>
-                <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
-                {errors.full_name && <p className="text-xs text-destructive">{errors.full_name}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Điện thoại <span className="text-destructive">*</span></Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-                {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-3">
-              <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Kênh nguồn</Label>
-                <Select value={form.channel} onValueChange={(v) => set("channel", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {channelOptions.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-3">
               <div className="space-y-1.5">
                 <Label>Loại quan tâm</Label>
                 <Select value={form.interest_type} onValueChange={(v) => set("interest_type", v)}>
@@ -264,43 +387,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          {/* SECTION 2: Thông tin doanh nghiệp */}
-          <div className="border-t pt-4">
-            <p className="text-sm font-semibold text-foreground mb-3">🏢 Thông tin doanh nghiệp</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Tên công ty</Label>
-                <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Địa chỉ công ty</Label>
-                <Input value={form.company_address} onChange={(e) => set("company_address", e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-3">
-              <div className="space-y-1.5">
-                <Label>Người liên hệ</Label>
-                <Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Chức vụ</Label>
-                <Input value={form.contact_position} onChange={(e) => set("contact_position", e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-3">
-              <div className="space-y-1.5">
-                <Label>Quy mô nhân sự</Label>
-                <Input type="number" value={form.company_size} onChange={(e) => set("company_size", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mã số thuế</Label>
-                <Input value={form.tax_code} onChange={(e) => set("tax_code", e.target.value)} />
-                {errors.tax_code && <p className="text-xs text-destructive">{errors.tax_code}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3: Nhu cầu tour */}
+          {/* SECTION: Nhu cầu tour */}
           <div className="border-t pt-4">
             <p className="text-sm font-semibold text-foreground mb-3">✈️ Nhu cầu tour</p>
             <div className="grid grid-cols-2 gap-4">
@@ -322,7 +409,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
                   </PopoverContent>
                 </Popover>
                 {reminderDate && (
-                  <p className="text-xs text-blue-600 flex items-center gap-1">
+                  <p className="text-xs text-primary flex items-center gap-1">
                     <Info className="h-3 w-3" />
                     Nhắc hẹn: {format(reminderDate, "dd/MM/yyyy")}
                   </p>
