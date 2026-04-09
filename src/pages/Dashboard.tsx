@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Users, ClipboardList, CalendarDays, Loader2, Phone, Target } from "lucide-react";
+import { TrendingUp, Users, ClipboardList, CalendarDays, Loader2, Phone, Target, Database } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDashboardType, useBusinessDashboardData, getDataScope } from "@/hooks/useDashboardData";
 import PersonalDashboard from "./PersonalDashboard";
@@ -91,6 +91,24 @@ function BusinessDashboard() {
         won: won?.length || 0,
       };
     },
+  });
+
+  // Raw contacts stats for admin/GDKD
+  const { data: rawStats } = useQuery({
+    queryKey: ["raw-contacts-admin-stats", activeDeptId],
+    queryFn: async () => {
+      let q = supabase.from("raw_contacts").select("status");
+      if (activeDeptId) q = q.eq("department_id", activeDeptId);
+      const { data } = await q;
+      if (!data) return null;
+      const total = data.length;
+      const called = data.filter(d => d.status !== "new").length;
+      const interested = data.filter(d => d.status === "called_interested").length;
+      const converted = data.filter(d => d.status === "converted_to_lead").length;
+      const noAnswer = data.filter(d => d.status === "called_no_answer").length;
+      return { total, called, interested, converted, noAnswer, conversionRate: total > 0 ? ((converted / total) * 100).toFixed(1) : "0" };
+    },
+    enabled: isCeo || userRole === "GDKD",
   });
 
   const scopeLabel = scope === "all" ? "toàn công ty" : scope === "team" ? "phòng ban" : "cá nhân";
@@ -180,6 +198,42 @@ function BusinessDashboard() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Raw Contacts Stats */}
+      {rawStats && rawStats.total > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4 text-primary" />
+              Thống kê Kho Data
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawStats.total}</p>
+                <p className="text-xs text-muted-foreground">Tổng data</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawStats.called}</p>
+                <p className="text-xs text-muted-foreground">Đã gọi</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawStats.interested}</p>
+                <p className="text-xs text-muted-foreground">Quan tâm</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawStats.converted}</p>
+                <p className="text-xs text-muted-foreground">Chuyển Lead</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawStats.conversionRate}%</p>
+                <p className="text-xs text-muted-foreground">Tỷ lệ chuyển đổi</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Sale Performance Table */}
