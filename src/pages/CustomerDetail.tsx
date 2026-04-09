@@ -89,14 +89,14 @@ export default function CustomerDetail() {
   const { data: originLead } = useQuery({
     queryKey: ["customer-origin-lead", id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("leads")
-        .select("id, full_name, created_at")
-        .eq("converted_customer_id" as any, id!)
+        .select("id, full_name, created_at") as any)
+        .eq("converted_customer_id", id!)
         .limit(1)
         .maybeSingle();
       if (error) return null;
-      return data;
+      return data as { id: string; full_name: string; created_at: string } | null;
     },
     enabled: !!id,
   });
