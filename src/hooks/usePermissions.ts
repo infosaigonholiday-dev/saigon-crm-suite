@@ -19,6 +19,7 @@ export const ALL_PERMISSION_KEYS = [
   "finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve",
   "workflow.view", "workflow.create",
   "settings.view", "settings.edit",
+  "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
@@ -42,6 +43,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   finance: { label: "Tài chính", keys: ["finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve"] },
   workflow: { label: "Quy trình", keys: ["workflow.view", "workflow.create"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
+  raw_contacts: { label: "Kho Data", keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
 };
 
 // Scope rules
@@ -67,6 +69,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve",
     "workflow.view", "workflow.create",
     "settings.view", "settings.edit",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
   ],
   SUPER_ADMIN: [
     "dashboard.view",
@@ -86,6 +89,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve",
     "workflow.view", "workflow.create",
     "settings.view", "settings.edit",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
   ],
   GDKD: [
     "dashboard.view",
@@ -103,6 +107,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.edit", "finance.submit",
     "workflow.view", "workflow.create",
     "settings.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   MANAGER: [
     "dashboard.view",
@@ -120,6 +125,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "finance.view", "finance.submit",
     "workflow.view", "workflow.create",
     "settings.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   DIEUHAN: [
     "dashboard.view",
@@ -197,6 +203,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   SALE_INBOUND: [
     "dashboard.view",
@@ -210,6 +217,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   SALE_OUTBOUND: [
     "dashboard.view",
@@ -223,6 +231,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   SALE_MICE: [
     "dashboard.view",
@@ -236,6 +245,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   TOUR: [
     "dashboard.view",
@@ -255,6 +265,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
@@ -265,6 +276,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
@@ -275,6 +287,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   INTERN_SALE_INBOUND: [
     "dashboard.view",
@@ -285,6 +298,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
   INTERN_DIEUHAN: [
     "dashboard.view",
