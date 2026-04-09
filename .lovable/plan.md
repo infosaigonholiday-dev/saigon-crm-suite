@@ -1,122 +1,107 @@
 
 
-## Nâng cấp Module Leads & Customers cho Phòng Sale
+## Hệ thống Audit Log cho Leads & Customers
 
-### Phân tích hiện trạng vs yêu cầu
+### Phân tích hiện trạng
 
-**Cột đã có** (không cần thêm): `company_name`, `company_address`, `lost_reason`, `budget` (≈ estimated_budget), `destination` (≈ destination_interest), `pax_count` (≈ estimated_pax), `temperature` (≈ priority), `last_contact_at` (≈ last_contacted_at)
+**Đã có:**
+- Bảng `audit_logs` (DELETE-only) với trigger `log_delete_action` — chỉ ghi log khi xóa
+- `SettingsAuditLogTab` hiển thị nhật ký xóa cho ADMIN
+- `is_active` trên profiles đã có, deactivate/activate qua edge function `manage-employee-accounts`
+- RLS functions (`has_role`, `has_any_role`) đã kiểm tra `is_active = true`
 
-**Cột cần thêm mới**: `contact_person`, `contact_position`, `company_size`, `tax_code`, `planned_travel_date`, `reminder_date`, `contact_count`, `created_by`
+**Chưa có:**
+- Ghi log INSERT/UPDATE cho leads và customers
+- Cột `changed_fields`, `change_summary`, `user_role`, `user_full_name`, `new_data` trên `audit_logs`
+- Tab "Lịch sử sửa đổi" trong LeadDetailDialog / CustomerDetail
+- Trang bàn giao data khi NV nghỉ việc
+- Cột `deactivated_at`, `deactivated_reason` trên profiles
 
-**Constraint cần cập nhật**: `status` (thêm 4 trạng thái mới), `channel` (thêm 6 kênh), `interest_type` (thêm INBOUND)
+### Quyết định thiết kế
 
-**Lưu ý quan trọng**: Một số cột user yêu cầu trùng tên nhưng khác tên với cột hiện có. Sẽ tái sử dụng cột có sẵn thay vì tạo trùng:
-- `budget` → dùng thay `estimated_budget`
-- `destination` → dùng thay `destination_interest`
-- `pax_count` → dùng thay `estimated_pax`
-- `temperature` → giữ nguyên (đã có constraint `hot/warm/cold`), KHÔNG thêm cột `priority` để tránh trùng ý nghĩa
-- `last_contact_at` → dùng thay `last_contacted_at`
+**Mở rộng bảng `audit_logs` hiện có** thay vì tạo bảng `audit_log` mới — tránh trùng lặp. Thêm các cột mới, giữ nguyên trigger DELETE cũ, thêm trigger INSERT/UPDATE cho leads + customers.
+
+**Không cần thay đổi RLS cũ** — `has_role`/`has_any_role` đã kiểm tra `is_active = true`.
 
 ---
 
-### Thay đổi theo từng phần
+### Thay đổi
 
-#### Migration 1: Thêm cột + cập nhật constraints cho bảng `leads`
-
-```sql
--- Thêm cột mới
-ALTER TABLE leads
-  ADD COLUMN IF NOT EXISTS contact_person TEXT,
-  ADD COLUMN IF NOT EXISTS contact_position TEXT,
-  ADD COLUMN IF NOT EXISTS company_size INTEGER,
-  ADD COLUMN IF NOT EXISTS tax_code TEXT,
-  ADD COLUMN IF NOT EXISTS planned_travel_date DATE,
-  ADD COLUMN IF NOT EXISTS reminder_date DATE,
-  ADD COLUMN IF NOT EXISTS contact_count INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS created_by UUID DEFAULT auth.uid();
-
--- Mở rộng status constraint
-ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_status_check;
-ALTER TABLE leads ADD CONSTRAINT leads_status_check CHECK (status IN (
-  'NEW','NO_ANSWER','CONTACTED','INTERESTED','PROFILE_SENT',
-  'QUOTE_SENT','NEGOTIATING','WON','LOST','NURTURE','DORMANT'
-));
-
--- Mở rộng channel constraint
-ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_channel_check;
-ALTER TABLE leads ADD CONSTRAINT leads_channel_check CHECK (channel IN (
-  'ZALO','FB','GOOGLE','REFERRAL','WALKIN','AGENCY',
-  'TRANG_VANG','GOOGLE_MAPS','COLD_CALL','EVENT','WEBSITE','OTHER'
-));
-
--- Mở rộng interest_type (thêm INBOUND)
-ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_interest_type_check;
-ALTER TABLE leads ADD CONSTRAINT leads_interest_type_check CHECK (
-  interest_type IN ('MICE','DOMESTIC','OUTBOUND','INBOUND')
-);
-```
-
-#### Migration 2: Tạo bảng `lead_care_history` + RLS + Triggers
+#### Migration: Mở rộng `audit_logs` + Triggers
 
 ```sql
-CREATE TABLE lead_care_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  contacted_by UUID NOT NULL DEFAULT auth.uid(),
-  contacted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  contact_method TEXT NOT NULL DEFAULT 'CALL',
-  result TEXT NOT NULL DEFAULT 'NO_ANSWER',
-  note TEXT,
-  next_action TEXT,
-  next_contact_date DATE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT care_method_check CHECK (contact_method IN ('CALL','ZALO','EMAIL','VISIT','SMS','OTHER')),
-  CONSTRAINT care_result_check CHECK (result IN ('NO_ANSWER','BUSY','NO_NEED','ALREADY_TRAVELED','HAS_PARTNER','INTERESTED','SENT_PROFILE','CALLBACK','QUOTE_REQUESTED','BOOKED'))
+-- Thêm cột mới vào audit_logs
+ALTER TABLE audit_logs
+  ADD COLUMN IF NOT EXISTS user_role TEXT,
+  ADD COLUMN IF NOT EXISTS user_full_name TEXT,
+  ADD COLUMN IF NOT EXISTS new_data JSONB,
+  ADD COLUMN IF NOT EXISTS changed_fields TEXT[],
+  ADD COLUMN IF NOT EXISTS change_summary TEXT;
+
+-- Mở rộng action (hiện chỉ có DELETE)
+ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_action_check;
+
+-- Thêm index
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_record ON audit_logs(table_name, record_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+
+-- Thêm cột profiles cho bàn giao
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS deactivated_reason TEXT;
+
+-- RLS: GDKD + MANAGER xem audit_logs (bổ sung policies)
+CREATE POLICY "audit_view_gdkd" ON audit_logs FOR SELECT USING (
+  has_any_role(auth.uid(), ARRAY['GDKD'])
+);
+CREATE POLICY "audit_view_manager_dept" ON audit_logs FOR SELECT USING (
+  has_role(auth.uid(), 'MANAGER')
+  AND EXISTS (
+    SELECT 1 FROM profiles p WHERE p.id = audit_logs.user_id
+    AND p.department_id = get_my_department_id()
+  )
 );
 
--- Indexes, RLS, policies (personal + department + admin)
--- Trigger: update_lead_from_care (cập nhật last_contact_at, contact_count, follow_up_date)
--- Trigger: auto_set_reminder (planned_travel_date → reminder_date = -60 ngày)
+-- Trigger: log_leads_changes (INSERT/UPDATE/DELETE)
+-- Trigger: log_customers_changes (INSERT/UPDATE/DELETE)
+-- Cả hai ghi vào audit_logs với action, old_data, new_data, changed_fields, change_summary
 ```
 
-#### Frontend — 8 file thay đổi/tạo mới
+#### Frontend — 5 file
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/leads/LeadFormDialog.tsx` | Redesign 3 section (Cơ bản + Doanh nghiệp + Nhu cầu tour), thêm kênh/interest mới, auto hiển thị reminder_date, duplicate check cả `tax_code` |
-| `src/components/leads/LeadDetailDialog.tsx` | **Tạo mới** — Dialog chi tiết lead với 2 tab: Thông tin + Lịch sử chăm sóc |
-| `src/components/leads/CareHistoryTab.tsx` | **Tạo mới** — Timeline lịch sử chăm sóc + form thêm lần chăm sóc |
-| `src/components/leads/CareHistoryFormDialog.tsx` | **Tạo mới** — Dialog thêm care_history (method, result, note, next_action, next_date) |
-| `src/components/leads/LostReasonDialog.tsx` | **Tạo mới** — Popup bắt buộc nhập lost_reason khi kéo sang LOST |
-| `src/pages/Leads.tsx` | Mở rộng Kanban 11 cột, thêm logic popup khi kéo sang LOST/NURTURE/DORMANT, onClick mở detail |
-| `src/pages/PersonalDashboard.tsx` | Thêm 4 widget KPI Sale: thống kê tuần, nhắc hẹn hôm nay, lead bỏ quên, pipeline funnel |
-| `src/components/AppSidebar.tsx` | Badge đếm lead cần follow-up hôm nay trên menu Leads |
+| `src/components/leads/AuditHistoryTab.tsx` | **Tạo mới** — Timeline lịch sử sửa đổi cho lead, nút Khôi phục (ADMIN) |
+| `src/components/leads/LeadDetailDialog.tsx` | Thêm tab "Lịch sử sửa đổi" |
+| `src/pages/CustomerDetail.tsx` | Thêm tab "Lịch sử sửa đổi" (reuse component) |
+| `src/components/settings/SettingsAuditLogTab.tsx` | Mở rộng: hiện tất cả action (không chỉ DELETE), thêm filter theo action/NV/ngày, export CSV |
+| `src/components/settings/DataHandoverDialog.tsx` | **Tạo mới** — Dialog bàn giao data khi vô hiệu hóa NV (hiện số leads/customers, chọn NV nhận, bàn giao + deactivate) |
+| `src/components/settings/SettingsAccountsTab.tsx` | Tích hợp DataHandoverDialog vào nút vô hiệu hóa |
 
-#### Chi tiết Kanban mở rộng (11 cột)
+#### Chi tiết AuditHistoryTab
 
-```text
-NEW → NO_ANSWER → CONTACTED → INTERESTED → PROFILE_SENT → QUOTE_SENT → NEGOTIATING → WON → LOST → NURTURE → DORMANT
-```
+- Query `audit_logs` theo `table_name` + `record_id`
+- Timeline dọc: thời gian, NV + role, badge action (CREATE=xanh, UPDATE=vàng, DELETE=đỏ, STATUS_CHANGE=tím, REASSIGN=cam)
+- Hiển thị changed_fields dạng "Tên: ABC → XYZ"
+- Highlight thay đổi nhạy cảm (phone, assigned_to, email) màu đỏ
+- Nút "Khôi phục" chỉ ADMIN: update record về old_data, ghi log RESTORE
 
-- Kéo → LOST: popup bắt nhập `lost_reason`
-- Kéo → WON: hiện nút "Chuyển thành KH"
-- Kéo → NURTURE/DORMANT: popup bắt nhập `next_contact_date`
-- Click card: mở `LeadDetailDialog`
+#### Chi tiết DataHandoverDialog
 
-#### Chi tiết Dashboard Widget (PersonalDashboard)
-
-- **Widget 1 — Thống kê tuần**: Query `lead_care_history` 7 ngày → tổng liên hệ, tỷ lệ nhấc máy, lead quan tâm mới, tour chốt
-- **Widget 2 — Nhắc hẹn hôm nay**: Query `leads` WHERE `follow_up_date <= today` AND status NOT IN (WON, LOST, DORMANT)
-- **Widget 3 — Lead bỏ quên**: `last_contact_at` > 7 ngày AND status active
-- **Widget 4 — Pipeline funnel**: Count leads theo status, tính conversion rate
+- Input: profile ID của NV bị deactivate
+- Hiện: X leads, Y customers đang assigned
+- Dropdown chọn NV mới (cùng phòng ban)
+- Nút "Bàn giao & Vô hiệu hóa":
+  1. UPDATE leads SET assigned_to = new_id WHERE assigned_to = old_id
+  2. UPDATE customers SET assigned_sale_id = new_id WHERE assigned_sale_id = old_id
+  3. UPDATE profiles SET is_active = false, deactivated_at = now(), deactivated_reason = ...
+  4. Ghi audit_log bàn giao
 
 ### Thứ tự thực hiện
 
-1. Migration 1 (cột + constraints)
-2. Migration 2 (lead_care_history + triggers)
-3. LeadFormDialog (redesign form)
-4. LeadDetailDialog + CareHistoryTab + CareHistoryFormDialog
-5. LostReasonDialog + Leads.tsx (Kanban mở rộng)
-6. PersonalDashboard widgets
-7. Sidebar badge
+1. Migration (mở rộng audit_logs + triggers + profiles columns)
+2. AuditHistoryTab component
+3. Tích hợp vào LeadDetailDialog + CustomerDetail
+4. Mở rộng SettingsAuditLogTab
+5. DataHandoverDialog + tích hợp SettingsAccountsTab
 
