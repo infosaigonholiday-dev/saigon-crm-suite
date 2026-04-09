@@ -1,30 +1,35 @@
 
 
-## Fix: Gán `department_id` cho khách hàng
+## Kế hoạch: Hiển thị phòng ban + Scoping phân bổ KH
 
-### Về câu hỏi mở rộng
-**Được.** Bảng `departments` là bảng động. Khi cần mở thêm phòng KD Nội Địa 2, 3... chỉ cần:
-- Thêm bản ghi mới vào `departments` (VD: "KD Nội Địa 2", code "DOMESTIC_2")
-- Gán nhân viên vào `department_id` mới
-- RLS + frontend filter theo `department_id` nên **không cần sửa code**
+### Vấn đề hiện tại
+1. **Danh sách KH** không có cột "Phòng ban" → ADMIN không biết KH thuộc phòng nào
+2. **Dropdown "Sale phụ trách"** trong form tạo KH hiện liệt kê **tất cả sale** từ mọi phòng → GDKD có thể gán nhầm KH cho sale phòng khác
+3. GDKD cần chỉ phân bổ được cho nhân viên **cùng phòng ban** mình
 
-Nếu sau này muốn phân cấp cha-con (VD: "KD Nội Địa" → "KD NĐ 1", "KD NĐ 2"), chỉ cần thêm cột `parent_id` vào bảng `departments`. Hiện tại chưa cần.
+### Thay đổi
 
-### Kế hoạch fix hiện tại (đã duyệt, giữ nguyên)
+#### 1. Thêm cột "Phòng ban" vào danh sách KH (`src/pages/Customers.tsx`)
+- Query thêm `department_id` và join `departments(name)` để hiển thị tên phòng ban
+- Thêm cột "Phòng ban" vào bảng — hiển thị cho tất cả scope (ADMIN thấy tên phòng, GDKD cũng thấy)
+- ADMIN scope=all → thấy tất cả KH + cột phòng ban giúp phân biệt
 
-#### 1. Migration SQL — Trigger + Backfill
-- Tạo function `set_customer_department()`: khi INSERT hoặc UPDATE `assigned_sale_id`/`created_by` → tự lookup `department_id` từ `profiles` → gán vào KH
-- Tạo trigger `trg_set_customer_department` trên bảng `customers`
-- Backfill 14 KH hiện tại dựa trên `assigned_sale_id` hoặc `created_by`
+#### 2. Scope dropdown "Sale phụ trách" theo phòng ban (`src/components/customers/CustomerFormDialog.tsx`)
+- **ADMIN/SUPER_ADMIN**: Hiển thị tất cả sale (giữ nguyên)
+- **GDKD/MANAGER**: Chỉ hiển thị sale cùng `department_id` với mình
+- **SALE_*/INTERN_***: Mặc định gán chính mình (auto-fill `assigned_sale_id = user.id`)
+- Thêm filter `.eq("department_id", myProfile.department_id)` vào query `salesProfiles` khi role không phải ADMIN
 
-#### 2. Frontend — `CustomerFormDialog.tsx`
-- Query `department_id` của user hiện tại
-- Gán kèm khi insert (phòng thủ thêm, dù trigger đã xử lý)
+#### 3. Thêm cột "Phòng ban" cho GDKD (hiện đã có `department_id` nhờ trigger)
+- GDKD có thể phân bổ lại bằng cách edit `assigned_sale_id` → trigger tự cập nhật `department_id`
 
 ### File thay đổi
 
-| File | Hành động |
-|------|-----------|
-| Migration SQL | Trigger `set_customer_department` + backfill data |
-| `src/components/customers/CustomerFormDialog.tsx` | Gán `department_id` khi insert |
+| File | Thay đổi |
+|------|----------|
+| `src/pages/Customers.tsx` | Thêm cột "Phòng ban", join `departments(name)` |
+| `src/components/customers/CustomerFormDialog.tsx` | Scope dropdown sale theo department khi role = GDKD/MANAGER |
+
+### Không cần migration
+Trigger `set_customer_department` đã hoạt động. Chỉ cần sửa frontend.
 
