@@ -367,6 +367,18 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
         </div>
+        {duplicateWarning && (
+          <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+            <p>{duplicateWarning}</p>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="outline" onClick={() => { setDuplicateWarning(null); setPendingSubmit(false); }}>Huỷ</Button>
+              <Button size="sm" onClick={handleSubmit} disabled={mutation.isPending}>
+                {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Vẫn tạo
+              </Button>
+            </div>
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending}>
