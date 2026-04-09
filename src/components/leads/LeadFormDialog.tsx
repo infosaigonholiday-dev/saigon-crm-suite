@@ -28,7 +28,7 @@ const initial = {
   full_name: "",
   phone: "",
   email: "",
-  channel: "",
+  channel: "ZALO",
   interest_type: "",
   company_name: "",
   company_address: "",
@@ -136,11 +136,12 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
               <Select value={form.channel} onValueChange={(v) => set("channel", v)}>
                 <SelectTrigger><SelectValue placeholder="Chọn kênh" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="Zalo">Zalo</SelectItem>
-                  <SelectItem value="Website">Website</SelectItem>
-                  <SelectItem value="Referral">Giới thiệu</SelectItem>
-                  <SelectItem value="Other">Khác</SelectItem>
+                  <SelectItem value="ZALO">Zalo</SelectItem>
+                  <SelectItem value="FB">Facebook</SelectItem>
+                  <SelectItem value="GOOGLE">Google</SelectItem>
+                  <SelectItem value="REFERRAL">Giới thiệu</SelectItem>
+                  <SelectItem value="WALKIN">Walk-in</SelectItem>
+                  <SelectItem value="AGENCY">Đại lý</SelectItem>
                 </SelectContent>
               </Select>
             </div>
