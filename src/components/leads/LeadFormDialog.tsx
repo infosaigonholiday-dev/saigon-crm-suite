@@ -409,7 +409,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
                   </PopoverContent>
                 </Popover>
                 {reminderDate && (
-                  <p className="text-xs text-blue-600 flex items-center gap-1">
+                  <p className="text-xs text-primary flex items-center gap-1">
                     <Info className="h-3 w-3" />
                     Nhắc hẹn: {format(reminderDate, "dd/MM/yyyy")}
                   </p>
