@@ -205,6 +205,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  SALE_INBOUND: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
@@ -218,6 +219,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  SALE_OUTBOUND: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
@@ -231,6 +233,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  SALE_MICE: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create", "leads.edit",
@@ -244,6 +247,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  TOUR: [
     "dashboard.view",
     "customers.view",
     "bookings.view",
@@ -263,6 +267,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  INTERN_SALE_OUTBOUND: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
@@ -273,6 +278,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  INTERN_SALE_MICE: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
@@ -283,6 +289,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  INTERN_SALE_INBOUND: [
     "dashboard.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
@@ -293,6 +300,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
   ],
+  INTERN_DIEUHAN: [
     "dashboard.view",
     "bookings.view",
     "leave.view", "leave.create",
