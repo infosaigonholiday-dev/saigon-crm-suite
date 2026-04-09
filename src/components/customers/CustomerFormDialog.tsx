@@ -249,6 +249,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         result: form.result || null,
         created_by: user?.id || null,
         department_id: myProfile?.department_id || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
