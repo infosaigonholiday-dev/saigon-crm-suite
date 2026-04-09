@@ -183,7 +183,7 @@ export default function Leads() {
                 {colLeads.map((lead) => {
                   const temp = tempConfig[lead.temperature ?? "warm"];
                   const followUpStatus = getFollowUpStatus(lead.follow_up_date);
-                  const showConvert = (col.id === "QUOTED" || col.id === "QUALIFIED") && !lead.customer_id;
+                  const showConvert = (col.id === "QUOTE_SENT" || col.id === "QUALIFIED" || col.id === "NEGOTIATING") && !lead.customer_id;
 
                   const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
                     ? "border-l-[3px] border-l-red-500"
