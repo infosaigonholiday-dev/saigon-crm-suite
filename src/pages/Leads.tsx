@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
+import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
+import LostReasonDialog from "@/components/leads/LostReasonDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,16 +17,20 @@ import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 
 const PAGE_SIZE = 20;
 
-type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "QUOTE_SENT" | "NEGOTIATING" | "WON" | "LOST";
+type LeadStatus = "NEW" | "NO_ANSWER" | "CONTACTED" | "INTERESTED" | "PROFILE_SENT" | "QUOTE_SENT" | "NEGOTIATING" | "WON" | "LOST" | "NURTURE" | "DORMANT";
 
 const columns: { id: LeadStatus; label: string; color: string }[] = [
   { id: "NEW", label: "Mới", color: "bg-secondary" },
-  { id: "CONTACTED", label: "Đã liên hệ", color: "bg-accent/15" },
-  { id: "QUALIFIED", label: "Đủ điều kiện", color: "bg-warning/15" },
-  { id: "QUOTE_SENT", label: "Đã báo giá", color: "bg-primary/10" },
-  { id: "NEGOTIATING", label: "Đang đàm phán", color: "bg-orange-100" },
-  { id: "WON", label: "Thành công", color: "bg-green-100" },
+  { id: "NO_ANSWER", label: "KBM", color: "bg-orange-50" },
+  { id: "CONTACTED", label: "Đã liên hệ", color: "bg-blue-50" },
+  { id: "INTERESTED", label: "Quan tâm", color: "bg-green-50" },
+  { id: "PROFILE_SENT", label: "Đã gửi profile", color: "bg-purple-50" },
+  { id: "QUOTE_SENT", label: "Đã báo giá", color: "bg-blue-100" },
+  { id: "NEGOTIATING", label: "Đàm phán", color: "bg-orange-100" },
+  { id: "WON", label: "Chốt tour", color: "bg-green-100" },
   { id: "LOST", label: "Thất bại", color: "bg-destructive/10" },
+  { id: "NURTURE", label: "Chăm sóc DH", color: "bg-yellow-50" },
+  { id: "DORMANT", label: "Tạm ngưng", color: "bg-muted" },
 ];
 
 const tempConfig: Record<string, { icon: string; className: string }> = {
@@ -56,6 +62,15 @@ export default function Leads() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
 
+  // Detail dialog
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Lost/Nurture/Dormant dialog
+  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; leadId: string }>({
+    open: false, status: "", leadId: "",
+  });
+
   function applyScopeFilter(q: any) {
     if (scope === "personal" && user?.id) {
       q = q.eq("assigned_to", user.id);
@@ -82,7 +97,7 @@ export default function Leads() {
     queryFn: async () => {
       let q = supabase
         .from("leads")
-        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, assigned_to, customer_id")
+        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
@@ -94,8 +109,8 @@ export default function Leads() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("leads").update({ status }).eq("id", id);
+    mutationFn: async ({ id, status, extra }: { id: string; status: string; extra?: Record<string, any> }) => {
+      const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
@@ -113,6 +128,7 @@ export default function Leads() {
           assigned_sale_id: lead.assigned_to || null,
           type: lead.company_name ? "CORPORATE" : "INDIVIDUAL",
           source: lead.channel || null,
+          tour_interest: lead.interest_type || null,
         })
         .select("id")
         .single();
@@ -123,16 +139,13 @@ export default function Leads() {
         .update({ customer_id: customer.id, status: "WON" })
         .eq("id", lead.id);
       if (leadErr) throw leadErr;
-
       return customer;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Thành công", { description: "Đã chuyển đổi thành khách hàng thành công" });
+      toast.success("Đã chuyển đổi thành khách hàng");
     },
-    onError: (err: any) => {
-      toast.error("Lỗi", { description: err.message });
-    },
+    onError: (err: any) => toast.error("Lỗi", { description: err.message }),
   });
 
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
@@ -140,11 +153,24 @@ export default function Leads() {
   const handleDrop = useCallback(
     (status: LeadStatus) => {
       if (!draggedId) return;
+      // Statuses needing extra input
+      if (status === "LOST" || status === "NURTURE" || status === "DORMANT") {
+        setTransitionDialog({ open: true, status, leadId: draggedId });
+        setDraggedId(null);
+        return;
+      }
       updateStatus.mutate({ id: draggedId, status });
       setDraggedId(null);
     },
     [draggedId, updateStatus]
   );
+
+  const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
+    const extra: Record<string, any> = {};
+    if (data.lost_reason) extra.lost_reason = data.lost_reason;
+    if (data.next_contact_date) extra.follow_up_date = data.next_contact_date;
+    updateStatus.mutate({ id: transitionDialog.leadId, status: transitionDialog.status, extra });
+  };
 
   const formatValue = (v: number | null) => {
     if (!v) return "";
@@ -166,24 +192,32 @@ export default function Leads() {
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
       </div>
-      <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
+      <LostReasonDialog
+        open={transitionDialog.open}
+        onOpenChange={(o) => setTransitionDialog((p) => ({ ...p, open: o }))}
+        targetStatus={transitionDialog.status}
+        onConfirm={handleTransitionConfirm}
+      />
+
+      <div className="flex gap-3 overflow-x-auto pb-4">
         {columns.map((col) => {
           const colLeads = leads.filter((l) => l.status === col.id);
           return (
-            <div key={col.id} className="min-w-[280px] flex-1" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
+            <div key={col.id} className="min-w-[240px] flex-shrink-0" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
               <div className={`rounded-t-lg px-3 py-2 ${col.color}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{col.label}</span>
-                  <Badge variant="secondary" className="text-xs">{colLeads.length}</Badge>
+                  <span className="font-medium text-xs">{col.label}</span>
+                  <Badge variant="secondary" className="text-xs h-5">{colLeads.length}</Badge>
                 </div>
               </div>
-              <div className="bg-muted/30 rounded-b-lg min-h-[400px] p-2 space-y-2">
+              <div className="bg-muted/30 rounded-b-lg min-h-[350px] p-1.5 space-y-1.5">
                 {colLeads.map((lead) => {
                   const temp = tempConfig[lead.temperature ?? "warm"];
                   const followUpStatus = getFollowUpStatus(lead.follow_up_date);
-                  const showConvert = (col.id === "QUOTE_SENT" || col.id === "QUALIFIED" || col.id === "NEGOTIATING") && !lead.customer_id;
+                  const showConvert = col.id === "WON" && !lead.customer_id;
 
                   const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
                     ? "border-l-[3px] border-l-red-500"
@@ -196,51 +230,50 @@ export default function Leads() {
                       key={lead.id}
                       draggable
                       onDragStart={() => handleDragStart(lead.id)}
-                      className={`cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md ${borderClass} ${draggedId === lead.id ? "opacity-50" : ""}`}
+                      onClick={() => { setSelectedLead(lead); setDetailOpen(true); }}
+                      className={`cursor-pointer transition-shadow hover:shadow-md ${borderClass} ${draggedId === lead.id ? "opacity-50" : ""}`}
                     >
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                              {temp && <span className="text-sm" title={lead.temperature ?? ""}>{temp.icon}</span>}
-                              <p className="font-medium text-sm truncate flex-1">{lead.full_name}</p>
+                      <CardContent className="p-2.5">
+                        <div className="flex items-start gap-1.5">
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0 cursor-grab" />
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-1">
+                              {temp && <span className="text-xs">{temp.icon}</span>}
+                              <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
                             </div>
 
                             {lead.destination && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <MapPin className="h-3 w-3 shrink-0" />
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <MapPin className="h-2.5 w-2.5 shrink-0" />
                                 <span className="truncate">{lead.destination}</span>
                               </div>
                             )}
 
                             {lead.phone && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Phone className="h-3 w-3" />{lead.phone}
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <Phone className="h-2.5 w-2.5" />{lead.phone}
                               </div>
                             )}
 
                             {followUpStatus === "overdue" && (
-                              <div className="flex items-center gap-1 text-xs text-destructive font-medium">
-                                <AlertTriangle className="h-3 w-3" />
-                                Quá hạn!
+                              <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
+                                <AlertTriangle className="h-2.5 w-2.5" />Quá hạn!
                               </div>
                             )}
                             {followUpStatus === "today" && (
-                              <div className="flex items-center gap-1 text-xs text-orange-600 font-medium">
-                                <AlertTriangle className="h-3 w-3" />
-                                Follow-up hôm nay!
+                              <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
+                                <AlertTriangle className="h-2.5 w-2.5" />Hôm nay!
                               </div>
                             )}
 
-                            <div className="flex items-center flex-wrap gap-1.5 mt-1">
-                              <Badge variant="outline" className="text-xs">{lead.channel ?? "—"}</Badge>
+                            <div className="flex items-center flex-wrap gap-1">
+                              <Badge variant="outline" className="text-[10px] h-4 px-1">{lead.channel ?? "—"}</Badge>
                               {lead.pax_count && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                  <Users className="h-3 w-3" />{lead.pax_count} khách
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                  <Users className="h-2.5 w-2.5" />{lead.pax_count}
                                 </span>
                               )}
-                              <span className="text-xs font-semibold text-primary ml-auto">
+                              <span className="text-[10px] font-semibold text-primary ml-auto">
                                 {formatValue(lead.budget || lead.expected_value)}
                               </span>
                             </div>
@@ -249,15 +282,14 @@ export default function Leads() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="w-full mt-1 text-xs h-7"
+                                className="w-full mt-1 text-[10px] h-6"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   convertToCustomer.mutate(lead);
                                 }}
                                 disabled={convertToCustomer.isPending}
                               >
-                                <UserPlus className="h-3 w-3 mr-1" />
-                                Chuyển thành KH
+                                <UserPlus className="h-3 w-3 mr-1" />Chuyển thành KH
                               </Button>
                             )}
                           </div>
