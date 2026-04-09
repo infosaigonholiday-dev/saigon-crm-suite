@@ -1,32 +1,47 @@
 
 
-## Fix: Lỗi "leads_channel_check" khi tạo Lead
+## Fix: Sửa constraints + Thêm kiểm tra trùng Lead
 
-### Nguyên nhân
-Bảng `leads` có CHECK constraint chỉ cho phép `channel` là một trong: `ZALO`, `FB`, `GOOGLE`, `REFERRAL`, `WALKIN`, `AGENCY`.
+### Phát hiện thêm lỗi constraint
 
-Form hiện tại gửi sai giá trị (`Facebook`, `Zalo`, `Website`, `Other`) và cho phép bỏ trống (null) — đều vi phạm constraint.
+Ngoài lỗi `channel`, form hiện tại còn **2 lỗi constraint khác** sẽ gây crash:
+
+1. **`interest_type`** — DB chỉ cho phép: `MICE`, `DOMESTIC`, `OUTBOUND`
+   - Form hiện tại dùng Input tự do (VD: "Tour Nhật Bản") → **sẽ lỗi**
+   
+2. **`status`** — DB dùng `QUOTE_SENT` và `NEGOTIATING`
+   - Trang Leads (Kanban) dùng `QUOTED` → **không khớp**, card sẽ không hiện đúng cột
+
+### Thêm kiểm tra trùng lặp
+
+Hiện DB không có ràng buộc unique trên `phone`/`email`. Sẽ thêm kiểm tra phía frontend trước khi insert.
+
+---
 
 ### Thay đổi
 
-#### File: `src/components/leads/LeadFormDialog.tsx`
-- Sửa các `<SelectItem>` trong dropdown "Kênh" cho khớp constraint:
-  - `Facebook` → `FB`
-  - `Zalo` → `ZALO`
-  - `Website` → `GOOGLE`
-  - `Referral` → `REFERRAL`
-  - `Other` → bỏ (hoặc thêm constraint mới nếu cần)
-  - Thêm `WALKIN` và `AGENCY`
-- Đặt giá trị mặc định `channel` trong `initial` state (VD: `"ZALO"`) hoặc thêm validation bắt buộc chọn kênh trước khi submit
+#### 1. File: `src/components/leads/LeadFormDialog.tsx`
 
-| Giá trị DB | Label hiển thị |
-|-------------|---------------|
-| `ZALO` | Zalo |
-| `FB` | Facebook |
-| `GOOGLE` | Google |
-| `REFERRAL` | Giới thiệu |
-| `WALKIN` | Walk-in |
-| `AGENCY` | Đại lý |
+- **Sửa trường "Quan tâm"**: Đổi từ `<Input>` sang `<Select>` với 3 giá trị hợp lệ:
 
-### Không cần migration — chỉ sửa frontend cho khớp DB constraint.
+| Giá trị DB | Label |
+|------------|-------|
+| `MICE` | MICE |
+| `DOMESTIC` | Nội địa |
+| `OUTBOUND` | Outbound |
+
+- **Thêm kiểm tra trùng**: Trước khi insert, query xem đã tồn tại lead nào cùng `phone` hoặc `email` chưa. Nếu trùng → hiện cảnh báo xác nhận ("Lead với SĐT này đã tồn tại. Bạn vẫn muốn tạo?")
+
+#### 2. File: `src/pages/Leads.tsx`
+
+- Sửa cột Kanban cho khớp constraint `status`:
+  - `QUOTED` → `QUOTE_SENT` (label giữ "Đã báo giá")  
+  - Thêm cột `NEGOTIATING` (label "Đang đàm phán")
+
+### File thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `src/components/leads/LeadFormDialog.tsx` | Sửa `interest_type` thành Select, thêm duplicate check |
+| `src/pages/Leads.tsx` | Sửa status columns khớp DB constraint |
 
