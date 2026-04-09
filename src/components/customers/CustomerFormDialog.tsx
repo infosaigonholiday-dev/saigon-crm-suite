@@ -149,6 +149,20 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   
   const qc = useQueryClient();
 
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile-dept", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("department_id")
+        .eq("id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const { data: salesProfiles = [] } = useQuery({
     queryKey: ["profiles-sales"],
     queryFn: async () => {
@@ -234,6 +248,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         issue_faced: form.issue_faced || null,
         result: form.result || null,
         created_by: user?.id || null,
+        department_id: myProfile?.department_id || null,
       } as any);
       if (error) throw error;
     },
