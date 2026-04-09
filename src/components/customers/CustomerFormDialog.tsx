@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissionsContext } from "@/contexts/PermissionsContext";
 import { toast } from "sonner";
 import { format, parse, isValid, differenceInDays, setYear } from "date-fns";
 import {
@@ -145,9 +146,21 @@ function DateInput({ value, textValue, onChange, onTextChange, label, badge, dis
 export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const { getScope } = usePermissionsContext();
   
   const qc = useQueryClient();
+
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isGDKDOrManager = userRole === "GDKD" || userRole === "MANAGER";
+  const isSaleOrIntern = (userRole ?? "").startsWith("SALE_") || (userRole ?? "").startsWith("INTERN_");
+
+  // Auto-fill assigned_sale_id for SALE/INTERN roles
+  useEffect(() => {
+    if (isSaleOrIntern && user?.id && !form.assigned_sale_id) {
+      setForm((p) => ({ ...p, assigned_sale_id: user.id }));
+    }
+  }, [isSaleOrIntern, user?.id]);
 
   const { data: myProfile } = useQuery({
     queryKey: ["my-profile-dept", user?.id],
@@ -164,17 +177,23 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   });
 
   const { data: salesProfiles = [] } = useQuery({
-    queryKey: ["profiles-sales"],
+    queryKey: ["profiles-sales", isAdmin, isGDKDOrManager, myProfile?.department_id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("profiles")
         .select("id, full_name, role")
-        .in("role", ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MANAGER", "DIEUHAN"])
+        .in("role", ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MANAGER", "DIEUHAN", "INTERN_SALE_DOMESTIC", "INTERN_SALE_OUTBOUND", "INTERN_SALE_MICE", "INTERN_SALE_INBOUND"])
         .eq("is_active", true)
         .order("full_name");
+      // GDKD/MANAGER: only show sales in same department
+      if (isGDKDOrManager && myProfile?.department_id) {
+        q = q.eq("department_id", myProfile.department_id);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+    enabled: isAdmin || (isGDKDOrManager && !!myProfile?.department_id) || isSaleOrIntern,
   });
 
   const { data: leadSources = [] } = useQuery({

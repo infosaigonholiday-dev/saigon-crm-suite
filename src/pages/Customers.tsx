@@ -96,7 +96,7 @@ export default function Customers() {
     queryFn: async () => {
       let q = supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id")
+        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id, department_id, departments(name)")
         .order("created_at", { ascending: false });
       q = applyScopeFilter(q);
       if (filter !== "ALL") q = q.eq("segment", filter);
@@ -204,6 +204,7 @@ export default function Customers() {
                   <TableHead>Tên khách hàng</TableHead>
                   <TableHead>Điện thoại</TableHead>
                   <TableHead>Phân khúc</TableHead>
+                  <TableHead>Phòng ban</TableHead>
                   <TableHead>Nguồn</TableHead>
                   <TableHead>Sale phụ trách</TableHead>
                   <TableHead className="text-right">Bookings</TableHead>
@@ -233,6 +234,7 @@ export default function Customers() {
                           {c.segment ?? "NEW"}
                         </Badge>
                       </TableCell>
+                      <TableCell>{(c as any).departments?.name ?? "—"}</TableCell>
                       <TableCell>{(c as any).source ?? "—"}</TableCell>
                       <TableCell>{c.assigned_sale_id ? (saleMap[c.assigned_sale_id] ?? "—") : "—"}</TableCell>
                       <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
@@ -242,7 +244,7 @@ export default function Customers() {
                   );
                 })}
                 {customers.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
