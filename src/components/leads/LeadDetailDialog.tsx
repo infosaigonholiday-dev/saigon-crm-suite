@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, Mail, Building2, MapPin, Calendar, Users, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import CareHistoryTab from "./CareHistoryTab";
+import AuditHistoryTab from "./AuditHistoryTab";
 
 interface Props {
   open: boolean;
@@ -60,6 +61,7 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
           <TabsList>
             <TabsTrigger value="info">Thông tin</TabsTrigger>
             <TabsTrigger value="history">Lịch sử chăm sóc</TabsTrigger>
+            <TabsTrigger value="audit">Lịch sử sửa đổi</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-3">
@@ -119,6 +121,10 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
 
           <TabsContent value="history" className="mt-3">
             <CareHistoryTab leadId={lead.id} />
+          </TabsContent>
+
+          <TabsContent value="audit" className="mt-3">
+            <AuditHistoryTab tableName="leads" recordId={lead.id} />
           </TabsContent>
         </Tabs>
       </DialogContent>

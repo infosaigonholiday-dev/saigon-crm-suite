@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift } from "lucide-react";
+import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
 
 function fmt(n: number | null) {
   if (!n) return "0";
@@ -176,6 +177,7 @@ export default function CustomerDetail() {
           <TabsTrigger value="bookings">Bookings ({bookings.length})</TabsTrigger>
           <TabsTrigger value="payments">Thanh toán ({payments.length})</TabsTrigger>
           <TabsTrigger value="chart">Xu hướng</TabsTrigger>
+          <TabsTrigger value="audit">Lịch sử sửa đổi</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -354,6 +356,18 @@ export default function CustomerDetail() {
                   </BarChart>
                 </ChartContainer>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Audit Tab */}
+        <TabsContent value="audit">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lịch sử sửa đổi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AuditHistoryTab tableName="customers" recordId={id!} />
             </CardContent>
           </Card>
         </TabsContent>
