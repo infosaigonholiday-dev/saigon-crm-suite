@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -148,6 +148,13 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { user, userRole } = useAuth();
   const { getScope } = usePermissionsContext();
+
+  // Auto-fill assigned_sale_id for SALE/INTERN roles
+  useEffect(() => {
+    if (isSaleOrIntern && user?.id && !form.assigned_sale_id) {
+      setForm((p) => ({ ...p, assigned_sale_id: user.id }));
+    }
+  }, [isSaleOrIntern, user?.id]);
   
   const qc = useQueryClient();
 
