@@ -19,7 +19,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2, Pencil } from "lucide-react";
+import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2, Pencil, ArrowRightLeft } from "lucide-react";
+import { DataHandoverDialog } from "./DataHandoverDialog";
 
 const ROLES: { value: string; label: string }[] = [
   { value: "ADMIN", label: "Quản trị viên" },
@@ -86,6 +87,8 @@ export function SettingsAccountsTab() {
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
   const [editData, setEditData] = useState({ department_id: "", role: "" });
   const [saving, setSaving] = useState(false);
+  const [handoverProfile, setHandoverProfile] = useState<Profile | null>(null);
+  const [handoverOpen, setHandoverOpen] = useState(false);
 
   useEffect(() => {
     loadProfiles();
@@ -371,13 +374,20 @@ export function SettingsAccountsTab() {
                         variant="ghost"
                         size="icon"
                         disabled={togglingId === p.id}
-                        onClick={() => handleToggleActive(p)}
-                        title={p.is_active ? "Vô hiệu hóa" : "Kích hoạt"}
+                        onClick={() => {
+                          if (p.is_active) {
+                            setHandoverProfile(p);
+                            setHandoverOpen(true);
+                          } else {
+                            handleToggleActive(p);
+                          }
+                        }}
+                        title={p.is_active ? "Bàn giao & Vô hiệu hóa" : "Kích hoạt"}
                       >
                         {togglingId === p.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : p.is_active ? (
-                          <ShieldOff className="h-4 w-4 text-destructive" />
+                          <ArrowRightLeft className="h-4 w-4 text-destructive" />
                         ) : (
                           <ShieldCheck className="h-4 w-4 text-primary" />
                         )}
@@ -531,6 +541,13 @@ export function SettingsAccountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DataHandoverDialog
+        open={handoverOpen}
+        onOpenChange={setHandoverOpen}
+        profile={handoverProfile}
+        onComplete={loadProfiles}
+      />
     </div>
   );
 }

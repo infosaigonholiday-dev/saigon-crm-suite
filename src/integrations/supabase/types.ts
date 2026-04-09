@@ -215,6 +215,8 @@ export type Database = {
       audit_logs: {
         Row: {
           action: string
+          change_summary: string | null
+          changed_fields: string[] | null
           created_at: string | null
           id: string
           ip_address: string | null
@@ -222,10 +224,14 @@ export type Database = {
           old_data: Json | null
           record_id: string | null
           table_name: string | null
+          user_full_name: string | null
           user_id: string | null
+          user_role: string | null
         }
         Insert: {
           action: string
+          change_summary?: string | null
+          changed_fields?: string[] | null
           created_at?: string | null
           id?: string
           ip_address?: string | null
@@ -233,10 +239,14 @@ export type Database = {
           old_data?: Json | null
           record_id?: string | null
           table_name?: string | null
+          user_full_name?: string | null
           user_id?: string | null
+          user_role?: string | null
         }
         Update: {
           action?: string
+          change_summary?: string | null
+          changed_fields?: string[] | null
           created_at?: string | null
           id?: string
           ip_address?: string | null
@@ -244,7 +254,9 @@ export type Database = {
           old_data?: Json | null
           record_id?: string | null
           table_name?: string | null
+          user_full_name?: string | null
           user_id?: string | null
+          user_role?: string | null
         }
         Relationships: [
           {
@@ -2937,6 +2949,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          deactivated_at: string | null
+          deactivated_reason: string | null
           department_id: string | null
           email: string
           employee_id: string | null
@@ -2952,6 +2966,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_reason?: string | null
           department_id?: string | null
           email: string
           employee_id?: string | null
@@ -2967,6 +2983,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_reason?: string | null
           department_id?: string | null
           email?: string
           employee_id?: string | null

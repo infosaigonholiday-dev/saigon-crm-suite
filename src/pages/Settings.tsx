@@ -64,7 +64,7 @@ export default function Settings() {
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
     showPermissions && { value: "permissions", label: "Phân quyền" },
-    showAuditLog && { value: "audit", label: "Nhật ký xóa" },
+    showAuditLog && { value: "audit", label: "Nhật ký thay đổi" },
   ].filter(Boolean) as { value: string; label: string }[];
 
   const defaultTab = tabs[0]?.value || "roles";
