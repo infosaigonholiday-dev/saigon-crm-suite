@@ -233,12 +233,11 @@ export default function RawContacts() {
         phone: contact.phone,
         email: contact.email,
         company_name: contact.company_name,
-        source: contact.source,
         assigned_to: contact.assigned_to || user!.id,
         department_id: contact.department_id,
         status: "NEW",
         temperature: "warm",
-      }).select("id").single();
+      } as any).select("id").single();
       if (leadErr) throw leadErr;
 
       const { error: updateErr } = await supabase.from("raw_contacts").update({
