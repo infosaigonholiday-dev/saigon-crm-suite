@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -56,6 +56,7 @@ export function AppSidebar() {
 
   const crmItems: MenuItem[] = [
     { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
+    { title: "Kho Data", url: "/kho-data", icon: Database, moduleKey: "raw_contacts" },
     { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
     { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
