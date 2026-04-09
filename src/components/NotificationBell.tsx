@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Bell, Cake, Building2, Phone, CreditCard, FileText } from "lucide-react";
+import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -14,6 +14,9 @@ const typeIcons: Record<string, typeof Cake> = {
   company_anniversary: Building2,
   follow_up: Phone,
   payment_due: CreditCard,
+  LEAD_FORGOTTEN: AlertTriangle,
+  FOLLOW_UP_OVERDUE: Clock,
+  TRAVEL_DATE_NEAR: Plane,
 };
 
 export function NotificationBell() {

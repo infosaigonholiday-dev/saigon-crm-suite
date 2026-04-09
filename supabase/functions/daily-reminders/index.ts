@@ -151,6 +151,107 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== 5. Lead bị bỏ quên > 7 ngày =====
+    const { data: forgottenLeads } = await supabase
+      .from("leads")
+      .select("id, full_name, assigned_to, last_contact_at, department_id")
+      .not("assigned_to", "is", null)
+      .not("status", "in", "(WON,LOST,DORMANT)")
+      .not("last_contact_at", "is", null);
+
+    if (forgottenLeads) {
+      for (const l of forgottenLeads) {
+        if (!l.assigned_to || !l.last_contact_at) continue;
+        const daysSilent = Math.floor((today.getTime() - new Date(l.last_contact_at).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSilent < 7) continue;
+
+        // Notify the assigned sale
+        notifications.push({
+          user_id: l.assigned_to,
+          type: "LEAD_FORGOTTEN",
+          title: `⚠️ Lead bị bỏ quên`,
+          message: `Lead "${l.full_name}" đã ${daysSilent} ngày chưa được liên hệ. Hãy chăm sóc ngay!`,
+          entity_type: "lead",
+          entity_id: l.id,
+        });
+
+        // If > 14 days, also notify leaders
+        if (daysSilent > 14 && l.department_id) {
+          const { data: leaders } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("department_id", l.department_id)
+            .in("role", ["GDKD", "MANAGER"])
+            .eq("is_active", true);
+
+          if (leaders) {
+            for (const leader of leaders) {
+              notifications.push({
+                user_id: leader.id,
+                type: "LEAD_FORGOTTEN",
+                title: `⚠️ Lead bỏ quên ${daysSilent} ngày`,
+                message: `Lead "${l.full_name}" đã ${daysSilent} ngày không liên hệ.`,
+                entity_type: "lead",
+                entity_id: l.id,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // ===== 6. Follow-up quá hạn =====
+    const { data: overdueLeads } = await supabase
+      .from("leads")
+      .select("id, full_name, assigned_to, follow_up_date")
+      .not("assigned_to", "is", null)
+      .not("status", "in", "(WON,LOST,DORMANT)")
+      .lt("follow_up_date", todayStr)
+      .not("follow_up_date", "is", null);
+
+    if (overdueLeads) {
+      for (const l of overdueLeads) {
+        if (!l.assigned_to || !l.follow_up_date) continue;
+        const daysOverdue = Math.floor((today.getTime() - new Date(l.follow_up_date).getTime()) / (1000 * 60 * 60 * 24));
+        notifications.push({
+          user_id: l.assigned_to,
+          type: "FOLLOW_UP_OVERDUE",
+          title: `🔴 Quá hạn follow-up!`,
+          message: `Lead "${l.full_name}" đã quá hạn follow-up ${daysOverdue} ngày!`,
+          entity_type: "lead",
+          entity_id: l.id,
+        });
+      }
+    }
+
+    // ===== 7. Sắp đến ngày đi tour (≤ 60 ngày) =====
+    const futureDate = new Date(today);
+    futureDate.setDate(futureDate.getDate() + 60);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    const { data: travelLeads } = await supabase
+      .from("leads")
+      .select("id, full_name, assigned_to, planned_travel_date")
+      .not("assigned_to", "is", null)
+      .not("status", "in", "(WON,LOST)")
+      .gte("planned_travel_date", todayStr)
+      .lte("planned_travel_date", futureDateStr);
+
+    if (travelLeads) {
+      for (const l of travelLeads) {
+        if (!l.assigned_to || !l.planned_travel_date) continue;
+        const daysLeft = Math.floor((new Date(l.planned_travel_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        notifications.push({
+          user_id: l.assigned_to,
+          type: "TRAVEL_DATE_NEAR",
+          title: `✈️ KH sắp đi tour`,
+          message: `Lead "${l.full_name}" dự kiến đi tour ngày ${l.planned_travel_date} (còn ${daysLeft} ngày). Hãy liên hệ chốt!`,
+          entity_type: "lead",
+          entity_id: l.id,
+        });
+      }
+    }
+
     // ===== Deduplicate & Insert =====
     let sent = 0;
     for (const n of notifications) {
