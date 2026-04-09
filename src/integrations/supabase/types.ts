@@ -2195,8 +2195,13 @@ export type Database = {
           channel: string | null
           company_address: string | null
           company_name: string | null
+          company_size: number | null
+          contact_count: number | null
+          contact_person: string | null
+          contact_position: string | null
           contact_status: string | null
           created_at: string | null
+          created_by: string | null
           customer_id: string | null
           department_id: string | null
           destination: string | null
@@ -2212,10 +2217,13 @@ export type Database = {
           next_followup_at: string | null
           pax_count: number | null
           phone: string | null
+          planned_travel_date: string | null
           probability_pct: number | null
+          reminder_date: string | null
           result: string | null
           source_id: string | null
           status: string | null
+          tax_code: string | null
           temperature: string | null
           tour_interest: string | null
         }
@@ -2228,8 +2236,13 @@ export type Database = {
           channel?: string | null
           company_address?: string | null
           company_name?: string | null
+          company_size?: number | null
+          contact_count?: number | null
+          contact_person?: string | null
+          contact_position?: string | null
           contact_status?: string | null
           created_at?: string | null
+          created_by?: string | null
           customer_id?: string | null
           department_id?: string | null
           destination?: string | null
@@ -2245,10 +2258,13 @@ export type Database = {
           next_followup_at?: string | null
           pax_count?: number | null
           phone?: string | null
+          planned_travel_date?: string | null
           probability_pct?: number | null
+          reminder_date?: string | null
           result?: string | null
           source_id?: string | null
           status?: string | null
+          tax_code?: string | null
           temperature?: string | null
           tour_interest?: string | null
         }
@@ -2261,8 +2277,13 @@ export type Database = {
           channel?: string | null
           company_address?: string | null
           company_name?: string | null
+          company_size?: number | null
+          contact_count?: number | null
+          contact_person?: string | null
+          contact_position?: string | null
           contact_status?: string | null
           created_at?: string | null
+          created_by?: string | null
           customer_id?: string | null
           department_id?: string | null
           destination?: string | null
@@ -2278,10 +2299,13 @@ export type Database = {
           next_followup_at?: string | null
           pax_count?: number | null
           phone?: string | null
+          planned_travel_date?: string | null
           probability_pct?: number | null
+          reminder_date?: string | null
           result?: string | null
           source_id?: string | null
           status?: string | null
+          tax_code?: string | null
           temperature?: string | null
           tour_interest?: string | null
         }
@@ -2289,6 +2313,13 @@ export type Database = {
           {
             foreignKeyName: "leads_assigned_to_fkey"
             columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
