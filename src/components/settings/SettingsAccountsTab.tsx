@@ -541,6 +541,13 @@ export function SettingsAccountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DataHandoverDialog
+        open={handoverOpen}
+        onOpenChange={setHandoverOpen}
+        profile={handoverProfile}
+        onComplete={loadProfiles}
+      />
     </div>
   );
 }
