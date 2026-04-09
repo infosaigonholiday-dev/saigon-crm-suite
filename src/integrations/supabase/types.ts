@@ -2155,6 +2155,60 @@ export type Database = {
           },
         ]
       }
+      lead_care_history: {
+        Row: {
+          contact_method: string
+          contacted_at: string
+          contacted_by: string
+          created_at: string | null
+          id: string
+          lead_id: string
+          next_action: string | null
+          next_contact_date: string | null
+          note: string | null
+          result: string
+        }
+        Insert: {
+          contact_method?: string
+          contacted_at?: string
+          contacted_by?: string
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          next_action?: string | null
+          next_contact_date?: string | null
+          note?: string | null
+          result?: string
+        }
+        Update: {
+          contact_method?: string
+          contacted_at?: string
+          contacted_by?: string
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          next_action?: string | null
+          next_contact_date?: string | null
+          note?: string | null
+          result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_care_history_contacted_by_fkey"
+            columns: ["contacted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_care_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_sources: {
         Row: {
           channel_type: string | null
