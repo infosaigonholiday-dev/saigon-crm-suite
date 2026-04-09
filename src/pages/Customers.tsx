@@ -61,7 +61,7 @@ export default function Customers() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { hasPermission, getScope } = usePermissions();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   const scope = getScope("customers");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
@@ -165,7 +165,7 @@ export default function Customers() {
               </Tooltip>
             </TooltipProvider>
           )}
-          {hasPermission("customers", "create") && (
+          {hasPermission("customers", "create") && userRole === "ADMIN" && (
             <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm khách hàng</Button>
           )}
         </div>

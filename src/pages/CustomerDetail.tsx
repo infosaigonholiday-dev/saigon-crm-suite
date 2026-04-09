@@ -12,8 +12,9 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift } from "lucide-react";
+import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink } from "lucide-react";
 import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
+import { Link } from "react-router-dom";
 
 function fmt(n: number | null) {
   if (!n) return "0";
@@ -79,6 +80,22 @@ export default function CustomerDetail() {
         .eq("customer_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Query lead origin
+  const { data: originLead } = useQuery({
+    queryKey: ["customer-origin-lead", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, created_at")
+        .eq("converted_customer_id" as any, id!)
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
       return data;
     },
     enabled: !!id,
