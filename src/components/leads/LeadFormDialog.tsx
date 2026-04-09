@@ -24,6 +24,40 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+const leadChannelOptions = [
+  { value: "ZALO", label: "Zalo" },
+  { value: "FB", label: "Facebook" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "REFERRAL", label: "Giới thiệu" },
+  { value: "WALKIN", label: "Walk-in" },
+  { value: "AGENCY", label: "Đại lý" },
+] as const;
+
+type LeadChannel = (typeof leadChannelOptions)[number]["value"];
+
+const legacyLeadChannelMap: Record<string, LeadChannel> = {
+  ZALO: "ZALO",
+  FACEBOOK: "FB",
+  FB: "FB",
+  GOOGLE: "GOOGLE",
+  WEBSITE: "GOOGLE",
+  REFERRAL: "REFERRAL",
+  "GIỚI THIỆU": "REFERRAL",
+  WALKIN: "WALKIN",
+  "WALK-IN": "WALKIN",
+  AGENCY: "AGENCY",
+  "ĐẠI LÝ": "AGENCY",
+};
+
+function normalizeLeadChannel(value: string): LeadChannel | null {
+  const normalized = value.trim().toUpperCase();
+  if (!normalized) return null;
+
+  return leadChannelOptions.some((option) => option.value === normalized)
+    ? (normalized as LeadChannel)
+    : legacyLeadChannelMap[normalized] ?? null;
+}
+
 const initial = {
   full_name: "",
   phone: "",
@@ -61,7 +95,10 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
+    const normalizedChannel = normalizeLeadChannel(form.channel);
+
     if (!form.full_name.trim()) e.full_name = "Bắt buộc";
+    if (!normalizedChannel) e.channel = "Kênh không hợp lệ";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Email không hợp lệ";
     if (form.phone && !/^[0-9+\-\s()]{8,15}$/.test(form.phone))
@@ -74,11 +111,13 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const normalizedChannel = normalizeLeadChannel(form.channel) ?? "ZALO";
+
       const { error } = await supabase.from("leads").insert({
         full_name: form.full_name.trim(),
         phone: form.phone || null,
         email: form.email || null,
-        channel: form.channel || null,
+        channel: normalizedChannel,
         interest_type: form.interest_type || null,
         company_name: form.company_name || null,
         company_address: (form as any).company_address || null,
@@ -136,14 +175,12 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
               <Select value={form.channel} onValueChange={(v) => set("channel", v)}>
                 <SelectTrigger><SelectValue placeholder="Chọn kênh" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ZALO">Zalo</SelectItem>
-                  <SelectItem value="FB">Facebook</SelectItem>
-                  <SelectItem value="GOOGLE">Google</SelectItem>
-                  <SelectItem value="REFERRAL">Giới thiệu</SelectItem>
-                  <SelectItem value="WALKIN">Walk-in</SelectItem>
-                  <SelectItem value="AGENCY">Đại lý</SelectItem>
+                  {leadChannelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {errors.channel && <p className="text-xs text-destructive">{errors.channel}</p>}
             </div>
           </div>
 
