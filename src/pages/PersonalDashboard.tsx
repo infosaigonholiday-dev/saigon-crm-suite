@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake, Circle, PhoneCall, Eye } from "lucide-react";
+import { TrendingUp, Users, ClipboardList, CalendarDays, Gift, Building2, Cake, Circle, PhoneCall, Eye, Database } from "lucide-react";
 import { KpiProgressCard } from "@/components/kpi/KpiProgressCard";
 import { usePersonalDashboardData } from "@/hooks/useDashboardData";
 import { useQuery } from "@tanstack/react-query";
@@ -107,6 +107,19 @@ export default function PersonalDashboard() {
     enabled: !!user?.id,
   });
 
+  const { data: rawContactStats } = useQuery({
+    queryKey: ["raw-contact-today", user?.id],
+    queryFn: async () => {
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const todayISO = todayStart.toISOString();
+      const { data: newData } = await supabase.from("raw_contacts").select("id").eq("created_by", user!.id).gte("created_at", todayISO);
+      const { data: calledData } = await supabase.from("raw_contacts").select("id").eq("created_by", user!.id).gte("last_called_at", todayISO);
+      const { data: convertedData } = await supabase.from("raw_contacts").select("id").eq("created_by", user!.id).eq("status", "converted_to_lead").gte("created_at", todayISO);
+      return { newCount: newData?.length || 0, calledCount: calledData?.length || 0, convertedCount: convertedData?.length || 0 };
+    },
+    enabled: !!user?.id,
+  });
+
   const { data: pipelineCounts } = useQuery({
     queryKey: ["pipeline-funnel", user?.id],
     queryFn: async () => {
@@ -158,6 +171,34 @@ export default function PersonalDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Raw Contact Stats */}
+      {rawContactStats && (rawContactStats.newCount > 0 || rawContactStats.calledCount > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4 text-primary" />
+              Data hôm nay
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawContactStats.newCount}</p>
+                <p className="text-xs text-muted-foreground">Data mới nhập</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawContactStats.calledCount}</p>
+                <p className="text-xs text-muted-foreground">Cuộc gọi</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-bold">{rawContactStats.convertedCount}</p>
+                <p className="text-xs text-muted-foreground">Chuyển Lead</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
