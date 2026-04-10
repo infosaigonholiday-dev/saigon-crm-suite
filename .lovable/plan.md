@@ -1,50 +1,42 @@
 
-Vấn đề đã khá rõ:
 
-- Ảnh lỗi cho thấy email reset đang dẫn tới `localhost:3000`.
-- Trên iPhone/máy người dùng, `localhost` luôn trỏ về chính điện thoại đó, không phải server/app của công ty, nên chắc chắn ra `ERR_CONNECTION_FAILED`.
-- Trong code hiện có 2 chỗ đang tạo link reset bằng `window.location.origin`:
-  - `src/pages/Login.tsx`
-  - `src/components/employees/EmployeeRoleTab.tsx`
-- Điều này nghĩa là: ai bấm gửi email reset ở môi trường nào thì email sẽ mang domain của môi trường đó. Nếu gửi từ local/dev thì link sẽ thành `localhost:3000`.
-- Edge function `manage-employee-accounts` lại đang hardcode `https://app.saigonholiday.vn/reset-password`, nên hiện tại luồng reset bị không đồng nhất.
-- `auth-email-hook` không phải gốc lỗi; nó chỉ gửi lại `payload.data.url` mà Supabase cung cấp.
+## Kế hoạch: Fix lỗi vô hiệu hóa orphan profile + hỗ trợ xóa/tạo lại
 
-Kế hoạch fix:
+### Nguyên nhân gốc
 
-1. Chuẩn hóa domain reset password
-- Tạo 1 nguồn duy nhất cho auth redirect, ví dụ `VITE_AUTH_REDIRECT_URL` hoặc helper `getAuthRedirectUrl()`.
-- Mặc định production dùng `https://app.saigonholiday.vn/reset-password`.
-- Không để từng màn tự lấy `window.location.origin` nữa.
+Profile "gia bao" (id `765a6b58...`, email `operator1.saigonholiday@gmail.com`) tồn tại trong bảng `profiles` nhưng **không có auth user tương ứng**. Đây là profile mồ côi (orphan).
 
-2. Sửa các điểm đang gửi reset email
-- `src/pages/Login.tsx`: thay `window.location.origin` bằng URL chuẩn.
-- `src/components/employees/EmployeeRoleTab.tsx`: thay tương tự.
-- Nếu cần, giữ fallback cho dev nội bộ nhưng phải có guard rõ ràng, tránh gửi email thật với link localhost.
+- Khi bấm "Vô hiệu hóa", Edge Function gọi `auth.admin.updateUserById()` → fail vì user không tồn tại trong auth.
+- Không có error handling cho trường hợp này.
 
-3. Đồng bộ luồng admin reset
-- Kiểm tra `supabase/functions/manage-employee-accounts/index.ts`.
-- Hoặc giữ `app.saigonholiday.vn` làm chuẩn, hoặc đưa edge function dùng cùng một cấu hình redirect thống nhất để sau này không lệch giữa “Quên mật khẩu” và “Admin reset”.
+### Giải pháp
 
-4. Kiểm tra cấu hình Supabase
-- Xác nhận URL `https://app.saigonholiday.vn/reset-password` đã nằm trong Auth redirect allowlist/site URL.
-- Nếu còn dùng preview để test reset, thêm preview URL đúng chuẩn; tuyệt đối không dùng localhost cho email thực tế.
+#### 1. Sửa Edge Function `manage-employee-accounts` — action `deactivate`
 
-5. Cách xử lý tạm thời ngay bây giờ
-- Khi chưa sửa code, chỉ gửi email reset từ bản production.
-- Nếu lỡ nhận email có link `localhost:3000`, có thể thay phần domain đó bằng `https://app.saigonholiday.vn` rồi mở lại, miễn là giữ nguyên path/query phía sau.
+Thêm kiểm tra auth user tồn tại trước khi ban. Nếu không tồn tại, chỉ update `profiles.is_active = false` và trả về thành công kèm cảnh báo:
 
-6. Hướng dẫn vận hành về sau
-- Không dùng bản local để gửi email reset cho người dùng thật.
-- Mọi luồng email auth phải dùng 1 domain cố định.
-- Khi đổi domain chính thức, chỉ sửa 1 biến cấu hình thay vì sửa từng file.
-- Sau khi fix, test 3 luồng:
-  - Quên mật khẩu từ trang Login
-  - Admin gửi reset từ trang Nhân sự
-  - Mở link trên điện thoại thật
+```text
+deactivate:
+  1. Kiểm tra auth user bằng getUserById(user_id)
+  2. Nếu có → ban + set is_active = false (giữ nguyên)
+  3. Nếu không có → chỉ set is_active = false, trả về warning "Auth user không tồn tại, chỉ vô hiệu hóa profile"
+```
 
-File dự kiến chỉnh:
-- `src/pages/Login.tsx`
-- `src/components/employees/EmployeeRoleTab.tsx`
-- có thể thêm `src/lib/authRedirect.ts`
-- có thể chỉnh thêm `supabase/functions/manage-employee-accounts/index.ts` để đồng bộ cấu hình
+#### 2. Sửa `DataHandoverDialog.tsx` — xử lý lỗi tốt hơn
+
+Hiện tại nếu Edge Function trả lỗi, toast chỉ hiện message chung. Giữ nguyên, vì sau khi fix Edge Function sẽ không lỗi nữa.
+
+#### 3. Xử lý tạm ngay bây giờ
+
+Dùng action `cleanup_orphans` (đã có sẵn trong Edge Function) để xóa profile orphan, hoặc admin có thể:
+- Gọi `cleanup_orphans` từ app
+- Sau đó tạo lại tài khoản mới cho email `operator1.saigonholiday@gmail.com`
+
+**Trả lời: Có, xóa profile orphan rồi tạo lại tài khoản trên cùng email hoàn toàn được.**
+
+### File thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `supabase/functions/manage-employee-accounts/index.ts` | Action `deactivate`: thêm kiểm tra auth user trước khi ban, fallback graceful |
+
