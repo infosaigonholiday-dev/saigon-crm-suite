@@ -64,6 +64,7 @@ export default function Leads() {
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [page, setPage] = useState(0);
 
   // Detail dialog
