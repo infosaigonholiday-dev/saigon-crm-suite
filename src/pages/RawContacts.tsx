@@ -93,6 +93,8 @@ export default function RawContacts() {
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
   const [checkingPhone, setCheckingPhone] = useState(false);
 
+  const [importOpen, setImportOpen] = useState(false);
+
   // Convert dialog state
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<RawContact | null>(null);
