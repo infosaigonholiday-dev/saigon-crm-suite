@@ -457,9 +457,14 @@ export default function RawContacts() {
           <p className="text-muted-foreground text-sm">Quản lý data thô telesale</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Thêm data
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Import Excel
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Thêm data
+            </Button>
+          </div>
         )}
       </div>
 
