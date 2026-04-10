@@ -52,7 +52,7 @@ export default function Settings() {
   const isHR = HR_ROLES.includes(userRole || "");
 
   // Determine visible tabs
-  const showAccounts = isAdmin;
+  const showAccounts = ACCOUNT_MANAGER_ROLES.includes(userRole || "");
   const showDepartments = isAdmin || isHR;
   const showLevels = isAdmin || isHR;
   const showRoles = true; // anyone with settings.view

@@ -67,7 +67,8 @@ interface UnlinkedEmployee {
 }
 
 export function SettingsAccountsTab() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(userRole || "");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [unlinkedEmployees, setUnlinkedEmployees] = useState<UnlinkedEmployee[]>([]);
