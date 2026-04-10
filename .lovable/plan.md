@@ -1,63 +1,50 @@
 
-## Kế hoạch: Tinh gọn Kanban + Thêm nút Xóa cho ADMIN
+Vấn đề đã khá rõ:
 
-### 1. Gộp cột Kanban từ 11 → 5
+- Ảnh lỗi cho thấy email reset đang dẫn tới `localhost:3000`.
+- Trên iPhone/máy người dùng, `localhost` luôn trỏ về chính điện thoại đó, không phải server/app của công ty, nên chắc chắn ra `ERR_CONNECTION_FAILED`.
+- Trong code hiện có 2 chỗ đang tạo link reset bằng `window.location.origin`:
+  - `src/pages/Login.tsx`
+  - `src/components/employees/EmployeeRoleTab.tsx`
+- Điều này nghĩa là: ai bấm gửi email reset ở môi trường nào thì email sẽ mang domain của môi trường đó. Nếu gửi từ local/dev thì link sẽ thành `localhost:3000`.
+- Edge function `manage-employee-accounts` lại đang hardcode `https://app.saigonholiday.vn/reset-password`, nên hiện tại luồng reset bị không đồng nhất.
+- `auth-email-hook` không phải gốc lỗi; nó chỉ gửi lại `payload.data.url` mà Supabase cung cấp.
 
-**File: `src/pages/Leads.tsx`**
+Kế hoạch fix:
 
-Thay mảng `columns` (11 cột) bằng 5 cột gộp:
+1. Chuẩn hóa domain reset password
+- Tạo 1 nguồn duy nhất cho auth redirect, ví dụ `VITE_AUTH_REDIRECT_URL` hoặc helper `getAuthRedirectUrl()`.
+- Mặc định production dùng `https://app.saigonholiday.vn/reset-password`.
+- Không để từng màn tự lấy `window.location.origin` nữa.
 
-```text
-kanbanColumns = [
-  { id: "NEW_GROUP",   label: "Mới",              statuses: ["NEW","NO_ANSWER","CONTACTED"],     color: "bg-secondary" },
-  { id: "INTEREST",    label: "Quan tâm",          statuses: ["INTERESTED","PROFILE_SENT"],       color: "bg-green-50" },
-  { id: "QUOTING",     label: "Đang báo giá",      statuses: ["QUOTE_SENT","NEGOTIATING"],        color: "bg-blue-100" },
-  { id: "WON",         label: "Thành công",         statuses: ["WON"],                             color: "bg-green-100" },
-  { id: "LOST_GROUP",  label: "Không thành công",   statuses: ["LOST","DORMANT","NURTURE"],        color: "bg-destructive/10" },
-]
-```
+2. Sửa các điểm đang gửi reset email
+- `src/pages/Login.tsx`: thay `window.location.origin` bằng URL chuẩn.
+- `src/components/employees/EmployeeRoleTab.tsx`: thay tương tự.
+- Nếu cần, giữ fallback cho dev nội bộ nhưng phải có guard rõ ràng, tránh gửi email thật với link localhost.
 
-- Filter leads theo `statuses.includes(lead.status)` thay vì `=== col.id`
-- Khi drop vào cột gộp, chuyển sang trạng thái đầu tiên của nhóm (NEW, INTERESTED, QUOTE_SENT, WON, LOST) — riêng LOST/NURTURE/DORMANT vẫn mở dialog hỏi lý do
-- Giữ nguyên mảng `columns` cũ (11 status) cho dropdown đổi trạng thái chi tiết trong menu 3 chấm
+3. Đồng bộ luồng admin reset
+- Kiểm tra `supabase/functions/manage-employee-accounts/index.ts`.
+- Hoặc giữ `app.saigonholiday.vn` làm chuẩn, hoặc đưa edge function dùng cùng một cấu hình redirect thống nhất để sau này không lệch giữa “Quên mật khẩu” và “Admin reset”.
 
-**Badge trạng thái chi tiết trên card:**
-- Thêm 1 `<Badge>` nhỏ hiện label trạng thái gốc (ví dụ "KBM", "Đã liên hệ") khi status khác status mặc định của nhóm
-- Tạo map `statusLabelMap` từ mảng `columns` cũ để tra cứu label
+4. Kiểm tra cấu hình Supabase
+- Xác nhận URL `https://app.saigonholiday.vn/reset-password` đã nằm trong Auth redirect allowlist/site URL.
+- Nếu còn dùng preview để test reset, thêm preview URL đúng chuẩn; tuyệt đối không dùng localhost cho email thực tế.
 
-### 2. Thêm nút Xóa cho ADMIN
+5. Cách xử lý tạm thời ngay bây giờ
+- Khi chưa sửa code, chỉ gửi email reset từ bản production.
+- Nếu lỡ nhận email có link `localhost:3000`, có thể thay phần domain đó bằng `https://app.saigonholiday.vn` rồi mở lại, miễn là giữ nguyên path/query phía sau.
 
-**File: `src/pages/Leads.tsx` — Menu 3 chấm trên Kanban card:**
-- Import `Trash2` từ lucide-react
-- Thêm `useMutation` `deleteLead` gọi `supabase.from("leads").delete().eq("id", id)`
-- Thêm `DropdownMenuItem` "Xóa" với `className="text-destructive"` ở cuối menu, chỉ hiện khi `userRole === "ADMIN" || userRole === "SUPER_ADMIN"`
-- Confirm bằng `window.confirm` trước khi xóa
+6. Hướng dẫn vận hành về sau
+- Không dùng bản local để gửi email reset cho người dùng thật.
+- Mọi luồng email auth phải dùng 1 domain cố định.
+- Khi đổi domain chính thức, chỉ sửa 1 biến cấu hình thay vì sửa từng file.
+- Sau khi fix, test 3 luồng:
+  - Quên mật khẩu từ trang Login
+  - Admin gửi reset từ trang Nhân sự
+  - Mở link trên điện thoại thật
 
-**File: `src/components/leads/LeadTableView.tsx` — Bảng danh sách:**
-- Thêm prop `userRole` hoặc dùng `useAuth` trực tiếp
-- Thêm cột "Thao tác" cuối bảng, chứa nút Xóa (icon Trash2) chỉ hiện cho ADMIN
-
-**File: `src/pages/Customers.tsx` — Bảng khách hàng:**
-- Import `Trash2`, `useMutation`
-- Thêm `deleteMutation` gọi `supabase.from("customers").delete().eq("id", id)`
-- Thêm cột "Thao tác" cuối bảng với nút Xóa, chỉ hiện khi `isAdmin`
-
-**File: `src/pages/RawContacts.tsx` — Bảng Kho Data:**
-- Tương tự: thêm nút Xóa trong `renderTable`, chỉ hiện cho ADMIN
-- `deleteMutation` gọi `supabase.from("raw_contacts").delete().eq("id", id)`
-
-### 3. Chi tiết kỹ thuật
-
-- Kiểm tra admin: `const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN"` (dùng `useAuth()`)
-- Confirm xóa: `if (!window.confirm("Xác nhận xóa?")) return`
-- Sau xóa: `queryClient.invalidateQueries(...)` + `toast.success("Đã xóa")`
-- Kanban drop logic: khi drop vào cột "Không thành công" → mở `LostReasonDialog` với status "LOST" mặc định
-
-### File thay đổi
-
-| File | Thay đổi |
-|------|----------|
-| `src/pages/Leads.tsx` | Gộp Kanban 5 cột, badge chi tiết, nút Xóa ADMIN |
-| `src/components/leads/LeadTableView.tsx` | Nút Xóa ADMIN trong bảng |
-| `src/pages/Customers.tsx` | Nút Xóa ADMIN |
-| `src/pages/RawContacts.tsx` | Nút Xóa ADMIN |
+File dự kiến chỉnh:
+- `src/pages/Login.tsx`
+- `src/components/employees/EmployeeRoleTab.tsx`
+- có thể thêm `src/lib/authRedirect.ts`
+- có thể chỉnh thêm `supabase/functions/manage-employee-accounts/index.ts` để đồng bộ cấu hình
