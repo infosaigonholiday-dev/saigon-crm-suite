@@ -264,9 +264,25 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 employee_id: emp.id,
               },
             });
-            if (accError) throw accError;
+            if (accError) {
+              // Parse edge function error for meaningful message
+              let msg = accError.message || "Lỗi tạo tài khoản";
+              try {
+                const body = await (accError as any).context?.json?.();
+                if (body?.error) msg = body.error;
+              } catch (_) {
+                try {
+                  const text = await (accError as any).context?.text?.();
+                  if (text) {
+                    const parsed = JSON.parse(text);
+                    if (parsed.error) msg = parsed.error;
+                  }
+                } catch (_) {}
+              }
+              throw new Error(msg);
+            }
             if (accData?.error) throw new Error(accData.error);
-            toast.success("Đã tạo tài khoản. Email đặt mật khẩu đã được gửi cho nhân viên.");
+            toast.success("Đã tạo tài khoản với mật khẩu mặc định (sgh123456). Nhân viên cần đổi mật khẩu ở lần đăng nhập đầu.");
           } catch (accErr: any) {
             toast.error(`Tạo tài khoản lỗi: ${accErr.message}`);
           }
