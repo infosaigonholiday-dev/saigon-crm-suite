@@ -509,7 +509,7 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending || !!duplicateWarning}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Lưu
+            {isEdit ? "Cập nhật" : "Lưu"}
           </Button>
         </DialogFooter>
       </DialogContent>
