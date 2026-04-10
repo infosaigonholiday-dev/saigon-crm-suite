@@ -22,6 +22,7 @@ import { CalendarIcon, Loader2, Info, User, Building2 } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editData?: any;
 }
 
 type LeadType = "INDIVIDUAL" | "CORPORATE";
