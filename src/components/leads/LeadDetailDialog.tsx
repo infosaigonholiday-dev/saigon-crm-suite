@@ -60,8 +60,44 @@ function InfoRow({ icon: Icon, label, value }: { icon?: any; label: string; valu
 export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string }>({ open: false, status: "" });
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const queryClient = useQueryClient();
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ status, extra }: { status: string; extra?: Record<string, any> }) => {
+      const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const handleStatusSelect = (newStatus: string) => {
+    if (newStatus === "LOST" || newStatus === "NURTURE" || newStatus === "DORMANT") {
+      setTransitionDialog({ open: true, status: newStatus });
+    } else if (newStatus === "WON") {
+      updateStatus.mutate({ status: "WON" }, {
+        onSuccess: () => {
+          toast.success("Đã chuyển sang Thành công");
+          if (!lead.converted_customer_id) setConvertOpen(true);
+        },
+      });
+    } else {
+      updateStatus.mutate({ status: newStatus }, {
+        onSuccess: () => toast.success(`Đã chuyển sang ${statusLabels[newStatus] ?? newStatus}`),
+      });
+    }
+  };
+
+  const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
+    const extra: Record<string, any> = {};
+    if (data.lost_reason) extra.lost_reason = data.lost_reason;
+    if (data.next_contact_date) extra.follow_up_date = data.next_contact_date;
+    updateStatus.mutate({ status: transitionDialog.status, extra }, {
+      onSuccess: () => toast.success(`Đã chuyển sang ${statusLabels[transitionDialog.status]}`),
+    });
+  };
 
   // Query extra info: assigned profile name, created_by name, department name
   const { data: extraInfo } = useQuery({
