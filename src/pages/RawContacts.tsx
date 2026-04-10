@@ -352,6 +352,19 @@ export default function RawContacts() {
     onError: (e: any) => toast.error("Lỗi: " + e.message),
   });
 
+  const deleteRawContact = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("raw_contacts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+      queryClient.invalidateQueries({ queryKey: ["raw-contacts-dept"] });
+      toast.success("Đã xóa");
+    },
+    onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
+  });
+
   const renderTable = (data: RawContact[], showStaffCol: boolean) => (
     <Table>
       <TableHeader>
