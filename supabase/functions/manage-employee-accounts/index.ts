@@ -117,11 +117,10 @@ Deno.serve(async (req) => {
             .is("email", null);
         }
 
-        // DO NOT send recovery email on create — user will use default password for first login
-
         return jsonResponse({
           success: true,
           user_id: createdUserId,
+          profile_id: createdUserId,
           message: `Tài khoản đã được tạo cho ${email} với mật khẩu mặc định nội bộ. Nhân viên cần đăng nhập lần đầu và đổi mật khẩu mới.`,
         });
       } catch (err) {
@@ -138,7 +137,6 @@ Deno.serve(async (req) => {
     if (action === "deactivate") {
       const { user_id } = payload;
 
-      // Check if auth user exists before trying to ban
       const { data: authCheck } = await adminClient.auth.admin.getUserById(user_id);
 
       if (authCheck?.user) {
@@ -161,6 +159,55 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true });
     }
 
+    // ─── DELETE ACCOUNT ───
+    if (action === "delete_account") {
+      const { user_id } = payload;
+
+      if (!user_id) {
+        return jsonResponse({ error: "Thiếu user_id" }, 400);
+      }
+
+      if (user_id === callerId) {
+        return jsonResponse({ error: "Không thể xóa tài khoản của chính mình" }, 400);
+      }
+
+      // 1. Unlink employee records
+      const { error: unlinkError } = await adminClient
+        .from("employees")
+        .update({ profile_id: null })
+        .eq("profile_id", user_id);
+      // Ignore error if no employee linked (unlinkError can be null)
+
+      // 2. Delete profile
+      const { error: profileDeleteError } = await adminClient
+        .from("profiles")
+        .delete()
+        .eq("id", user_id);
+
+      // 3. Delete auth user (graceful for orphans)
+      let authDeleted = false;
+      const { data: authCheck } = await adminClient.auth.admin.getUserById(user_id);
+      if (authCheck?.user) {
+        const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user_id);
+        if (authDeleteError) {
+          return jsonResponse({
+            error: `Đã xóa profile nhưng lỗi xóa auth user: ${authDeleteError.message}`,
+          }, 400);
+        }
+        authDeleted = true;
+      }
+
+      return jsonResponse({
+        success: true,
+        message: authDeleted
+          ? "Đã xóa hoàn toàn tài khoản (auth + profile + unlink nhân viên)"
+          : "Đã xóa profile và unlink nhân viên. Auth user không tồn tại (orphan đã dọn).",
+        profile_deleted: !profileDeleteError,
+        auth_deleted: authDeleted,
+        employee_unlinked: !unlinkError,
+      });
+    }
+
     // ─── RESET PASSWORD (single) ───
     if (action === "reset_password") {
       const { user_id, email } = payload;
@@ -168,7 +215,6 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Thiếu user_id hoặc email" }, 400);
       }
 
-      // Try to find auth user
       const authUser = await findAuthUser(adminClient, user_id, email);
 
       if (!authUser) {
@@ -178,7 +224,6 @@ Deno.serve(async (req) => {
         }, 400);
       }
 
-      // Step 1: Reset password to default
       const { error: resetError } = await adminClient.auth.admin.updateUserById(authUser, {
         password: DEFAULT_PASSWORD,
       });
@@ -187,10 +232,8 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: resetError.message }, 400);
       }
 
-      // Step 2: Set must_change_password = true
       await adminClient.from("profiles").update({ must_change_password: true }).eq("id", authUser);
 
-      // Step 3: Send recovery email
       const targetEmail = email || (await getAuthUserEmail(adminClient, authUser));
       let emailSent = false;
       let emailError: string | null = null;
@@ -232,7 +275,6 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: true, message: "Không có tài khoản nào để reset", count: 0 });
       }
 
-      // Build auth user lookup
       const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({
         page: 1, perPage: 1000,
       });
@@ -252,7 +294,6 @@ Deno.serve(async (req) => {
       const skipped: string[] = [];
 
       for (const profile of allProfiles) {
-        // Check if auth user exists for this profile
         let targetUserId: string | null = null;
 
         if (authUserIds.has(profile.id)) {
@@ -274,10 +315,8 @@ Deno.serve(async (req) => {
           errors.push(`${profile.email ?? profile.id}: ${resetErr.message}`);
         } else {
           resetCount++;
-          // Set must_change_password = true
           await adminClient.from("profiles").update({ must_change_password: true }).eq("id", targetUserId);
 
-          // Try to send recovery email
           if (profile.email) {
             try {
               const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
@@ -307,13 +346,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Thiếu email mới" }, 400);
       }
 
-      // Find auth user
       const authUserId = await findAuthUser(adminClient, user_id, old_email);
       if (!authUserId) {
         return jsonResponse({ error: "Không tìm thấy tài khoản auth" }, 400);
       }
 
-      // Update email in auth.users
       const { error: authError } = await adminClient.auth.admin.updateUserById(authUserId, {
         email: new_email,
         email_confirm: true,
@@ -322,7 +359,6 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: authError.message }, 400);
       }
 
-      // Update email in profiles
       await adminClient.from("profiles").update({ email: new_email }).eq("id", authUserId);
 
       return jsonResponse({
@@ -354,7 +390,6 @@ Deno.serve(async (req) => {
 
       for (const profile of allProfiles) {
         if (!authUserIds.has(profile.id)) {
-          // Orphan detected — delete profile
           await adminClient.from("profiles").delete().eq("id", profile.id);
           cleaned.push(profile.email ?? profile.id);
         }
@@ -376,14 +411,12 @@ Deno.serve(async (req) => {
   }
 });
 
-/** Find an auth user by profile ID or email. Returns auth user ID or null. */
 async function findAuthUser(
   adminClient: ReturnType<typeof createClient>,
   profileId?: string,
   email?: string
 ): Promise<string | null> {
   if (profileId) {
-    // Try direct lookup
     const { data } = await adminClient.auth.admin.getUserById(profileId);
     if (data?.user) return data.user.id;
   }
@@ -401,7 +434,6 @@ async function findAuthUser(
   return null;
 }
 
-/** Get email for an auth user by ID */
 async function getAuthUserEmail(
   adminClient: ReturnType<typeof createClient>,
   userId: string
