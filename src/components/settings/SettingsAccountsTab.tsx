@@ -89,6 +89,8 @@ export function SettingsAccountsTab() {
   const [saving, setSaving] = useState(false);
   const [handoverProfile, setHandoverProfile] = useState<Profile | null>(null);
   const [handoverOpen, setHandoverOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteProfile, setConfirmDeleteProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -159,9 +161,31 @@ export function SettingsAccountsTab() {
       setFormData({ full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "" });
       await Promise.all([loadProfiles(), loadUnlinkedEmployees()]);
     } catch (err: any) {
-      toast.error(err.message || "Lỗi tạo tài khoản");
+      const msg = await parseEdgeFnError(err);
+      toast.error(msg);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDeleteAccount(profile: Profile) {
+    setDeletingId(profile.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action: "delete_account", user_id: profile.id },
+      });
+      if (error) {
+        const msg = await parseEdgeFnError(error);
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      toast.success(data.message || "Đã xóa tài khoản thành công");
+      await Promise.all([loadProfiles(), loadUnlinkedEmployees()]);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi xóa tài khoản");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteProfile(null);
     }
   }
 
@@ -392,6 +416,19 @@ export function SettingsAccountsTab() {
                           <ShieldCheck className="h-4 w-4 text-primary" />
                         )}
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={deletingId === p.id}
+                        onClick={() => setConfirmDeleteProfile(p)}
+                        title="Xóa hoàn toàn tài khoản"
+                      >
+                        {deletingId === p.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
+                      </Button>
                   </>
                   )}
                 </div>
@@ -411,7 +448,7 @@ export function SettingsAccountsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm tài khoản mới</DialogTitle>
-            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Email đặt mật khẩu sẽ được gửi tự động.</DialogDescription>
+            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định: <strong>sgh123456</strong>. Nhân viên bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -542,6 +579,35 @@ export function SettingsAccountsTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!confirmDeleteProfile} onOpenChange={(open) => !open && setConfirmDeleteProfile(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Xóa hoàn toàn tài khoản?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Bạn sắp <strong>xóa vĩnh viễn</strong> tài khoản <strong>{confirmDeleteProfile?.email}</strong> ({confirmDeleteProfile?.full_name}).</p>
+              <p>Thao tác này sẽ:</p>
+              <ul className="list-disc pl-5 text-sm">
+                <li>Xóa tài khoản đăng nhập (auth)</li>
+                <li>Xóa hồ sơ profile</li>
+                <li>Bỏ liên kết với hồ sơ nhân viên (nếu có)</li>
+              </ul>
+              <p className="font-semibold text-destructive">⚠️ Hành động này KHÔNG THỂ hoàn tác. Chỉ dùng cho tài khoản test hoặc tài khoản lỗi.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteProfile && handleDeleteAccount(confirmDeleteProfile)}
+              disabled={deletingId === confirmDeleteProfile?.id}
+            >
+              {deletingId === confirmDeleteProfile?.id && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Xóa hoàn toàn
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DataHandoverDialog
         open={handoverOpen}
         onOpenChange={setHandoverOpen}
@@ -550,4 +616,26 @@ export function SettingsAccountsTab() {
       />
     </div>
   );
+}
+
+/** Parse edge function error to extract meaningful message */
+async function parseEdgeFnError(error: any): Promise<string> {
+  // supabase-js wraps edge function errors - try to extract body
+  if (error?.context) {
+    try {
+      const body = await error.context.json?.();
+      if (body?.error) return body.error;
+    } catch (_) {}
+    try {
+      const text = await error.context.text?.();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.error) return parsed.error;
+        } catch (_) {}
+        return text;
+      }
+    } catch (_) {}
+  }
+  return error.message || "Lỗi gọi Edge Function";
 }

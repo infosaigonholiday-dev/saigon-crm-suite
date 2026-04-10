@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertTriangle, Users, UserCheck } from "lucide-react";
+import { Loader2, AlertTriangle, Users, UserCheck, Info } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -38,24 +38,42 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
     enabled: !!profile?.id && open,
   });
 
-  // Get eligible receivers (same department, active, not the person being deactivated)
-  const { data: receivers = [] } = useQuery({
-    queryKey: ["handover-receivers", profile?.department_id],
+  // Get eligible receivers — first try same department, then fallback to all active
+  const { data: receiversData, isLoading: receiversLoading } = useQuery({
+    queryKey: ["handover-receivers", profile?.id, profile?.department_id],
     queryFn: async () => {
-      let query = supabase
+      // First: same department
+      let sameDeptReceivers: { id: string; full_name: string; role: string; department_id: string | null; departments: { name: string } | null }[] = [];
+      if (profile?.department_id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name, role, department_id, departments!profiles_department_id_fkey(name)")
+          .eq("is_active", true)
+          .neq("id", profile!.id)
+          .eq("department_id", profile.department_id)
+          .order("full_name");
+        sameDeptReceivers = (data || []) as any;
+      }
+
+      // Always fetch all active (for fallback)
+      const { data: allData } = await supabase
         .from("profiles")
-        .select("id, full_name, role")
+        .select("id, full_name, role, department_id, departments!profiles_department_id_fkey(name)")
         .eq("is_active", true)
         .neq("id", profile!.id)
         .order("full_name");
-      if (profile?.department_id) {
-        query = query.eq("department_id", profile.department_id);
-      }
-      const { data } = await query;
-      return data || [];
+      const allReceivers = (allData || []) as any;
+
+      return { sameDeptReceivers, allReceivers };
     },
     enabled: !!profile?.id && open,
   });
+
+  const sameDeptReceivers = receiversData?.sameDeptReceivers ?? [];
+  const allReceivers = receiversData?.allReceivers ?? [];
+  // Use same dept if available, otherwise fallback to all
+  const useFallback = sameDeptReceivers.length === 0 && allReceivers.length > 0;
+  const receivers = useFallback ? allReceivers : sameDeptReceivers;
 
   useEffect(() => {
     if (!open) {
@@ -94,7 +112,11 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
       const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
         body: { action: "deactivate", user_id: profile.id },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to parse the actual error from edge function
+        const errMsg = await parseEdgeFunctionError(error);
+        throw new Error(errMsg);
+      }
       if (data?.error) throw new Error(data.error);
 
       // 4. Set deactivation metadata
@@ -108,7 +130,7 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
 
       // Build success message
       if (totalData > 0) {
-        const receiver = receivers.find(r => r.id === newUserId);
+        const receiver = receivers.find((r: any) => r.id === newUserId);
         toast.success(
           `Đã bàn giao ${counts?.leads ?? 0} leads, ${counts?.customers ?? 0} KH cho ${receiver?.full_name ?? "NV mới"} và vô hiệu hóa tài khoản`
         );
@@ -161,21 +183,42 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
           </div>
 
           {totalData > 0 && (
-            <>
-              <div className="space-y-2">
-                <Label>Người nhận bàn giao *</Label>
-                <Select value={newUserId} onValueChange={setNewUserId}>
-                  <SelectTrigger><SelectValue placeholder="Chọn NV nhận data" /></SelectTrigger>
-                  <SelectContent>
-                    {receivers.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.full_name} <span className="text-muted-foreground">({r.role})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+            <div className="space-y-2">
+              <Label>Người nhận bàn giao *</Label>
+              {receiversLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang tải danh sách nhân sự...
+                </div>
+              ) : receivers.length === 0 ? (
+                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Không có nhân sự hoạt động nào để nhận bàn giao. Vui lòng kích hoạt hoặc tạo tài khoản nhân viên khác trước.</span>
+                </div>
+              ) : (
+                <>
+                  {useFallback && (
+                    <div className="bg-muted text-muted-foreground text-xs p-2 rounded flex items-start gap-1.5">
+                      <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Không có nhân sự cùng phòng ban. Hiển thị toàn bộ nhân sự hoạt động.</span>
+                    </div>
+                  )}
+                  <Select value={newUserId} onValueChange={setNewUserId}>
+                    <SelectTrigger><SelectValue placeholder="Chọn NV nhận data" /></SelectTrigger>
+                    <SelectContent>
+                      {receivers.map((r: any) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.full_name}
+                          <span className="text-muted-foreground ml-1">
+                            ({r.role}{r.departments?.name ? ` · ${r.departments.name}` : ""})
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </div>
           )}
 
           <div className="space-y-2">
@@ -195,7 +238,7 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
           <Button
             variant="destructive"
             onClick={handleHandover}
-            disabled={processing || (totalData > 0 && !newUserId)}
+            disabled={processing || (totalData > 0 && (!newUserId || receivers.length === 0))}
           >
             {processing && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
             {totalData > 0 ? "Bàn giao & Vô hiệu hóa" : "Vô hiệu hóa"}
@@ -204,4 +247,18 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Try to extract meaningful error from edge function invoke error */
+async function parseEdgeFunctionError(error: any): Promise<string> {
+  if (error?.context?.body) {
+    try {
+      const text = await error.context.body.text?.();
+      if (text) {
+        const parsed = JSON.parse(text);
+        if (parsed.error) return parsed.error;
+      }
+    } catch (_) {}
+  }
+  return error.message || "Lỗi gọi Edge Function";
 }
