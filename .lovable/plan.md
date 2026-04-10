@@ -1,55 +1,59 @@
 
-Mình đã rà code và nguyên nhân hiện tại là:
+Vấn đề thực tế
 
-- Nút xóa thực ra có trong `src/components/settings/SettingsAccountsTab.tsx`, nhưng nó chỉ nằm trong từng dòng của tab `Tài khoản`, không phải nút lớn riêng.
-- Tab `Tài khoản` lại đang bị khóa trong `src/pages/Settings.tsx` với điều kiện `showAccounts = isAdmin`, tức chỉ `ADMIN` / `SUPER_ADMIN` mới thấy.
-- Ngoài ra nút xóa còn bị ẩn cho chính tài khoản đang đăng nhập (`p.id !== user?.id`).
-- Session hiện tại của bạn còn đang bị khóa ở route `/first-login-change-password`; theo `src/App.tsx`, khi còn `mustChangePassword = true` thì toàn bộ app sẽ bị ép về màn đổi mật khẩu, nên cũng không thể thấy đúng màn Cài đặt.
-- Luồng “tạo nhân viên mới + tạo account” vẫn còn một chỗ báo lỗi mơ hồ trong `src/components/employees/EmployeeFormDialog.tsx`, nên dù edge function đã có xử lý tốt hơn, UI vẫn có thể báo sai/thiếu rõ ràng.
+- Link reset đang được tạo bằng URL hardcode `https://app.saigonholiday.vn/reset-password` ở cả frontend và edge function, trong khi project hiện đang chạy ở preview/published `*.lovable.app`. Vì vậy email có thể dẫn sang host khác hoặc host không truy cập được.
+- `AuthContext.tsx` đang đá người dùng về `/login` khi refresh token cũ lỗi (`refresh_token_not_found` trong auth logs), kể cả lúc đang ở flow recovery. Điều này làm link reset vừa mở xong đã bị phá.
+- `ResetPassword.tsx` mới xử lý `?code` và hash cũ, chưa ưu tiên case đã có recovery session sẵn, nên dễ rơi vào trạng thái treo xác thực rồi báo link hỏng.
 
-Kế hoạch cập nhật:
+Do I know what the issue is?
 
-1. Đồng bộ quyền hiển thị tab Tài khoản với quyền backend
-- Sửa `Settings.tsx` để tab `Tài khoản` không còn chỉ hiện cho `ADMIN` nếu backend đang cho `HCNS` / `HR_MANAGER` quản lý account.
-- Nếu giữ hard-delete là thao tác nhạy cảm, sẽ tách:
-  - `HCNS` / `HR_MANAGER`: thấy tab, tạo/reset/vô hiệu hóa
-  - `ADMIN`: thấy thêm nút `Xóa hoàn toàn`
+- Có. Đây là lỗi phối hợp giữa URL reset bị hardcode sai môi trường và AuthContext ngắt phiên recovery quá sớm.
 
-2. Làm nút xóa dễ thấy hơn
-- Đổi từ icon-only sang nút/tooltip rõ chữ hơn trong cột thao tác, ví dụ “Xóa TK”.
-- Giữ chặn xóa chính mình.
-- Thêm mô tả ngay trên tab để phân biệt:
-  - Vô hiệu hóa = khóa đăng nhập
-  - Xóa hoàn toàn = chỉ dùng cho tài khoản test / lỗi
+Kế hoạch sửa
 
-3. Sửa triệt để lỗi tạo mới
-- Cập nhật cả `SettingsAccountsTab.tsx`, `EmployeeRoleTab.tsx` và `EmployeeFormDialog.tsx` dùng chung cách parse lỗi edge function.
-- Hiển thị đúng lỗi server trả về như:
-  - email đã tồn tại
-  - không đủ quyền
-  - liên kết employee/profile lỗi
-- Sửa text thành đúng nghiệp vụ: tạo account bằng mật khẩu mặc định, không còn ghi sai là “email đặt mật khẩu sẽ được gửi tự động”.
+1. Chuẩn hóa 1 nguồn URL reset duy nhất
+- Sửa `src/lib/authRedirect.ts` để không hardcode cố định theo một domain chết/khác môi trường.
+- Dùng một rule rõ ràng:
+  - nếu có domain chính thức đang hoạt động thì dùng domain đó
+  - nếu không thì fallback về origin hiện tại của app
+- Cập nhật mọi chỗ gọi reset dùng chung helper này:
+  - `src/pages/Login.tsx`
+  - `src/components/employees/EmployeeRoleTab.tsx`
+  - `supabase/functions/manage-employee-accounts/index.ts`
 
-4. Xử lý rõ trạng thái “đăng nhập lần đầu”
-- Giữ rule ép đổi mật khẩu trước, nhưng bổ sung logic rõ hơn để sau khi đổi xong thì role/permission được nạp lại ổn định.
-- Tránh tình trạng người dùng tưởng đang vào app quản trị nhưng thực tế vẫn bị gate bởi `must_change_password`.
+2. Ngăn AuthContext phá flow reset
+- Sửa `src/contexts/AuthContext.tsx` để khi đang ở `/reset-password` hoặc `/first-login-change-password`, lỗi refresh token không redirect thẳng về `/login`.
+- Với recovery path, chỉ clear session lỗi/stale token và để trang reset tự xử lý token recovery.
 
-5. Rà lại QA đúng luồng người dùng
-- Test bằng tài khoản `ADMIN`: vào Cài đặt > Tài khoản, thấy nút xóa, tạo được tài khoản test, xóa được tài khoản test.
-- Test bằng `HCNS` / `HR_MANAGER`: xác nhận có thấy tab Tài khoản hay không theo rule mới.
-- Test case tự xóa chính mình: nút phải bị ẩn.
-- Test sau khi đổi mật khẩu lần đầu: vào lại Settings không còn bị chặn.
+3. Làm trang Reset Password chịu lỗi tốt hơn
+- Sửa `src/pages/ResetPassword.tsx` để xử lý đủ 3 case:
+  - đã có recovery session
+  - có `code` để exchange
+  - có hash `type=recovery`
+- Hiển thị lý do rõ hơn cho case link hết hạn / đã dùng / không hợp lệ.
+- Không giữ timeout chờ mù 60 giây nếu đã xác định được trạng thái.
 
-File sẽ chỉnh
-- `src/pages/Settings.tsx`
-- `src/components/settings/SettingsAccountsTab.tsx`
+4. Đồng bộ luồng reset từ admin
+- Sửa `supabase/functions/manage-employee-accounts/index.ts` để email reset do admin gửi cũng dùng đúng redirect URL mới.
+- Đồng bộ toast/message để user biết link sẽ mở về đúng app đang dùng, không còn trỏ nhầm.
+
+5. QA sau khi sửa
+- Test “Quên mật khẩu” từ `/login`
+- Test reset do admin gửi
+- Test khi browser đang có refresh token cũ trong localStorage
+- Test link đã dùng/hết hạn
+- Test sau khi đặt mật khẩu mới: đăng nhập lại bình thường, không bị loop sang `/login` hoặc `/first-login-change-password`
+
+Files dự kiến chỉnh
+- `src/lib/authRedirect.ts`
+- `src/pages/Login.tsx`
 - `src/components/employees/EmployeeRoleTab.tsx`
-- `src/components/employees/EmployeeFormDialog.tsx`
-- Nếu cần thêm siết quyền hiển thị/xóa theo role thì rà thêm `src/contexts/AuthContext.tsx` hoặc hook permission liên quan
+- `src/contexts/AuthContext.tsx`
+- `src/pages/ResetPassword.tsx`
+- `supabase/functions/manage-employee-accounts/index.ts`
 
-Chi tiết kỹ thuật
-- Hiện tại frontend đang lệch với backend:
-  - Backend `manage-employee-accounts` cho `ADMIN`, `HCNS`, `HR_MANAGER`
-  - Nhưng frontend chỉ cho `ADMIN` thấy tab account
-- Đây là lý do rất lớn khiến bạn nói “làm gì có nút xóa”.
-- Còn lỗi “không tạo được nhân viên mới” nhiều khả năng nằm ở chỗ form thêm nhân viên vẫn chưa parse đúng lỗi edge function ở luồng auto-create account.
+Kết quả mong đợi
+- Link reset mở được đúng domain/app
+- Không còn bị redirect sai do refresh token cũ
+- Trang reset vào thẳng form đổi mật khẩu khi token hợp lệ
+- Link lỗi/hết hạn báo rõ ràng thay vì “không vào được”
