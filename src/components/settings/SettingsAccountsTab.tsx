@@ -328,12 +328,17 @@ export function SettingsAccountsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Quản lý tài khoản nhân viên</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Quản lý tài khoản nhân viên</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Vô hiệu hóa = khóa đăng nhập (có thể kích hoạt lại) · Xóa hoàn toàn = xóa vĩnh viễn (chỉ dành cho tài khoản test/lỗi, chỉ Admin)
+          </p>
+        </div>
         <div className="flex gap-2">
           {orphanDetected && (
             <Button variant="destructive" onClick={handleCleanupOrphans} disabled={cleaningUp}>
               {cleaningUp && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              <Trash2 className="h-4 w-4 mr-1" /> Dọn dẹp tài khoản lỗi
+              <Trash2 className="h-4 w-4 mr-1" /> Dọn dẹp TK lỗi
             </Button>
           )}
           <Button variant="outline" onClick={() => setConfirmResetAll(true)} disabled={resettingAll}>
@@ -417,19 +422,21 @@ export function SettingsAccountsTab() {
                           <ShieldCheck className="h-4 w-4 text-primary" />
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={deletingId === p.id}
-                        onClick={() => setConfirmDeleteProfile(p)}
-                        title="Xóa hoàn toàn tài khoản"
-                      >
-                        {deletingId === p.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingId === p.id}
+                          onClick={() => setConfirmDeleteProfile(p)}
+                          title="Xóa hoàn toàn tài khoản (chỉ Admin)"
+                        >
+                          {deletingId === p.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          )}
+                        </Button>
+                      )}
                   </>
                   )}
                 </div>
