@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
 import LostReasonDialog from "@/components/leads/LostReasonDialog";
+import LeadTableView from "@/components/leads/LeadTableView";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
+  LayoutGrid, List,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
