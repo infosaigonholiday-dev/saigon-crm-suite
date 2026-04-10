@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, Building2, MapPin, Calendar, Users, DollarSign, Pencil, ExternalLink, UserPlus } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Phone, Mail, Building2, MapPin, Calendar, Users, DollarSign, Pencil, ExternalLink, UserPlus, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import CareHistoryTab from "./CareHistoryTab";
 import AuditHistoryTab from "./AuditHistoryTab";
 import LeadFormDialog from "./LeadFormDialog";
 import ConvertToCustomerDialog from "./ConvertToCustomerDialog";
+import LostReasonDialog from "./LostReasonDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
