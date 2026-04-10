@@ -1,41 +1,73 @@
 
+Mình đã check kỹ rồi: lỗi chính không nằm ở nút dropdown, mà ở database trigger nên bấm đổi trạng thái nào cũng có thể “đéo được”.
 
-## Kế hoạch: Giữ Kanban + Thêm Dropdown đổi trạng thái trên card và chi tiết Lead
+### Kết luận nguyên nhân
+- UI hiện tại đã có dropdown đổi trạng thái ở:
+  - `src/pages/Leads.tsx`
+  - `src/components/leads/LeadDetailDialog.tsx`
+- Request `PATCH /rest/v1/leads?...` thực tế có chạy.
+- Nhưng Supabase trả `400` với lỗi:
+  `new row for relation "audit_logs" violates check constraint "audit_logs_action_check"`
+- Trigger `log_leads_changes()` đang ghi `action = 'STATUS_CHANGE'`, nhưng constraint của bảng `audit_logs` không chấp nhận giá trị này.
+- Vì vậy:
+  - đổi sang `WON` fail
+  - kéo thả cũng fail
+  - nên nút `→ KH` không hiện vì lead chưa đổi được sang `WON`
 
-Không bỏ kéo thả hiện tại. Thêm dropdown menu đổi trạng thái trên mỗi card Kanban và trong LeadDetailDialog.
+### Fix cần làm
+#### 1. Sửa database trước
+Tạo migration cập nhật constraint/check của `audit_logs` để cho phép ít nhất:
+- `STATUS_CHANGE`
+- `REASSIGN`
+- giữ các action cũ như `CREATE`, `UPDATE`, `DELETE`
 
----
+Nếu constraint đang hardcode danh sách cũ thì cần:
+- drop constraint cũ
+- add lại constraint mới đúng với trigger hiện tại
 
-### 1. Sửa `src/pages/Leads.tsx`
+#### 2. Tăng độ rõ lỗi ở frontend
+Trong `Leads.tsx` và `LeadDetailDialog.tsx`:
+- thêm `onError` cho `updateStatus.mutate(...)`
+- show toast lỗi rõ ràng từ `err.message`
+- tránh cảm giác “bấm không có gì xảy ra”
 
-**Thêm trên mỗi Kanban card:**
-- Nút `⋯` (MoreVertical) ở góc trên phải card
-- Click → `DropdownMenu` hiển thị 11 trạng thái (trừ trạng thái hiện tại)
-- Logic khi chọn:
-  - LOST → mở `LostReasonDialog`
-  - NURTURE / DORMANT → mở `LostReasonDialog` (đã hỗ trợ)
-  - WON → update status, nếu chưa convert thì mở `ConvertToCustomerDialog`
-  - Còn lại → update trực tiếp + toast
-- `e.stopPropagation()` trên nút để không trigger click mở detail
+#### 3. Đồng bộ state sau khi đổi trạng thái
+Trong `LeadDetailDialog.tsx`:
+- hiện đang mutate theo `lead.id` nhưng UI dialog dùng prop `lead` cũ
+- cần cập nhật `selectedLead` local hoặc refetch/detail-sync sau khi status đổi thành công
+- để badge trạng thái, nút `Chuyển thành KH`, và link customer phản ánh ngay
 
-**Giữ nguyên:**
-- Toàn bộ code drag/drop hiện tại (draggable, onDragStart, onDrop, GripVertical)
-- Logic `handleDrop` và `handleTransitionConfirm`
+Trong `Leads.tsx`:
+- sau khi đổi sang `WON` thành công, mở `ConvertToCustomerDialog` bằng dữ liệu lead đã merge status mới
+- tránh phụ thuộc object cũ đang còn `status = NEW`
 
-**Import thêm:** `DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger` từ shadcn/ui, icon `MoreVertical` từ lucide-react.
+#### 4. Verify luồng sau fix
+Kiểm tra đủ 4 case:
+- đổi trạng thái thường từ dropdown trên Kanban
+- đổi trạng thái trong Lead detail
+- đổi sang `LOST` mở popup lý do rồi lưu được
+- đổi sang `NURTURE` / `DORMANT` mở popup ngày gọi lại rồi lưu được
+- đổi sang `WON` xong hiện/trigger `Chuyển thành KH`
+- bấm `→ KH` tạo customer thành công và cập nhật `converted_customer_id`
 
-### 2. Sửa `src/components/leads/LeadDetailDialog.tsx`
+### File dự kiến đụng tới
+- `supabase/migrations/...sql`  
+  Sửa constraint `audit_logs_action_check`
+- `src/pages/Leads.tsx`  
+  Bổ sung error handling + sync dữ liệu sau đổi trạng thái
+- `src/components/leads/LeadDetailDialog.tsx`  
+  Bổ sung error handling + cập nhật trạng thái hiển thị ngay sau mutate
 
-- Thêm dropdown "Đổi trạng thái" cạnh badge status hiện tại ở header
-- Cùng logic: chọn status mới → gọi mutation update hoặc mở popup LOST/NURTURE/DORMANT
-- Sau update → invalidate query `["leads"]` + toast
+### Ghi chú kỹ thuật
+```text
+Hiện tại:
+UI dropdown -> PATCH leads.status
+               -> trigger log_leads_changes()
+               -> insert audit_logs(action='STATUS_CHANGE')
+               -> audit_logs_action_check reject
+               -> PATCH fail 400
 
-### File thay đổi
-
-| File | Thay đổi |
-|------|----------|
-| `src/pages/Leads.tsx` | Thêm DropdownMenu đổi trạng thái trên card, giữ nguyên drag/drop |
-| `src/components/leads/LeadDetailDialog.tsx` | Thêm dropdown đổi trạng thái ở header |
-
-Không cần cài thêm thư viện. Dùng `DropdownMenu` từ shadcn/ui đã có sẵn.
-
+Nghĩa là:
+Không phải nút không chạy
+Mà là backend reject nên toàn bộ flow đứng ở bước update status
+```
