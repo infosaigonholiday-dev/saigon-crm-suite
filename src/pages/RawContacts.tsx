@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,9 @@ type RawContact = {
   created_at: string;
   company_size: string | null;
   planned_event_date: string | null;
+  // joined fields
+  assigned_profile?: { full_name: string | null } | null;
+  departments?: { name: string | null } | null;
 };
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -101,6 +104,8 @@ export default function RawContacts() {
 
   // Dept filter for admin
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  // Staff filter for dept tab
+  const [filterStaffId, setFilterStaffId] = useState<string>("all");
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments-list"],
@@ -120,11 +125,13 @@ export default function RawContacts() {
     enabled: !!user,
   });
 
+  const selectFields = "*, assigned_profile:profiles!raw_contacts_assigned_to_fkey(full_name), departments(name)";
+
   // My data query
   const { data: myData = [], isLoading: loadingMy } = useQuery({
     queryKey: ["raw-contacts-my", user?.id, search],
     queryFn: async () => {
-      let q = supabase.from("raw_contacts").select("*")
+      let q = supabase.from("raw_contacts").select(selectFields)
         .or(`created_by.eq.${user!.id},assigned_to.eq.${user!.id}`)
         .order("created_at", { ascending: false });
       if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,company_name.ilike.%${search}%`);
@@ -140,7 +147,7 @@ export default function RawContacts() {
     queryKey: ["raw-contacts-dept", selectedDeptId, myProfile?.department_id, search],
     queryFn: async () => {
       const deptId = scope === "all" ? selectedDeptId : myProfile?.department_id;
-      let q = supabase.from("raw_contacts").select("*").order("created_at", { ascending: false });
+      let q = supabase.from("raw_contacts").select(selectFields).order("created_at", { ascending: false });
       if (deptId) q = q.eq("department_id", deptId);
       if (search) q = q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,company_name.ilike.%${search}%`);
       const { data, error } = await q;
@@ -150,8 +157,30 @@ export default function RawContacts() {
     enabled: showDeptTab && activeTab === "dept",
   });
 
-  const currentData = activeTab === "my" ? myData : deptData;
+  // Staff options for dept filter
+  const deptStaffOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    deptData.forEach((c) => {
+      const staffId = c.assigned_to || c.created_by;
+      const staffName = c.assigned_profile?.full_name;
+      if (staffId && staffName) map.set(staffId, staffName);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [deptData]);
+
+  // Filtered dept data
+  const filteredDeptData = useMemo(() => {
+    if (filterStaffId === "all") return deptData;
+    return deptData.filter((c) => (c.assigned_to || c.created_by) === filterStaffId);
+  }, [deptData, filterStaffId]);
+
+  const currentData = activeTab === "my" ? myData : filteredDeptData;
   const loading = activeTab === "my" ? loadingMy : loadingDept;
+
+  // Reset staff filter when switching tabs
+  useEffect(() => {
+    setFilterStaffId("all");
+  }, [activeTab]);
 
   // Phone duplicate check
   const checkPhone = useCallback(async (phone: string) => {
@@ -322,11 +351,13 @@ export default function RawContacts() {
     onError: (e: any) => toast.error("Lỗi: " + e.message),
   });
 
-  const renderTable = (data: RawContact[]) => (
+  const renderTable = (data: RawContact[], showStaffCol: boolean) => (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Người phụ trách</TableHead>
+          {showStaffCol && <TableHead>NV phụ trách</TableHead>}
+          <TableHead>Phòng</TableHead>
           <TableHead>SĐT</TableHead>
           <TableHead>Công ty</TableHead>
           <TableHead>Quy mô</TableHead>
@@ -340,7 +371,7 @@ export default function RawContacts() {
       <TableBody>
         {data.length === 0 ? (
           <TableRow>
-           <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
+           <TableCell colSpan={showStaffCol ? 11 : 10} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
           </TableRow>
         ) : data.map((c) => {
           const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
@@ -348,12 +379,14 @@ export default function RawContacts() {
           return (
             <TableRow key={c.id}>
               <TableCell className="font-medium">{c.full_name || "—"}</TableCell>
+              {showStaffCol && <TableCell>{c.assigned_profile?.full_name ?? "—"}</TableCell>}
+              <TableCell>{c.departments?.name ?? "—"}</TableCell>
               <TableCell>{c.phone}</TableCell>
               <TableCell>{c.company_name || "—"}</TableCell>
               <TableCell>{c.company_size || "—"}</TableCell>
               <TableCell>{c.planned_event_date ? format(new Date(c.planned_event_date), "dd/MM/yyyy") : "—"}</TableCell>
               <TableCell>
-                <Badge variant={st.variant} className={isConverted ? "bg-green-100 text-green-700 border-green-200" : ""}>
+                <Badge variant={st.variant} className={isConverted ? "bg-blue-600 text-white border-blue-700" : ""}>
                   {st.label}
                 </Badge>
               </TableCell>
@@ -361,7 +394,7 @@ export default function RawContacts() {
               <TableCell>{c.last_called_at ? format(new Date(c.last_called_at), "dd/MM HH:mm") : "—"}</TableCell>
               <TableCell className="text-right space-x-1">
                 {isConverted ? (
-                  <Link to="/tiem-nang" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  <Link to="/tiem-nang" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">
                     Xem Lead <ExternalLink className="h-3 w-3" />
                   </Link>
                 ) : (
@@ -416,6 +449,17 @@ export default function RawContacts() {
             </SelectContent>
           </Select>
         )}
+        {activeTab === "dept" && deptStaffOptions.length > 1 && (
+          <Select value={filterStaffId} onValueChange={setFilterStaffId}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Lọc theo NV" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả NV</SelectItem>
+              {deptStaffOptions.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -428,7 +472,7 @@ export default function RawContacts() {
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-              ) : renderTable(myData)}
+              ) : renderTable(myData, false)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -438,7 +482,7 @@ export default function RawContacts() {
               <CardContent className="p-0">
                 {loadingDept ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                ) : renderTable(deptData)}
+                ) : renderTable(filteredDeptData, true)}
               </CardContent>
             </Card>
           </TabsContent>

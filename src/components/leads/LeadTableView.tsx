@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
+import { ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   NEW: { label: "Mới", variant: "secondary" },
@@ -32,6 +34,8 @@ interface LeadWithProfile {
   planned_travel_date: string | null;
   last_contact_at?: string | null;
   assigned_profile_name?: string | null;
+  department_name?: string | null;
+  converted_customer_id?: string | null;
   [key: string]: any;
 }
 
@@ -47,19 +51,20 @@ export default function LeadTableView({ leads, onClickLead }: Props) {
         <TableHeader>
           <TableRow>
             <TableHead>Tên</TableHead>
+            <TableHead>NV phụ trách</TableHead>
+            <TableHead>Phòng</TableHead>
             <TableHead>Công ty</TableHead>
             <TableHead>SĐT</TableHead>
             <TableHead>Trạng thái</TableHead>
             <TableHead>Nhiệt độ</TableHead>
             <TableHead>Ngày dự kiến đi</TableHead>
             <TableHead>Lần LH cuối</TableHead>
-            <TableHead>NV phụ trách</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {leads.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                 Không có lead nào
               </TableCell>
             </TableRow>
@@ -67,13 +72,25 @@ export default function LeadTableView({ leads, onClickLead }: Props) {
           {leads.map((lead) => {
             const st = statusLabels[lead.status] ?? { label: lead.status, variant: "outline" as const };
             const temp = tempBadge[lead.temperature ?? "warm"];
+            const isConverted = !!lead.converted_customer_id;
             return (
               <TableRow
                 key={lead.id}
                 className="cursor-pointer"
                 onClick={() => onClickLead(lead)}
               >
-                <TableCell className="font-medium">{lead.full_name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {lead.full_name}
+                    {isConverted && (
+                      <Badge variant="outline" className="bg-blue-600 text-white border-blue-700 text-[10px]">
+                        Đã chuyển KH
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>{lead.assigned_profile_name ?? "—"}</TableCell>
+                <TableCell>{lead.department_name ?? "—"}</TableCell>
                 <TableCell>{lead.company_name ?? "—"}</TableCell>
                 <TableCell>{lead.phone ?? "—"}</TableCell>
                 <TableCell>
@@ -92,7 +109,6 @@ export default function LeadTableView({ leads, onClickLead }: Props) {
                     ? format(new Date(lead.last_contact_at), "dd/MM/yyyy HH:mm")
                     : "—"}
                 </TableCell>
-                <TableCell>{lead.assigned_profile_name ?? "—"}</TableCell>
               </TableRow>
             );
           })}

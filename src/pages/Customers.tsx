@@ -200,17 +200,17 @@ export default function Customers() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Tên khách hàng</TableHead>
-                  <TableHead>Điện thoại</TableHead>
-                  <TableHead>Phân khúc</TableHead>
-                  <TableHead>Phòng ban</TableHead>
-                  <TableHead>Nguồn</TableHead>
-                  <TableHead>Sale phụ trách</TableHead>
-                  <TableHead className="text-right">Bookings</TableHead>
-                  <TableHead className="text-right">Doanh thu</TableHead>
-                  <TableHead className="text-right">Đã TT</TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead>Tên khách hàng</TableHead>
+                   <TableHead>Sale phụ trách</TableHead>
+                   <TableHead>Phòng ban</TableHead>
+                   <TableHead>Điện thoại</TableHead>
+                   <TableHead>Phân khúc</TableHead>
+                   <TableHead>Nguồn</TableHead>
+                   <TableHead className="text-right">Bookings</TableHead>
+                   <TableHead className="text-right">Doanh thu</TableHead>
+                   <TableHead className="text-right">Đã TT</TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.map((c) => {
@@ -227,16 +227,16 @@ export default function Customers() {
                           )}
                           {badge && <Badge variant="outline" className={badge.className}>{badge.label}</Badge>}
                         </div>
-                      </TableCell>
+                     </TableCell>
+                      <TableCell>{c.assigned_sale_id ? (saleMap[c.assigned_sale_id] ?? "—") : "—"}</TableCell>
+                      <TableCell>{(c as any).departments?.name ?? "—"}</TableCell>
                       <TableCell>{c.phone ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={segmentColors[c.segment ?? "NEW"]}>
                           {c.segment ?? "NEW"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{(c as any).departments?.name ?? "—"}</TableCell>
                       <TableCell>{(c as any).source ?? "—"}</TableCell>
-                      <TableCell>{c.assigned_sale_id ? (saleMap[c.assigned_sale_id] ?? "—") : "—"}</TableCell>
                       <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_paid)}</TableCell>
