@@ -34,6 +34,8 @@ type RawContact = {
   department_id: string | null;
   converted_lead_id: string | null;
   created_at: string;
+  company_size: string | null;
+  planned_event_date: string | null;
 };
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -78,6 +80,8 @@ export default function RawContacts() {
   const [formType, setFormType] = useState("personal");
   const [formSource, setFormSource] = useState("");
   const [formNote, setFormNote] = useState("");
+  const [formCompanySize, setFormCompanySize] = useState("");
+  const [formPlannedEventDate, setFormPlannedEventDate] = useState("");
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
   const [checkingPhone, setCheckingPhone] = useState(false);
 
@@ -179,10 +183,12 @@ export default function RawContacts() {
         contact_type: formType,
         source: formSource || null,
         note: formNote || null,
+        company_size: formCompanySize || null,
+        planned_event_date: formPlannedEventDate || null,
         created_by: user!.id,
         assigned_to: user!.id,
         department_id: myProfile?.department_id || null,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -198,6 +204,7 @@ export default function RawContacts() {
   const resetForm = () => {
     setFormName(""); setFormPhone(""); setFormEmail(""); setFormCompany("");
     setFormType("personal"); setFormSource(""); setFormNote(""); setPhoneWarning(null);
+    setFormCompanySize(""); setFormPlannedEventDate("");
   };
 
   // Log call mutation
@@ -233,6 +240,8 @@ export default function RawContacts() {
         phone: contact.phone,
         email: contact.email,
         company_name: contact.company_name,
+        company_size: contact.company_size ? parseInt(contact.company_size) || null : null,
+        planned_travel_date: contact.planned_event_date || null,
         assigned_to: contact.assigned_to || user!.id,
         department_id: contact.department_id,
         status: "NEW",
@@ -259,20 +268,21 @@ export default function RawContacts() {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Tên</TableHead>
+          <TableHead>Người phụ trách</TableHead>
           <TableHead>SĐT</TableHead>
           <TableHead>Công ty</TableHead>
+          <TableHead>Quy mô</TableHead>
+          <TableHead>TG dự kiến</TableHead>
           <TableHead>Trạng thái</TableHead>
           <TableHead className="text-center">Số gọi</TableHead>
           <TableHead>Gọi cuối</TableHead>
-          <TableHead>Ngày nhập</TableHead>
           <TableHead className="text-right">Thao tác</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {data.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
+           <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
           </TableRow>
         ) : data.map((c) => {
           const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
@@ -281,10 +291,11 @@ export default function RawContacts() {
               <TableCell className="font-medium">{c.full_name || "—"}</TableCell>
               <TableCell>{c.phone}</TableCell>
               <TableCell>{c.company_name || "—"}</TableCell>
+              <TableCell>{c.company_size || "—"}</TableCell>
+              <TableCell>{c.planned_event_date ? format(new Date(c.planned_event_date), "dd/MM/yyyy") : "—"}</TableCell>
               <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
               <TableCell className="text-center">{c.call_count}</TableCell>
               <TableCell>{c.last_called_at ? format(new Date(c.last_called_at), "dd/MM HH:mm") : "—"}</TableCell>
-              <TableCell>{format(new Date(c.created_at), "dd/MM/yyyy")}</TableCell>
               <TableCell className="text-right space-x-1">
                 {canEdit && c.status !== "converted_to_lead" && c.status !== "invalid" && (
                   <Button size="sm" variant="outline" onClick={() => { setCallTarget(c); setCallOpen(true); }}>
@@ -375,7 +386,7 @@ export default function RawContacts() {
               {phoneWarning && <p className="text-xs text-destructive mt-1">⚠️ {phoneWarning}</p>}
             </div>
             <div>
-              <Label>Họ tên</Label>
+              <Label>Người phụ trách</Label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Nguyễn Văn A" />
             </div>
             <div>
@@ -397,6 +408,16 @@ export default function RawContacts() {
                 <Label>Nguồn</Label>
                 <Input value={formSource} onChange={(e) => setFormSource(e.target.value)} placeholder="Zalo, FB..." />
               </div>
+            </div>
+            {formType === "b2b" && (
+              <div>
+                <Label>Quy mô nhân sự</Label>
+                <Input value={formCompanySize} onChange={(e) => setFormCompanySize(e.target.value)} placeholder="VD: 50-100 người" />
+              </div>
+            )}
+            <div>
+              <Label>Thời gian tổ chức dự kiến</Label>
+              <Input type="date" value={formPlannedEventDate} onChange={(e) => setFormPlannedEventDate(e.target.value)} />
             </div>
             <div>
               <Label>Ghi chú</Label>

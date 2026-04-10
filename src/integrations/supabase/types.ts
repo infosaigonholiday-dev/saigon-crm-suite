@@ -3258,6 +3258,7 @@ export type Database = {
           assigned_to: string | null
           call_count: number | null
           company_name: string | null
+          company_size: string | null
           contact_type: string | null
           converted_lead_id: string | null
           created_at: string | null
@@ -3269,6 +3270,7 @@ export type Database = {
           last_called_at: string | null
           note: string | null
           phone: string
+          planned_event_date: string | null
           source: string | null
           status: string | null
         }
@@ -3276,6 +3278,7 @@ export type Database = {
           assigned_to?: string | null
           call_count?: number | null
           company_name?: string | null
+          company_size?: string | null
           contact_type?: string | null
           converted_lead_id?: string | null
           created_at?: string | null
@@ -3287,6 +3290,7 @@ export type Database = {
           last_called_at?: string | null
           note?: string | null
           phone: string
+          planned_event_date?: string | null
           source?: string | null
           status?: string | null
         }
@@ -3294,6 +3298,7 @@ export type Database = {
           assigned_to?: string | null
           call_count?: number | null
           company_name?: string | null
+          company_size?: string | null
           contact_type?: string | null
           converted_lead_id?: string | null
           created_at?: string | null
@@ -3305,6 +3310,7 @@ export type Database = {
           last_called_at?: string | null
           note?: string | null
           phone?: string
+          planned_event_date?: string | null
           source?: string | null
           status?: string | null
         }
