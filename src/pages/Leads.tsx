@@ -233,7 +233,7 @@ export default function Leads() {
           </div>
           <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
         </div>
-
+      </div>
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
       <LostReasonDialog
