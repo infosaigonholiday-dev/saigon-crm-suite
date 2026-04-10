@@ -206,7 +206,7 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
         ? (form.full_name.trim() || form.company_name.trim())
         : form.full_name.trim();
 
-      const { error } = await supabase.from("leads").insert({
+      const payload = {
         full_name: fullName,
         phone: form.phone || null,
         email: form.email || null,
@@ -226,19 +226,30 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
         planned_travel_date: plannedTravelDate ? format(plannedTravelDate, "yyyy-MM-dd") : null,
         follow_up_date: followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         call_notes: form.call_notes || null,
-        assigned_to: user?.id || null,
-        created_by: user?.id || null,
-        status: "NEW",
-      } as any);
-      if (error) throw error;
+      };
+
+      if (isEdit) {
+        const { error } = await supabase.from("leads").update(payload as any).eq("id", editData.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("leads").insert({
+          ...payload,
+          assigned_to: user?.id || null,
+          created_by: user?.id || null,
+          status: "NEW",
+        } as any);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Đã thêm lead mới");
-      setForm(initial);
-      setLeadType("INDIVIDUAL");
-      setFollowUpDate(undefined);
-      setPlannedTravelDate(undefined);
+      toast.success(isEdit ? "Đã cập nhật lead" : "Đã thêm lead mới");
+      if (!isEdit) {
+        setForm(initial);
+        setLeadType("INDIVIDUAL");
+        setFollowUpDate(undefined);
+        setPlannedTravelDate(undefined);
+      }
       setDuplicateWarning(null);
       setPendingSubmit(false);
       onOpenChange(false);
