@@ -89,6 +89,8 @@ export function SettingsAccountsTab() {
   const [saving, setSaving] = useState(false);
   const [handoverProfile, setHandoverProfile] = useState<Profile | null>(null);
   const [handoverOpen, setHandoverOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteProfile, setConfirmDeleteProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -159,9 +161,31 @@ export function SettingsAccountsTab() {
       setFormData({ full_name: "", email: "", department_id: "", role: "SALE_DOMESTIC", employee_id: "" });
       await Promise.all([loadProfiles(), loadUnlinkedEmployees()]);
     } catch (err: any) {
-      toast.error(err.message || "Lỗi tạo tài khoản");
+      const msg = await parseEdgeFnError(err);
+      toast.error(msg);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleDeleteAccount(profile: Profile) {
+    setDeletingId(profile.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
+        body: { action: "delete_account", user_id: profile.id },
+      });
+      if (error) {
+        const msg = await parseEdgeFnError(error);
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      toast.success(data.message || "Đã xóa tài khoản thành công");
+      await Promise.all([loadProfiles(), loadUnlinkedEmployees()]);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi xóa tài khoản");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteProfile(null);
     }
   }
 
@@ -392,6 +416,19 @@ export function SettingsAccountsTab() {
                           <ShieldCheck className="h-4 w-4 text-primary" />
                         )}
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={deletingId === p.id}
+                        onClick={() => setConfirmDeleteProfile(p)}
+                        title="Xóa hoàn toàn tài khoản"
+                      >
+                        {deletingId === p.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
+                      </Button>
                   </>
                   )}
                 </div>
@@ -411,7 +448,7 @@ export function SettingsAccountsTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm tài khoản mới</DialogTitle>
-            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Email đặt mật khẩu sẽ được gửi tự động.</DialogDescription>
+            <DialogDescription>Tạo tài khoản đăng nhập cho nhân viên. Mật khẩu mặc định: <strong>sgh123456</strong>. Nhân viên bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
