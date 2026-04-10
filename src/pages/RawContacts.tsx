@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink } from "lucide-react";
+import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export default function RawContacts() {
   const canCreate = hasPermission("raw_contacts", "create");
   const canEdit = hasPermission("raw_contacts", "edit");
   const showDeptTab = scope === "department" || scope === "all";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
