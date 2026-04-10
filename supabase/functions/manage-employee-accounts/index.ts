@@ -137,9 +137,20 @@ Deno.serve(async (req) => {
     // ─── DEACTIVATE ───
     if (action === "deactivate") {
       const { user_id } = payload;
-      await adminClient.auth.admin.updateUserById(user_id, { ban_duration: "876000h" });
+
+      // Check if auth user exists before trying to ban
+      const { data: authCheck } = await adminClient.auth.admin.getUserById(user_id);
+
+      if (authCheck?.user) {
+        await adminClient.auth.admin.updateUserById(user_id, { ban_duration: "876000h" });
+      }
+
       await adminClient.from("profiles").update({ is_active: false }).eq("id", user_id);
-      return jsonResponse({ success: true });
+
+      return jsonResponse({
+        success: true,
+        warning: authCheck?.user ? undefined : "Auth user không tồn tại, chỉ vô hiệu hóa profile. Đây là profile mồ côi.",
+      });
     }
 
     // ─── ACTIVATE ───
