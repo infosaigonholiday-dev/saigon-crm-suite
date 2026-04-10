@@ -210,8 +210,29 @@ export default function Leads() {
           <h1 className="text-2xl font-bold">Tiềm năng (Lead)</h1>
           <p className="text-sm text-muted-foreground">{totalCount} lead</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1 rounded-r-none"
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1 rounded-l-none"
+              onClick={() => setViewMode("table")}
+            >
+              <List className="h-4 w-4" />
+              Bảng
+            </Button>
+          </div>
+          <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
+        </div>
 
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
