@@ -3,9 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Plus, Phone, ArrowRightCircle, Search, Loader2 } from "lucide-react";
+import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "react-router-dom";
 
 type RawContact = {
   id: string;
@@ -59,6 +61,7 @@ export default function RawContacts() {
   const { user, userRole } = useAuth();
   const { hasPermission, getScope } = usePermissions();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const scope = getScope("raw_contacts");
   const canCreate = hasPermission("raw_contacts", "create");
   const canEdit = hasPermission("raw_contacts", "edit");
@@ -84,6 +87,17 @@ export default function RawContacts() {
   const [formPlannedEventDate, setFormPlannedEventDate] = useState("");
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
   const [checkingPhone, setCheckingPhone] = useState(false);
+
+  // Convert dialog state
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<RawContact | null>(null);
+  const [convertDestination, setConvertDestination] = useState("");
+  const [convertTemperature, setConvertTemperature] = useState("warm");
+  const [convertPax, setConvertPax] = useState("");
+  const [convertNotes, setConvertNotes] = useState("");
+  const [convertDupWarning, setConvertDupWarning] = useState<string | null>(null);
+  const [convertDupLead, setConvertDupLead] = useState<any>(null);
+  const [checkingConvertDup, setCheckingConvertDup] = useState(false);
 
   // Dept filter for admin
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
@@ -232,9 +246,42 @@ export default function RawContacts() {
     onError: (e: any) => toast.error("Lỗi: " + e.message),
   });
 
+  // Open convert dialog with duplicate check
+  const openConvertDialog = async (contact: RawContact) => {
+    setConvertTarget(contact);
+    setConvertDestination("");
+    setConvertTemperature("warm");
+    setConvertPax("");
+    setConvertNotes("");
+    setConvertDupWarning(null);
+    setConvertDupLead(null);
+
+    // Check duplicate phone in leads
+    setCheckingConvertDup(true);
+    try {
+      const { data } = await supabase
+        .from("leads")
+        .select("id, full_name, status, assigned_to, assigned_profile:profiles!leads_assigned_to_fkey(full_name)")
+        .eq("phone", contact.phone)
+        .limit(1);
+      if (data && data.length > 0) {
+        const lead = data[0] as any;
+        const staffName = lead.assigned_profile?.full_name ?? "N/A";
+        setConvertDupWarning(`SĐT này đã có trong Tiềm năng: ${lead.full_name} — ${lead.status} — NV: ${staffName}`);
+        setConvertDupLead(lead);
+      }
+    } catch {}
+    setCheckingConvertDup(false);
+    setConvertOpen(true);
+  };
+
   // Convert to lead mutation
   const convertMutation = useMutation({
-    mutationFn: async (contact: RawContact) => {
+    mutationFn: async () => {
+      if (!convertTarget) throw new Error("No target");
+      const contact = convertTarget;
+      const combinedNotes = [contact.note, convertNotes].filter(Boolean).join("\n---\n");
+      
       const { data: lead, error: leadErr } = await supabase.from("leads").insert({
         full_name: contact.full_name || "Chưa có tên",
         phone: contact.phone,
@@ -244,8 +291,13 @@ export default function RawContacts() {
         planned_travel_date: contact.planned_event_date || null,
         assigned_to: contact.assigned_to || user!.id,
         department_id: contact.department_id,
+        channel: contact.source || "COLD_CALL",
         status: "NEW",
-        temperature: "warm",
+        temperature: convertTemperature,
+        destination: convertDestination || null,
+        pax_count: convertPax ? Number(convertPax) : null,
+        call_notes: combinedNotes || null,
+        created_by: user!.id,
       } as any).select("id").single();
       if (leadErr) throw leadErr;
 
@@ -254,12 +306,18 @@ export default function RawContacts() {
         converted_lead_id: lead.id,
       }).eq("id", contact.id);
       if (updateErr) throw updateErr;
+      
+      return lead;
     },
     onSuccess: () => {
       toast.success("Đã chuyển thành Lead thành công");
       queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
       queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
       queryClient.invalidateQueries({ queryKey: ["raw-contacts-dept"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      setConvertOpen(false);
+      setConvertTarget(null);
+      navigate("/tiem-nang");
     },
     onError: (e: any) => toast.error("Lỗi: " + e.message),
   });
@@ -286,6 +344,7 @@ export default function RawContacts() {
           </TableRow>
         ) : data.map((c) => {
           const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
+          const isConverted = c.status === "converted_to_lead";
           return (
             <TableRow key={c.id}>
               <TableCell className="font-medium">{c.full_name || "—"}</TableCell>
@@ -293,19 +352,31 @@ export default function RawContacts() {
               <TableCell>{c.company_name || "—"}</TableCell>
               <TableCell>{c.company_size || "—"}</TableCell>
               <TableCell>{c.planned_event_date ? format(new Date(c.planned_event_date), "dd/MM/yyyy") : "—"}</TableCell>
-              <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+              <TableCell>
+                <Badge variant={st.variant} className={isConverted ? "bg-green-100 text-green-700 border-green-200" : ""}>
+                  {st.label}
+                </Badge>
+              </TableCell>
               <TableCell className="text-center">{c.call_count}</TableCell>
               <TableCell>{c.last_called_at ? format(new Date(c.last_called_at), "dd/MM HH:mm") : "—"}</TableCell>
               <TableCell className="text-right space-x-1">
-                {canEdit && c.status !== "converted_to_lead" && c.status !== "invalid" && (
-                  <Button size="sm" variant="outline" onClick={() => { setCallTarget(c); setCallOpen(true); }}>
-                    <Phone className="h-3.5 w-3.5 mr-1" /> Gọi
-                  </Button>
-                )}
-                {canEdit && c.status === "called_interested" && (
-                  <Button size="sm" variant="default" onClick={() => convertMutation.mutate(c)} disabled={convertMutation.isPending}>
-                    <ArrowRightCircle className="h-3.5 w-3.5 mr-1" /> Chuyển Lead
-                  </Button>
+                {isConverted ? (
+                  <Link to="/tiem-nang" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    Xem Lead <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <>
+                    {canEdit && c.status !== "invalid" && (
+                      <Button size="sm" variant="outline" onClick={() => { setCallTarget(c); setCallOpen(true); }}>
+                        <Phone className="h-3.5 w-3.5 mr-1" /> Gọi
+                      </Button>
+                    )}
+                    {canEdit && c.status === "called_interested" && (
+                      <Button size="sm" variant="default" onClick={() => openConvertDialog(c)} disabled={convertMutation.isPending}>
+                        <ArrowRightCircle className="h-3.5 w-3.5 mr-1" /> Chuyển Lead
+                      </Button>
+                    )}
+                  </>
                 )}
               </TableCell>
             </TableRow>
@@ -459,6 +530,83 @@ export default function RawContacts() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCallOpen(false)}>Hủy</Button>
             <Button onClick={() => logCallMutation.mutate()} disabled={!callResult || logCallMutation.isPending}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to Lead Dialog */}
+      <Dialog open={convertOpen} onOpenChange={(o) => { setConvertOpen(o); if (!o) setConvertTarget(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Chuyển thành Lead</DialogTitle></DialogHeader>
+          {convertTarget && (
+            <div className="space-y-4">
+              {/* Preview */}
+              <div className="rounded-md border p-3 bg-muted/30 space-y-1.5">
+                <p className="text-sm font-semibold">Thông tin sẽ chuyển:</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">Tên:</span>
+                  <span>{convertTarget.full_name || "Chưa có tên"}</span>
+                  <span className="text-muted-foreground">SĐT:</span>
+                  <span>{convertTarget.phone}</span>
+                  {convertTarget.company_name && (
+                    <>
+                      <span className="text-muted-foreground">Công ty:</span>
+                      <span>{convertTarget.company_name}</span>
+                    </>
+                  )}
+                  {convertTarget.planned_event_date && (
+                    <>
+                      <span className="text-muted-foreground">Ngày DK đi:</span>
+                      <span>{format(new Date(convertTarget.planned_event_date), "dd/MM/yyyy")}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Duplicate warning */}
+              {checkingConvertDup && <p className="text-xs text-muted-foreground">Đang kiểm tra trùng...</p>}
+              {convertDupWarning && (
+                <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+                  <p>⚠️ {convertDupWarning}</p>
+                  <p className="mt-1 text-xs">Bạn vẫn muốn tạo lead mới?</p>
+                </div>
+              )}
+
+              {/* Extra fields */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold">Bổ sung thông tin:</p>
+                <div>
+                  <Label>Địa điểm quan tâm</Label>
+                  <Input value={convertDestination} onChange={(e) => setConvertDestination(e.target.value)} placeholder="VD: Đà Lạt, Nha Trang" />
+                </div>
+                <div>
+                  <Label>Mức độ</Label>
+                  <Select value={convertTemperature} onValueChange={setConvertTemperature}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hot">🔥 Nóng</SelectItem>
+                      <SelectItem value="warm">🟠 Ấm</SelectItem>
+                      <SelectItem value="cold">🔵 Lạnh</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Số lượng khách dự kiến</Label>
+                  <Input type="number" value={convertPax} onChange={(e) => setConvertPax(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Ghi chú thêm</Label>
+                  <Textarea value={convertNotes} onChange={(e) => setConvertNotes(e.target.value)} rows={2} />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertOpen(false)}>Hủy</Button>
+            <Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending}>
+              {convertMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Xác nhận chuyển
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

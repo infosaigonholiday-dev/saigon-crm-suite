@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,13 +6,16 @@ import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
 import LostReasonDialog from "@/components/leads/LostReasonDialog";
 import LeadTableView from "@/components/leads/LeadTableView";
+import ConvertToCustomerDialog from "@/components/leads/ConvertToCustomerDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
-  LayoutGrid, List,
+  LayoutGrid, List, Search, Building2, RefreshCw,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,10 +74,19 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Convert dialog
+  const [convertLead, setConvertLead] = useState<any>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
+
   // Lost/Nurture/Dormant dialog
   const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; leadId: string }>({
     open: false, status: "", leadId: "",
   });
+
+  // Filters
+  const [searchText, setSearchText] = useState("");
+  const [filterTemp, setFilterTemp] = useState<string>("all");
+  const [filterStaff, setFilterStaff] = useState<string>("all");
 
   function applyScopeFilter(q: any) {
     if (scope === "personal" && user?.id) {
@@ -102,7 +114,7 @@ export default function Leads() {
     queryFn: async () => {
       let q = supabase
         .from("leads")
-        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id, last_contact_at, assigned_profile:profiles!leads_assigned_to_fkey(full_name)")
+        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id, last_contact_at, department_id, created_at, created_by, converted_customer_id, assigned_profile:profiles!leads_assigned_to_fkey(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
@@ -116,6 +128,33 @@ export default function Leads() {
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
+  // Get unique staff for filter
+  const staffOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    leads.forEach((l: any) => {
+      if (l.assigned_to && l.assigned_profile_name) {
+        map.set(l.assigned_to, l.assigned_profile_name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [leads]);
+
+  // Filter leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter((l: any) => {
+      if (searchText) {
+        const s = searchText.toLowerCase();
+        const match = (l.full_name?.toLowerCase().includes(s)) ||
+          (l.phone?.toLowerCase().includes(s)) ||
+          (l.company_name?.toLowerCase().includes(s));
+        if (!match) return false;
+      }
+      if (filterTemp !== "all" && l.temperature !== filterTemp) return false;
+      if (filterStaff !== "all" && l.assigned_to !== filterStaff) return false;
+      return true;
+    });
+  }, [leads, searchText, filterTemp, filterStaff]);
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, extra }: { id: string; status: string; extra?: Record<string, any> }) => {
       const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", id);
@@ -124,56 +163,11 @@ export default function Leads() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
   });
 
-  const convertToCustomer = useMutation({
-    mutationFn: async (lead: any) => {
-      if (lead.status !== "WON") {
-        throw new Error("Chỉ có thể chuyển đổi lead có trạng thái 'Chốt tour' (WON)");
-      }
-      const { data: customer, error: custErr } = await supabase
-        .from("customers")
-        .insert({
-          full_name: lead.full_name,
-          phone: lead.phone || null,
-          email: lead.email || null,
-          company_name: lead.company_name || null,
-          company_address: lead.company_address || null,
-          contact_person: lead.contact_person || null,
-          contact_position: lead.contact_position || null,
-          assigned_sale_id: lead.assigned_to || null,
-          department_id: lead.department_id || null,
-          type: lead.company_name ? "CORPORATE" : "INDIVIDUAL",
-          source: lead.channel || null,
-          tour_interest: lead.interest_type || lead.destination || null,
-          notes: lead.call_notes || null,
-          tax_code: lead.tax_code || null,
-          company_size: lead.company_size || null,
-        })
-        .select("id")
-        .single();
-      if (custErr) throw custErr;
-
-      const { error: leadErr } = await supabase
-        .from("leads")
-        .update({ customer_id: customer.id, converted_customer_id: customer.id } as any)
-        .eq("id", lead.id);
-      if (leadErr) throw leadErr;
-      return customer;
-    },
-    onSuccess: (customer) => {
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Đã chuyển đổi thành khách hàng");
-      // Navigate to create booking for the new customer
-      navigate(`/khach-hang/${customer.id}`);
-    },
-    onError: (err: any) => toast.error("Lỗi", { description: err.message }),
-  });
-
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
 
   const handleDrop = useCallback(
     (status: LeadStatus) => {
       if (!draggedId) return;
-      // Statuses needing extra input
       if (status === "LOST" || status === "NURTURE" || status === "DORMANT") {
         setTransitionDialog({ open: true, status, leadId: draggedId });
         setDraggedId(null);
@@ -204,7 +198,7 @@ export default function Leads() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Tiềm năng (Lead)</h1>
@@ -234,6 +228,37 @@ export default function Leads() {
           <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Thêm lead</Button>
         </div>
       </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Tìm tên, SĐT, công ty..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={filterTemp} onValueChange={setFilterTemp}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Mức độ" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="hot">🔥 Nóng</SelectItem>
+            <SelectItem value="warm">🟠 Ấm</SelectItem>
+            <SelectItem value="cold">🔵 Lạnh</SelectItem>
+          </SelectContent>
+        </Select>
+        {staffOptions.length > 1 && (
+          <Select value={filterStaff} onValueChange={setFilterStaff}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="NV phụ trách" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả NV</SelectItem>
+              {staffOptions.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
       <LostReasonDialog
@@ -242,16 +267,21 @@ export default function Leads() {
         targetStatus={transitionDialog.status}
         onConfirm={handleTransitionConfirm}
       />
+      <ConvertToCustomerDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        lead={convertLead}
+      />
 
       {viewMode === "table" ? (
         <LeadTableView
-          leads={leads}
+          leads={filteredLeads}
           onClickLead={(lead) => { setSelectedLead(lead); setDetailOpen(true); }}
         />
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
           {columns.map((col) => {
-            const colLeads = leads.filter((l) => l.status === col.id);
+            const colLeads = filteredLeads.filter((l: any) => l.status === col.id);
             return (
               <div key={col.id} className="min-w-[240px] flex-shrink-0" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
                 <div className={`rounded-t-lg px-3 py-2 ${col.color}`}>
@@ -261,10 +291,11 @@ export default function Leads() {
                   </div>
                 </div>
                 <div className="bg-muted/30 rounded-b-lg min-h-[350px] p-1.5 space-y-1.5">
-                  {colLeads.map((lead) => {
+                  {colLeads.map((lead: any) => {
                     const temp = tempConfig[lead.temperature ?? "warm"];
                     const followUpStatus = getFollowUpStatus(lead.follow_up_date);
-                    const showConvert = col.id === "WON" && !lead.customer_id;
+                    const isConverted = !!lead.converted_customer_id;
+                    const showConvert = col.id === "WON" && !isConverted;
 
                     const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
                       ? "border-l-[3px] border-l-red-500"
@@ -288,6 +319,13 @@ export default function Leads() {
                                 {temp && <span className="text-xs">{temp.icon}</span>}
                                 <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
                               </div>
+
+                              {lead.company_name && (
+                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <Building2 className="h-2.5 w-2.5 shrink-0" />
+                                  <span className="truncate">{lead.company_name}</span>
+                                </div>
+                              )}
 
                               {lead.destination && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -314,7 +352,14 @@ export default function Leads() {
                               )}
 
                               <div className="flex items-center flex-wrap gap-1">
-                                <Badge variant="outline" className="text-[10px] h-4 px-1">{lead.channel ?? "—"}</Badge>
+                                {lead.assigned_profile_name && (
+                                  <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{lead.assigned_profile_name}</span>
+                                )}
+                                {(lead.contact_count ?? 0) > 0 && (
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                    <RefreshCw className="h-2.5 w-2.5" />{lead.contact_count}
+                                  </span>
+                                )}
                                 {lead.pax_count && (
                                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                                     <Users className="h-2.5 w-2.5" />{lead.pax_count}
@@ -325,6 +370,12 @@ export default function Leads() {
                                 </span>
                               </div>
 
+                              {isConverted && col.id === "WON" && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-100 text-green-700 border-green-200">
+                                  Đã chuyển KH
+                                </Badge>
+                              )}
+
                               {showConvert && (
                                 <Button
                                   size="sm"
@@ -332,11 +383,11 @@ export default function Leads() {
                                   className="w-full mt-1 text-[10px] h-6"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    convertToCustomer.mutate(lead);
+                                    setConvertLead(lead);
+                                    setConvertOpen(true);
                                   }}
-                                  disabled={convertToCustomer.isPending}
                                 >
-                                  <UserPlus className="h-3 w-3 mr-1" />Chuyển thành KH
+                                  <UserPlus className="h-3 w-3 mr-1" />→ KH
                                 </Button>
                               )}
                             </div>
