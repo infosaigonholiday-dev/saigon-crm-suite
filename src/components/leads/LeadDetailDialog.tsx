@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, Building2, MapPin, Calendar, Users, DollarSign, Pencil, ExternalLink, UserPlus } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Phone, Mail, Building2, MapPin, Calendar, Users, DollarSign, Pencil, ExternalLink, UserPlus, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import CareHistoryTab from "./CareHistoryTab";
 import AuditHistoryTab from "./AuditHistoryTab";
 import LeadFormDialog from "./LeadFormDialog";
 import ConvertToCustomerDialog from "./ConvertToCustomerDialog";
+import LostReasonDialog from "./LostReasonDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,8 +60,44 @@ function InfoRow({ icon: Icon, label, value }: { icon?: any; label: string; valu
 export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string }>({ open: false, status: "" });
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const queryClient = useQueryClient();
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ status, extra }: { status: string; extra?: Record<string, any> }) => {
+      const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const handleStatusSelect = (newStatus: string) => {
+    if (newStatus === "LOST" || newStatus === "NURTURE" || newStatus === "DORMANT") {
+      setTransitionDialog({ open: true, status: newStatus });
+    } else if (newStatus === "WON") {
+      updateStatus.mutate({ status: "WON" }, {
+        onSuccess: () => {
+          toast.success("Đã chuyển sang Thành công");
+          if (!lead.converted_customer_id) setConvertOpen(true);
+        },
+      });
+    } else {
+      updateStatus.mutate({ status: newStatus }, {
+        onSuccess: () => toast.success(`Đã chuyển sang ${statusLabels[newStatus] ?? newStatus}`),
+      });
+    }
+  };
+
+  const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
+    const extra: Record<string, any> = {};
+    if (data.lost_reason) extra.lost_reason = data.lost_reason;
+    if (data.next_contact_date) extra.follow_up_date = data.next_contact_date;
+    updateStatus.mutate({ status: transitionDialog.status, extra }, {
+      onSuccess: () => toast.success(`Đã chuyển sang ${statusLabels[transitionDialog.status]}`),
+    });
+  };
 
   // Query extra info: assigned profile name, created_by name, department name
   const { data: extraInfo } = useQuery({
@@ -96,7 +137,23 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
           <DialogHeader>
             <div className="flex items-center gap-2 flex-wrap">
               <DialogTitle className="text-lg">{lead.full_name}</DialogTitle>
-              <Badge variant="outline">{statusLabels[lead.status] ?? lead.status}</Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-6 text-xs">
+                    {statusLabels[lead.status] ?? lead.status}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  {Object.entries(statusLabels)
+                    .filter(([key]) => key !== lead.status)
+                    .map(([key, label]) => (
+                      <DropdownMenuItem key={key} onClick={() => handleStatusSelect(key)}>
+                        {label}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <span className="text-sm">{tempLabels[lead.temperature] ?? ""}</span>
               <div className="ml-auto flex gap-1">
                 {canConvert && (
@@ -232,6 +289,13 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
         open={convertOpen}
         onOpenChange={setConvertOpen}
         lead={lead}
+      />
+
+      <LostReasonDialog
+        open={transitionDialog.open}
+        onOpenChange={(o) => setTransitionDialog((p) => ({ ...p, open: o }))}
+        targetStatus={transitionDialog.status}
+        onConfirm={handleTransitionConfirm}
       />
     </>
   );

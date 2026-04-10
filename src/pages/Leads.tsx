@@ -14,8 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
-  LayoutGrid, List, Search, Building2, RefreshCw,
+  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -314,6 +317,55 @@ export default function Leads() {
                         <CardContent className="p-2.5">
                           <div className="flex items-start gap-1.5">
                             <GripVertical className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0 cursor-grab" />
+                            <div className="ml-auto shrink-0">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 -mt-0.5 -mr-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {columns
+                                    .filter((c) => c.id !== col.id)
+                                    .map((c) => (
+                                      <DropdownMenuItem
+                                        key={c.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (c.id === "LOST" || c.id === "NURTURE" || c.id === "DORMANT") {
+                                            setTransitionDialog({ open: true, status: c.id, leadId: lead.id });
+                                          } else if (c.id === "WON") {
+                                            updateStatus.mutate(
+                                              { id: lead.id, status: "WON" },
+                                              {
+                                                onSuccess: () => {
+                                                  toast.success("Đã chuyển sang Chốt tour");
+                                                  if (!lead.converted_customer_id) {
+                                                    setConvertLead(lead);
+                                                    setConvertOpen(true);
+                                                  }
+                                                },
+                                              }
+                                            );
+                                          } else {
+                                            updateStatus.mutate(
+                                              { id: lead.id, status: c.id },
+                                              { onSuccess: () => toast.success(`Đã chuyển sang ${c.label}`) }
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        {c.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                             <div className="min-w-0 flex-1 space-y-1">
                               <div className="flex items-center gap-1">
                                 {temp && <span className="text-xs">{temp.icon}</span>}
