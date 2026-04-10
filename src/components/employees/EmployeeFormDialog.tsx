@@ -264,9 +264,25 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
                 employee_id: emp.id,
               },
             });
-            if (accError) throw accError;
+            if (accError) {
+              // Parse edge function error for meaningful message
+              let msg = accError.message || "Lỗi tạo tài khoản";
+              try {
+                const body = await (accError as any).context?.json?.();
+                if (body?.error) msg = body.error;
+              } catch (_) {
+                try {
+                  const text = await (accError as any).context?.text?.();
+                  if (text) {
+                    const parsed = JSON.parse(text);
+                    if (parsed.error) msg = parsed.error;
+                  }
+                } catch (_) {}
+              }
+              throw new Error(msg);
+            }
             if (accData?.error) throw new Error(accData.error);
-            toast.success("Đã tạo tài khoản. Email đặt mật khẩu đã được gửi cho nhân viên.");
+            toast.success("Đã tạo tài khoản với mật khẩu mặc định (sgh123456). Nhân viên cần đổi mật khẩu ở lần đăng nhập đầu.");
           } catch (accErr: any) {
             toast.error(`Tạo tài khoản lỗi: ${accErr.message}`);
           }
@@ -390,7 +406,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
             {!isEdit && (
               <div className="border-t pt-4 mt-4 space-y-4">
                 <p className="text-sm font-medium text-foreground">Tạo tài khoản đăng nhập (tùy chọn)</p>
-                <p className="text-xs text-muted-foreground">Nếu nhập email đăng nhập, hệ thống sẽ tự động tạo tài khoản và gửi email đặt mật khẩu cho nhân viên.</p>
+                <p className="text-xs text-muted-foreground">Nếu nhập email đăng nhập, hệ thống sẽ tự động tạo tài khoản với mật khẩu mặc định <strong>sgh123456</strong>. Nhân viên bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Email đăng nhập">
                     <Input type="email" value={form.login_email} onChange={e => update("login_email", e.target.value)} placeholder="email@company.com" />
