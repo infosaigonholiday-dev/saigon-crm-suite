@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
         try {
           const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
             targetEmail,
-            { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+            { redirectTo: resetRedirectUrl }
           );
           if (linkErr) {
             emailError = linkErr.message;
@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
             try {
               const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
                 profile.email,
-                { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+                { redirectTo: resetRedirectUrl }
               );
               if (!linkErr) emailSentCount++;
             } catch (_) {}
