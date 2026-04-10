@@ -113,7 +113,7 @@ export default function CareHistoryTab({ leadId }: { leadId: string }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium">{methodLabels[entry.contact_method]}</span>
-                      <Badge variant={rc.variant} className={`text-xs ${rc.className || ""}`}>{rc.label}</Badge>
+                      <Badge variant={rc.variant} className={`text-xs ${"className" in rc ? (rc as any).className : ""}`}>{rc.label}</Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(entry.contacted_at), "dd/MM/yyyy HH:mm")}
