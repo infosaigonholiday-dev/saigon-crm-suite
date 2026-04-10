@@ -128,7 +128,23 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
       const { data, error } = await supabase.functions.invoke("manage-employee-accounts", {
         body: { action: "create", email: newEmail.trim(), full_name: employeeName || "Nhân viên", role: newRole, department_id: departmentId || null, employee_id: employeeId },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to parse actual error from edge function response
+        let msg = error.message || "Lỗi tạo tài khoản";
+        try {
+          const body = await error.context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch (_) {
+          try {
+            const text = await error.context?.text?.();
+            if (text) {
+              const parsed = JSON.parse(text);
+              if (parsed.error) msg = parsed.error;
+            }
+          } catch (_) {}
+        }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
 
       // Sync employees.department_id after account creation
@@ -207,10 +223,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Tài khoản đã tạo thành công. Email đặt mật khẩu đã được gửi tự động.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Nhân viên kiểm tra hộp thư (kể cả Spam) để đặt mật khẩu và đăng nhập.
+                Tài khoản đã tạo thành công với mật khẩu mặc định. Nhân viên cần đăng nhập lần đầu và đổi mật khẩu mới.
               </p>
             </CardContent>
           </Card>
@@ -224,7 +237,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Nhân viên chưa có tài khoản đăng nhập. Sau khi tạo, email đặt mật khẩu sẽ được gửi tự động.
+                Nhân viên chưa có tài khoản đăng nhập. Sau khi tạo, tài khoản sẽ dùng mật khẩu mặc định và bắt buộc đổi ở lần đăng nhập đầu.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

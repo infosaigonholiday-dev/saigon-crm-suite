@@ -579,6 +579,35 @@ export function SettingsAccountsTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!confirmDeleteProfile} onOpenChange={(open) => !open && setConfirmDeleteProfile(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Xóa hoàn toàn tài khoản?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Bạn sắp <strong>xóa vĩnh viễn</strong> tài khoản <strong>{confirmDeleteProfile?.email}</strong> ({confirmDeleteProfile?.full_name}).</p>
+              <p>Thao tác này sẽ:</p>
+              <ul className="list-disc pl-5 text-sm">
+                <li>Xóa tài khoản đăng nhập (auth)</li>
+                <li>Xóa hồ sơ profile</li>
+                <li>Bỏ liên kết với hồ sơ nhân viên (nếu có)</li>
+              </ul>
+              <p className="font-semibold text-destructive">⚠️ Hành động này KHÔNG THỂ hoàn tác. Chỉ dùng cho tài khoản test hoặc tài khoản lỗi.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteProfile && handleDeleteAccount(confirmDeleteProfile)}
+              disabled={deletingId === confirmDeleteProfile?.id}
+            >
+              {deletingId === confirmDeleteProfile?.id && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Xóa hoàn toàn
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DataHandoverDialog
         open={handoverOpen}
         onOpenChange={setHandoverOpen}
@@ -587,4 +616,26 @@ export function SettingsAccountsTab() {
       />
     </div>
   );
+}
+
+/** Parse edge function error to extract meaningful message */
+async function parseEdgeFnError(error: any): Promise<string> {
+  // supabase-js wraps edge function errors - try to extract body
+  if (error?.context) {
+    try {
+      const body = await error.context.json?.();
+      if (body?.error) return body.error;
+    } catch (_) {}
+    try {
+      const text = await error.context.text?.();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.error) return parsed.error;
+        } catch (_) {}
+        return text;
+      }
+    } catch (_) {}
+  }
+  return error.message || "Lỗi gọi Edge Function";
 }
