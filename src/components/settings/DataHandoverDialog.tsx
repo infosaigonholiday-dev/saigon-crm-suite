@@ -65,14 +65,15 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
   }, [open]);
 
   async function handleHandover() {
-    if (!profile || !newUserId) {
+    if (!profile) return;
+    if (totalData > 0 && !newUserId) {
       toast.error("Vui lòng chọn người nhận bàn giao");
       return;
     }
     setProcessing(true);
     try {
       // 1. Reassign leads
-      if (counts && counts.leads > 0) {
+      if (counts && counts.leads > 0 && newUserId) {
         const { error } = await supabase
           .from("leads")
           .update({ assigned_to: newUserId })
@@ -81,7 +82,7 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
       }
 
       // 2. Reassign customers
-      if (counts && counts.customers > 0) {
+      if (counts && counts.customers > 0 && newUserId) {
         const { error } = await supabase
           .from("customers")
           .update({ assigned_sale_id: newUserId })
@@ -105,14 +106,25 @@ export function DataHandoverDialog({ open, onOpenChange, profile, onComplete }: 
         } as any)
         .eq("id", profile.id);
 
-      const receiver = receivers.find(r => r.id === newUserId);
-      toast.success(
-        `Đã bàn giao ${counts?.leads ?? 0} leads, ${counts?.customers ?? 0} KH cho ${receiver?.full_name ?? "NV mới"} và vô hiệu hóa tài khoản`
-      );
+      // Build success message
+      if (totalData > 0) {
+        const receiver = receivers.find(r => r.id === newUserId);
+        toast.success(
+          `Đã bàn giao ${counts?.leads ?? 0} leads, ${counts?.customers ?? 0} KH cho ${receiver?.full_name ?? "NV mới"} và vô hiệu hóa tài khoản`
+        );
+      } else {
+        toast.success("Đã vô hiệu hóa tài khoản thành công");
+      }
+
+      // Show orphan warning if applicable
+      if (data?.warning) {
+        toast.warning(data.warning, { duration: 6000 });
+      }
+
       onOpenChange(false);
       onComplete();
     } catch (err: any) {
-      toast.error(err.message || "Lỗi bàn giao");
+      toast.error(err.message || "Lỗi bàn giao / vô hiệu hóa");
     } finally {
       setProcessing(false);
     }
