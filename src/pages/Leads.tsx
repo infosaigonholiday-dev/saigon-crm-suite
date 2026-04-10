@@ -117,7 +117,7 @@ export default function Leads() {
     queryFn: async () => {
       let q = supabase
         .from("leads")
-        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id, last_contact_at, department_id, created_at, created_by, converted_customer_id, assigned_profile:profiles!leads_assigned_to_fkey(full_name)")
+        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id, last_contact_at, department_id, created_at, created_by, converted_customer_id, assigned_profile:profiles!leads_assigned_to_fkey(full_name), departments(name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
@@ -126,6 +126,7 @@ export default function Leads() {
       return (data || []).map((l: any) => ({
         ...l,
         assigned_profile_name: l.assigned_profile?.full_name ?? null,
+        department_name: l.departments?.name ?? null,
       }));
     },
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
@@ -424,7 +425,7 @@ export default function Leads() {
                               </div>
 
                               {isConverted && col.id === "WON" && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-100 text-green-700 border-green-200">
+                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-600 text-white border-blue-700">
                                   Đã chuyển KH
                                 </Badge>
                               )}

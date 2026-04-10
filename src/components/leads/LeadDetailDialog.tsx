@@ -19,6 +19,7 @@ import LostReasonDialog from "./LostReasonDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -140,7 +141,10 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
               <DialogTitle className="text-lg">{lead.full_name}</DialogTitle>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 h-6 text-xs">
+                  <Button variant="outline" size="sm" className={cn(
+                    "gap-1 h-6 text-xs",
+                    lead.status === "WON" && "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                  )}>
                     {statusLabels[lead.status] ?? lead.status}
                     <ChevronDown className="h-3 w-3" />
                   </Button>
@@ -184,9 +188,9 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
 
           {/* Converted customer link */}
           {lead.converted_customer_id && (
-            <div className="rounded-md border border-green-200 bg-green-50 p-2 text-sm flex items-center gap-2">
-              <Badge className="bg-green-100 text-green-700 border-green-200">Đã chuyển KH</Badge>
-              <Link to={`/khach-hang/${lead.converted_customer_id}`} className="text-primary hover:underline inline-flex items-center gap-1">
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-sm flex items-center gap-2">
+              <Badge className="bg-blue-600 text-white border-blue-700">Đã chuyển KH</Badge>
+              <Link to={`/khach-hang/${lead.converted_customer_id}`} className="text-blue-600 hover:underline inline-flex items-center gap-1">
                 Xem Khách hàng <ExternalLink className="h-3 w-3" />
               </Link>
             </div>
