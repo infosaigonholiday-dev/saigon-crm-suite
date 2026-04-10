@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Loader2, Download } from "lucide-react";
+import { Search, Plus, Loader2, Download, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { exportToCSV } from "@/lib/exportUtils";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,8 +61,10 @@ export default function Customers() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { hasPermission, getScope } = usePermissions();
   const { user, userRole } = useAuth();
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const scope = getScope("customers");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
@@ -127,6 +130,19 @@ export default function Customers() {
 
   const saleMap = Object.fromEntries(saleProfiles.map((p) => [p.id, p.full_name]));
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const deleteCustomer = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-count"] });
+      toast.success("Đã xóa khách hàng");
+    },
+    onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
+  });
 
   const handleFilterChange = (v: Segment) => {
     setFilter(v);
@@ -210,6 +226,7 @@ export default function Customers() {
                    <TableHead className="text-right">Bookings</TableHead>
                    <TableHead className="text-right">Doanh thu</TableHead>
                    <TableHead className="text-right">Đã TT</TableHead>
+                   {isAdmin && <TableHead className="text-right">Thao tác</TableHead>}
                  </TableRow>
               </TableHeader>
               <TableBody>
@@ -240,11 +257,27 @@ export default function Customers() {
                       <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_paid)}</TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!window.confirm("Xác nhận xóa khách hàng này?")) return;
+                              deleteCustomer.mutate(c.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
                 {customers.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

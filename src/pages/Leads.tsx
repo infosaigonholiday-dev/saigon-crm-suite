@@ -14,11 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
-  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical,
+  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,18 +28,30 @@ const PAGE_SIZE = 20;
 
 type LeadStatus = "NEW" | "NO_ANSWER" | "CONTACTED" | "INTERESTED" | "PROFILE_SENT" | "QUOTE_SENT" | "NEGOTIATING" | "WON" | "LOST" | "NURTURE" | "DORMANT";
 
-const columns: { id: LeadStatus; label: string; color: string }[] = [
-  { id: "NEW", label: "Mới", color: "bg-secondary" },
-  { id: "NO_ANSWER", label: "KBM", color: "bg-orange-50" },
-  { id: "CONTACTED", label: "Đã liên hệ", color: "bg-blue-50" },
-  { id: "INTERESTED", label: "Quan tâm", color: "bg-green-50" },
-  { id: "PROFILE_SENT", label: "Đã gửi profile", color: "bg-purple-50" },
-  { id: "QUOTE_SENT", label: "Đã báo giá", color: "bg-blue-100" },
-  { id: "NEGOTIATING", label: "Đàm phán", color: "bg-orange-100" },
-  { id: "WON", label: "Chốt tour", color: "bg-green-100" },
-  { id: "LOST", label: "Thất bại", color: "bg-destructive/10" },
-  { id: "NURTURE", label: "Chăm sóc DH", color: "bg-yellow-50" },
-  { id: "DORMANT", label: "Tạm ngưng", color: "bg-muted" },
+// Original detailed statuses for dropdown menus
+const allStatuses: { id: LeadStatus; label: string }[] = [
+  { id: "NEW", label: "Mới" },
+  { id: "NO_ANSWER", label: "KBM" },
+  { id: "CONTACTED", label: "Đã liên hệ" },
+  { id: "INTERESTED", label: "Quan tâm" },
+  { id: "PROFILE_SENT", label: "Đã gửi profile" },
+  { id: "QUOTE_SENT", label: "Đã báo giá" },
+  { id: "NEGOTIATING", label: "Đàm phán" },
+  { id: "WON", label: "Chốt tour" },
+  { id: "LOST", label: "Thất bại" },
+  { id: "NURTURE", label: "Chăm sóc DH" },
+  { id: "DORMANT", label: "Tạm ngưng" },
+];
+
+const statusLabelMap: Record<string, string> = Object.fromEntries(allStatuses.map(s => [s.id, s.label]));
+
+// 5 grouped Kanban columns
+const kanbanColumns: { id: string; label: string; statuses: LeadStatus[]; color: string; defaultStatus: LeadStatus }[] = [
+  { id: "NEW_GROUP", label: "Mới", statuses: ["NEW", "NO_ANSWER", "CONTACTED"], color: "bg-secondary", defaultStatus: "NEW" },
+  { id: "INTEREST", label: "Quan tâm", statuses: ["INTERESTED", "PROFILE_SENT"], color: "bg-green-50", defaultStatus: "INTERESTED" },
+  { id: "QUOTING", label: "Đang báo giá", statuses: ["QUOTE_SENT", "NEGOTIATING"], color: "bg-blue-100", defaultStatus: "QUOTE_SENT" },
+  { id: "WON", label: "Thành công", statuses: ["WON"], color: "bg-green-100", defaultStatus: "WON" },
+  { id: "LOST_GROUP", label: "Không thành công", statuses: ["LOST", "DORMANT", "NURTURE"], color: "bg-destructive/10", defaultStatus: "LOST" },
 ];
 
 const tempConfig: Record<string, { icon: string; className: string }> = {
@@ -63,30 +75,27 @@ export default function Leads() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { getScope } = usePermissions();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   const scope = getScope("leads");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [page, setPage] = useState(0);
 
-  // Detail dialog
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Convert dialog
   const [convertLead, setConvertLead] = useState<any>(null);
   const [convertOpen, setConvertOpen] = useState(false);
 
-  // Lost/Nurture/Dormant dialog
   const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; leadId: string }>({
     open: false, status: "", leadId: "",
   });
 
-  // Filters
   const [searchText, setSearchText] = useState("");
   const [filterTemp, setFilterTemp] = useState<string>("all");
   const [filterStaff, setFilterStaff] = useState<string>("all");
@@ -132,7 +141,6 @@ export default function Leads() {
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
 
-  // Get unique staff for filter
   const staffOptions = useMemo(() => {
     const map = new Map<string, string>();
     leads.forEach((l: any) => {
@@ -143,7 +151,6 @@ export default function Leads() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [leads]);
 
-  // Filter leads
   const filteredLeads = useMemo(() => {
     return leads.filter((l: any) => {
       if (searchText) {
@@ -168,17 +175,30 @@ export default function Leads() {
     onError: (err: any) => toast.error("Lỗi đổi trạng thái", { description: err.message }),
   });
 
+  const deleteLead = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("leads").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leads-count"] });
+      toast.success("Đã xóa lead");
+    },
+    onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
+  });
+
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
 
   const handleDrop = useCallback(
-    (status: LeadStatus) => {
+    (col: typeof kanbanColumns[0]) => {
       if (!draggedId) return;
-      if (status === "LOST" || status === "NURTURE" || status === "DORMANT") {
-        setTransitionDialog({ open: true, status, leadId: draggedId });
+      if (col.id === "LOST_GROUP") {
+        setTransitionDialog({ open: true, status: "LOST", leadId: draggedId });
         setDraggedId(null);
         return;
       }
-      updateStatus.mutate({ id: draggedId, status });
+      updateStatus.mutate({ id: draggedId, status: col.defaultStatus });
       setDraggedId(null);
     },
     [draggedId, updateStatus]
@@ -282,13 +302,18 @@ export default function Leads() {
         <LeadTableView
           leads={filteredLeads}
           onClickLead={(lead) => { setSelectedLead(lead); setDetailOpen(true); }}
+          isAdmin={isAdmin}
+          onDeleteLead={(id) => {
+            if (!window.confirm("Xác nhận xóa lead này?")) return;
+            deleteLead.mutate(id);
+          }}
         />
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {columns.map((col) => {
-            const colLeads = filteredLeads.filter((l: any) => l.status === col.id);
+          {kanbanColumns.map((col) => {
+            const colLeads = filteredLeads.filter((l: any) => col.statuses.includes(l.status));
             return (
-              <div key={col.id} className="min-w-[240px] flex-shrink-0" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col.id)}>
+              <div key={col.id} className="min-w-[260px] flex-shrink-0" onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(col)}>
                 <div className={`rounded-t-lg px-3 py-2 ${col.color}`}>
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-xs">{col.label}</span>
@@ -301,6 +326,9 @@ export default function Leads() {
                     const followUpStatus = getFollowUpStatus(lead.follow_up_date);
                     const isConverted = !!lead.converted_customer_id;
                     const showConvert = col.id === "WON" && !isConverted;
+
+                    // Show sub-status badge when status differs from group default
+                    const subStatusLabel = lead.status !== col.defaultStatus ? statusLabelMap[lead.status] : null;
 
                     const borderClass = followUpStatus === "overdue" || followUpStatus === "today"
                       ? "border-l-[3px] border-l-red-500"
@@ -332,8 +360,8 @@ export default function Leads() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-44">
-                                  {columns
-                                    .filter((c) => c.id !== col.id)
+                                  {allStatuses
+                                    .filter((c) => c.id !== lead.status)
                                     .map((c) => (
                                       <DropdownMenuItem
                                         key={c.id}
@@ -365,6 +393,21 @@ export default function Leads() {
                                         {c.label}
                                       </DropdownMenuItem>
                                     ))}
+                                  {isAdmin && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!window.confirm("Xác nhận xóa lead này?")) return;
+                                          deleteLead.mutate(lead.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />Xóa
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -373,6 +416,12 @@ export default function Leads() {
                                 {temp && <span className="text-xs">{temp.icon}</span>}
                                 <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
                               </div>
+
+                              {subStatusLabel && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                                  {subStatusLabel}
+                                </Badge>
+                              )}
 
                               {lead.company_name && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">

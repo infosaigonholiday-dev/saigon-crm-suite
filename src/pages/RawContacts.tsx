@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink } from "lucide-react";
+import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export default function RawContacts() {
   const canCreate = hasPermission("raw_contacts", "create");
   const canEdit = hasPermission("raw_contacts", "edit");
   const showDeptTab = scope === "department" || scope === "all";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -351,6 +352,19 @@ export default function RawContacts() {
     onError: (e: any) => toast.error("Lỗi: " + e.message),
   });
 
+  const deleteRawContact = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("raw_contacts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+      queryClient.invalidateQueries({ queryKey: ["raw-contacts-dept"] });
+      toast.success("Đã xóa");
+    },
+    onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
+  });
+
   const renderTable = (data: RawContact[], showStaffCol: boolean) => (
     <Table>
       <TableHeader>
@@ -410,6 +424,19 @@ export default function RawContacts() {
                       </Button>
                     )}
                   </>
+                )}
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (!window.confirm("Xác nhận xóa data này?")) return;
+                      deleteRawContact.mutate(c.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 )}
               </TableCell>
             </TableRow>

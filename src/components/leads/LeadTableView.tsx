@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
-import { ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   NEW: { label: "Mới", variant: "secondary" },
@@ -42,9 +42,11 @@ interface LeadWithProfile {
 interface Props {
   leads: LeadWithProfile[];
   onClickLead: (lead: any) => void;
+  isAdmin?: boolean;
+  onDeleteLead?: (id: string) => void;
 }
 
-export default function LeadTableView({ leads, onClickLead }: Props) {
+export default function LeadTableView({ leads, onClickLead, isAdmin, onDeleteLead }: Props) {
   return (
     <div className="border rounded-lg">
       <Table>
@@ -59,12 +61,13 @@ export default function LeadTableView({ leads, onClickLead }: Props) {
             <TableHead>Nhiệt độ</TableHead>
             <TableHead>Ngày dự kiến đi</TableHead>
             <TableHead>Lần LH cuối</TableHead>
+            {isAdmin && <TableHead className="text-right">Thao tác</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {leads.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground py-8">
                 Không có lead nào
               </TableCell>
             </TableRow>
@@ -109,6 +112,21 @@ export default function LeadTableView({ leads, onClickLead }: Props) {
                     ? format(new Date(lead.last_contact_at), "dd/MM/yyyy HH:mm")
                     : "—"}
                 </TableCell>
+                {isAdmin && (
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteLead?.(lead.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
