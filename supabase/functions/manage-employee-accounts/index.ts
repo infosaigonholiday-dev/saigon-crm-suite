@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const ALLOWED_ROLES = ["ADMIN", "HCNS", "HR_MANAGER"];
 const DEFAULT_PASSWORD = "sgh123456";
+const PUBLISHED_URL = "https://saigon-holiday-nexus.lovable.app";
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -22,7 +23,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/+$/, "") || PUBLISHED_URL;
+    const resetRedirectUrl = `${origin}/reset-password`;
     if (!authHeader?.startsWith("Bearer ")) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
@@ -242,7 +244,7 @@ Deno.serve(async (req) => {
         try {
           const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
             targetEmail,
-            { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+            { redirectTo: resetRedirectUrl }
           );
           if (linkErr) {
             emailError = linkErr.message;
@@ -321,7 +323,7 @@ Deno.serve(async (req) => {
             try {
               const { error: linkErr } = await adminClient.auth.resetPasswordForEmail(
                 profile.email,
-                { redirectTo: "https://app.saigonholiday.vn/reset-password" }
+                { redirectTo: resetRedirectUrl }
               );
               if (!linkErr) emailSentCount++;
             } catch (_) {}

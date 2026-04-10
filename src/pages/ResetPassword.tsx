@@ -15,6 +15,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const resolvedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -27,10 +28,11 @@ export default function ResetPassword() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   };
 
-  const markExpired = () => {
+  const markExpired = (reason?: string) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setExpired(true);
+    setErrorDetail(reason || null);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   };
 
@@ -39,21 +41,38 @@ export default function ResetPassword() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
 
+      // Case 1: PKCE code exchange
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          markExpired();
+          markExpired(error.message);
         } else {
           markReady();
         }
         return;
       }
 
-      // Legacy hash-based recovery
+      // Case 2: Hash-based recovery (legacy)
       if (window.location.hash.includes("type=recovery")) {
+        // Give Supabase a moment to process the hash
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          markReady();
+          return;
+        }
+        // Wait for PASSWORD_RECOVERY event below
+        return;
+      }
+
+      // Case 3: Already have an active session (e.g. opened link while logged in)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
         markReady();
         return;
       }
+
+      // No code, no hash, no session — link is likely invalid or expired
+      // Still wait a short time for auth state change event
     };
 
     init();
@@ -65,12 +84,12 @@ export default function ResetPassword() {
       }
     });
 
-    // Timeout: 60s fallback if no resolution
+    // Shorter timeout: 10s instead of 60s since we check all cases upfront
     timeoutRef.current = setTimeout(() => {
       if (!resolvedRef.current) {
-        markExpired();
+        markExpired("Không tìm thấy phiên xác thực. Link có thể đã hết hạn hoặc đã được sử dụng.");
       }
-    }, 60000);
+    }, 10000);
 
     return () => {
       subscription.unsubscribe();
@@ -106,7 +125,6 @@ export default function ResetPassword() {
     }
 
     setSuccess(true);
-    // Sign out so user re-logs with new password
     await supabase.auth.signOut();
     setLoading(false);
   };
@@ -138,7 +156,9 @@ export default function ResetPassword() {
                 <span className="text-destructive text-xl">✕</span>
               </div>
               <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
-              <p className="text-sm text-muted-foreground">Liên kết đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.</p>
+              <p className="text-sm text-muted-foreground">
+                {errorDetail || "Liên kết đã hết hạn hoặc không hợp lệ. Vui lòng thử lại."}
+              </p>
               <Button className="w-full" onClick={() => navigate("/login")}>
                 Quay về đăng nhập
               </Button>

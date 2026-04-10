@@ -92,8 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (newSession) {
             setSession(newSession);
           } else {
-            toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
-            window.location.href = "/login";
+            // Don't redirect if on recovery/reset paths — let those pages handle it
+            if (!RECOVERY_PATHS.includes(window.location.pathname)) {
+              toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+              window.location.href = "/login";
+            }
           }
           return;
         }
