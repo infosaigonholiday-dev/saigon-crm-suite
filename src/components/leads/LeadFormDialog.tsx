@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,8 +82,7 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
   const qc = useQueryClient();
 
   // Populate form when editData changes
-  const editId = editData?.id;
-  useState(() => {
+  useEffect(() => {
     if (editData && open) {
       setLeadType(editData.company_name ? "CORPORATE" : "INDIVIDUAL");
       setForm({
@@ -107,8 +106,13 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
       });
       setFollowUpDate(editData.follow_up_date ? new Date(editData.follow_up_date) : undefined);
       setPlannedTravelDate(editData.planned_travel_date ? new Date(editData.planned_travel_date) : undefined);
+    } else if (!editData && open) {
+      setForm(initial);
+      setLeadType("INDIVIDUAL");
+      setFollowUpDate(undefined);
+      setPlannedTravelDate(undefined);
     }
-  });
+  }, [editData, open]);
 
   const set = (k: string, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
