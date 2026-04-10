@@ -13,6 +13,7 @@ import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HR_MANAGER", "HCNS"];
+const ACCOUNT_MANAGER_ROLES = ["ADMIN", "SUPER_ADMIN", "HR_MANAGER", "HCNS"];
 
 export default function Settings() {
   const { user, userRole } = useAuth();
