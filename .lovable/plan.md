@@ -1,36 +1,15 @@
 
 
-## Bổ sung trường cho Kho Data (raw_contacts)
+## Kế hoạch sửa lỗi "malformed array literal: follow_up_date"
 
-### Vấn đề
-Form "Thêm data mới" thiếu 3 trường quan trọng:
-1. **Quy mô nhân sự** (company_size) — cần cho data B2B
-2. **Họ tên = Họ tên người phụ trách** — đổi label "Họ tên" → "Họ tên người phụ trách" (contact_person) để rõ nghĩa, giữ full_name cho tên công ty/cá nhân
-3. **Thời gian tổ chức dự kiến** (planned_event_date) — để đẩy qua Lead với ngày đi dự kiến
+### Nguyên nhân
+Trigger `log_leads_changes()` dùng toán tử `||` để nối chuỗi vào mảng rỗng. PostgreSQL giải quyết `ARRAY[]::TEXT[] || 'text'` bằng overload `text[] || text[]`, cố cast chuỗi thành mảng → lỗi.
+
+### Giải pháp
+Tạo migration thay thế toàn bộ `v_changed := v_changed || 'field_name'` bằng `v_changed := array_append(v_changed, 'field_name')` trong hàm `log_leads_changes()`. Hàm `array_append()` không có vấn đề về operator resolution.
 
 ### Thay đổi
+1. **1 migration SQL** — `CREATE OR REPLACE FUNCTION log_leads_changes()` với tất cả 21 dòng `||` được đổi thành `array_append()`.
 
-#### 1. Migration — Thêm 2 cột vào raw_contacts
-
-```sql
-ALTER TABLE raw_contacts ADD COLUMN IF NOT EXISTS company_size text;
-ALTER TABLE raw_contacts ADD COLUMN IF NOT EXISTS planned_event_date date;
-```
-
-#### 2. RawContacts.tsx
-
-- Thêm state: `formCompanySize`, `formPlannedEventDate`
-- Cập nhật type `RawContact` thêm `company_size`, `planned_event_date`
-- Đổi label "Họ tên" → "Người phụ trách" (vẫn lưu vào `full_name`)
-- Thêm trường "Quy mô nhân sự" (input text, ví dụ: "50-100 người") — hiện khi Loại = Doanh nghiệp
-- Thêm trường "Thời gian tổ chức dự kiến" (date input)
-- Cập nhật insertMutation gửi `company_size`, `planned_event_date`
-- Cập nhật convertMutation: map `planned_event_date` → `planned_travel_date` khi tạo Lead
-- Cập nhật `resetForm` và bảng hiển thị
-
-#### 3. types.ts — Cập nhật raw_contacts type (tự động sau migration)
-
-### Thứ tự
-1. Migration (2 cột mới)
-2. Cập nhật RawContacts.tsx (form + bảng + convert logic)
+Không cần thay đổi code frontend.
 
