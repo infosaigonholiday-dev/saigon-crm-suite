@@ -12,7 +12,7 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink, PhoneCall } from "lucide-react";
 import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
 import { Link } from "react-router-dom";
 
@@ -85,18 +85,18 @@ export default function CustomerDetail() {
     enabled: !!id,
   });
 
-  // Query lead origin
+  // Query lead origin with more detail
   const { data: originLead } = useQuery({
     queryKey: ["customer-origin-lead", id],
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("leads")
-        .select("id, full_name, created_at") as any)
+        .select("id, full_name, created_at, status, contact_count, converted_customer_id") as any)
         .eq("converted_customer_id", id!)
         .limit(1)
         .maybeSingle();
       if (error) return null;
-      return data as { id: string; full_name: string; created_at: string } | null;
+      return data as { id: string; full_name: string; created_at: string; status: string; contact_count: number | null; converted_customer_id: string } | null;
     },
     enabled: !!id,
   });
@@ -143,6 +143,15 @@ export default function CustomerDetail() {
 
   const tier = customer.tier ?? "Mới";
   const showCompany = customer.type === "CORPORATE" || !!customer.company_name;
+
+  // Compute care duration
+  const careDuration = (() => {
+    if (!originLead) return null;
+    const start = new Date(originLead.created_at);
+    const end = customer.created_at ? new Date(customer.created_at) : new Date();
+    const days = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return days;
+  })();
 
   const stats = [
     { label: "Tổng booking", value: customer.total_bookings ?? 0, icon: CalendarDays },
@@ -199,25 +208,40 @@ export default function CustomerDetail() {
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-4">
-          {/* Origin Lead Section */}
+          {/* Origin Lead Section - Enhanced */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Nguồn gốc</CardTitle>
             </CardHeader>
             <CardContent>
               {originLead ? (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Chuyển đổi từ lead:</span>
-                  <Link to={`/tiem-nang`} className="text-primary hover:underline inline-flex items-center gap-1 font-medium">
-                    {originLead.full_name}
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
-                  <span className="text-muted-foreground">
-                    vào ngày {new Date(originLead.created_at).toLocaleDateString("vi-VN")}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm flex-wrap">
+                    <span className="text-muted-foreground">Chuyển đổi từ lead:</span>
+                    <span className="font-medium">{originLead.full_name}</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
+                      {originLead.status}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      — Ngày chuyển: {fmtDate(customer.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    {(originLead.contact_count ?? 0) > 0 && (
+                      <span className="flex items-center gap-1">
+                        <PhoneCall className="h-3.5 w-3.5" />
+                        Số lần chăm sóc: {originLead.contact_count}
+                      </span>
+                    )}
+                    {careDuration !== null && (
+                      <span>
+                        Thời gian chăm sóc: {careDuration} ngày
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Không có thông tin lead gốc</p>
+                <p className="text-sm text-muted-foreground">Không có thông tin lead gốc (tạo trực tiếp)</p>
               )}
             </CardContent>
           </Card>
