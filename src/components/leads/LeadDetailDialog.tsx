@@ -137,7 +137,23 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
           <DialogHeader>
             <div className="flex items-center gap-2 flex-wrap">
               <DialogTitle className="text-lg">{lead.full_name}</DialogTitle>
-              <Badge variant="outline">{statusLabels[lead.status] ?? lead.status}</Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-6 text-xs">
+                    {statusLabels[lead.status] ?? lead.status}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  {Object.entries(statusLabels)
+                    .filter(([key]) => key !== lead.status)
+                    .map(([key, label]) => (
+                      <DropdownMenuItem key={key} onClick={() => handleStatusSelect(key)}>
+                        {label}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <span className="text-sm">{tempLabels[lead.temperature] ?? ""}</span>
               <div className="ml-auto flex gap-1">
                 {canConvert && (
