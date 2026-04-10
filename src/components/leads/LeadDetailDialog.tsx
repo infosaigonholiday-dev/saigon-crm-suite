@@ -290,6 +290,13 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
         onOpenChange={setConvertOpen}
         lead={lead}
       />
+
+      <LostReasonDialog
+        open={transitionDialog.open}
+        onOpenChange={(o) => setTransitionDialog((p) => ({ ...p, open: o }))}
+        targetStatus={transitionDialog.status}
+        onConfirm={handleTransitionConfirm}
+      />
     </>
   );
 }
