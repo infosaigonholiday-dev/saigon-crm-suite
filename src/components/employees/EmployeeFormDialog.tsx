@@ -406,7 +406,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
             {!isEdit && (
               <div className="border-t pt-4 mt-4 space-y-4">
                 <p className="text-sm font-medium text-foreground">Tạo tài khoản đăng nhập (tùy chọn)</p>
-                <p className="text-xs text-muted-foreground">Nếu nhập email đăng nhập, hệ thống sẽ tự động tạo tài khoản và gửi email đặt mật khẩu cho nhân viên.</p>
+                <p className="text-xs text-muted-foreground">Nếu nhập email đăng nhập, hệ thống sẽ tự động tạo tài khoản với mật khẩu mặc định <strong>sgh123456</strong>. Nhân viên bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Email đăng nhập">
                     <Input type="email" value={form.login_email} onChange={e => update("login_email", e.target.value)} placeholder="email@company.com" />
