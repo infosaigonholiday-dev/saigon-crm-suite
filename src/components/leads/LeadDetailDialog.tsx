@@ -71,6 +71,7 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onError: (err: any) => toast.error("Lỗi đổi trạng thái", { description: err.message }),
   });
 
   const handleStatusSelect = (newStatus: string) => {
