@@ -689,6 +689,18 @@ export default function RawContacts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Excel Dialog */}
+      <ImportExcelDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        userId={user?.id ?? ""}
+        departmentId={myProfile?.department_id ?? null}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
+          queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+        }}
+      />
     </div>
   );
 }
