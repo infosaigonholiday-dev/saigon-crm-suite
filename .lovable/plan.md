@@ -1,77 +1,103 @@
 
-Bổ sung kế hoạch để xử lý đúng lỗi hiện tại:
+Mình bổ sung kế hoạch theo đúng 3 lỗi bạn đang gặp, và qua code hiện tại thì đúng là đang thiếu/không rõ ở cả 3 chỗ:
 
-### Vì sao vẫn lỗi dù là admin?
+1. Vấn đề “Bàn giao nhưng không hiện danh sách nhân sự”
+- `DataHandoverDialog.tsx` hiện chỉ query người nhận từ `profiles` với điều kiện:
+  - `is_active = true`
+  - khác người đang bị vô hiệu hóa
+  - và nếu có `department_id` thì bị giới hạn đúng cùng phòng ban
+- UI hiện không có:
+  - trạng thái loading
+  - thông báo “không có người nhận phù hợp”
+  - fallback chọn ngoài phòng ban
+- Kết quả là nhìn như dropdown “trống bất thường”, rất khó hiểu.
 
-Có 2 luồng khác nhau đang bị hiểu lẫn nhau:
+2. Vấn đề “Tạo mới vẫn lỗi”
+- `SettingsAccountsTab.tsx` và `EmployeeRoleTab.tsx` đều gọi edge function `manage-employee-accounts`.
+- Ở UI hiện chỉ toast lỗi chung `err.message`, nên khi edge function trả lỗi kiểu non-2xx thì người dùng chỉ thấy lỗi mơ hồ.
+- Screenshot của bạn đúng với case này: frontend chưa parse và hiển thị nguyên nhân thật sự.
+- Ngoài ra mô tả dialog vẫn ghi “Email đặt mật khẩu sẽ được gửi tự động”, nhưng edge function hiện tại lại KHÔNG gửi recovery email khi create, chỉ tạo tài khoản với mật khẩu mặc định. Nội dung UI đang sai với logic backend.
 
-1. **“Vô hiệu hóa tài khoản”**
-- Nút trong `SettingsAccountsTab` mở `DataHandoverDialog`.
-- Với nhân viên này, dialog hiển thị **0 Leads / 0 Khách hàng**.
-- Nhưng trong `DataHandoverDialog.tsx`, hàm `handleHandover()` vẫn đang chặn nếu `!newUserId`:
-  - Nghĩa là **dù không có data cần bàn giao vẫn bắt chọn người nhận**.
-  - Đây là lý do chính khiến bấm “Vô hiệu hóa” vẫn lỗi với case 0 data.
+3. Vấn đề “Không tìm được nút xóa”
+- Hiện tại trong `SettingsAccountsTab.tsx` chưa có nút xóa tài khoản nào cả.
+- Edge function `manage-employee-accounts` cũng chưa có action `delete_account`.
+- Tức là phần này mới ở mức ý tưởng trước đó, chưa được triển khai.
 
-2. **“Xóa nhân viên”**
-- Trang `Employees.tsx` và `EmployeeDetail.tsx` không xóa account/auth/profile.
-- Nó chỉ **soft delete** bản ghi `employees` bằng `deleted_at`.
-- Vì vậy admin **có quyền xóa hồ sơ nhân sự**, nhưng **không phải xóa hẳn tài khoản đăng nhập/profile**.
-- Nếu profile đó là orphan hoặc vẫn còn liên kết account, thì “xóa nhân viên” không giải quyết triệt để vấn đề tài khoản.
+Kế hoạch cập nhật
 
-3. **Case của nhân viên `operator1.saigonholiday@gmail.com`**
-- Trước đó đã xác định đây là **orphan profile**: có `profiles` nhưng không có `auth.users`.
-- Ngoài ra còn có migration đã tạo sẵn bản ghi `employees` liên kết với profile này.
-- Nên hiện tại hệ thống đang ở trạng thái:
-```text
-employees record tồn tại
-+ profiles record tồn tại
-+ auth user không tồn tại
-```
-- Đây là lý do admin thấy rất “ngược đời”: nhìn như có tài khoản nhưng thực tế auth đã mất.
+1. Sửa dialog bàn giao để luôn hiểu được vì sao danh sách người nhận trống
+- Cập nhật `DataHandoverDialog.tsx`:
+  - thêm loading state cho danh sách người nhận
+  - thêm empty state rõ ràng: “Không có nhân sự hoạt động cùng phòng ban để nhận bàn giao”
+  - hiển thị số lượng người nhận tìm thấy
+- Nếu phòng ban hiện tại không có ai phù hợp:
+  - cho phép fallback hiển thị nhân sự active ngoài phòng ban (ưu tiên cùng phòng ban trước, nếu rỗng thì mở rộng toàn hệ thống)
+  - gắn badge/phụ chú để admin biết ai là “khác phòng ban”
 
-### Kế hoạch cập nhật
+2. Làm rõ quy tắc chọn người nhận bàn giao
+- Giữ nguyên ưu tiên:
+  - cùng phòng ban
+  - active
+  - không phải chính tài khoản đang bị khóa
+- Nhưng nếu không có ai trong phòng ban:
+  - không để dropdown trống im lặng nữa
+  - thay bằng danh sách fallback toàn hệ thống hoặc message yêu cầu admin tạo/chọn người thay thế trước
+- Đồng thời cập nhật phần mô tả dialog để giải thích vì sao có thể không hiện danh sách.
 
-#### 1. Sửa `DataHandoverDialog.tsx` để cho phép vô hiệu hóa khi không có data bàn giao
-- Đổi điều kiện validate:
-```text
-Nếu tổng leads + customers > 0 → bắt buộc chọn người nhận
-Nếu tổng = 0 → cho phép gọi deactivate ngay, không cần newUserId
-```
-- Đồng thời đổi message/toast cho đúng case “chỉ vô hiệu hóa, không bàn giao”.
+3. Sửa luồng tạo tài khoản để báo lỗi thật, không báo chung chung
+- Cập nhật `SettingsAccountsTab.tsx` và `EmployeeRoleTab.tsx`:
+  - parse lỗi edge function tốt hơn
+  - ưu tiên hiện `data.error` từ server thay vì chỉ “Edge Function returned a non-2xx status code”
+  - hiển thị các case dễ hiểu như:
+    - email đã tồn tại
+    - profile/employee link lỗi
+    - không đủ quyền
+    - profile mồ côi / account trùng
+- Đồng thời sửa text trong dialog tạo tài khoản cho đúng thực tế:
+  - không còn ghi “email đặt mật khẩu sẽ được gửi tự động”
+  - thay bằng mô tả đúng: tạo với mật khẩu mặc định và bắt buộc đổi mật khẩu ở lần đăng nhập đầu
 
-#### 2. Giữ Edge Function `manage-employee-accounts` theo hướng graceful cho orphan
-- Action `deactivate` đã có fallback kiểm tra auth user.
-- Cần đảm bảo frontend hiển thị warning rõ ràng nếu profile là orphan, nhưng vẫn xem là thành công khi `profiles.is_active = false` update được.
+4. Bổ sung nút xóa thật sự trong Cài đặt
+- Thêm action `delete_account` vào `supabase/functions/manage-employee-accounts/index.ts`
+- Luồng xóa:
+  - không cho xóa chính tài khoản đang đăng nhập
+  - unlink `employees.profile_id`
+  - xóa `profiles`
+  - xóa `auth.users` nếu tồn tại
+  - xử lý graceful cho orphan account
+- Sau đó thêm nút xóa màu đỏ trong `SettingsAccountsTab.tsx` với `AlertDialog` xác nhận rõ:
+  - “Xóa hoàn toàn tài khoản đăng nhập”
+  - dành cho tài khoản test hoặc tài khoản lỗi
+  - không dùng để thay thế quy trình nghỉ việc bình thường
 
-#### 3. Làm rõ khác biệt giữa “xóa nhân viên” và “vô hiệu hóa tài khoản”
-- `Employees.tsx` / `EmployeeDetail.tsx`: hiện chỉ soft delete hồ sơ nhân viên.
-- `SettingsAccountsTab.tsx` / `EmployeeRoleTab.tsx`: quản lý account/profile.
-- Sẽ cập nhật wording UI để tránh hiểu nhầm:
-  - “Xóa nhân viên” = ẩn hồ sơ nhân sự khỏi danh sách
-  - “Vô hiệu hóa tài khoản” = chặn đăng nhập + ngưng quyền truy cập
-- Nếu cần, thêm mô tả ngắn trong dialog hoặc tooltip.
+5. Phân biệt rõ 3 thao tác trong UI
+- “Xóa nhân viên” ở module Nhân sự = soft delete hồ sơ nhân sự
+- “Vô hiệu hóa tài khoản” = khóa đăng nhập, giữ lịch sử
+- “Xóa tài khoản” ở Cài đặt = xóa hẳn account/profile, chỉ dành cho test/orphan/case đặc biệt
+- Sẽ bổ sung wording ngay trên tab Tài khoản và trong dialog xác nhận để admin không bị lẫn.
 
-#### 4. Bổ sung xử lý cho orphan profile sau khi vô hiệu hóa
-- Với orphan như `operator1.saigonholiday@gmail.com`, sau khi deactivate được thì admin có 2 hướng:
-  - `cleanup_orphans` để xóa profile lỗi
-  - sau đó tạo lại tài khoản đúng chuẩn bằng cùng email
-- Luồng này cần được ghi rõ hơn trong giao diện/toast để admin không bị mơ hồ.
+6. Rà lại hiển thị nút xóa theo quyền
+- Vì hiện page Settings chỉ check `settings.view/edit`, còn nút xóa là hành động cực nhạy cảm:
+  - chỉ hiện cho admin phù hợp
+  - ẩn với tài khoản hiện tại của chính mình
+- Nếu cần, sẽ khóa thêm ở edge function để không phụ thuộc riêng frontend.
 
-#### 5. Rà lại khả năng “xóa hoàn toàn” về mặt nghiệp vụ
-- Theo logic hiện tại của hệ thống, **không nên xóa hẳn tài khoản nhân viên đã từng hoạt động**, mà nên:
-  - bàn giao dữ liệu
-  - vô hiệu hóa account/profile
-  - soft delete employee nếu cần ẩn hồ sơ
-- Nếu user vẫn muốn có nút “xóa triệt để orphan account lỗi”, nên tách thành một action admin riêng, chỉ áp dụng cho profile lỗi/orphan, không dùng cho nhân viên bình thường.
-
-### File dự kiến chỉnh
+Files dự kiến chỉnh
 - `src/components/settings/DataHandoverDialog.tsx`
-- có thể chỉnh thêm `src/components/settings/SettingsAccountsTab.tsx`
-- có thể chỉnh thêm `src/components/employees/EmployeeRoleTab.tsx`
-- nếu cần đồng bộ thông báo: `supabase/functions/manage-employee-accounts/index.ts`
+- `src/components/settings/SettingsAccountsTab.tsx`
+- `src/components/employees/EmployeeRoleTab.tsx`
+- `supabase/functions/manage-employee-accounts/index.ts`
 
-### Kết quả mong đợi sau khi sửa
-- Admin vẫn vô hiệu hóa được nhân viên **ngay cả khi 0 leads / 0 khách hàng**
-- Orphan profile không còn làm flow bị kẹt
-- “Xóa nhân viên” và “Vô hiệu hóa tài khoản” được tách nghĩa rõ ràng
-- Sau đó admin có thể dọn orphan và tạo lại tài khoản trên cùng email nếu cần
+Kết quả mong đợi sau khi cập nhật
+- Có bàn giao thì phải thấy rõ danh sách người nhận hoặc lý do không có ai để chọn
+- Tạo tài khoản mới nếu lỗi sẽ hiện đúng nguyên nhân, không còn lỗi chung chung
+- Tab Cài đặt có nút xóa tài khoản thật sự cho account test / account lỗi
+- Admin phân biệt rõ “xóa nhân viên”, “vô hiệu hóa tài khoản”, và “xóa tài khoản”
+
+Chi tiết kỹ thuật
+- Ưu tiên giữ offboarding chuẩn cho nhân viên thật: bàn giao + vô hiệu hóa, không xóa cứng
+- Chỉ thêm hard-delete cho case test/orphan/sai dữ liệu
+- Với danh sách người nhận bàn giao, sẽ đổi từ query “cùng phòng ban hoặc trống” sang:
+  - cùng phòng ban trước
+  - nếu rỗng thì fallback toàn hệ thống
+  - có chú thích người nhận ngoài phòng ban
