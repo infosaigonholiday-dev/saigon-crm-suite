@@ -61,8 +61,10 @@ export default function Customers() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { hasPermission, getScope } = usePermissions();
   const { user, userRole } = useAuth();
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
 
   const scope = getScope("customers");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
@@ -128,6 +130,19 @@ export default function Customers() {
 
   const saleMap = Object.fromEntries(saleProfiles.map((p) => [p.id, p.full_name]));
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const deleteCustomer = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-count"] });
+      toast.success("Đã xóa khách hàng");
+    },
+    onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
+  });
 
   const handleFilterChange = (v: Segment) => {
     setFilter(v);
