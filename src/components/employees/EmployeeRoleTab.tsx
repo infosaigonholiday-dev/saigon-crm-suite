@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getResetPasswordUrl } from "@/lib/authRedirect";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -148,7 +149,7 @@ export function EmployeeRoleTab({ employeeId, profileId, employeeEmail, employee
   const handleSendResetEmail = async (email: string) => {
     setSendingReset(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: getResetPasswordUrl() });
       if (error) throw error;
       toast.success(`Đã gửi email đặt lại mật khẩu đến ${email}`);
     } catch (err: any) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import logo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
+import { getResetPasswordUrl } from "@/lib/authRedirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +47,7 @@ export default function Login() {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: getResetPasswordUrl(),
     });
     if (error) {
       toast.error("Lỗi", { description: error.message });
