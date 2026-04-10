@@ -69,7 +69,8 @@ const initial = {
   call_notes: "",
 };
 
-export default function LeadFormDialog({ open, onOpenChange }: Props) {
+export default function LeadFormDialog({ open, onOpenChange, editData }: Props) {
+  const isEdit = !!editData;
   const [leadType, setLeadType] = useState<LeadType>("INDIVIDUAL");
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
@@ -79,6 +80,35 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Populate form when editData changes
+  const editId = editData?.id;
+  useState(() => {
+    if (editData && open) {
+      setLeadType(editData.company_name ? "CORPORATE" : "INDIVIDUAL");
+      setForm({
+        full_name: editData.full_name || "",
+        phone: editData.phone || "",
+        email: editData.email || "",
+        channel: editData.channel || "ZALO",
+        interest_type: editData.interest_type || "",
+        temperature: editData.temperature || "warm",
+        company_name: editData.company_name || "",
+        company_address: editData.company_address || "",
+        contact_person: editData.contact_person || "",
+        contact_position: editData.contact_position || "",
+        company_size: editData.company_size?.toString() || "",
+        tax_code: editData.tax_code || "",
+        destination: editData.destination || "",
+        pax_count: editData.pax_count?.toString() || "",
+        budget: editData.budget?.toString() || "",
+        expected_value: editData.expected_value?.toString() || "",
+        call_notes: editData.call_notes || "",
+      });
+      setFollowUpDate(editData.follow_up_date ? new Date(editData.follow_up_date) : undefined);
+      setPlannedTravelDate(editData.planned_travel_date ? new Date(editData.planned_travel_date) : undefined);
+    }
+  });
 
   const set = (k: string, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
