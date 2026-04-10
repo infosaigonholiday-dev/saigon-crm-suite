@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ import { CalendarIcon, Loader2, Info, User, Building2 } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editData?: any;
 }
 
 type LeadType = "INDIVIDUAL" | "CORPORATE";
@@ -68,7 +69,8 @@ const initial = {
   call_notes: "",
 };
 
-export default function LeadFormDialog({ open, onOpenChange }: Props) {
+export default function LeadFormDialog({ open, onOpenChange, editData }: Props) {
+  const isEdit = !!editData;
   const [leadType, setLeadType] = useState<LeadType>("INDIVIDUAL");
   const [form, setForm] = useState(initial);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>();
@@ -78,6 +80,39 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Populate form when editData changes
+  useEffect(() => {
+    if (editData && open) {
+      setLeadType(editData.company_name ? "CORPORATE" : "INDIVIDUAL");
+      setForm({
+        full_name: editData.full_name || "",
+        phone: editData.phone || "",
+        email: editData.email || "",
+        channel: editData.channel || "ZALO",
+        interest_type: editData.interest_type || "",
+        temperature: editData.temperature || "warm",
+        company_name: editData.company_name || "",
+        company_address: editData.company_address || "",
+        contact_person: editData.contact_person || "",
+        contact_position: editData.contact_position || "",
+        company_size: editData.company_size?.toString() || "",
+        tax_code: editData.tax_code || "",
+        destination: editData.destination || "",
+        pax_count: editData.pax_count?.toString() || "",
+        budget: editData.budget?.toString() || "",
+        expected_value: editData.expected_value?.toString() || "",
+        call_notes: editData.call_notes || "",
+      });
+      setFollowUpDate(editData.follow_up_date ? new Date(editData.follow_up_date) : undefined);
+      setPlannedTravelDate(editData.planned_travel_date ? new Date(editData.planned_travel_date) : undefined);
+    } else if (!editData && open) {
+      setForm(initial);
+      setLeadType("INDIVIDUAL");
+      setFollowUpDate(undefined);
+      setPlannedTravelDate(undefined);
+    }
+  }, [editData, open]);
 
   const set = (k: string, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
@@ -175,7 +210,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         ? (form.full_name.trim() || form.company_name.trim())
         : form.full_name.trim();
 
-      const { error } = await supabase.from("leads").insert({
+      const payload = {
         full_name: fullName,
         phone: form.phone || null,
         email: form.email || null,
@@ -195,19 +230,30 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
         planned_travel_date: plannedTravelDate ? format(plannedTravelDate, "yyyy-MM-dd") : null,
         follow_up_date: followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         call_notes: form.call_notes || null,
-        assigned_to: user?.id || null,
-        created_by: user?.id || null,
-        status: "NEW",
-      } as any);
-      if (error) throw error;
+      };
+
+      if (isEdit) {
+        const { error } = await supabase.from("leads").update(payload as any).eq("id", editData.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("leads").insert({
+          ...payload,
+          assigned_to: user?.id || null,
+          created_by: user?.id || null,
+          status: "NEW",
+        } as any);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Đã thêm lead mới");
-      setForm(initial);
-      setLeadType("INDIVIDUAL");
-      setFollowUpDate(undefined);
-      setPlannedTravelDate(undefined);
+      toast.success(isEdit ? "Đã cập nhật lead" : "Đã thêm lead mới");
+      if (!isEdit) {
+        setForm(initial);
+        setLeadType("INDIVIDUAL");
+        setFollowUpDate(undefined);
+        setPlannedTravelDate(undefined);
+      }
       setDuplicateWarning(null);
       setPendingSubmit(false);
       onOpenChange(false);
@@ -218,10 +264,12 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const warning = await checkDuplicate();
-    if (warning) {
-      setDuplicateWarning(warning);
-      return;
+    if (!isEdit) {
+      const warning = await checkDuplicate();
+      if (warning) {
+        setDuplicateWarning(warning);
+        return;
+      }
     }
 
     setDuplicateWarning(null);
@@ -233,7 +281,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Thêm lead mới</DialogTitle>
+          <DialogTitle>{isEdit ? "Sửa lead" : "Thêm lead mới"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 py-2">
           {/* TYPE SELECTOR */}
@@ -465,7 +513,7 @@ export default function LeadFormDialog({ open, onOpenChange }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending || !!duplicateWarning}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Lưu
+            {isEdit ? "Cập nhật" : "Lưu"}
           </Button>
         </DialogFooter>
       </DialogContent>
