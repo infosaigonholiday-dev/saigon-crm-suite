@@ -34,6 +34,8 @@ type RawContact = {
   department_id: string | null;
   converted_lead_id: string | null;
   created_at: string;
+  company_size: string | null;
+  planned_event_date: string | null;
 };
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
