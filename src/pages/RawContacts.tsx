@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2, FileSpreadsheet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
+import { ImportExcelDialog } from "@/components/raw-contacts/ImportExcelDialog";
 
 type RawContact = {
   id: string;
@@ -91,6 +92,8 @@ export default function RawContacts() {
   const [formPlannedEventDate, setFormPlannedEventDate] = useState("");
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
   const [checkingPhone, setCheckingPhone] = useState(false);
+
+  const [importOpen, setImportOpen] = useState(false);
 
   // Convert dialog state
   const [convertOpen, setConvertOpen] = useState(false);
@@ -454,9 +457,14 @@ export default function RawContacts() {
           <p className="text-muted-foreground text-sm">Quản lý data thô telesale</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Thêm data
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Import Excel
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Thêm data
+            </Button>
+          </div>
         )}
       </div>
 
@@ -681,6 +689,18 @@ export default function RawContacts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Excel Dialog */}
+      <ImportExcelDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        userId={user?.id ?? ""}
+        departmentId={myProfile?.department_id ?? null}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
+          queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+        }}
+      />
     </div>
   );
 }
