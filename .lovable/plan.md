@@ -1,15 +1,32 @@
 
 
-## Kế hoạch sửa lỗi "malformed array literal: follow_up_date"
+## Kế hoạch bổ sung 2 phần còn thiếu (Prompt 3/6)
 
-### Nguyên nhân
-Trigger `log_leads_changes()` dùng toán tử `||` để nối chuỗi vào mảng rỗng. PostgreSQL giải quyết `ARRAY[]::TEXT[] || 'text'` bằng overload `text[] || text[]`, cố cast chuỗi thành mảng → lỗi.
+### 1. Thêm Table View cho danh sách Leads
 
-### Giải pháp
-Tạo migration thay thế toàn bộ `v_changed := v_changed || 'field_name'` bằng `v_changed := array_append(v_changed, 'field_name')` trong hàm `log_leads_changes()`. Hàm `array_append()` không có vấn đề về operator resolution.
+Thêm nút toggle (Kanban / Bảng) vào trang Leads. Khi chọn "Bảng":
+- Hiển thị bảng với các cột: Tên, Công ty, SĐT, Trạng thái (badge màu), Nhiệt độ (badge HOT=đỏ, WARM=vàng, COLD=xanh), Ngày dự kiến đi, Lần LH cuối, NV phụ trách (join profiles.full_name).
+- Hỗ trợ phân trang (đã có logic sẵn).
+- Click vào row → mở LeadDetailDialog (đã có).
 
-### Thay đổi
-1. **1 migration SQL** — `CREATE OR REPLACE FUNCTION log_leads_changes()` với tất cả 21 dòng `||` được đổi thành `array_append()`.
+**File thay đổi**: `src/pages/Leads.tsx`
+- Thêm state `viewMode` (kanban | table)
+- Thêm toggle buttons
+- Thêm component bảng dùng `Table` UI component
+- Query cần thêm join `profiles` để lấy tên NV phụ trách
 
-Không cần thay đổi code frontend.
+### 2. Thêm Form Edit Lead
+
+Mở rộng `LeadFormDialog` để hỗ trợ mode edit (nhận prop `editLead`), hoặc tạo component riêng.
+
+- Khi mở dialog detail → thêm nút "Sửa" (chỉ hiện cho assigned_to = current user hoặc Admin).
+- Nhấn "Sửa" → mở `LeadFormDialog` với data auto-fill.
+- Submit → update bảng leads thay vì insert.
+
+**File thay đổi**:
+- `src/components/leads/LeadFormDialog.tsx` — thêm prop `editData`, đổi logic insert/update
+- `src/components/leads/LeadDetailDialog.tsx` — thêm nút "Sửa" với permission check
+- `src/pages/Leads.tsx` — truyền editLead state
+
+### Không cần migration SQL — tất cả bảng và cột đã đầy đủ.
 
