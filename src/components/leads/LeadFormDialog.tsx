@@ -260,10 +260,12 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const warning = await checkDuplicate();
-    if (warning) {
-      setDuplicateWarning(warning);
-      return;
+    if (!isEdit) {
+      const warning = await checkDuplicate();
+      if (warning) {
+        setDuplicateWarning(warning);
+        return;
+      }
     }
 
     setDuplicateWarning(null);
@@ -275,7 +277,7 @@ export default function LeadFormDialog({ open, onOpenChange, editData }: Props) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Thêm lead mới</DialogTitle>
+          <DialogTitle>{isEdit ? "Sửa lead" : "Thêm lead mới"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 py-2">
           {/* TYPE SELECTOR */}
