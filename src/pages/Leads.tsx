@@ -102,13 +102,16 @@ export default function Leads() {
     queryFn: async () => {
       let q = supabase
         .from("leads")
-        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id")
+        .select("id, full_name, phone, email, channel, interest_type, expected_value, status, budget, destination, pax_count, temperature, follow_up_date, call_notes, company_name, company_address, contact_person, contact_position, company_size, tax_code, planned_travel_date, reminder_date, contact_count, lost_reason, assigned_to, customer_id, last_contact_at, assigned_profile:profiles!leads_assigned_to_fkey(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return (data || []).map((l: any) => ({
+        ...l,
+        assigned_profile_name: l.assigned_profile?.full_name ?? null,
+      }));
     },
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
   });
