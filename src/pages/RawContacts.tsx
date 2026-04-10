@@ -425,6 +425,19 @@ export default function RawContacts() {
                     )}
                   </>
                 )}
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (!window.confirm("Xác nhận xóa data này?")) return;
+                      deleteRawContact.mutate(c.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           );
