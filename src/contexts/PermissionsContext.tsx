@@ -8,7 +8,7 @@ const SCOPE_RULES: Record<string, Record<string, ScopeLevel>> = {
   SUPER_ADMIN: { default: "all" },
   GDKD: { default: "department", raw_contacts: "department" },
   MANAGER: { default: "department", raw_contacts: "department" },
-  DIEUHAN: { default: "all", staff: "personal", leave: "personal", payroll: "personal" },
+  DIEUHAN: { default: "all", staff: "personal", leave: "department", payroll: "personal" },
   HR_MANAGER: { default: "all", staff: "all", leave: "all", payroll: "all", finance: "personal" },
   KETOAN: { default: "all", staff: "personal", leave: "personal", payroll: "all", finance: "all" },
   MKT: { default: "personal" },

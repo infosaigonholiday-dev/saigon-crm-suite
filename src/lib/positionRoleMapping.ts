@@ -73,7 +73,7 @@ const deptRoleMap: Record<string, Record<string, string>> = {
   OPS: {
     GIAM_DOC: "DIEUHAN",
     PHO_GIAM_DOC: "DIEUHAN",
-    TRUONG_PHONG: "MANAGER",
+    TRUONG_PHONG: "DIEUHAN",
     PHO_PHONG: "DIEUHAN",
     NHAN_VIEN: "DIEUHAN",
     THUC_TAP_SINH: "INTERN_DIEUHAN",
