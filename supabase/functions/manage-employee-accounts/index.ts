@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
   try {
     const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/+$/, "") || PUBLISHED_URL;
     const resetRedirectUrl = `${origin}/reset-password`;
+    const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
