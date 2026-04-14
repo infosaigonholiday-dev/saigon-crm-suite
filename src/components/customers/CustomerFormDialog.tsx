@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  customer?: any;
 }
 
 const initial = {
@@ -143,24 +144,64 @@ function DateInput({ value, textValue, onChange, onTextChange, label, badge, dis
   );
 }
 
-export default function CustomerFormDialog({ open, onOpenChange }: Props) {
+export default function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { user, userRole } = useAuth();
   const { getScope } = usePermissionsContext();
   
   const qc = useQueryClient();
+  const isEdit = !!customer;
 
   const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
   const isGDKDOrManager = userRole === "GDKD" || userRole === "MANAGER";
   const isSaleOrIntern = (userRole ?? "").startsWith("SALE_") || (userRole ?? "").startsWith("INTERN_");
 
-  // Auto-fill assigned_sale_id for SALE/INTERN roles
+  // Pre-fill form when editing
   useEffect(() => {
-    if (isSaleOrIntern && user?.id && !form.assigned_sale_id) {
+    if (open && customer) {
+      setForm({
+        full_name: customer.full_name || "",
+        type: customer.type || "INDIVIDUAL",
+        phone: customer.phone || "",
+        email: customer.email || "",
+        date_of_birth: customer.date_of_birth ? new Date(customer.date_of_birth) : null,
+        date_of_birth_text: customer.date_of_birth ? format(new Date(customer.date_of_birth), "dd/MM/yyyy") : "",
+        gender: customer.gender || "",
+        id_number: customer.id_number || "",
+        address: customer.address || "",
+        source_id: customer.source_id || "",
+        assigned_sale_id: customer.assigned_sale_id || "",
+        segment: customer.segment || "NEW",
+        notes: customer.notes || "",
+        company_name: customer.company_name || "",
+        tax_code: customer.tax_code || "",
+        company_address: customer.company_address || "",
+        contact_person: customer.contact_person || "",
+        contact_position: customer.contact_position || "",
+        contact_birthday: customer.contact_birthday ? new Date(customer.contact_birthday) : null,
+        contact_birthday_text: customer.contact_birthday ? format(new Date(customer.contact_birthday), "dd/MM/yyyy") : "",
+        company_email: customer.company_email || "",
+        founded_date: customer.founded_date ? new Date(customer.founded_date) : null,
+        founded_date_text: customer.founded_date ? format(new Date(customer.founded_date), "dd/MM/yyyy") : "",
+        company_size: customer.company_size ? String(customer.company_size) : "",
+        contact_person_phone: customer.contact_person_phone || "",
+        tour_interest: customer.tour_interest || "",
+        contact_status: customer.contact_status || "",
+        issue_faced: customer.issue_faced || "",
+        result: customer.result || "",
+      });
+    } else if (open && !customer) {
+      setForm(initial);
+    }
+  }, [open, customer]);
+
+  // Auto-fill assigned_sale_id for SALE/INTERN roles (only for new)
+  useEffect(() => {
+    if (!isEdit && isSaleOrIntern && user?.id && !form.assigned_sale_id) {
       setForm((p) => ({ ...p, assigned_sale_id: user.id }));
     }
-  }, [isSaleOrIntern, user?.id]);
+  }, [isSaleOrIntern, user?.id, isEdit]);
 
   const { data: myProfile } = useQuery({
     queryKey: ["my-profile-dept", user?.id],
@@ -239,7 +280,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("customers").insert({
+      const payload = {
         full_name: form.full_name.trim(),
         type: form.type,
         phone: form.phone || null,
@@ -266,14 +307,24 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
         contact_status: form.contact_status || null,
         issue_faced: form.issue_faced || null,
         result: form.result || null,
-        created_by: user?.id || null,
-        department_id: myProfile?.department_id || null,
-      } as any);
-      if (error) throw error;
+      } as any;
+
+      if (isEdit) {
+        const { error } = await supabase.from("customers").update(payload).eq("id", customer.id);
+        if (error) throw error;
+      } else {
+        payload.created_by = user?.id || null;
+        payload.department_id = myProfile?.department_id || null;
+        const { error } = await supabase.from("customers").insert(payload);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Thành công", { description: "Đã thêm khách hàng mới" });
+      if (isEdit) {
+        qc.invalidateQueries({ queryKey: ["customer", customer.id] });
+      }
+      toast.success("Thành công", { description: isEdit ? "Đã cập nhật khách hàng" : "Đã thêm khách hàng mới" });
       setForm(initial);
       onOpenChange(false);
     },
@@ -293,7 +344,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Thêm khách hàng</DialogTitle>
+          <DialogTitle>{isEdit ? "Sửa khách hàng" : "Thêm khách hàng"}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="company" className="w-full">
@@ -520,7 +571,7 @@ export default function CustomerFormDialog({ open, onOpenChange }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Lưu
+            {isEdit ? "Lưu thay đổi" : "Lưu"}
           </Button>
         </DialogFooter>
       </DialogContent>
