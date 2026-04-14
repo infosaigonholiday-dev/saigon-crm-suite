@@ -446,6 +446,12 @@ export default function CustomerDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CustomerFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        customer={customer}
+      />
     </div>
   );
 }
