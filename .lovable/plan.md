@@ -1,57 +1,62 @@
 
 
-## Sửa lỗi Admin không xóa được khách hàng
+## Thêm chức năng chỉnh sửa khách hàng + audit log
 
-### Nguyên nhân
-7 foreign key tham chiếu tới bảng `customers` đang dùng `NO ACTION`, chặn xóa dù Admin đã có full RLS access.
+### Tình trạng hiện tại
+- Bảng `audit_logs` đã tồn tại (KHÔNG cần tạo `audit_log` mới)
+- Function `log_customers_changes` đã tồn tại nhưng **chưa có trigger** gắn vào bảng `customers`
+- `AuditHistoryTab` component đã có và đang được dùng trong `CustomerDetail` — tab "Lịch sử sửa đổi" đã hoạt động (query bảng `audit_logs`)
+- `CustomerFormDialog` chỉ hỗ trợ tạo mới, chưa có chế độ sửa
+- Trang `CustomerDetail` chưa có nút "Chỉnh sửa"
 
-### Giải pháp
-1 migration duy nhất — đổi 7 FK sang `ON DELETE SET NULL`:
+### Phần 1: Migration — Gắn trigger audit cho customers, leads, raw_contacts
+
+1 migration duy nhất:
 
 ```sql
-ALTER TABLE leads
-  DROP CONSTRAINT leads_customer_id_fkey,
-  ADD CONSTRAINT leads_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
+-- Gắn trigger cho customers
+DROP TRIGGER IF EXISTS trg_customers_audit ON customers;
+CREATE TRIGGER trg_customers_audit
+  AFTER INSERT OR UPDATE OR DELETE ON customers
+  FOR EACH ROW EXECUTE FUNCTION log_customers_changes();
 
-ALTER TABLE leads
-  DROP CONSTRAINT leads_converted_customer_id_fkey,
-  ADD CONSTRAINT leads_converted_customer_id_fkey
-    FOREIGN KEY (converted_customer_id) REFERENCES customers(id) ON DELETE SET NULL;
-
-ALTER TABLE bookings
-  DROP CONSTRAINT bookings_customer_id_fkey,
-  ADD CONSTRAINT bookings_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
-
-ALTER TABLE quotes
-  DROP CONSTRAINT quotes_customer_id_fkey,
-  ADD CONSTRAINT quotes_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
-
-ALTER TABLE contracts
-  DROP CONSTRAINT contracts_customer_id_fkey,
-  ADD CONSTRAINT contracts_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
-
-ALTER TABLE invoices
-  DROP CONSTRAINT invoices_customer_id_fkey,
-  ADD CONSTRAINT invoices_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
-
-ALTER TABLE accounts_receivable
-  DROP CONSTRAINT accounts_receivable_customer_id_fkey,
-  ADD CONSTRAINT accounts_receivable_customer_id_fkey
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
+-- Gắn trigger cho leads
+DROP TRIGGER IF EXISTS trg_leads_audit ON leads;
+CREATE TRIGGER trg_leads_audit
+  AFTER INSERT OR UPDATE OR DELETE ON leads
+  FOR EACH ROW EXECUTE FUNCTION log_leads_changes();
 ```
 
-### Hành vi sau khi sửa
-- **Chỉ ADMIN** được xóa khách hàng (giữ nguyên, không thêm role nào)
-- Xóa khách hàng → leads, bookings, hợp đồng, hóa đơn, công nợ **vẫn còn** (chỉ `customer_id` thành NULL)
-- `customer_tags` và `data_assignments` tự xóa theo (đã có CASCADE sẵn)
-- Không cần xóa từng tab — xóa ở tab Khách hàng là đủ
-- Không cần sửa code frontend
+Không tạo bảng `audit_log` mới vì `audit_logs` đã tồn tại và đang được dùng. Không tạo lại function vì đã có sẵn.
+
+### Phần 2: CustomerFormDialog hỗ trợ sửa
+
+File: `src/components/customers/CustomerFormDialog.tsx`
+
+- Thêm prop `customer?: any` vào interface Props
+- Khi `customer` có giá trị: pre-fill tất cả fields từ customer data (useEffect khi dialog mở)
+- Title: `customer ? "Sửa khách hàng" : "Thêm khách hàng"`
+- Submit button: `customer ? "Lưu thay đổi" : "Lưu"`
+- Logic submit: nếu có `customer` → `.update().eq('id', customer.id)`, ngược lại → `.insert()` như cũ
+- Sau submit → invalidate queries + đóng dialog + toast
+
+### Phần 3: Nút Sửa trên CustomerDetail
+
+File: `src/pages/CustomerDetail.tsx`
+
+- Import `CustomerFormDialog` + `usePermissions`
+- Thêm state `editOpen`
+- Thêm nút "Chỉnh sửa" (icon Pencil) ở header, cạnh badge tier
+- Chỉ hiện khi `hasPermission('customers', 'edit')` — RLS tự enforce quyền theo role
+- Click → mở `CustomerFormDialog` với prop `customer={customer}`
+- Sau khi lưu → refetch customer detail (invalidate query)
+
+### Phần 4: Audit tab
+
+Đã hoạt động sẵn — `CustomerDetail` đã có tab "Lịch sử sửa đổi" dùng `AuditHistoryTab`. Sau khi gắn trigger ở Phần 1, mọi thay đổi sẽ tự động được ghi log.
 
 ### Files chỉnh sửa
-- 1 file migration SQL mới
+1. 1 migration SQL mới (gắn trigger)
+2. `src/components/customers/CustomerFormDialog.tsx` (thêm prop customer, logic edit)
+3. `src/pages/CustomerDetail.tsx` (thêm nút Chỉnh sửa + dialog)
 
