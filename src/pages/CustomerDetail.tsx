@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +13,10 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink, PhoneCall } from "lucide-react";
+import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink, PhoneCall, Pencil } from "lucide-react";
 import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
+import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Link } from "react-router-dom";
 
 function fmt(n: number | null) {
@@ -56,6 +59,8 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
@@ -174,6 +179,11 @@ export default function CustomerDetail() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {hasPermission("customers", "edit") && (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4 mr-1" /> Chỉnh sửa
+            </Button>
+          )}
           <Badge variant="outline" className={tierColors[tier] || ""}>{tier}</Badge>
           <Badge variant="outline">{customer.segment ?? "NEW"}</Badge>
         </div>
