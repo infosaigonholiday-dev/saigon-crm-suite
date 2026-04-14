@@ -1,38 +1,57 @@
 
 
-## Kế hoạch: Sửa quyền Trưởng phòng Điều hành
+## Sửa lỗi Admin không xóa được khách hàng
 
-### Vấn đề phát hiện
+### Nguyên nhân
+7 foreign key tham chiếu tới bảng `customers` đang dùng `NO ACTION`, chặn xóa dù Admin đã có full RLS access.
 
-1. **Frontend thiếu module quan trọng cho DIEUHAN**: Gói tour, Lịch trình, Lưu trú đều là nghiệp vụ cốt lõi của Điều hành nhưng không có trong `DEFAULT_PERMISSIONS`.
-2. **positionRoleMapping sai**: OPS + TRUONG_PHONG gợi ý "MANAGER" thay vì giữ "DIEUHAN".
-3. **Scope leave sai**: Trưởng phòng Điều hành cần duyệt phép nhân viên phòng mình nhưng scope đang là "personal".
-4. **Thiếu settings.view**: Không thể vào Cài đặt để quản lý phòng ban.
+### Giải pháp
+1 migration duy nhất — đổi 7 FK sang `ON DELETE SET NULL`:
 
-### Sửa đổi
+```sql
+ALTER TABLE leads
+  DROP CONSTRAINT leads_customer_id_fkey,
+  ADD CONSTRAINT leads_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-#### 1. `src/hooks/usePermissions.ts` — Bổ sung quyền DIEUHAN
-Thêm vào danh sách permissions của DIEUHAN:
-- `tour_packages.view`, `tour_packages.create`, `tour_packages.edit`
-- `itineraries.view`, `itineraries.create`, `itineraries.edit`
-- `accommodations.view`, `accommodations.create`, `accommodations.edit`
-- `leave.approve`
-- `settings.view`
+ALTER TABLE leads
+  DROP CONSTRAINT leads_converted_customer_id_fkey,
+  ADD CONSTRAINT leads_converted_customer_id_fkey
+    FOREIGN KEY (converted_customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-#### 2. `src/contexts/PermissionsContext.tsx` — Sửa SCOPE_RULES cho DIEUHAN
-Đổi scope `leave` từ `"personal"` sang `"department"` để Trưởng phòng thấy và duyệt phép nhân viên phòng mình.
+ALTER TABLE bookings
+  DROP CONSTRAINT bookings_customer_id_fkey,
+  ADD CONSTRAINT bookings_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-#### 3. `src/lib/positionRoleMapping.ts` — Sửa mapping OPS
-Đổi OPS + `TRUONG_PHONG` từ `"MANAGER"` sang `"DIEUHAN"` (giữ nguyên vì Trưởng phòng Điều hành vẫn dùng quyền DIEUHAN, không phải MANAGER chung).
-Tương tự cho OP_OUTBOUND.
+ALTER TABLE quotes
+  DROP CONSTRAINT quotes_customer_id_fkey,
+  ADD CONSTRAINT quotes_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-### File chỉnh sửa
-- `src/hooks/usePermissions.ts`
-- `src/contexts/PermissionsContext.tsx`
-- `src/lib/positionRoleMapping.ts`
+ALTER TABLE contracts
+  DROP CONSTRAINT contracts_customer_id_fkey,
+  ADD CONSTRAINT contracts_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-### Chi tiết kỹ thuật
-- Chỉ sửa frontend permission matrix. Database RLS đã đúng (accommodations, booking_itineraries đều có DIEUHAN trong policy).
-- Không cần migration.
-- Sau khi sửa, sidebar sẽ tự động hiện thêm: Gói tour, Lịch trình, Lưu trú cho role DIEUHAN.
+ALTER TABLE invoices
+  DROP CONSTRAINT invoices_customer_id_fkey,
+  ADD CONSTRAINT invoices_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
+
+ALTER TABLE accounts_receivable
+  DROP CONSTRAINT accounts_receivable_customer_id_fkey,
+  ADD CONSTRAINT accounts_receivable_customer_id_fkey
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
+```
+
+### Hành vi sau khi sửa
+- **Chỉ ADMIN** được xóa khách hàng (giữ nguyên, không thêm role nào)
+- Xóa khách hàng → leads, bookings, hợp đồng, hóa đơn, công nợ **vẫn còn** (chỉ `customer_id` thành NULL)
+- `customer_tags` và `data_assignments` tự xóa theo (đã có CASCADE sẵn)
+- Không cần xóa từng tab — xóa ở tab Khách hàng là đủ
+- Không cần sửa code frontend
+
+### Files chỉnh sửa
+- 1 file migration SQL mới
 
