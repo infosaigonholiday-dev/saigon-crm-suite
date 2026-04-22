@@ -112,6 +112,7 @@ export default function RawContacts() {
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
   // Staff filter for dept tab
   const [filterStaffId, setFilterStaffId] = useState<string>("all");
+  const [notesOpenId, setNotesOpenId] = useState<string | null>(null);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments-list"],
