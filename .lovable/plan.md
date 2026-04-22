@@ -1,101 +1,120 @@
 
 
-## Kế hoạch 4 Phase — Hoàn thiện module Kinh doanh
+## PHASE 4 — Internal Notes (@mention) cho 9 module
 
-Plan này rất lớn. Tôi đề nghị chia làm 4 turn riêng để dễ test. Bạn approve plan này, tôi sẽ làm **Phase 1+2** trước (đây là phần Sale dùng hàng ngày). Phase 3 (Push) và Phase 4 (Notes) sẽ làm ở turn sau.
+### 1. Database migration
 
----
+```sql
+-- Bảng ghi chú nội bộ (immutable audit trail)
+CREATE TABLE internal_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type text NOT NULL CHECK (entity_type IN (
+    'raw_contact','lead','customer','booking',
+    'quotation','contract','payment','employee','finance'
+  )),
+  entity_id uuid NOT NULL,
+  content text NOT NULL,
+  mention_user_ids uuid[] NOT NULL DEFAULT '{}',
+  created_by uuid REFERENCES profiles(id) NOT NULL DEFAULT auth.uid(),
+  created_at timestamptz DEFAULT now()
+);
 
-### PHASE 1 — Customer module + liên kết Lead↔KH
+CREATE INDEX idx_notes_entity ON internal_notes(entity_type, entity_id);
+CREATE INDEX idx_notes_mentions ON internal_notes USING gin(mention_user_ids);
 
-**1A. Fix convert Lead → Customer (đảm bảo copy đủ field)**
+ALTER TABLE internal_notes ENABLE ROW LEVEL SECURITY;
 
-File `src/components/leads/ConvertToCustomerDialog.tsx`:
-- Logic mapping HIỆN TẠI đã có đủ các field (`assigned_sale_id`, `source = channel`, `department_id`, `company_*`, `tax_code`, `company_size`, `tour_interest = destination || interest_type`, `type` auto theo `company_name`).
-- Nguyên nhân "trống" thực sự: trigger `set_customer_department` ghi đè `department_id` dựa trên profile của `assigned_sale_id`. Không phải bug.
-- **Hardening**: thêm `console.log` payload trước insert để debug; thêm `interest_type` vào notes nếu khác destination; trim chuỗi rỗng `""` thành `null`.
+CREATE POLICY "admin_full_access" ON internal_notes FOR ALL TO authenticated
+  USING (has_role(auth.uid(),'ADMIN')) WITH CHECK (has_role(auth.uid(),'ADMIN'));
+CREATE POLICY "notes_read" ON internal_notes FOR SELECT TO authenticated
+  USING (created_by = auth.uid()
+         OR auth.uid() = ANY(mention_user_ids)
+         OR has_any_role(auth.uid(), ARRAY['SUPER_ADMIN','GDKD','MANAGER']));
+CREATE POLICY "notes_insert" ON internal_notes FOR INSERT TO authenticated
+  WITH CHECK (created_by = auth.uid());
+-- Không có UPDATE/DELETE policy → chỉ admin sửa/xóa được
 
-**1B. Bảng Khách hàng — thêm cột mới**
-
-File `src/pages/Customers.tsx` — thêm các cột (giữ nguyên các cột hiện có):
-- **Loại** (badge `B2B` tím / `Cá nhân` xám) — dựa trên `type`
-- **Công ty** — `company_name` riêng cột
-- **Ngày tạo** — `created_at` format dd/mm/yyyy
-
-Cập nhật query select để fetch thêm `type, company_name, created_at`. Thứ tự cột mới:
+-- Mở rộng CHECK constraint của notifications để cho phép type='internal_note'
+ALTER TABLE notifications DROP CONSTRAINT notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+  CHECK (type IN ('birthday','company_anniversary','follow_up','payment_due',
+                  'contract_expiry','internal_note'));
 ```
-Tên KH | Loại | Công ty | Sale phụ trách | Phòng | SĐT | Phân khúc | Nguồn | Bookings | Doanh thu | Đã TT | Ngày tạo | [Xóa]
+
+**Lưu ý**: Phase 3 (Web Push edge function) chưa làm → chỉ insert `notifications` để NotificationBell hiện đỏ + realtime. Khi Phase 3 xong sẽ thêm `supabase.functions.invoke('send-notification')`.
+
+### 2. Tạo component dùng chung
+
+**`src/components/shared/InternalNotes.tsx`** — props `{entityType, entityId}`. Bao gồm:
+- Query danh sách notes theo entity (cache key: `["internal-notes", entityType, entityId]`)
+- Timeline mới nhất trên cùng: avatar (initial), tên người viết (bold), thời gian relative (vi locale), nội dung. Highlight `@Tên` xanh dương trong content.
+- Form: `Textarea` với listener khi gõ `@` → query `profiles` (is_active=true, search theo `full_name`) hiển thị Popover/Command list. Chọn → chèn `@Tên` vào text + lưu user_id vào array. Có thể tag nhiều người.
+- Nút "Gửi" → INSERT note + INSERT notifications cho mỗi mention (loại trừ self) với `type='internal_note'`, `title='[Người gửi] đã tag bạn'`, `message=content.slice(0,100)`, `entity_type`, `entity_id`.
+- Toast thành công, refetch.
+
+**`src/components/shared/NotesCountBadge.tsx`** (tiện ích nhỏ) — hiển thị 💬 + số lượng. Query `select count(*)` theo entity. Dùng trong tab label.
+
+### 3. NotificationBell — mapping route mới
+
+File `src/components/NotificationBell.tsx`: mở rộng hàm `markAsRead` để route theo `entity_type`:
 ```
+raw_contact → /kho-data
+lead        → /tiem-nang
+customer    → /khach-hang/{id}
+booking     → /dat-tour/{id}
+quotation   → /bao-gia
+contract    → /hop-dong
+payment     → /thanh-toan
+employee    → /nhan-su/{id}
+finance     → /tai-chinh
+```
+Thêm icon `MessageSquare` cho `type='internal_note'`.
 
-**1C. CustomerDetail — section "Nguồn gốc"**
+### 4. Tích hợp 9 module
 
-Đã có sẵn (file `CustomerDetail.tsx` line 220-257). Bổ sung:
-- Thêm link "Xem Lead gốc →" click mở route `/tiem-nang?lead=<id>` (mở dialog detail) — hoặc nếu phức tạp thì hiển thị tooltip thông tin.
-- Khi không có originLead: hiện text "Tạo trực tiếp (không qua Lead)" như hiện tại — OK.
+| Module | File | Pattern tích hợp |
+|---|---|---|
+| Customer | `src/pages/CustomerDetail.tsx` | Thêm Tab "Ghi chú" vào TabsList (sau Audit) |
+| Lead | `src/components/leads/LeadDetailDialog.tsx` | Thêm Tab "Ghi chú" vào 3 tab hiện có |
+| Booking | `src/pages/BookingDetail.tsx` | Thêm Tab "Ghi chú" cạnh tab "Lưu ý" |
+| Employee | `src/pages/EmployeeDetail.tsx` | Tab "Ghi chú" — chỉ hiện cho HR/Admin (`hasPermission('staff','view')`) |
+| RawContact | `src/pages/RawContacts.tsx` | Thêm cột "Ghi chú" + nút icon 💬 → mở Dialog chứa `<InternalNotes>` |
+| Quotation | `src/pages/Quotations.tsx` | Cột Ghi chú + nút mở Dialog |
+| Contract | `src/components/contracts/ContractDetailDialog.tsx` | Thêm Tab "Ghi chú" trong dialog detail có sẵn |
+| Payment | `src/pages/Payments.tsx` | Cột Ghi chú + nút mở Dialog |
+| Finance | `src/pages/Finance.tsx` | Tích hợp ở dialog xem chi tiết Estimate/Settlement (truyền estimate/settlement id) |
 
----
+Mỗi tab/badge hiển thị số lượng notes: `Ghi chú (3)` qua `NotesCountBadge`.
 
-### PHASE 2 — Kanban Lead card
+### 5. Phân quyền
 
-**2A. Card hiện thêm thông tin** — `src/pages/Leads.tsx`
+RLS đã enforce SELECT theo creator/mentioned/manager. Thêm guard UI:
+- Form gửi note hiện cho mọi user authenticated có quyền view module tương ứng (đã được PermissionGuard bảo vệ ở route).
+- Note không có nút Sửa/Xóa (RLS chặn).
 
-Card hiện đã có: tên, công ty, destination, phone, follow-up warning, NV, contact count, pax, budget, nút "→ KH", badge "Đã chuyển KH".
+### Files chỉnh sửa
 
-Thêm:
-- **Badge "B2B"** (tím nhỏ) cạnh tên nếu có `company_name`
-- **Dòng "Dự kiến đi: dd/mm/yyyy"** nếu `planned_travel_date` có giá trị
-- Budget đã hiện sẵn → giữ nguyên
+**Migration**: 1 file SQL mới (tạo `internal_notes` + sửa CHECK `notifications`)
 
-**2B. Card cột WON — nút nổi bật**
+**Tạo mới**:
+- `src/components/shared/InternalNotes.tsx`
+- `src/components/shared/NotesCountBadge.tsx`
+- `src/components/shared/InternalNotesDialog.tsx` (wrapper Dialog cho các trang dạng list)
 
-Hiện tại nút "→ KH" dùng `variant="outline"` size nhỏ. Đổi thành:
-- `bg-green-600 hover:bg-green-700 text-white` full width, chữ to hơn (`text-xs h-7`)
-- Label: "Chuyển thành KH →"
-- Khi đã chuyển: badge "Đã chuyển KH ✓" + nút text-link "Xem KH →" navigate `/khach-hang/<converted_customer_id>`
+**Sửa**:
+- `src/components/NotificationBell.tsx` (route mapping + icon)
+- `src/pages/CustomerDetail.tsx`
+- `src/pages/BookingDetail.tsx`
+- `src/pages/EmployeeDetail.tsx`
+- `src/pages/RawContacts.tsx`
+- `src/pages/Quotations.tsx`
+- `src/pages/Payments.tsx`
+- `src/pages/Finance.tsx`
+- `src/components/leads/LeadDetailDialog.tsx`
+- `src/components/contracts/ContractDetailDialog.tsx`
 
-**2C. Dropdown chọn WON — hỏi convert**
+### Lưu ý
 
-Logic đã có ở `Leads.tsx` line 372-384 (dropdown trong card kanban) và `LeadDetailDialog.tsx`. Đã tự động mở `ConvertToCustomerDialog` sau khi update WON. **Bổ sung**: thay vì auto-mở, hiện confirm dialog "Chuyển Lead này thành Khách hàng luôn?" với 2 nút "Chuyển ngay" / "Để sau" — dùng `window.confirm` để đơn giản hoặc tạo small AlertDialog.
-
----
-
-### PHASE 3 — Web Push + Telegram (làm ở turn sau)
-
-Sẽ triển khai khi Phase 1+2 đã chạy ổn:
-- `public/sw.js` (service worker)
-- `src/lib/pushNotification.ts` (registerPush)
-- Migration: bảng `push_subscriptions` + cột `profiles.telegram_chat_id`
-- Edge function `send-notification` (Web Push qua `web-push` lib + Telegram qua connector gateway)
-- Tích hợp `registerPush` vào `AppLayout` sau login
-- Settings: toggle Web Push / Telegram trong profile
-
-**Cần user chuẩn bị**: VAPID keys (`npx web-push generate-vapid-keys`) → add vào Edge Function Secrets (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) + `.env` (`VITE_VAPID_PUBLIC_KEY`).
-
-Telegram: cần connect connector "Telegram" trước.
-
----
-
-### PHASE 4 — Internal Notes (làm ở turn sau cùng)
-
-- Migration: bảng `internal_notes` + RLS
-- Component `InternalNotesTab` dùng chung
-- Tích hợp vào tab thứ 6 trên LeadDetailDialog, CustomerDetail, BookingDetail
-- Khi gửi note có mention → insert `notifications` + gọi edge function `send-notification`
-
----
-
-### Files chỉnh sửa Phase 1+2 (turn này nếu approve)
-
-1. `src/components/leads/ConvertToCustomerDialog.tsx` — hardening
-2. `src/pages/Customers.tsx` — thêm 3 cột mới
-3. `src/pages/CustomerDetail.tsx` — link "Xem Lead gốc"
-4. `src/pages/Leads.tsx` — badge B2B, dòng planned date, nút convert nổi bật, confirm dialog WON
-
-### Đề xuất thứ tự thực hiện
-
-- **Turn 1 (sau khi approve)**: Phase 1 + Phase 2 → bạn test convert + kanban
-- **Turn 2**: Phase 3 (yêu cầu bạn cung cấp VAPID keys + connect Telegram)
-- **Turn 3**: Phase 4
-
-Approve plan để tôi bắt đầu Phase 1+2.
+- **Web Push KHÔNG có ở Phase 4**. Mention chỉ tạo bell notification + realtime (đã hoạt động sẵn). Khi Phase 3 (VAPID + edge function) xong, tôi sẽ bổ sung `supabase.functions.invoke('send-notification', ...)` vào `InternalNotes.tsx` ở 1 dòng — không cần refactor.
+- Sau khi triển khai: cập nhật memory `mem://features/internal-notes` ghi nhận hệ thống mới.
 
