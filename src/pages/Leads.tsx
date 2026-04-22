@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
-  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2,
+  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2, CalendarClock,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
