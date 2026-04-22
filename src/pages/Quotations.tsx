@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import QuotationFormDialog from "@/components/quotations/QuotationFormDialog";
+import InternalNotesDialog from "@/components/shared/InternalNotesDialog";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, MessageSquare } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Nháp",
@@ -34,6 +36,7 @@ export default function Quotations() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [notesOpenId, setNotesOpenId] = useState<string | null>(null);
 
   const { data: quotations, isLoading } = useQuery({
     queryKey: ["quotations"],
@@ -105,12 +108,13 @@ export default function Quotations() {
                   <TableHead>Hiệu lực</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ngày tạo</TableHead>
+                  <TableHead className="text-right">Ghi chú</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                       Chưa có báo giá nào
                     </TableCell>
                   </TableRow>
@@ -132,6 +136,12 @@ export default function Quotations() {
                     <TableCell className="text-sm text-muted-foreground">
                       {q.created_at ? new Date(q.created_at).toLocaleDateString("vi-VN") : "—"}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => setNotesOpenId(q.id)} className="h-7 px-2 gap-1">
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <NotesCountBadge entityType="quotation" entityId={q.id} />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -141,6 +151,13 @@ export default function Quotations() {
       </Card>
 
       <QuotationFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <InternalNotesDialog
+        open={!!notesOpenId}
+        onOpenChange={(o) => !o && setNotesOpenId(null)}
+        entityType="quotation"
+        entityId={notesOpenId}
+        title="Ghi chú nội bộ — Báo giá"
+      />
     </div>
   );
 }
