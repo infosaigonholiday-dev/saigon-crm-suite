@@ -2081,6 +2081,44 @@ export type Database = {
           },
         ]
       }
+      internal_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          entity_id: string
+          entity_type: string
+          id: string
+          mention_user_ids: string[]
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          mention_user_ids?: string[]
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          mention_user_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           booking_id: string | null

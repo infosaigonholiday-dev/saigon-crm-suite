@@ -6,7 +6,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2, FileSpreadsheet } from "lucide-react";
+import { Plus, Phone, ArrowRightCircle, Search, Loader2, ExternalLink, Trash2, FileSpreadsheet, MessageSquare } from "lucide-react";
+import InternalNotesDialog from "@/components/shared/InternalNotesDialog";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,6 +112,7 @@ export default function RawContacts() {
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
   // Staff filter for dept tab
   const [filterStaffId, setFilterStaffId] = useState<string>("all");
+  const [notesOpenId, setNotesOpenId] = useState<string | null>(null);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments-list"],
@@ -700,6 +703,13 @@ export default function RawContacts() {
           queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
           queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
         }}
+      />
+      <InternalNotesDialog
+        open={!!notesOpenId}
+        onOpenChange={(o) => !o && setNotesOpenId(null)}
+        entityType="raw_contact"
+        entityId={notesOpenId}
+        title="Ghi chú nội bộ — Kho Data"
       />
     </div>
   );

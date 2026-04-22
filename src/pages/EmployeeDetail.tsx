@@ -20,6 +20,8 @@ import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab"
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
 import { EmployeeKpiTab } from "@/components/employees/EmployeeKpiTab";
+import InternalNotes from "@/components/shared/InternalNotes";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -147,6 +149,11 @@ export default function EmployeeDetail() {
           <TabsTrigger value="insurance">Bảo hiểm</TabsTrigger>
           <TabsTrigger value="kpi">KPI</TabsTrigger>
           <TabsTrigger value="role">Phân quyền</TabsTrigger>
+          {hasPermission("staff", "view") && (
+            <TabsTrigger value="notes">
+              Ghi chú <NotesCountBadge entityType="employee" entityId={id!} />
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -219,6 +226,12 @@ export default function EmployeeDetail() {
             onProfileLinked={() => refetch()}
           />
         </TabsContent>
+
+        {hasPermission("staff", "view") && (
+          <TabsContent value="notes" className="mt-4">
+            <InternalNotes entityType="employee" entityId={id!} entityName={employee.full_name} />
+          </TabsContent>
+        )}
       </Tabs>
 
       <EmployeeFormDialog

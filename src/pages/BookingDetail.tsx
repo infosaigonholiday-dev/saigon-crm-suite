@@ -12,6 +12,8 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
 import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
+import InternalNotes from "@/components/shared/InternalNotes";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
@@ -138,6 +140,9 @@ export default function BookingDetail() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="internal-notes">
+            Ghi chú <NotesCountBadge entityType="booking" entityId={booking.id} />
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -191,6 +196,10 @@ export default function BookingDetail() {
 
         <TabsContent value="notes" className="mt-4">
           <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes && !isLocked} canDelete={canDeleteNotes && !isLocked} />
+        </TabsContent>
+
+        <TabsContent value="internal-notes" className="mt-4">
+          <InternalNotes entityType="booking" entityId={booking.id} entityName={booking.code} />
         </TabsContent>
       </Tabs>
     </div>

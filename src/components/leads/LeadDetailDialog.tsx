@@ -15,6 +15,8 @@ import CareHistoryTab from "./CareHistoryTab";
 import AuditHistoryTab from "./AuditHistoryTab";
 import LeadFormDialog from "./LeadFormDialog";
 import ConvertToCustomerDialog from "./ConvertToCustomerDialog";
+import InternalNotes from "@/components/shared/InternalNotes";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import LostReasonDialog from "./LostReasonDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -200,6 +202,9 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
             <TabsList>
               <TabsTrigger value="info">Thông tin</TabsTrigger>
               <TabsTrigger value="history">Lịch sử chăm sóc</TabsTrigger>
+              <TabsTrigger value="notes">
+                Ghi chú <NotesCountBadge entityType="lead" entityId={lead.id} />
+              </TabsTrigger>
               <TabsTrigger value="audit">Lịch sử sửa đổi</TabsTrigger>
             </TabsList>
 
@@ -275,6 +280,10 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
 
             <TabsContent value="history" className="mt-3">
               <CareHistoryTab leadId={lead.id} />
+            </TabsContent>
+
+            <TabsContent value="notes" className="mt-3">
+              <InternalNotes entityType="lead" entityId={lead.id} entityName={lead.full_name} />
             </TabsContent>
 
             <TabsContent value="audit" className="mt-3">
