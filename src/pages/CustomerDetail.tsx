@@ -16,6 +16,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ArrowLeft, Loader2, User, CreditCard, TrendingUp, CalendarDays, Gift, ExternalLink, PhoneCall, Pencil } from "lucide-react";
 import AuditHistoryTab from "@/components/leads/AuditHistoryTab";
 import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
+import InternalNotes from "@/components/shared/InternalNotes";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Link } from "react-router-dom";
 
@@ -214,6 +216,9 @@ export default function CustomerDetail() {
           <TabsTrigger value="payments">Thanh toán ({payments.length})</TabsTrigger>
           <TabsTrigger value="chart">Xu hướng</TabsTrigger>
           <TabsTrigger value="audit">Lịch sử sửa đổi</TabsTrigger>
+          <TabsTrigger value="notes">
+            Ghi chú <NotesCountBadge entityType="customer" entityId={id!} />
+          </TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
