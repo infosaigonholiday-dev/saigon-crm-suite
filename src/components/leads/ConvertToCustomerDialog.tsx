@@ -24,28 +24,52 @@ export default function ConvertToCustomerDialog({ open, onOpenChange, lead }: Pr
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const combinedNotes = [lead.call_notes, extraNotes].filter(Boolean).join("\n---\n");
-      
+      // Helper: trim & convert empty string to null
+      const clean = (v: any) => {
+        if (v === undefined || v === null) return null;
+        if (typeof v === "string") {
+          const t = v.trim();
+          return t === "" ? null : t;
+        }
+        return v;
+      };
+
+      const noteParts: string[] = [];
+      if (lead.call_notes) noteParts.push(lead.call_notes);
+      // Include interest_type in notes if it differs from destination
+      if (lead.interest_type && lead.interest_type !== lead.destination) {
+        noteParts.push(`Loại quan tâm: ${lead.interest_type}`);
+      }
+      if (extraNotes) noteParts.push(extraNotes);
+      const combinedNotes = noteParts.filter(Boolean).join("\n---\n");
+
+      const hasCompany = !!clean(lead.company_name);
+      const payload = {
+        full_name: clean(lead.full_name),
+        phone: clean(lead.phone),
+        email: clean(lead.email),
+        company_name: clean(lead.company_name),
+        company_address: clean(lead.company_address),
+        contact_person: clean(lead.contact_person),
+        contact_position: clean(lead.contact_position),
+        assigned_sale_id: clean(lead.assigned_to),
+        department_id: clean(lead.department_id),
+        type: hasCompany ? "CORPORATE" : "INDIVIDUAL",
+        source: clean(lead.channel),
+        tour_interest: clean(lead.destination) || clean(lead.interest_type),
+        notes: clean(combinedNotes),
+        tax_code: clean(lead.tax_code),
+        company_size: lead.company_size || null,
+        segment: "NEW",
+      };
+
+      // Debug log to verify field values before insert
+      console.log("[ConvertToCustomer] Lead source:", lead);
+      console.log("[ConvertToCustomer] Customer payload:", payload);
+
       const { data: customer, error: custErr } = await supabase
         .from("customers")
-        .insert({
-          full_name: lead.full_name,
-          phone: lead.phone || null,
-          email: lead.email || null,
-          company_name: lead.company_name || null,
-          company_address: lead.company_address || null,
-          contact_person: lead.contact_person || null,
-          contact_position: lead.contact_position || null,
-          assigned_sale_id: lead.assigned_to || null,
-          department_id: lead.department_id || null,
-          type: lead.company_name ? "CORPORATE" : "INDIVIDUAL",
-          source: lead.channel || null,
-          tour_interest: lead.destination || lead.interest_type || null,
-          notes: combinedNotes || null,
-          tax_code: lead.tax_code || null,
-          company_size: lead.company_size || null,
-          segment: "NEW",
-        })
+        .insert(payload)
         .select("id")
         .single();
       if (custErr) throw custErr;

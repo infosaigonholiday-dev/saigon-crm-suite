@@ -235,6 +235,12 @@ export default function CustomerDetail() {
                     <span className="text-muted-foreground">
                       — Ngày chuyển: {fmtDate(customer.created_at)}
                     </span>
+                    <Link
+                      to={`/tiem-nang?lead=${originLead.id}`}
+                      className="ml-auto inline-flex items-center gap-1 text-primary hover:underline text-sm"
+                    >
+                      Xem Lead gốc <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     {(originLead.contact_count ?? 0) > 0 && (
@@ -251,7 +257,7 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Không có thông tin lead gốc (tạo trực tiếp)</p>
+                <p className="text-sm text-muted-foreground">Tạo trực tiếp (không qua Lead)</p>
               )}
             </CardContent>
           </Card>
