@@ -704,6 +704,13 @@ export default function RawContacts() {
           queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
         }}
       />
+      <InternalNotesDialog
+        open={!!notesOpenId}
+        onOpenChange={(o) => !o && setNotesOpenId(null)}
+        entityType="raw_contact"
+        entityId={notesOpenId}
+        title="Ghi chú nội bộ — Kho Data"
+      />
     </div>
   );
 }
