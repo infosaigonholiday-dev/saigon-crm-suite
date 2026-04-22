@@ -456,6 +456,18 @@ export default function CustomerDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ghi chú nội bộ</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InternalNotes entityType="customer" entityId={id!} entityName={customer.full_name} />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <CustomerFormDialog
