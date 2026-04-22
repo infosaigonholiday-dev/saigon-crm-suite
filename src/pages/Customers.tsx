@@ -55,6 +55,14 @@ function formatCurrency(n: number | null) {
   return new Intl.NumberFormat("vi-VN").format(n);
 }
 
+function formatDate(d: string | null) {
+  if (!d) return "—";
+  const date = new Date(d);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${date.getFullYear()}`;
+}
+
 export default function Customers() {
   const [filter, setFilter] = useState<Segment>("ALL");
   const [search, setSearch] = useState("");
@@ -99,7 +107,7 @@ export default function Customers() {
     queryFn: async () => {
       let q = supabase
         .from("customers")
-        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id, department_id, departments(name)")
+        .select("id, full_name, phone, email, segment, tier, total_bookings, total_revenue, total_paid, last_booking_date, first_booking_date, source, assigned_sale_id, department_id, type, company_name, created_at, departments(name)")
         .order("created_at", { ascending: false });
       q = applyScopeFilter(q);
       if (filter !== "ALL") q = q.eq("segment", filter);
@@ -218,6 +226,8 @@ export default function Customers() {
               <TableHeader>
                  <TableRow>
                    <TableHead>Tên khách hàng</TableHead>
+                   <TableHead>Loại</TableHead>
+                   <TableHead>Công ty</TableHead>
                    <TableHead>Sale phụ trách</TableHead>
                    <TableHead>Phòng ban</TableHead>
                    <TableHead>Điện thoại</TableHead>
@@ -226,12 +236,14 @@ export default function Customers() {
                    <TableHead className="text-right">Bookings</TableHead>
                    <TableHead className="text-right">Doanh thu</TableHead>
                    <TableHead className="text-right">Đã TT</TableHead>
+                   <TableHead>Ngày tạo</TableHead>
                    {isAdmin && <TableHead className="text-right">Thao tác</TableHead>}
                  </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.map((c) => {
                   const badge = loyaltyBadge(c.total_bookings ?? 0);
+                  const isB2B = (c as any).type === "CORPORATE";
                   return (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/khach-hang/${c.id}`)}>
                       <TableCell className="font-medium">
@@ -245,6 +257,14 @@ export default function Customers() {
                           {badge && <Badge variant="outline" className={badge.className}>{badge.label}</Badge>}
                         </div>
                      </TableCell>
+                      <TableCell>
+                        {isB2B ? (
+                          <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">B2B</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-muted text-muted-foreground">Cá nhân</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate">{(c as any).company_name ?? "—"}</TableCell>
                       <TableCell>{c.assigned_sale_id ? (saleMap[c.assigned_sale_id] ?? "—") : "—"}</TableCell>
                       <TableCell>{(c as any).departments?.name ?? "—"}</TableCell>
                       <TableCell>{c.phone ?? "—"}</TableCell>
@@ -257,6 +277,7 @@ export default function Customers() {
                       <TableCell className="text-right">{c.total_bookings ?? 0}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(c.total_paid)}</TableCell>
+                      <TableCell>{formatDate((c as any).created_at)}</TableCell>
                       {isAdmin && (
                         <TableCell className="text-right">
                           <Button
@@ -277,7 +298,7 @@ export default function Customers() {
                   );
                 })}
                 {customers.length === 0 && (
-                  <TableRow><TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isAdmin ? 13 : 12} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
-  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2,
+  LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2, CalendarClock,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -376,8 +376,10 @@ export default function Leads() {
                                                 onSuccess: () => {
                                                   toast.success("Đã chuyển sang Chốt tour");
                                                   if (!lead.converted_customer_id) {
-                                                    setConvertLead(lead);
-                                                    setConvertOpen(true);
+                                                    if (window.confirm("Chuyển Lead này thành Khách hàng luôn không?")) {
+                                                      setConvertLead(lead);
+                                                      setConvertOpen(true);
+                                                    }
                                                   }
                                                 },
                                               }
@@ -412,9 +414,14 @@ export default function Leads() {
                               </DropdownMenu>
                             </div>
                             <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 flex-wrap">
                                 {temp && <span className="text-xs">{temp.icon}</span>}
                                 <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
+                                {lead.company_name && (
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 bg-purple-100 text-purple-700 border-purple-300">
+                                    B2B
+                                  </Badge>
+                                )}
                               </div>
 
                               {subStatusLabel && (
@@ -434,6 +441,13 @@ export default function Leads() {
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                   <MapPin className="h-2.5 w-2.5 shrink-0" />
                                   <span className="truncate">{lead.destination}</span>
+                                </div>
+                              )}
+
+                              {lead.planned_travel_date && (
+                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <CalendarClock className="h-2.5 w-2.5 shrink-0" />
+                                  <span>Dự kiến đi: {new Date(lead.planned_travel_date).toLocaleDateString("vi-VN")}</span>
                                 </div>
                               )}
 
@@ -474,23 +488,33 @@ export default function Leads() {
                               </div>
 
                               {isConverted && col.id === "WON" && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-600 text-white border-blue-700">
-                                  Đã chuyển KH
-                                </Badge>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-600 text-white border-blue-700">
+                                    Đã chuyển KH ✓
+                                  </Badge>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/khach-hang/${lead.converted_customer_id}`);
+                                    }}
+                                    className="text-[10px] text-primary hover:underline ml-auto"
+                                  >
+                                    Xem KH →
+                                  </button>
+                                </div>
                               )}
 
                               {showConvert && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="w-full mt-1 text-[10px] h-6"
+                                  className="w-full mt-1.5 text-xs h-7 bg-green-600 hover:bg-green-700 text-white"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setConvertLead(lead);
                                     setConvertOpen(true);
                                   }}
                                 >
-                                  <UserPlus className="h-3 w-3 mr-1" />→ KH
+                                  <UserPlus className="h-3.5 w-3.5 mr-1" />Chuyển thành KH →
                                 </Button>
                               )}
                             </div>
