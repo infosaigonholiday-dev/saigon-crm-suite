@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane } from "lucide-react";
+import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -17,6 +17,19 @@ const typeIcons: Record<string, typeof Cake> = {
   LEAD_FORGOTTEN: AlertTriangle,
   FOLLOW_UP_OVERDUE: Clock,
   TRAVEL_DATE_NEAR: Plane,
+  internal_note: MessageSquare,
+};
+
+const entityRouteMap: Record<string, (id: string) => string> = {
+  raw_contact: () => "/kho-data",
+  lead: () => "/tiem-nang",
+  customer: (id) => `/khach-hang/${id}`,
+  booking: (id) => `/dat-tour/${id}`,
+  quotation: () => "/bao-gia",
+  contract: () => "/hop-dong",
+  payment: () => "/thanh-toan",
+  employee: (id) => `/nhan-su/${id}`,
+  finance: () => "/tai-chinh",
 };
 
 export function NotificationBell() {
@@ -58,12 +71,15 @@ export function NotificationBell() {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["notifications-unread", user?.id] });
     setOpen(false);
-    if (entityId) {
-      if (entityType === "lead") {
-        navigate("/leads");
-      } else {
-        navigate(`/khach-hang/${entityId}`);
+    if (entityType && entityId) {
+      const builder = entityRouteMap[entityType];
+      if (builder) {
+        navigate(builder(entityId));
+        return;
       }
+      // legacy fallback
+      if (entityType === "lead") navigate("/tiem-nang");
+      else navigate(`/khach-hang/${entityId}`);
     }
   };
 
