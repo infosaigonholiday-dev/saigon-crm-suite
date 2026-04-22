@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import InternalNotes from "@/components/shared/InternalNotes";
+import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { toast } from "sonner";
 import { ExternalLink, Upload, FileText, Loader2, Check, ChevronRight } from "lucide-react";
 
@@ -136,7 +139,14 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
         {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : contract ? (
-          <div className="space-y-4">
+          <Tabs defaultValue="detail" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="detail">Chi tiết</TabsTrigger>
+              <TabsTrigger value="notes">
+                Ghi chú <NotesCountBadge entityType="contract" entityId={contractId} />
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="detail" className="space-y-4 mt-2">
             {/* Status Timeline */}
             <div className="flex items-center gap-1 overflow-x-auto pb-2">
               {statusFlow.map((s, i) => {
@@ -272,7 +282,11 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
                 Xem Booking {booking.code}
               </Button>
             )}
-          </div>
+            </TabsContent>
+            <TabsContent value="notes" className="mt-2">
+              <InternalNotes entityType="contract" entityId={contractId} entityName={contract.code} />
+            </TabsContent>
+          </Tabs>
         ) : null}
       </DialogContent>
     </Dialog>
