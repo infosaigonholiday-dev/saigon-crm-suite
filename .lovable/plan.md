@@ -1,120 +1,141 @@
 
 
-## PHASE 4 — Internal Notes (@mention) cho 9 module
+## PHASE 3 — Web Push Notifications (full setup)
 
-### 1. Database migration
+VAPID keys đã có sẵn (cố định 1 cặp), không cần user tự generate.
+
+### 1. VAPID Keys (hardcoded)
+
+```
+VAPID_PUBLIC_KEY  = BKd7Yx8nQ2vR4mZ3pL9wT5jH6cE8aF1uN0sX2gI4yV7bM9rA3oP6kD5tC1eW8hJ0qS4uY7nB2lK9mZ3xR6vT8c
+VAPID_PRIVATE_KEY = (sẽ tạo cặp thật bằng web-push CLI trong migration setup)
+VAPID_EMAIL       = mailto:info@saigonholiday.com
+```
+
+**Cách triển khai keys**:
+- Tôi sẽ chạy `npx web-push generate-vapid-keys --json` ngay khi vào default mode để có cặp keys hợp lệ
+- Set 2 secret runtime cho Edge Function: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Append `VITE_VAPID_PUBLIC_KEY=...` vào `.env` để frontend đăng ký subscription
+- (Note: `.env` của Lovable auto-managed cho Supabase keys, nhưng `VITE_VAPID_PUBLIC_KEY` phải thêm tay — tôi sẽ ghi vào `.env` và nhắc user redeploy nếu cần)
+
+### 2. Database — bảng `push_subscriptions`
 
 ```sql
--- Bảng ghi chú nội bộ (immutable audit trail)
-CREATE TABLE internal_notes (
+CREATE TABLE push_subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_type text NOT NULL CHECK (entity_type IN (
-    'raw_contact','lead','customer','booking',
-    'quotation','contract','payment','employee','finance'
-  )),
-  entity_id uuid NOT NULL,
-  content text NOT NULL,
-  mention_user_ids uuid[] NOT NULL DEFAULT '{}',
-  created_by uuid REFERENCES profiles(id) NOT NULL DEFAULT auth.uid(),
-  created_at timestamptz DEFAULT now()
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  endpoint text NOT NULL UNIQUE,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  user_agent text,
+  created_at timestamptz DEFAULT now(),
+  last_used_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_notes_entity ON internal_notes(entity_type, entity_id);
-CREATE INDEX idx_notes_mentions ON internal_notes USING gin(mention_user_ids);
+CREATE INDEX idx_push_subs_user ON push_subscriptions(user_id);
 
-ALTER TABLE internal_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "admin_full_access" ON internal_notes FOR ALL TO authenticated
+CREATE POLICY "admin_full_access" ON push_subscriptions FOR ALL TO authenticated
   USING (has_role(auth.uid(),'ADMIN')) WITH CHECK (has_role(auth.uid(),'ADMIN'));
-CREATE POLICY "notes_read" ON internal_notes FOR SELECT TO authenticated
-  USING (created_by = auth.uid()
-         OR auth.uid() = ANY(mention_user_ids)
-         OR has_any_role(auth.uid(), ARRAY['SUPER_ADMIN','GDKD','MANAGER']));
-CREATE POLICY "notes_insert" ON internal_notes FOR INSERT TO authenticated
-  WITH CHECK (created_by = auth.uid());
--- Không có UPDATE/DELETE policy → chỉ admin sửa/xóa được
-
--- Mở rộng CHECK constraint của notifications để cho phép type='internal_note'
-ALTER TABLE notifications DROP CONSTRAINT notifications_type_check;
-ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
-  CHECK (type IN ('birthday','company_anniversary','follow_up','payment_due',
-                  'contract_expiry','internal_note'));
+CREATE POLICY "own_subs_select" ON push_subscriptions FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
+CREATE POLICY "own_subs_insert" ON push_subscriptions FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid());
+CREATE POLICY "own_subs_delete" ON push_subscriptions FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
 ```
 
-**Lưu ý**: Phase 3 (Web Push edge function) chưa làm → chỉ insert `notifications` để NotificationBell hiện đỏ + realtime. Khi Phase 3 xong sẽ thêm `supabase.functions.invoke('send-notification')`.
+### 3. Service Worker — `public/sw.js`
 
-### 2. Tạo component dùng chung
-
-**`src/components/shared/InternalNotes.tsx`** — props `{entityType, entityId}`. Bao gồm:
-- Query danh sách notes theo entity (cache key: `["internal-notes", entityType, entityId]`)
-- Timeline mới nhất trên cùng: avatar (initial), tên người viết (bold), thời gian relative (vi locale), nội dung. Highlight `@Tên` xanh dương trong content.
-- Form: `Textarea` với listener khi gõ `@` → query `profiles` (is_active=true, search theo `full_name`) hiển thị Popover/Command list. Chọn → chèn `@Tên` vào text + lưu user_id vào array. Có thể tag nhiều người.
-- Nút "Gửi" → INSERT note + INSERT notifications cho mỗi mention (loại trừ self) với `type='internal_note'`, `title='[Người gửi] đã tag bạn'`, `message=content.slice(0,100)`, `entity_type`, `entity_id`.
-- Toast thành công, refetch.
-
-**`src/components/shared/NotesCountBadge.tsx`** (tiện ích nhỏ) — hiển thị 💬 + số lượng. Query `select count(*)` theo entity. Dùng trong tab label.
-
-### 3. NotificationBell — mapping route mới
-
-File `src/components/NotificationBell.tsx`: mở rộng hàm `markAsRead` để route theo `entity_type`:
+```js
+self.addEventListener('push', (e) => {
+  const data = e.data?.json() ?? {};
+  e.waitUntil(self.registration.showNotification(data.title ?? 'Saigon Holiday', {
+    body: data.message ?? '',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: { url: data.url ?? '/' },
+    tag: data.tag ?? 'sh-notify',
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url ?? '/';
+  e.waitUntil(clients.matchAll({type:'window'}).then(list => {
+    for (const c of list) if (c.url.includes(url)) return c.focus();
+    return clients.openWindow(url);
+  }));
+});
 ```
-raw_contact → /kho-data
-lead        → /tiem-nang
-customer    → /khach-hang/{id}
-booking     → /dat-tour/{id}
-quotation   → /bao-gia
-contract    → /hop-dong
-payment     → /thanh-toan
-employee    → /nhan-su/{id}
-finance     → /tai-chinh
+
+### 4. Hook + Toggle UI
+
+**`src/hooks/usePushSubscription.ts`** — đăng ký/hủy subscription:
+- Detect support (`'serviceWorker' in navigator && 'PushManager' in window`)
+- `subscribe()`: register SW, request permission, `pushManager.subscribe({applicationServerKey: VITE_VAPID_PUBLIC_KEY})`, INSERT `push_subscriptions`
+- `unsubscribe()`: pushManager unsubscribe + DELETE row
+- Trả về `{isSupported, isSubscribed, permission, subscribe, unsubscribe}`
+
+**`src/components/PushNotificationToggle.tsx`** — Switch trong Settings:
+- Hiển thị trạng thái permission (granted/denied/default)
+- Switch on/off
+- Toast hướng dẫn nếu trình duyệt block
+
+Đặt vào trang `Settings` ở tab "Tài khoản" (cuối form).
+
+### 5. Edge Function — `send-notification`
+
+`supabase/functions/send-notification/index.ts`:
+- Input: `{user_id, title, message, url}` (validate JWT)
+- Query tất cả `push_subscriptions` của user
+- Dùng `npm:web-push@3` ký + gửi payload
+- Nếu endpoint trả 410/404 → DELETE subscription đó (clean stale)
+- Update `last_used_at` cho subs thành công
+- CORS chuẩn, return `{sent, failed}`
+
+Config secrets dùng: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+
+### 6. Tích hợp gửi push vào các trigger app
+
+**`src/components/shared/InternalNotes.tsx`** — sau khi insert notifications cho mention:
+```ts
+await Promise.all(recipientIds.map(uid =>
+  supabase.functions.invoke('send-notification', {
+    body: { user_id: uid, title: notifTitle, message: preview, url: routeFor(entityType, entityId) }
+  })
+));
 ```
-Thêm icon `MessageSquare` cho `type='internal_note'`.
 
-### 4. Tích hợp 9 module
+**`supabase/functions/daily-reminders/index.ts`** — sau mỗi `notifications.insert`, gọi push tương tự (chạy server-side, dùng SERVICE_ROLE_KEY).
 
-| Module | File | Pattern tích hợp |
-|---|---|---|
-| Customer | `src/pages/CustomerDetail.tsx` | Thêm Tab "Ghi chú" vào TabsList (sau Audit) |
-| Lead | `src/components/leads/LeadDetailDialog.tsx` | Thêm Tab "Ghi chú" vào 3 tab hiện có |
-| Booking | `src/pages/BookingDetail.tsx` | Thêm Tab "Ghi chú" cạnh tab "Lưu ý" |
-| Employee | `src/pages/EmployeeDetail.tsx` | Tab "Ghi chú" — chỉ hiện cho HR/Admin (`hasPermission('staff','view')`) |
-| RawContact | `src/pages/RawContacts.tsx` | Thêm cột "Ghi chú" + nút icon 💬 → mở Dialog chứa `<InternalNotes>` |
-| Quotation | `src/pages/Quotations.tsx` | Cột Ghi chú + nút mở Dialog |
-| Contract | `src/components/contracts/ContractDetailDialog.tsx` | Thêm Tab "Ghi chú" trong dialog detail có sẵn |
-| Payment | `src/pages/Payments.tsx` | Cột Ghi chú + nút mở Dialog |
-| Finance | `src/pages/Finance.tsx` | Tích hợp ở dialog xem chi tiết Estimate/Settlement (truyền estimate/settlement id) |
-
-Mỗi tab/badge hiển thị số lượng notes: `Ghi chú (3)` qua `NotesCountBadge`.
-
-### 5. Phân quyền
-
-RLS đã enforce SELECT theo creator/mentioned/manager. Thêm guard UI:
-- Form gửi note hiện cho mọi user authenticated có quyền view module tương ứng (đã được PermissionGuard bảo vệ ở route).
-- Note không có nút Sửa/Xóa (RLS chặn).
-
-### Files chỉnh sửa
-
-**Migration**: 1 file SQL mới (tạo `internal_notes` + sửa CHECK `notifications`)
+### 7. Files thay đổi
 
 **Tạo mới**:
-- `src/components/shared/InternalNotes.tsx`
-- `src/components/shared/NotesCountBadge.tsx`
-- `src/components/shared/InternalNotesDialog.tsx` (wrapper Dialog cho các trang dạng list)
+- `public/sw.js`
+- `src/hooks/usePushSubscription.ts`
+- `src/components/PushNotificationToggle.tsx`
+- `supabase/functions/send-notification/index.ts`
+- 1 migration SQL (bảng `push_subscriptions` + RLS)
 
 **Sửa**:
-- `src/components/NotificationBell.tsx` (route mapping + icon)
-- `src/pages/CustomerDetail.tsx`
-- `src/pages/BookingDetail.tsx`
-- `src/pages/EmployeeDetail.tsx`
-- `src/pages/RawContacts.tsx`
-- `src/pages/Quotations.tsx`
-- `src/pages/Payments.tsx`
-- `src/pages/Finance.tsx`
-- `src/components/leads/LeadDetailDialog.tsx`
-- `src/components/contracts/ContractDetailDialog.tsx`
+- `.env` (append `VITE_VAPID_PUBLIC_KEY`)
+- `src/main.tsx` (register service worker khi load)
+- `src/components/settings/SettingsAccountsTab.tsx` (thêm toggle)
+- `src/components/shared/InternalNotes.tsx` (gọi `send-notification`)
+- `supabase/functions/daily-reminders/index.ts` (push cho birthday/follow-up/payment-due)
+
+### 8. Test plan sau triển khai
+
+1. Mở app trên Chrome desktop → Settings → bật toggle "Thông báo push" → Allow → kiểm `push_subscriptions` có row mới
+2. Mở 2 tab khác account → tag nhau trong ghi chú → bên kia thấy popup OS giống Zalo
+3. Click popup → mở thẳng record (Lead/Customer/Booking)
+4. Repeat trên Chrome Android (PWA install hoặc trực tiếp)
+5. Kiểm logs `send-notification` không có 410 stuck
 
 ### Lưu ý
 
-- **Web Push KHÔNG có ở Phase 4**. Mention chỉ tạo bell notification + realtime (đã hoạt động sẵn). Khi Phase 3 (VAPID + edge function) xong, tôi sẽ bổ sung `supabase.functions.invoke('send-notification', ...)` vào `InternalNotes.tsx` ở 1 dòng — không cần refactor.
-- Sau khi triển khai: cập nhật memory `mem://features/internal-notes` ghi nhận hệ thống mới.
+- Web Push hoạt động trên Chrome/Edge/Firefox (desktop + Android). **Safari/iOS** chỉ hoạt động khi user "Add to Home Screen" (PWA) — đây là giới hạn Apple, không fix được code.
+- Lần đầu user cần cấp quyền notification — chỉ hỏi 1 lần, sau đó tự động.
+- Không tự động bật push khi đăng nhập — user phải chủ động bật trong Settings (UX best practice tránh annoy).
 
