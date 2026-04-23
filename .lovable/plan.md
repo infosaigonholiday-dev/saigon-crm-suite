@@ -1,56 +1,77 @@
 
 
-## Báo cáo lỗi từ hôm qua đến nay
+## Cập nhật hướng dẫn sử dụng cho các phòng ban + bổ sung mục bật thông báo Web Push
 
-### Đã kiểm tra
-| Hạng mục | Trạng thái |
-|---|---|
-| Migration `notes_read` RLS (10:40) | ✅ Đã apply, function `get_profile_is_active` tồn tại |
-| Migration `push_subscriptions` (15:33 hôm qua) | ✅ Apply chuẩn, RLS đầy đủ |
-| Cột "Ngày tạo" — Kho Data | ✅ Render đúng, `colSpan` 11/12 chính xác |
-| Cột "Ngày tạo" — Tiềm năng | ✅ Render đúng, `colSpan` 10/11 chính xác |
-| Nút 💬 ghi chú trong Kho Data | ✅ Có ở cả nhánh isConverted và chưa convert |
-| Bảng `internal_notes` | ⚠️ Hiện đang rỗng (0 record) → không có badge số là đúng, không phải lỗi |
+### Vấn đề phát hiện khi rà soát
 
-### Lỗi thực tế còn tồn tại (1 lỗi)
+Trang `Cài đặt → tab Tài khoản` hiện chứa toggle Web Push, **NHƯNG** tab này chỉ hiện cho 4 role: `ADMIN`, `SUPER_ADMIN`, `HR_MANAGER`, `HCNS` (xem `Settings.tsx` dòng 18 — `ACCOUNT_MANAGER_ROLES`).
 
-**React warning ở console** (đang hiện liên tục khi vào trang Cài đặt):
-```
-Warning: Function components cannot be given refs.
-Check the render method of `SettingsAccountsTab`.
-  at Badge (badge.tsx:37)
-```
-
-**Nguyên nhân:** `src/components/ui/badge.tsx` định nghĩa `Badge` là function component thường (không dùng `React.forwardRef`). Khi React/Radix nội bộ truyền `ref` vào (qua các wrapper như `<TableCell>` với key reconciliation, hoặc tương lai khi dùng trong Tooltip/Dropdown `asChild`), sẽ trigger warning này.
-
-**Tác động:**
-- Hiện tại: chỉ là dev warning, không vỡ UI
-- Tương lai: nếu bọc `<Badge>` trong `<Tooltip asChild>` hoặc `<DropdownMenuTrigger asChild>` sẽ vỡ tooltip/dropdown
-- Spam log → khó đọc log thật khi debug
+→ Sale, Intern, Ops, Kế toán, Marketing, HDV, GDKD/Manager **không vào được tab Tài khoản** → không có chỗ bật thông báo. Đây là lỗi UX cần sửa song song khi viết hướng dẫn.
 
 ### Sẽ sửa
 
-**File:** `src/components/ui/badge.tsx`
+#### 1. Tách toggle Web Push ra một section riêng ai cũng truy cập được
 
-Đổi `Badge` thành `React.forwardRef`:
+**File:** `src/pages/Settings.tsx`
+
+Thêm một tab mới **"Thông báo"** (value: `notifications`) hiển thị cho **mọi user** có `settings.view`. Tab này chỉ chứa duy nhất `<PushNotificationToggle/>` + ghi chú ngắn "Cần bật riêng trên mỗi thiết bị". Đặt tab ngay sau "Tài khoản" trong danh sách.
+
 ```tsx
-const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
-  ({ className, variant, ...props }, ref) => (
-    <div ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
-);
-Badge.displayName = "Badge";
+const showNotifications = true; // mọi role có settings.view đều thấy
+// ...
+showNotifications && { value: "notifications", label: "Thông báo" },
+// ...
+{showNotifications && (
+  <TabsContent value="notifications" className="mt-4">
+    <div className="space-y-2">
+      <h3 className="text-base font-semibold">Thông báo trên thiết bị này</h3>
+      <p className="text-sm text-muted-foreground">
+        Bật để nhận thông báo (giống Zalo) khi được tag, có lead cần follow-up,
+        sinh nhật khách hàng. Phải bật riêng trên TỪNG thiết bị (laptop, điện thoại).
+      </p>
+      <PushNotificationToggle />
+    </div>
+  </TabsContent>
+)}
 ```
 
-Đây là pattern chuẩn shadcn/ui (giống `Button`, `Card`, `Input`). Không phá API hiện có — mọi chỗ dùng `<Badge>` vẫn hoạt động bình thường, chỉ thêm khả năng nhận `ref`.
+Đồng thời giữ nguyên `<PushNotificationToggle/>` trong `SettingsAccountsTab` (Admin/HR vẫn thấy ở 2 chỗ — không sao, tiện hơn).
 
-### Không cần sửa
-- Không có lỗi DB nào
-- Không có lỗi RLS  
-- Không có lỗi network (toàn bộ HEAD `/internal_notes` đều 200)
-- Web Push toggle vẫn vướng cảnh báo iframe của browser — đã xử lý ở phần code, chỉ cần user mở app ở tab mới (đã có nút "Mở tab mới")
+#### 2. Bổ sung workflow "Bật thông báo Web Push" vào TẤT CẢ 8 phòng ban
 
-### Test sau khi sửa
-1. Vào Cài đặt → tab Tài khoản → console **không còn warning** "Function components cannot be given refs"
-2. Mọi `<Badge>` ở các trang khác (Lead, Kho Data, Khách hàng) vẫn hiển thị y nguyên
+**File:** `src/pages/UserGuide.tsx`
+
+Tạo 1 component dùng chung và chèn vào cuối mỗi `Guide` function (Admin, HCNS, Ops, SalesMgr, Sales, Intern, Ketoan, Mkt/Hdv):
+
+```tsx
+function PushNotifGuide() {
+  return (
+    <Workflow title="🔔 Bật thông báo trên thiết bị (BẮT BUỘC)" icon={null} steps={[
+      "Vào Cài đặt → Tab 'Thông báo'",
+      "Gạt công tắc 'Thông báo Web Push' sang BẬT",
+      "Trình duyệt hỏi → Chọn 'Cho phép' (Allow)",
+      "Lặp lại trên MỌI thiết bị bạn dùng (laptop công ty, laptop cá nhân, điện thoại)",
+      "Trên iPhone: phải 'Thêm vào màn hình chính' (Share → Add to Home Screen) rồi mở từ icon đó mới bật được",
+      "Nếu đang xem trong iframe editor (lovable.dev) → nhấn 'Mở tab mới' trước khi bật",
+      "Lưu ý: nếu trình duyệt báo 'Đã chặn' → mở 🔒 cạnh thanh địa chỉ → đổi Notifications thành 'Cho phép' → tải lại trang",
+    ]} />
+  );
+}
+```
+
+Sau đó chèn `<PushNotifGuide />` vào cuối `<CardContent>` của 8 component: `AdminGuide`, `HCNSGuide`, `OpsGuide`, `SalesMgrGuide`, `SalesGuide`, `InternGuide`, `KetoanGuide`, `MktHdvGuide` (chèn trong cả 2 section "Marketing" và "Hướng dẫn viên").
+
+#### 3. Cập nhật memory
+
+**File:** `mem://docs/departmental-manuals` — bổ sung 1 dòng:
+> Mỗi guide có thêm mục "Bật thông báo Web Push" vì cần bật riêng trên từng thiết bị, là yêu cầu bắt buộc cho mọi vai trò.
+
+### KHÔNG làm trong scope này
+- Không tái xuất 7 file PDF trong `/mnt/documents/` (nếu cần xuất bản lại bản PDF, hỏi sau)
+- Không đổi logic phân quyền của tab "Tài khoản" hiện tại — chỉ thêm tab mới "Thông báo" công khai cho mọi user
+
+### Test sau khi apply
+1. Đăng nhập bằng SALE → Cài đặt → thấy 2 tab: "Quyền hạn" + "Thông báo" → bật toggle thành công
+2. Đăng nhập bằng ADMIN → Cài đặt → vẫn đủ tab cũ + tab "Thông báo" mới
+3. Vào Hướng dẫn sử dụng → mỗi tab phòng ban đều có mục 🔔 cuối cùng
 
