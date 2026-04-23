@@ -431,6 +431,16 @@ export default function RawContacts() {
                     )}
                   </>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 gap-1"
+                  onClick={() => setNotesOpenId(c.id)}
+                  title="Ghi chú nội bộ"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <NotesCountBadge entityType="raw_contact" entityId={c.id} />
+                </Button>
                 {isAdmin && (
                   <Button
                     variant="ghost"
