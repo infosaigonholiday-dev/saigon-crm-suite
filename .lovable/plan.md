@@ -1,39 +1,47 @@
 
 
-## Debug "không bật được" Web Push
+## Fix cột ghi chú không hiển thị trong Kho Data
 
-### Nguyên nhân nghi ngờ (theo screenshot)
+### Vấn đề
+Trang `src/pages/RawContacts.tsx` đã có sẵn:
+- Import `MessageSquare`, `NotesCountBadge`, `InternalNotesDialog`
+- State `notesOpenId` + render `<InternalNotesDialog/>` ở cuối page
 
-Browser permission của bạn là **"Cho phép"** rồi → KHÔNG phải lỗi denied. Vậy còn 3 khả năng:
+Nhưng **thiếu nút trigger** trong cột "Thao tác" của bảng → user không có cách nào mở dialog.
 
-1. **Đang xem qua iframe lovable.dev editor** — Service Worker và `pushManager.subscribe()` bị browser chặn trong cross-origin iframe. Đây là khả năng cao nhất.
-2. **Service Worker `/sw.js` không register được** — file 404 hoặc lỗi MIME.
-3. **`subscribe()` throw lỗi im lặng** — VAPID key sai format hoặc Supabase upsert fail.
+Ngoài ra RLS policy `notes_read` hiện chỉ cho người tạo / người được tag / 3 role cao đọc → đồng nghiệp cùng phòng không thấy ghi chú của nhau dù có quyền view record.
 
-### Cách xác định
+### Sẽ sửa
 
-**Test #1 — Mở preview thẳng (không qua editor)**:
-Mở tab mới → vào `https://id-preview--1632605d-2e2c-4155-8254-0b9de359ce51.lovable.app/cai-dat` → đăng nhập → bật toggle. Nếu chạy ngon → confirm là do iframe editor.
+**1. `src/pages/RawContacts.tsx`** — thêm nút 💬 vào cột Thao tác (cả nhánh `isConverted` và nhánh chưa convert), đặt trước nút Xóa:
+```tsx
+<Button
+  size="sm" variant="ghost" className="h-7 px-2 gap-1"
+  onClick={() => setNotesOpenId(c.id)}
+  title="Ghi chú nội bộ"
+>
+  <MessageSquare className="h-3.5 w-3.5" />
+  <NotesCountBadge entityType="raw_contact" entityId={c.id} />
+</Button>
+```
 
-**Test #2 — Check Service Worker**:
-Trong tab preview trực tiếp → F12 → Application → Service Workers → phải thấy `/sw.js` status "activated and is running". Nếu không thấy → SW chưa register.
+**2. Migration mở rộng RLS `internal_notes.notes_read`** — cho mọi user active đọc được, vì:
+- Bảng record gốc đã RLS lọc rồi (user không thấy raw_contact thì cũng không biết notes nào để hỏi)
+- Mục đích "ghi chú nội bộ" là chia sẻ trong team
 
-**Test #3 — Check console khi click toggle**:
-F12 → Console → bật toggle → tìm dòng `[push] subscribe error` (hook đã có sẵn `console.error`). Copy lỗi cho tôi.
+```sql
+DROP POLICY IF EXISTS notes_read ON public.internal_notes;
+CREATE POLICY notes_read ON public.internal_notes
+  FOR SELECT TO authenticated
+  USING (
+    created_by = auth.uid()
+    OR auth.uid() = ANY (mention_user_ids)
+    OR get_profile_is_active(auth.uid()) = true
+  );
+```
 
-### Plan fix sau khi xác định
-
-Sẽ chỉnh `src/hooks/usePushSubscription.ts` và `src/components/PushNotificationToggle.tsx`:
-
-1. **Thêm log chi tiết** ở mọi step (`getRegistration`, `register`, `requestPermission`, `subscribe`, `upsert`) để dễ debug
-2. **Hiện toast lỗi cụ thể** thay vì chỉ "Không thể bật" — phân biệt: SW fail, subscribe fail, DB upsert fail, iframe blocked
-3. **Detect iframe**: nếu `window.top !== window.self` → hiện banner "Mở trang trong tab mới để bật thông báo" + nút "Mở tab mới" link tới preview URL
-4. **Verify `/sw.js` accessible**: trong `subscribe()`, fetch HEAD `/sw.js` trước, nếu 404 → toast rõ ràng
-5. **Verify VAPID key format**: log key length (phải = 87 ký tự base64url) trước khi gọi `subscribe`
-
-### Hành động ngay từ phía bạn (trước khi tôi sửa code)
-
-Mở preview URL trực tiếp ở tab mới, F12 console, bật toggle, **paste lại log lỗi** (dòng `[push] subscribe error ...`). Có log tôi fix chính xác trong 1 lần thay vì đoán.
-
-Nếu bạn đồng ý, sau khi nhận log tôi sẽ apply 5 cải tiến trên trong cùng 1 lượt sửa.
+### Test
+1. Sales A vào Kho Data → click 💬 trên 1 row → viết ghi chú + tag B → Gửi
+2. Sales B reload → row đó có badge `(1)` cạnh icon 💬 → click thấy nội dung
+3. Sales C cùng phòng (không bị tag) cũng thấy ghi chú đó
 
