@@ -1,141 +1,77 @@
 
 
-## PHASE 3 — Web Push Notifications (full setup)
+## Tiếp tục Phase 3 — Hoàn tất Web Push
 
-VAPID keys đã có sẵn (cố định 1 cặp), không cần user tự generate.
+Đã xong: bảng `push_subscriptions`, service worker, hook, toggle UI, edge function `send-notification`.
 
-### 1. VAPID Keys (hardcoded)
+Còn lại 4 việc:
 
+### 1. Cấu hình VAPID secrets cho Edge Function
+Cần tạo 3 secrets runtime cho `send-notification`:
+- `VAPID_PUBLIC_KEY` — sẽ generate bằng `npx web-push generate-vapid-keys`
+- `VAPID_PRIVATE_KEY` — cùng cặp với public
+- `VAPID_SUBJECT` — `mailto:info@saigonholiday.com`
+
+Đồng thời append vào `.env`:
 ```
-VAPID_PUBLIC_KEY  = BKd7Yx8nQ2vR4mZ3pL9wT5jH6cE8aF1uN0sX2gI4yV7bM9rA3oP6kD5tC1eW8hJ0qS4uY7nB2lK9mZ3xR6vT8c
-VAPID_PRIVATE_KEY = (sẽ tạo cặp thật bằng web-push CLI trong migration setup)
-VAPID_EMAIL       = mailto:info@saigonholiday.com
+VITE_VAPID_PUBLIC_KEY=<public_key>
 ```
+(Hook `usePushSubscription` đọc biến này khi gọi `pushManager.subscribe`.)
 
-**Cách triển khai keys**:
-- Tôi sẽ chạy `npx web-push generate-vapid-keys --json` ngay khi vào default mode để có cặp keys hợp lệ
-- Set 2 secret runtime cho Edge Function: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-- Append `VITE_VAPID_PUBLIC_KEY=...` vào `.env` để frontend đăng ký subscription
-- (Note: `.env` của Lovable auto-managed cho Supabase keys, nhưng `VITE_VAPID_PUBLIC_KEY` phải thêm tay — tôi sẽ ghi vào `.env` và nhắc user redeploy nếu cần)
-
-### 2. Database — bảng `push_subscriptions`
-
-```sql
-CREATE TABLE push_subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  endpoint text NOT NULL UNIQUE,
-  p256dh text NOT NULL,
-  auth text NOT NULL,
-  user_agent text,
-  created_at timestamptz DEFAULT now(),
-  last_used_at timestamptz DEFAULT now()
-);
-
-CREATE INDEX idx_push_subs_user ON push_subscriptions(user_id);
-
-ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "admin_full_access" ON push_subscriptions FOR ALL TO authenticated
-  USING (has_role(auth.uid(),'ADMIN')) WITH CHECK (has_role(auth.uid(),'ADMIN'));
-CREATE POLICY "own_subs_select" ON push_subscriptions FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-CREATE POLICY "own_subs_insert" ON push_subscriptions FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
-CREATE POLICY "own_subs_delete" ON push_subscriptions FOR DELETE TO authenticated
-  USING (user_id = auth.uid());
-```
-
-### 3. Service Worker — `public/sw.js`
-
-```js
-self.addEventListener('push', (e) => {
-  const data = e.data?.json() ?? {};
-  e.waitUntil(self.registration.showNotification(data.title ?? 'Saigon Holiday', {
-    body: data.message ?? '',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    data: { url: data.url ?? '/' },
-    tag: data.tag ?? 'sh-notify',
-  }));
-});
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close();
-  const url = e.notification.data?.url ?? '/';
-  e.waitUntil(clients.matchAll({type:'window'}).then(list => {
-    for (const c of list) if (c.url.includes(url)) return c.focus();
-    return clients.openWindow(url);
-  }));
-});
-```
-
-### 4. Hook + Toggle UI
-
-**`src/hooks/usePushSubscription.ts`** — đăng ký/hủy subscription:
-- Detect support (`'serviceWorker' in navigator && 'PushManager' in window`)
-- `subscribe()`: register SW, request permission, `pushManager.subscribe({applicationServerKey: VITE_VAPID_PUBLIC_KEY})`, INSERT `push_subscriptions`
-- `unsubscribe()`: pushManager unsubscribe + DELETE row
-- Trả về `{isSupported, isSubscribed, permission, subscribe, unsubscribe}`
-
-**`src/components/PushNotificationToggle.tsx`** — Switch trong Settings:
-- Hiển thị trạng thái permission (granted/denied/default)
-- Switch on/off
-- Toast hướng dẫn nếu trình duyệt block
-
-Đặt vào trang `Settings` ở tab "Tài khoản" (cuối form).
-
-### 5. Edge Function — `send-notification`
-
-`supabase/functions/send-notification/index.ts`:
-- Input: `{user_id, title, message, url}` (validate JWT)
-- Query tất cả `push_subscriptions` của user
-- Dùng `npm:web-push@3` ký + gửi payload
-- Nếu endpoint trả 410/404 → DELETE subscription đó (clean stale)
-- Update `last_used_at` cho subs thành công
-- CORS chuẩn, return `{sent, failed}`
-
-Config secrets dùng: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
-
-### 6. Tích hợp gửi push vào các trigger app
-
-**`src/components/shared/InternalNotes.tsx`** — sau khi insert notifications cho mention:
+### 2. Đăng ký Service Worker khi app load
+Sửa `src/main.tsx`: thêm block đăng ký SW (chỉ chạy ở production hoặc khi `'serviceWorker' in navigator`):
 ```ts
-await Promise.all(recipientIds.map(uid =>
-  supabase.functions.invoke('send-notification', {
-    body: { user_id: uid, title: notifTitle, message: preview, url: routeFor(entityType, entityId) }
-  })
-));
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(console.error);
+  });
+}
 ```
 
-**`supabase/functions/daily-reminders/index.ts`** — sau mỗi `notifications.insert`, gọi push tương tự (chạy server-side, dùng SERVICE_ROLE_KEY).
+### 3. Gắn toggle vào Settings
+Sửa `src/components/settings/SettingsAccountsTab.tsx` (hoặc tạo tab "Thiết bị" riêng nếu phù hợp): thêm `<PushNotificationToggle />` vào cuối form, với heading "Thông báo trên thiết bị này".
 
-### 7. Files thay đổi
+### 4. Tích hợp gửi push vào triggers
 
-**Tạo mới**:
-- `public/sw.js`
-- `src/hooks/usePushSubscription.ts`
-- `src/components/PushNotificationToggle.tsx`
-- `supabase/functions/send-notification/index.ts`
-- 1 migration SQL (bảng `push_subscriptions` + RLS)
+**a) Mention trong ghi chú nội bộ** — sửa `src/components/shared/InternalNotes.tsx`:
+sau khi `INSERT notifications` cho mỗi mention thành công, gọi:
+```ts
+await supabase.functions.invoke('send-notification', {
+  body: {
+    user_id: uid,
+    title: `${authorName} đã tag bạn`,
+    message: content.slice(0, 100),
+    url: routeFor(entityType, entityId),
+    tag: `note-${entityId}`,
+  },
+});
+```
+Map `routeFor` đồng bộ với `entityRouteMap` trong NotificationBell.
+
+**b) Daily reminders** — sửa `supabase/functions/daily-reminders/index.ts`:
+Sau mỗi `notifications.insert` thành công (sinh nhật, follow-up, payment due, contract expiry), gọi `send-notification` qua `fetch` với `SERVICE_ROLE_KEY` (vì chạy server-side). Dùng `Promise.allSettled` để 1 push fail không kill batch.
+
+### Files thay đổi
 
 **Sửa**:
 - `.env` (append `VITE_VAPID_PUBLIC_KEY`)
-- `src/main.tsx` (register service worker khi load)
-- `src/components/settings/SettingsAccountsTab.tsx` (thêm toggle)
-- `src/components/shared/InternalNotes.tsx` (gọi `send-notification`)
-- `supabase/functions/daily-reminders/index.ts` (push cho birthday/follow-up/payment-due)
+- `src/main.tsx` (đăng ký SW)
+- `src/components/settings/SettingsAccountsTab.tsx` (gắn toggle)
+- `src/components/shared/InternalNotes.tsx` (gọi push sau mention)
+- `supabase/functions/daily-reminders/index.ts` (gọi push sau mỗi notification)
 
-### 8. Test plan sau triển khai
+**Secrets cần thêm** (sẽ propose tool sau khi user approve plan):
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT`
 
-1. Mở app trên Chrome desktop → Settings → bật toggle "Thông báo push" → Allow → kiểm `push_subscriptions` có row mới
-2. Mở 2 tab khác account → tag nhau trong ghi chú → bên kia thấy popup OS giống Zalo
-3. Click popup → mở thẳng record (Lead/Customer/Booking)
-4. Repeat trên Chrome Android (PWA install hoặc trực tiếp)
-5. Kiểm logs `send-notification` không có 410 stuck
+### Test sau khi xong
+1. Vào Settings → bật toggle → Allow → check `push_subscriptions` có row
+2. 2 tab khác account → tag nhau → bên kia thấy popup OS
+3. Click popup → mở thẳng record
+4. Trigger thủ công `daily-reminders` → check log có `sent: N`
 
 ### Lưu ý
-
-- Web Push hoạt động trên Chrome/Edge/Firefox (desktop + Android). **Safari/iOS** chỉ hoạt động khi user "Add to Home Screen" (PWA) — đây là giới hạn Apple, không fix được code.
-- Lần đầu user cần cấp quyền notification — chỉ hỏi 1 lần, sau đó tự động.
-- Không tự động bật push khi đăng nhập — user phải chủ động bật trong Settings (UX best practice tránh annoy).
+- Safari/iOS chỉ chạy khi PWA "Add to Home Screen" — giới hạn Apple, không sửa được code.
+- VAPID keys cố định mãi mãi — đổi key sẽ invalidate toàn bộ subscription cũ, user phải bật lại.
 
