@@ -6,6 +6,17 @@ const VAPID_PUBLIC_KEY =
   (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ||
   "BNpfULcP4VHvXsJez4GYvQLR_6uhSW6vWPzSo9QiZW5T7toIMU-YaJkX5ue4EI96HFJHclyVslPdXpdFe3tEXJ4";
 
+export type PushSubscribeError =
+  | "unsupported"
+  | "iframe"
+  | "denied"
+  | "sw_unreachable"
+  | "sw_register_failed"
+  | "vapid_invalid"
+  | "subscribe_failed"
+  | "db_failed"
+  | "error";
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -23,12 +34,21 @@ function bufToBase64(buf: ArrayBuffer | null): string {
   return btoa(bin);
 }
 
+function isInIframe(): boolean {
+  try {
+    return typeof window !== "undefined" && window.top !== window.self;
+  } catch {
+    return true; // cross-origin access throws → definitely in iframe
+  }
+}
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
+  const [inIframe, setInIframe] = useState(false);
 
   useEffect(() => {
     const supported =
@@ -37,7 +57,14 @@ export function usePushSubscription() {
       "PushManager" in window &&
       "Notification" in window;
     setIsSupported(supported);
+    setInIframe(isInIframe());
     if (supported) setPermission(Notification.permission);
+    console.log("[push] init", {
+      supported,
+      inIframe: isInIframe(),
+      permission: supported ? Notification.permission : "n/a",
+      vapidKeyLength: VAPID_PUBLIC_KEY.length,
+    });
   }, []);
 
   useEffect(() => {
@@ -47,69 +74,126 @@ export function usePushSubscription() {
         const reg = await navigator.serviceWorker.getRegistration("/sw.js");
         const sub = await reg?.pushManager.getSubscription();
         setIsSubscribed(!!sub);
-      } catch {
+        console.log("[push] existing subscription?", !!sub);
+      } catch (e) {
+        console.warn("[push] getSubscription failed", e);
         setIsSubscribed(false);
       }
     })();
   }, [isSupported]);
 
-  const subscribe = useCallback(async () => {
-    if (!isSupported || !user) return { ok: false, error: "unsupported" as const };
+  const subscribe = useCallback(async (): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
+    console.log("[push] subscribe() called");
+    if (!isSupported) return { ok: false, error: "unsupported" };
+    if (!user) return { ok: false, error: "error", detail: "no user" };
+    if (inIframe) {
+      console.warn("[push] blocked: running in iframe");
+      return { ok: false, error: "iframe" };
+    }
+
     setLoading(true);
     try {
+      // Step 1: verify /sw.js is reachable
+      try {
+        const head = await fetch("/sw.js", { method: "HEAD" });
+        console.log("[push] /sw.js HEAD", head.status, head.headers.get("content-type"));
+        if (!head.ok) {
+          return { ok: false, error: "sw_unreachable", detail: `HTTP ${head.status}` };
+        }
+      } catch (e) {
+        console.error("[push] /sw.js fetch failed", e);
+        return { ok: false, error: "sw_unreachable", detail: String(e) };
+      }
+
+      // Step 2: VAPID key sanity check (base64url, 65 bytes raw → 87 chars)
+      if (VAPID_PUBLIC_KEY.length < 80 || VAPID_PUBLIC_KEY.length > 90) {
+        console.error("[push] VAPID key suspicious length", VAPID_PUBLIC_KEY.length);
+        return { ok: false, error: "vapid_invalid", detail: `length=${VAPID_PUBLIC_KEY.length}` };
+      }
+
+      // Step 3: request permission
       const perm = await Notification.requestPermission();
       setPermission(perm);
+      console.log("[push] permission result", perm);
       if (perm !== "granted") {
-        setLoading(false);
-        return { ok: false, error: "denied" as const };
+        return { ok: false, error: "denied" };
       }
 
-      let reg = await navigator.serviceWorker.getRegistration("/sw.js");
-      if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        const keyBytes = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-        // Copy into a fresh ArrayBuffer to satisfy BufferSource typing
-        const keyBuffer = new ArrayBuffer(keyBytes.byteLength);
-        new Uint8Array(keyBuffer).set(keyBytes);
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: keyBuffer,
-        });
+      // Step 4: register/get SW
+      let reg: ServiceWorkerRegistration | undefined;
+      try {
+        reg = await navigator.serviceWorker.getRegistration("/sw.js");
+        if (!reg) {
+          console.log("[push] registering /sw.js …");
+          reg = await navigator.serviceWorker.register("/sw.js");
+        }
+        await navigator.serviceWorker.ready;
+        console.log("[push] SW ready", reg.scope, reg.active?.state);
+      } catch (e) {
+        console.error("[push] SW register failed", e);
+        return { ok: false, error: "sw_register_failed", detail: String(e) };
       }
 
-      const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
-      const endpoint = json.endpoint || sub.endpoint;
-      const p256dh =
-        json.keys?.p256dh || bufToBase64(sub.getKey ? sub.getKey("p256dh") : null);
-      const authKey =
-        json.keys?.auth || bufToBase64(sub.getKey ? sub.getKey("auth") : null);
+      // Step 5: subscribe
+      let sub: PushSubscription | null = null;
+      try {
+        sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          const keyBytes = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+          const keyBuffer = new ArrayBuffer(keyBytes.byteLength);
+          new Uint8Array(keyBuffer).set(keyBytes);
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: keyBuffer,
+          });
+          console.log("[push] new subscription created");
+        } else {
+          console.log("[push] reused existing subscription");
+        }
+      } catch (e) {
+        console.error("[push] pushManager.subscribe failed", e);
+        return { ok: false, error: "subscribe_failed", detail: (e as Error)?.message || String(e) };
+      }
 
-      const { error } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          {
-            user_id: user.id,
-            endpoint,
-            p256dh,
-            auth: authKey,
-            user_agent: navigator.userAgent,
-            last_used_at: new Date().toISOString(),
-          },
-          { onConflict: "endpoint" }
-        );
-      if (error) throw error;
+      // Step 6: upsert to Supabase
+      try {
+        const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+        const endpoint = json.endpoint || sub.endpoint;
+        const p256dh = json.keys?.p256dh || bufToBase64(sub.getKey ? sub.getKey("p256dh") : null);
+        const authKey = json.keys?.auth || bufToBase64(sub.getKey ? sub.getKey("auth") : null);
+
+        const { error } = await supabase
+          .from("push_subscriptions")
+          .upsert(
+            {
+              user_id: user.id,
+              endpoint,
+              p256dh,
+              auth: authKey,
+              user_agent: navigator.userAgent,
+              last_used_at: new Date().toISOString(),
+            },
+            { onConflict: "endpoint" }
+          );
+        if (error) {
+          console.error("[push] DB upsert error", error);
+          return { ok: false, error: "db_failed", detail: error.message };
+        }
+        console.log("[push] DB upsert OK");
+      } catch (e) {
+        console.error("[push] DB step crash", e);
+        return { ok: false, error: "db_failed", detail: String(e) };
+      }
+
       setIsSubscribed(true);
-      return { ok: true as const };
+      return { ok: true };
     } catch (e) {
-      console.error("[push] subscribe error", e);
-      return { ok: false, error: "error" as const };
+      console.error("[push] subscribe error (outer)", e);
+      return { ok: false, error: "error", detail: String(e) };
     } finally {
       setLoading(false);
     }
-  }, [isSupported, user]);
+  }, [isSupported, user, inIframe]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported || !user) return { ok: false };
@@ -131,5 +215,5 @@ export function usePushSubscription() {
     }
   }, [isSupported, user]);
 
-  return { isSupported, isSubscribed, permission, loading, subscribe, unsubscribe };
+  return { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe };
 }
