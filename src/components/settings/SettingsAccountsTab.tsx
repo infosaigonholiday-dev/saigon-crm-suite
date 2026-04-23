@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, ShieldCheck, ShieldOff, KeyRound, Trash2, Pencil, ArrowRightLeft } from "lucide-react";
 import { DataHandoverDialog } from "./DataHandoverDialog";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ROLES: { value: string; label: string }[] = [
   { value: "ADMIN", label: "Quản trị viên" },
@@ -622,6 +623,15 @@ export function SettingsAccountsTab() {
         profile={handoverProfile}
         onComplete={loadProfiles}
       />
+
+      <div className="pt-6 border-t">
+        <h3 className="text-base font-semibold text-foreground mb-1">Thông báo trên thiết bị này</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Bật để nhận thông báo popup ngay trên trình duyệt / hệ điều hành — kể cả khi không mở tab CRM.
+          Cần bật riêng trên mỗi thiết bị bạn dùng.
+        </p>
+        <PushNotificationToggle />
+      </div>
     </div>
   );
 }
