@@ -378,6 +378,7 @@ export default function RawContacts() {
           <TableHead>Người phụ trách</TableHead>
           {showStaffCol && <TableHead>NV phụ trách</TableHead>}
           <TableHead>Phòng</TableHead>
+          <TableHead>Ngày tạo</TableHead>
           <TableHead>SĐT</TableHead>
           <TableHead>Công ty</TableHead>
           <TableHead>Quy mô</TableHead>
@@ -391,7 +392,7 @@ export default function RawContacts() {
       <TableBody>
         {data.length === 0 ? (
           <TableRow>
-           <TableCell colSpan={showStaffCol ? 11 : 10} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
+           <TableCell colSpan={showStaffCol ? 12 : 11} className="text-center text-muted-foreground py-8">Chưa có dữ liệu</TableCell>
           </TableRow>
         ) : data.map((c) => {
           const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
@@ -401,6 +402,7 @@ export default function RawContacts() {
               <TableCell className="font-medium">{c.full_name || "—"}</TableCell>
               {showStaffCol && <TableCell>{c.assigned_profile?.full_name ?? "—"}</TableCell>}
               <TableCell>{c.departments?.name ?? "—"}</TableCell>
+              <TableCell>{c.created_at ? format(new Date(c.created_at), "dd/MM/yyyy") : "—"}</TableCell>
               <TableCell>{c.phone}</TableCell>
               <TableCell>{c.company_name || "—"}</TableCell>
               <TableCell>{c.company_size || "—"}</TableCell>

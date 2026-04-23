@@ -33,6 +33,7 @@ interface LeadWithProfile {
   temperature: string | null;
   planned_travel_date: string | null;
   last_contact_at?: string | null;
+  created_at?: string | null;
   assigned_profile_name?: string | null;
   department_name?: string | null;
   converted_customer_id?: string | null;
@@ -55,6 +56,7 @@ export default function LeadTableView({ leads, onClickLead, isAdmin, onDeleteLea
             <TableHead>Tên</TableHead>
             <TableHead>NV phụ trách</TableHead>
             <TableHead>Phòng</TableHead>
+            <TableHead>Ngày tạo</TableHead>
             <TableHead>Công ty</TableHead>
             <TableHead>SĐT</TableHead>
             <TableHead>Trạng thái</TableHead>
@@ -67,7 +69,7 @@ export default function LeadTableView({ leads, onClickLead, isAdmin, onDeleteLea
         <TableBody>
           {leads.length === 0 && (
             <TableRow>
-              <TableCell colSpan={isAdmin ? 10 : 9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={isAdmin ? 11 : 10} className="text-center text-muted-foreground py-8">
                 Không có lead nào
               </TableCell>
             </TableRow>
@@ -94,6 +96,9 @@ export default function LeadTableView({ leads, onClickLead, isAdmin, onDeleteLea
                 </TableCell>
                 <TableCell>{lead.assigned_profile_name ?? "—"}</TableCell>
                 <TableCell>{lead.department_name ?? "—"}</TableCell>
+                <TableCell>
+                  {lead.created_at ? format(new Date(lead.created_at), "dd/MM/yyyy") : "—"}
+                </TableCell>
                 <TableCell>{lead.company_name ?? "—"}</TableCell>
                 <TableCell>{lead.phone ?? "—"}</TableCell>
                 <TableCell>
