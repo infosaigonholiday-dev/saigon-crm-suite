@@ -1,47 +1,40 @@
 
 
-## Fix cột ghi chú không hiển thị trong Kho Data
+## Bổ sung cột "Ngày tạo" cho 3 module: Kho Data, Tiềm năng, Khách hàng
 
-### Vấn đề
-Trang `src/pages/RawContacts.tsx` đã có sẵn:
-- Import `MessageSquare`, `NotesCountBadge`, `InternalNotesDialog`
-- State `notesOpenId` + render `<InternalNotesDialog/>` ở cuối page
+### Hiện trạng
+| Module | Cột ngày hiện có | Thiếu |
+|---|---|---|
+| Khách hàng (`Customers.tsx`) | ✅ "Ngày tạo" | — |
+| Tiềm năng (`LeadTableView.tsx`) | "Ngày dự kiến đi", "Lần LH cuối" | ❌ Ngày tạo |
+| Kho Data (`RawContacts.tsx`) | "TG dự kiến", "Gọi cuối" | ❌ Ngày tạo |
 
-Nhưng **thiếu nút trigger** trong cột "Thao tác" của bảng → user không có cách nào mở dialog.
-
-Ngoài ra RLS policy `notes_read` hiện chỉ cho người tạo / người được tag / 3 role cao đọc → đồng nghiệp cùng phòng không thấy ghi chú của nhau dù có quyền view record.
+→ Module Khách hàng có rồi, nhưng 2 module Kho Data + Tiềm năng đang thiếu cột "Ngày tạo" — đây là field quan trọng để Sales/Manager biết data vào hệ thống lúc nào.
 
 ### Sẽ sửa
 
-**1. `src/pages/RawContacts.tsx`** — thêm nút 💬 vào cột Thao tác (cả nhánh `isConverted` và nhánh chưa convert), đặt trước nút Xóa:
-```tsx
-<Button
-  size="sm" variant="ghost" className="h-7 px-2 gap-1"
-  onClick={() => setNotesOpenId(c.id)}
-  title="Ghi chú nội bộ"
->
-  <MessageSquare className="h-3.5 w-3.5" />
-  <NotesCountBadge entityType="raw_contact" entityId={c.id} />
-</Button>
-```
+**1. `src/components/leads/LeadTableView.tsx`**
+- Thêm field `created_at?: string | null` vào interface `LeadWithProfile`
+- Thêm `<TableHead>Ngày tạo</TableHead>` (đặt sau "Phòng", trước "Công ty")
+- Thêm `<TableCell>{lead.created_at ? format(new Date(lead.created_at), "dd/MM/yyyy") : "—"}</TableCell>`
+- Cập nhật `colSpan` empty state: 9→10 (no admin), 10→11 (admin)
 
-**2. Migration mở rộng RLS `internal_notes.notes_read`** — cho mọi user active đọc được, vì:
-- Bảng record gốc đã RLS lọc rồi (user không thấy raw_contact thì cũng không biết notes nào để hỏi)
-- Mục đích "ghi chú nội bộ" là chia sẻ trong team
+Kiểm tra `src/pages/Leads.tsx` đảm bảo query đã `select` cột `created_at` (nếu chưa thì thêm).
 
-```sql
-DROP POLICY IF EXISTS notes_read ON public.internal_notes;
-CREATE POLICY notes_read ON public.internal_notes
-  FOR SELECT TO authenticated
-  USING (
-    created_by = auth.uid()
-    OR auth.uid() = ANY (mention_user_ids)
-    OR get_profile_is_active(auth.uid()) = true
-  );
-```
+**2. `src/pages/RawContacts.tsx`** (hàm `renderTable`)
+- Thêm `<TableHead>Ngày tạo</TableHead>` đặt sau "Phòng", trước "SĐT"
+- Thêm `<TableCell>{format(new Date(c.created_at), "dd/MM/yyyy")}</TableCell>`
+- Cập nhật `colSpan` empty state: 10→11 (no staff col), 11→12 (with staff col)
+
+Field `created_at` đã có sẵn trong type `RawContact` và đã được select bằng `*` → không cần đổi query.
+
+**3. `src/pages/Customers.tsx`** — không thay đổi (đã có "Ngày tạo")
+
+### Format
+Thống nhất `dd/MM/yyyy` (giống Customers) cho mọi cột "Ngày tạo" để đồng bộ UI.
 
 ### Test
-1. Sales A vào Kho Data → click 💬 trên 1 row → viết ghi chú + tag B → Gửi
-2. Sales B reload → row đó có badge `(1)` cạnh icon 💬 → click thấy nội dung
-3. Sales C cùng phòng (không bị tag) cũng thấy ghi chú đó
+1. Vào Kho Data → bảng hiển thị cột "Ngày tạo" với format `dd/MM/yyyy` cho mỗi row
+2. Vào Tiềm năng → chuyển sang chế độ Table View → thấy cột "Ngày tạo"
+3. Vào Khách hàng → cột "Ngày tạo" vẫn hoạt động bình thường (không đổi)
 
