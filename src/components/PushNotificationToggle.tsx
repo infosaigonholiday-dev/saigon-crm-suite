@@ -63,10 +63,10 @@ export function PushNotificationToggle() {
   return (
     <div className="space-y-3">
       {inIframe && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4">
+        <div className="rounded-md border border-primary/40 bg-primary/10 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <ExternalLink className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <ExternalLink className="h-5 w-5 text-primary mt-0.5" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
                   Cần mở trang trong tab riêng để bật thông báo
