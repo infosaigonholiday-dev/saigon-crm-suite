@@ -15,6 +15,18 @@ export type EntityType =
   | "raw_contact" | "lead" | "customer" | "booking"
   | "quotation" | "contract" | "payment" | "employee" | "finance";
 
+const entityRouteMap: Record<EntityType, (id: string) => string> = {
+  raw_contact: () => "/kho-data",
+  lead: () => "/tiem-nang",
+  customer: (id) => `/khach-hang/${id}`,
+  booking: (id) => `/dat-tour/${id}`,
+  quotation: () => "/bao-gia",
+  contract: () => "/hop-dong",
+  payment: () => "/thanh-toan",
+  employee: (id) => `/nhan-su/${id}`,
+  finance: () => "/tai-chinh",
+};
+
 interface Props {
   entityType: EntityType;
   entityId: string;
@@ -181,15 +193,32 @@ export default function InternalNotes({ entityType, entityId, entityName }: Prop
         const senderName = me?.full_name ?? "Đồng nghiệp";
         const preview = content.trim().slice(0, 100);
 
+        const notifTitle = `${senderName} đã tag bạn`;
         const notifRows = recipientIds.map((uid) => ({
           user_id: uid,
           type: "internal_note" as const,
-          title: `${senderName} đã tag bạn`,
+          title: notifTitle,
           message: preview,
           entity_type: entityType,
           entity_id: entityId,
         }));
         await supabase.from("notifications").insert(notifRows);
+
+        // Send Web Push to each recipient (best effort — don't block toast)
+        const url = entityRouteMap[entityType](entityId);
+        await Promise.allSettled(
+          recipientIds.map((uid) =>
+            supabase.functions.invoke("send-notification", {
+              body: {
+                user_id: uid,
+                title: notifTitle,
+                message: preview,
+                url,
+                tag: `note-${entityId}`,
+              },
+            })
+          )
+        );
       }
 
       toast.success("Đã gửi ghi chú");

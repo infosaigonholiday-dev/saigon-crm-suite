@@ -15,6 +15,48 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const entityRouteMap: Record<string, (id: string) => string> = {
+      raw_contact: () => "/kho-data",
+      lead: () => "/tiem-nang",
+      customer: (id) => `/khach-hang/${id}`,
+      booking: (id) => `/dat-tour/${id}`,
+      quotation: () => "/bao-gia",
+      contract: () => "/hop-dong",
+      payment: () => "/thanh-toan",
+      employee: (id) => `/nhan-su/${id}`,
+      finance: () => "/tai-chinh",
+    };
+
+    const sendPush = async (n: {
+      user_id: string;
+      title: string;
+      message: string;
+      entity_type: string;
+      entity_id: string;
+      type: string;
+    }) => {
+      try {
+        const builder = entityRouteMap[n.entity_type];
+        const url = builder ? builder(n.entity_id) : "/";
+        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            user_id: n.user_id,
+            title: n.title,
+            message: n.message,
+            url,
+            tag: `${n.type}-${n.entity_id}`,
+          }),
+        });
+      } catch (e) {
+        console.warn("[daily-reminders] push failed:", (e as Error).message);
+      }
+    };
+
     const today = new Date();
     const notifications: Array<{
       user_id: string;
@@ -254,6 +296,7 @@ Deno.serve(async (req) => {
 
     // ===== Deduplicate & Insert =====
     let sent = 0;
+    const pushBatch: typeof notifications = [];
     for (const n of notifications) {
       // Check if already notified today
       const { count } = await supabase
@@ -268,8 +311,14 @@ Deno.serve(async (req) => {
       if ((count || 0) > 0) continue;
 
       const { error } = await supabase.from("notifications").insert(n);
-      if (!error) sent++;
+      if (!error) {
+        sent++;
+        pushBatch.push(n);
+      }
     }
+
+    // Fire Web Push for each newly inserted notification (best effort)
+    await Promise.allSettled(pushBatch.map(sendPush));
 
     return new Response(JSON.stringify({ sent, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
