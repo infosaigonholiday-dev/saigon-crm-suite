@@ -105,6 +105,7 @@ function AdminGuide() {
           "Xem biểu đồ doanh thu, KH mới trong tháng, tỷ lệ chuyển đổi Lead → KH",
           "Xem danh sách Top KH theo doanh thu và KH cần chăm sóc lại",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -154,6 +155,7 @@ function HCNSGuide() {
           "Vào Thanh toán hoặc Nhà cung cấp",
           "Tìm kiếm thông tin cần thiết",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -205,6 +207,7 @@ function OpsGuide() {
           "Vào Nghỉ phép → Nhấn 'Tạo đơn nghỉ'",
           "Chọn ngày nghỉ, lý do → Gửi đơn → Chờ duyệt",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -250,6 +253,7 @@ function SalesMgrGuide() {
           "Vào Tài chính → Tạo phiếu chi → Điền nội dung, số tiền",
           "Gửi duyệt → Chờ Kế toán duyệt",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -298,6 +302,7 @@ function SalesGuide() {
           "Vào Nghỉ phép → Nhấn 'Tạo đơn nghỉ'",
           "Chọn ngày, lý do → Gửi đơn → Chờ trưởng phòng duyệt",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -338,6 +343,7 @@ function InternGuide() {
           "Vào Quy trình → Xem tài liệu hướng dẫn của phòng ban",
           "Đọc kỹ quy trình trước khi thực hiện công việc",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
@@ -382,6 +388,7 @@ function KetoanGuide() {
         <Workflow title="Xin nghỉ phép" icon={null} steps={[
           "Vào Nghỉ phép → Tạo đơn nghỉ → Gửi duyệt",
         ]} />
+        <PushNotifGuide />
       </CardContent>
     </Card>
   );
