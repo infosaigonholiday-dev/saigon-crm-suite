@@ -44,6 +44,20 @@ function Workflow({ title, icon, steps }: { title: string; icon: React.ReactNode
   );
 }
 
+function PushNotifGuide() {
+  return (
+    <Workflow title="🔔 Bật thông báo trên thiết bị (BẮT BUỘC)" icon={null} steps={[
+      "Vào Cài đặt → Tab 'Thông báo'",
+      "Gạt công tắc 'Thông báo Web Push' sang BẬT",
+      "Khi trình duyệt hỏi → Chọn 'Cho phép' (Allow)",
+      "Lặp lại trên MỌI thiết bị bạn dùng (laptop công ty, laptop cá nhân, điện thoại)",
+      "Trên iPhone: phải 'Thêm vào màn hình chính' (Share → Add to Home Screen) rồi mở từ icon đó mới bật được",
+      "Nếu đang xem trong iframe editor (lovable.dev) → nhấn 'Mở tab mới' trước khi bật",
+      "Nếu trình duyệt báo 'Đã chặn' → mở 🔒 cạnh thanh địa chỉ → đổi Notifications thành 'Cho phép' → tải lại trang",
+    ]} />
+  );
+}
+
 /* ═══════════════ ADMIN ═══════════════ */
 function AdminGuide() {
   return (

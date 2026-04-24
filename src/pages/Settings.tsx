@@ -10,6 +10,7 @@ import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HR_MANAGER", "HCNS"];
@@ -58,9 +59,11 @@ export default function Settings() {
   const showRoles = true; // anyone with settings.view
   const showPermissions = isAdmin || ["MANAGER", "GDKD"].includes(userRole || "");
   const showAuditLog = isAdmin;
+  const showNotifications = true; // mọi user có settings.view đều thấy
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
+    showNotifications && { value: "notifications", label: "Thông báo" },
     showDepartments && { value: "departments", label: "Phòng ban" },
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
@@ -86,6 +89,20 @@ export default function Settings() {
 
         {showAccounts && (
           <TabsContent value="accounts" className="mt-4"><SettingsAccountsTab /></TabsContent>
+        )}
+        {showNotifications && (
+          <TabsContent value="notifications" className="mt-4">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-foreground">Thông báo trên thiết bị này</h3>
+                <p className="text-sm text-muted-foreground">
+                  Bật để nhận thông báo (giống Zalo) khi được tag trong ghi chú, có lead cần follow-up,
+                  sinh nhật khách hàng. <strong>Phải bật riêng trên TỪNG thiết bị</strong> (laptop, điện thoại) bạn đang dùng.
+                </p>
+              </div>
+              <PushNotificationToggle />
+            </div>
+          </TabsContent>
         )}
         {showDepartments && (
           <TabsContent value="departments" className="mt-4"><SettingsDepartmentsTab /></TabsContent>
