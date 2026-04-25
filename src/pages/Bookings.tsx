@@ -46,7 +46,7 @@ export default function Bookings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   // Đọc prefill_tour từ URL khi từ LKH Tour 2026 chuyển sang
   useEffect(() => {
@@ -71,6 +71,11 @@ export default function Bookings() {
 
   const scope = getScope("bookings");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
+
+  // Lấy department_id cho check quyền in (cần thiết cho MANAGER/GDKD ngay cả khi scope=all).
+  const needPrintDept = (DEPT_PRINT_ROLES as readonly string[]).includes(userRole || "") && scope !== "department";
+  const { data: myDeptIdForPrint } = useMyDepartmentId(needPrintDept);
+  const effectiveMyDeptId = myDeptId ?? myDeptIdForPrint ?? null;
 
   function applyScopeFilter(q: any) {
     if (scope === "personal" && user?.id) {
@@ -98,7 +103,7 @@ export default function Bookings() {
     queryFn: async () => {
       let q = supabase
         .from("bookings")
-        .select("id, code, customer_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
+        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
