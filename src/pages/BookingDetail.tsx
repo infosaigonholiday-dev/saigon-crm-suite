@@ -112,10 +112,15 @@ export default function BookingDetail() {
 
       {/* Locked booking banner */}
       {isLocked && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Booking đã <strong>{status === "COMPLETED" ? "hoàn thành" : "huỷ"}</strong> — không thể chỉnh sửa.
+        <Alert className="border-warning/40 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="flex items-center gap-2 flex-wrap">
+            <span>
+              Booking đã <strong>{status === "COMPLETED" ? "hoàn thành/đóng" : "huỷ"}</strong> — không thể chỉnh sửa.
+            </span>
+            <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30">
+              Chỉ CEO/ADMIN có thể mở lại
+            </Badge>
           </AlertDescription>
         </Alert>
       )}
