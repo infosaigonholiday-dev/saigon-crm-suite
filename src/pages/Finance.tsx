@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, DollarSign, BarChart3, Upload } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -20,6 +22,7 @@ import { ProfitReportTab } from "@/components/finance/ProfitReportTab";
 import { CashflowReportTab } from "@/components/finance/CashflowReportTab";
 import { TaxReportTab } from "@/components/finance/TaxReportTab";
 import { DebtReportTab } from "@/components/finance/DebtReportTab";
+import { ImportExpensesDialog } from "@/components/finance/ImportExpensesDialog";
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -152,13 +155,20 @@ function OverviewTab() {
 }
 
 function SubmitterView() {
+  const [importOpen, setImportOpen] = useState(false);
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Nhập chi phí</h1>
-        <p className="text-sm text-muted-foreground">Nhập chi phí và gửi Kế toán duyệt</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Nhập chi phí</h1>
+          <p className="text-sm text-muted-foreground">Nhập chi phí và gửi Kế toán duyệt</p>
+        </div>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" /> Import Excel
+        </Button>
       </div>
       <TransactionListTab submitterOnly />
+      <ImportExpensesDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
