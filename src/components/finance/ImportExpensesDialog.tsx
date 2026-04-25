@@ -225,7 +225,7 @@ export function ImportExpensesDialog({ open, onOpenChange }: Props) {
                           {p.error ? (
                             <span className="text-xs text-destructive">{p.error}</span>
                           ) : (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                            <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/20">
                               OK
                             </Badge>
                           )}
