@@ -119,6 +119,9 @@ export default function Settings() {
         {showPermissions && (
           <TabsContent value="permissions" className="mt-4"><SettingsPermissionsTab /></TabsContent>
         )}
+        {showExpenseCategories && (
+          <TabsContent value="expense_categories" className="mt-4"><SettingsExpenseCategoriesTab /></TabsContent>
+        )}
         {showAuditLog && (
           <TabsContent value="audit" className="mt-4"><SettingsAuditLogTab /></TabsContent>
         )}
