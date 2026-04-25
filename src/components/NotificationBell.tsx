@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane, MessageSquare } from "lucide-react";
+import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane, MessageSquare, FileSignature, FileCheck, CalendarDays, UserCheck, ShieldAlert } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -18,6 +18,16 @@ const typeIcons: Record<string, typeof Cake> = {
   FOLLOW_UP_OVERDUE: Clock,
   TRAVEL_DATE_NEAR: Plane,
   internal_note: MessageSquare,
+  // ===== New types (Layer 1+2+3) =====
+  BOOKING_DEPARTURE_NEAR: Plane,
+  PAYMENT_DUE: CreditCard,
+  CONTRACT_APPROVAL_OVERDUE: FileSignature,
+  QUOTATION_NO_RESPONSE: FileCheck,
+  EMPLOYEE_BIRTHDAY: Cake,
+  EMPLOYEE_CONTRACT_EXPIRING: CalendarDays,
+  LEAVE_REQUEST_NEW: UserCheck,
+  LEAVE_REQUEST_RESULT: UserCheck,
+  ESCALATION_LV1: ShieldAlert,
 };
 
 const entityRouteMap: Record<string, (id: string) => string> = {
@@ -30,6 +40,7 @@ const entityRouteMap: Record<string, (id: string) => string> = {
   payment: () => "/thanh-toan",
   employee: (id) => `/nhan-su/${id}`,
   finance: () => "/tai-chinh",
+  leave_request: () => "/quan-ly-nghi-phep",
 };
 
 export function NotificationBell() {

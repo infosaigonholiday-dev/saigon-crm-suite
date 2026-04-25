@@ -46,15 +46,63 @@ function Workflow({ title, icon, steps }: { title: string; icon: React.ReactNode
 
 function PushNotifGuide() {
   return (
-    <Workflow title="🔔 Bật thông báo trên thiết bị (BẮT BUỘC)" icon={null} steps={[
-      "Vào Cài đặt → Tab 'Thông báo'",
-      "Gạt công tắc 'Thông báo Web Push' sang BẬT",
-      "Khi trình duyệt hỏi → Chọn 'Cho phép' (Allow)",
-      "Lặp lại trên MỌI thiết bị bạn dùng (laptop công ty, laptop cá nhân, điện thoại)",
-      "Trên iPhone: phải 'Thêm vào màn hình chính' (Share → Add to Home Screen) rồi mở từ icon đó mới bật được",
-      "Nếu đang xem trong iframe editor (lovable.dev) → nhấn 'Mở tab mới' trước khi bật",
-      "Nếu trình duyệt báo 'Đã chặn' → mở 🔒 cạnh thanh địa chỉ → đổi Notifications thành 'Cho phép' → tải lại trang",
-    ]} />
+    <Section title="🔔 Bật thông báo trên thiết bị (BẮT BUỘC)">
+      <p className="font-medium text-foreground">Cách 1 — Nhanh nhất (khuyến nghị):</p>
+      <Step n={1} text="Trên thanh đầu trang (Header), nhìn icon hình chuông gạch (🔕) cạnh chuông thông báo" />
+      <Step n={2} text="Nhấn vào icon → Trình duyệt hỏi quyền → Chọn 'Cho phép' (Allow)" />
+      <Step n={3} text="Khi chuyển thành chuông xanh (🔔) với chấm xanh là đã bật xong" />
+
+      <p className="font-medium text-foreground mt-3">Cách 2 — Từ Hồ sơ cá nhân:</p>
+      <Step n={1} text="Vào icon avatar góc phải → Hồ sơ cá nhân (hoặc Cài đặt)" />
+      <Step n={2} text="Tìm thẻ 'Thông báo Web Push' → Gạt công tắc sang BẬT" />
+
+      <p className="font-medium text-foreground mt-3">Lưu ý quan trọng:</p>
+      <Step n={1} text="Bật RIÊNG trên MỖI thiết bị (laptop công ty, laptop cá nhân, điện thoại...) — push không đồng bộ giữa thiết bị" />
+      <Step n={2} text="Trên iPhone/iPad: Mở Safari → Share → 'Thêm vào màn hình chính' → Mở app từ icon đó MỚI bật được" />
+      <Step n={3} text="Nếu đang xem trong iframe (lovable.dev) → nhấn 'Mở trong tab mới' trước" />
+      <Step n={4} text="Nếu trình duyệt báo 'Đã chặn' → mở 🔒 cạnh thanh địa chỉ → đổi Notifications thành 'Cho phép' → tải lại trang" />
+      <Step n={5} text="MỌI vai trò (kể cả Intern, Sale, HR, Kế toán) đều có thể bật" />
+    </Section>
+  );
+}
+
+function EscalationPolicyGuide() {
+  return (
+    <Section title="⚠️ Chính sách cảnh báo & leo thang (Quản lý)">
+      <p className="text-foreground font-medium">Cấp độ cảnh báo:</p>
+      <Step n={1} text="Cấp 0 (Bình thường): Thông báo gửi đến nhân viên phụ trách" />
+      <Step n={2} text="Cấp 1 (Leo thang): Sau 3 ngày nhân viên không đọc → Hệ thống TỰ ĐỘNG báo cho Trưởng phòng/GDKD cùng phòng ban" />
+
+      <p className="text-foreground font-medium mt-3">Các loại cảnh báo tự động (chạy 07:00 mỗi ngày):</p>
+      <Step n={1} text="🎂 Sinh nhật KH cá nhân / B2B / nhân viên (T-3 → hôm nay)" />
+      <Step n={2} text="🏢 Kỷ niệm thành lập công ty KH (T-7 → hôm nay)" />
+      <Step n={3} text="📞 Follow-up Lead hôm nay & quá hạn" />
+      <Step n={4} text="⚠️ Lead bị bỏ quên >7 ngày (sau 14 ngày báo cả Manager)" />
+      <Step n={5} text="✈️ Booking sắp khởi hành (T-7, T-3, T-1 = ưu tiên cao nhất)" />
+      <Step n={6} text="💰 Hạn đặt cọc / thanh toán cuối (≤3 ngày)" />
+      <Step n={7} text="📄 Hợp đồng DRAFT chờ duyệt >2 ngày" />
+      <Step n={8} text="📋 Báo giá đã gửi >5 ngày chưa phản hồi" />
+      <Step n={9} text="📑 HĐLĐ nhân viên sắp hết hạn (T-30, T-7)" />
+
+      <p className="text-foreground font-medium mt-3">Quản lý cần làm gì:</p>
+      <Step n={1} text="Khi nhận noti '⚠️ X có N cảnh báo chưa đọc' → Liên hệ trực tiếp nhân viên đó" />
+      <Step n={2} text="Theo dõi tỷ lệ đọc của team định kỳ" />
+    </Section>
+  );
+}
+
+function LeaveNotificationGuide() {
+  return (
+    <Section title="📋 Thông báo Đơn xin nghỉ phép (Real-time)">
+      <p className="text-foreground font-medium">Khi nhân viên gửi đơn:</p>
+      <Step n={1} text="HR (HR_MANAGER, HCNS) + Admin nhận thông báo NGAY LẬP TỨC (real-time + Web Push)" />
+      <Step n={2} text="Trưởng phòng/GDKD cùng phòng ban với nhân viên cũng nhận thông báo" />
+      <Step n={3} text="Nhấn chuông thông báo → Click vào đơn → Tự động chuyển đến trang Quản lý nghỉ phép" />
+
+      <p className="text-foreground font-medium mt-3">Khi quản lý duyệt/từ chối:</p>
+      <Step n={1} text="Nhân viên tạo đơn TỰ ĐỘNG nhận thông báo kết quả (real-time + Web Push)" />
+      <Step n={2} text="Nội dung noti hiển thị: ngày bắt đầu, ngày kết thúc, trạng thái" />
+    </Section>
   );
 }
 
@@ -106,6 +154,8 @@ function AdminGuide() {
           "Xem danh sách Top KH theo doanh thu và KH cần chăm sóc lại",
         ]} />
         <PushNotifGuide />
+        <EscalationPolicyGuide />
+        <LeaveNotificationGuide />
       </CardContent>
     </Card>
   );
@@ -156,6 +206,8 @@ function HCNSGuide() {
           "Tìm kiếm thông tin cần thiết",
         ]} />
         <PushNotifGuide />
+        <LeaveNotificationGuide />
+        <EscalationPolicyGuide />
       </CardContent>
     </Card>
   );
