@@ -133,14 +133,20 @@ export default function LeaveManagement() {
                 {showApproveButtons && (
                   <TableCell>
                     {r.status === "PENDING" && (
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => updateStatus.mutate({ id: r.id, status: "APPROVED" })}>
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => updateStatus.mutate({ id: r.id, status: "REJECTED" })}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      r.employee_id === myEmpId && !isAdmin ? (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">
+                          Chờ cấp trên duyệt
+                        </Badge>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => updateStatus.mutate({ id: r.id, status: "APPROVED" })}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => updateStatus.mutate({ id: r.id, status: "REJECTED" })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )
                     )}
                   </TableCell>
                 )}
