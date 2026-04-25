@@ -90,18 +90,16 @@ export default function BookingConfirmationPrint() {
   });
 
   // Permission check
-  const canPrint = useMemo(() => {
-    if (!booking || !user || !userRole) return false;
-    if (ALWAYS_PRINT_ROLES.includes(userRole)) return true;
-    if (booking.sale_id === user.id) return true;
-    if (
-      DEPT_PRINT_ROLES.includes(userRole) &&
-      myProfile?.department_id &&
-      booking.department_id === myProfile.department_id
-    )
-      return true;
-    return false;
-  }, [booking, user, userRole, myProfile]);
+  const canPrint = useMemo(
+    () =>
+      canPrintBookingConfirmation({
+        userRole,
+        userId: user?.id,
+        myDeptId: myProfile?.department_id,
+        booking,
+      }),
+    [booking, user, userRole, myProfile]
+  );
 
   useEffect(() => {
     if (!loadingBk && booking && user && userRole && myProfile !== undefined && !canPrint) {
