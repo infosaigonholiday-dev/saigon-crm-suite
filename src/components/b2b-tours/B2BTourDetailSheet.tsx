@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, CalendarPlus, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 
 export interface B2BTour {
   id: string;
@@ -48,7 +49,18 @@ interface Props {
 
 export function B2BTourDetailSheet({ tour, open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const { user, profile } = useAuth() as any;
+  const { user } = useAuth();
+
+  const { data: userName } = useQuery({
+    queryKey: ["my-profile-name", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      return data?.full_name ?? user?.email ?? null;
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Log view_detail when sheet opens
   useEffect(() => {
@@ -56,10 +68,11 @@ export function B2BTourDetailSheet({ tour, open, onOpenChange }: Props) {
       supabase.from("b2b_tour_logs").insert({
         tour_code: tour.tour_code,
         user_id: user.id,
-        user_name: profile?.full_name ?? user?.email ?? null,
+        user_name: userName ?? user?.email ?? null,
         action: "view_detail",
       }).then(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tour?.id]);
 
   if (!tour) return null;
@@ -68,8 +81,8 @@ export function B2BTourDetailSheet({ tour, open, onOpenChange }: Props) {
     if (!tour.itinerary_url) return;
     await supabase.from("b2b_tour_logs").insert({
       tour_code: tour.tour_code,
-      user_id: user.id,
-      user_name: profile?.full_name ?? user?.email ?? null,
+      user_id: user!.id,
+      user_name: userName ?? user?.email ?? null,
       action: "download_itinerary",
     });
     window.open(tour.itinerary_url, "_blank");
@@ -78,8 +91,8 @@ export function B2BTourDetailSheet({ tour, open, onOpenChange }: Props) {
   const handleCreateBooking = async () => {
     await supabase.from("b2b_tour_logs").insert({
       tour_code: tour.tour_code,
-      user_id: user.id,
-      user_name: profile?.full_name ?? user?.email ?? null,
+      user_id: user!.id,
+      user_name: userName ?? user?.email ?? null,
       action: "create_booking",
     });
     navigate(`/dat-tour?prefill_tour=${encodeURIComponent(tour.tour_code)}`);
