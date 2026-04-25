@@ -1,4 +1,5 @@
 import { usePermissionsContext } from "@/contexts/PermissionsContext";
+import { getModuleLabel } from "@/lib/moduleLabels";
 
 // All permission keys in the system
 export const ALL_PERMISSION_KEYS = [
@@ -26,26 +27,27 @@ export const ALL_PERMISSION_KEYS = [
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
 
 // Permission groups for UI display
+// Labels lấy từ src/lib/moduleLabels.ts (single source of truth).
 export const PERMISSION_GROUPS: Record<string, { label: string; keys: PermissionKey[] }> = {
-  dashboard: { label: "Tổng quan", keys: ["dashboard.view"] },
-  customers: { label: "Khách hàng", keys: ["customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export"] },
-  leads: { label: "Tiềm năng", keys: ["leads.view", "leads.create", "leads.edit", "leads.delete"] },
-  bookings: { label: "Đặt tour", keys: ["bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve"] },
-  quotations: { label: "Báo giá", keys: ["quotations.view", "quotations.create", "quotations.edit", "quotations.delete"] },
-  tour_packages: { label: "Gói tour", keys: ["tour_packages.view", "tour_packages.create", "tour_packages.edit", "tour_packages.delete"] },
-  itineraries: { label: "Lịch trình", keys: ["itineraries.view", "itineraries.create", "itineraries.edit", "itineraries.delete"] },
-  accommodations: { label: "Lưu trú", keys: ["accommodations.view", "accommodations.create", "accommodations.edit", "accommodations.delete"] },
-  suppliers: { label: "Nhà cung cấp", keys: ["suppliers.view", "suppliers.create", "suppliers.edit", "suppliers.delete"] },
-  contracts: { label: "Hợp đồng", keys: ["contracts.view", "contracts.create", "contracts.edit", "contracts.delete", "contracts.approve"] },
-  payments: { label: "Thanh toán", keys: ["payments.view", "payments.create", "payments.edit", "payments.delete"] },
-  staff: { label: "Nhân sự", keys: ["staff.view", "staff.create", "staff.edit", "staff.delete"] },
-  leave: { label: "Nghỉ phép", keys: ["leave.view", "leave.create", "leave.approve"] },
-  payroll: { label: "Bảng lương", keys: ["payroll.view", "payroll.create", "payroll.edit"] },
-  finance: { label: "Tài chính", keys: ["finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve"] },
-  workflow: { label: "Quy trình", keys: ["workflow.view", "workflow.create"] },
-  settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
-  raw_contacts: { label: "Kho Data", keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
-  b2b_tours: { label: "LKH Tour 2026", keys: ["b2b_tours.view", "b2b_tours.logs"] },
+  dashboard: { label: getModuleLabel("dashboard"), keys: ["dashboard.view"] },
+  customers: { label: getModuleLabel("customers"), keys: ["customers.view", "customers.create", "customers.edit", "customers.delete", "customers.export"] },
+  leads: { label: getModuleLabel("leads"), keys: ["leads.view", "leads.create", "leads.edit", "leads.delete"] },
+  bookings: { label: getModuleLabel("bookings"), keys: ["bookings.view", "bookings.create", "bookings.edit", "bookings.delete", "bookings.approve"] },
+  quotations: { label: getModuleLabel("quotations"), keys: ["quotations.view", "quotations.create", "quotations.edit", "quotations.delete"] },
+  tour_packages: { label: getModuleLabel("tour_packages"), keys: ["tour_packages.view", "tour_packages.create", "tour_packages.edit", "tour_packages.delete"] },
+  itineraries: { label: getModuleLabel("itineraries"), keys: ["itineraries.view", "itineraries.create", "itineraries.edit", "itineraries.delete"] },
+  accommodations: { label: getModuleLabel("accommodations"), keys: ["accommodations.view", "accommodations.create", "accommodations.edit", "accommodations.delete"] },
+  suppliers: { label: getModuleLabel("suppliers"), keys: ["suppliers.view", "suppliers.create", "suppliers.edit", "suppliers.delete"] },
+  contracts: { label: getModuleLabel("contracts"), keys: ["contracts.view", "contracts.create", "contracts.edit", "contracts.delete", "contracts.approve"] },
+  payments: { label: getModuleLabel("payments"), keys: ["payments.view", "payments.create", "payments.edit", "payments.delete"] },
+  staff: { label: getModuleLabel("staff"), keys: ["staff.view", "staff.create", "staff.edit", "staff.delete"] },
+  leave: { label: getModuleLabel("leave"), keys: ["leave.view", "leave.create", "leave.approve"] },
+  payroll: { label: getModuleLabel("payroll"), keys: ["payroll.view", "payroll.create", "payroll.edit"] },
+  finance: { label: getModuleLabel("finance"), keys: ["finance.view", "finance.create", "finance.edit", "finance.submit", "finance.approve"] },
+  workflow: { label: getModuleLabel("workflow"), keys: ["workflow.view", "workflow.create"] },
+  settings: { label: getModuleLabel("settings"), keys: ["settings.view", "settings.edit"] },
+  raw_contacts: { label: getModuleLabel("raw_contacts"), keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
+  b2b_tours: { label: getModuleLabel("b2b_tours"), keys: ["b2b_tours.view", "b2b_tours.logs"] },
 };
 
 // Scope rules
