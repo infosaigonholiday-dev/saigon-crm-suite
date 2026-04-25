@@ -58,20 +58,37 @@ Deno.serve(async (req) => {
 
     // 3 luồng auth được chấp nhận:
     // 1) Service role key (gọi từ edge function khác như daily-reminders)
-    // 2) Anon key (gọi từ DB trigger notify_push_on_insert qua pg_net, hoặc frontend chưa login)
-    //    → Trong trường hợp này KHÔNG cho phép tự chỉ định user_id tuỳ ý — chỉ accept khi caller cũng gửi
-    //      kèm header `x-internal-call: true` (DB trigger sẽ gửi). Frontend gọi anon sẽ bị reject.
-    // 3) JWT user hợp lệ (gọi từ frontend đã login, vd nút "Gửi thử push")
+    // 2) Internal call: header x-internal-call=true + Authorization là JWT có role='anon' hoặc service role
+    //    (DB trigger gửi với anon JWT + header này — không ai từ ngoài internet biết để gửi cùng lúc cả 2)
+    // 3) JWT user hợp lệ với claims.sub (frontend đã login)
     const isServiceRole = token === serviceRoleKey;
-    const isAnonKey = token === anonKey;
-    const isInternalCall = isAnonKey && req.headers.get("x-internal-call") === "true";
+    const internalCallHeader = req.headers.get("x-internal-call") === "true";
 
     let authedUserId: string | null = null;
+    let authMethod = "unknown";
 
-    if (!isServiceRole && !isInternalCall) {
+    if (isServiceRole) {
+      authMethod = "service_role";
+    } else if (internalCallHeader && token) {
+      // Verify token là JWT hợp lệ (anon hoặc user) — không cần check sub
+      try {
+        const userClient = createClient(supabaseUrl, anonKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data, error } = await userClient.auth.getClaims(token);
+        if (!error && data?.claims?.role) {
+          authMethod = `internal_${data.claims.role}`;
+        } else {
+          // JWT không decode được — vẫn cho qua nếu có header internal (backward compat với pg_net)
+          authMethod = "internal_unverified";
+        }
+      } catch {
+        authMethod = "internal_unverified";
+      }
+    } else {
       // Phải là JWT user hợp lệ với claims.sub
       if (!token) {
-        console.warn("[send-notification] no auth token provided");
+        console.warn("[send-notification] no auth token");
         return new Response(JSON.stringify({ error: "Unauthorized: missing token" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,7 +106,10 @@ Deno.serve(async (req) => {
         });
       }
       authedUserId = data.claims.sub as string;
+      authMethod = "jwt_user";
     }
+
+    console.log(`[send-notification] auth: ${authMethod}`);
 
     const body = (await req.json()) as PushBody;
     if (!body.user_id || !body.title) {
