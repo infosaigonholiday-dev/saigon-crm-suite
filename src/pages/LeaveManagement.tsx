@@ -200,7 +200,7 @@ export default function LeaveManagement() {
                 </TabsList>
               </div>
               <TabsContent value="team" className="mt-0">
-                {renderTable(teamRequests, canApprove)}
+                {renderTable(teamRequests, canApprove || isAdmin)}
               </TabsContent>
               <TabsContent value="mine" className="mt-0">
                 {renderTable(myRequests, false)}
