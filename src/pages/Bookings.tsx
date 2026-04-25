@@ -9,10 +9,15 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, AlertCircle, AlertTriangle, Loader2, Printer } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
+import { canPrintBookingConfirmation, DEPT_PRINT_ROLES } from "@/lib/bookingPrintAccess";
 
 const PAGE_SIZE = 20;
 
