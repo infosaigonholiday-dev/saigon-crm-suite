@@ -64,6 +64,7 @@ export default function CustomerDetail() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const [editOpen, setEditOpen] = useState(false);
+  useAutoMarkNotificationsRead("customer", id);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
