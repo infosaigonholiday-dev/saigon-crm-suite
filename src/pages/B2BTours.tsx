@@ -118,7 +118,7 @@ export default function B2BTours() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Kho Tour B2B</h1>
+        <h1 className="text-2xl font-bold text-blue-600">LKH Tour 2026</h1>
         <p className="text-sm text-muted-foreground">{totalCount} tour có sẵn</p>
       </div>
 
@@ -217,7 +217,7 @@ export default function B2BTours() {
                             <Button size="sm" variant="outline" onClick={() => handleViewDetail(t)}>
                               <Eye className="h-3.5 w-3.5 mr-1" /> Chi tiết
                             </Button>
-                            <Button size="sm" onClick={() => handleCreateBooking(t)}>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleCreateBooking(t)}>
                               <CalendarPlus className="h-3.5 w-3.5 mr-1" /> Booking
                             </Button>
                           </div>
