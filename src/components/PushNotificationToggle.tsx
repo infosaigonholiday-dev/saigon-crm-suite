@@ -172,23 +172,49 @@ export function PushNotificationToggle() {
         </div>
 
         {isSubscribed && (
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
-            <p className="text-xs text-muted-foreground">
-              Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleTestPush}
-              disabled={testing}
-            >
-              {testing ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
-              ) : (
-                <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
-              )}
-            </Button>
+          <div className="mt-4 space-y-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleTestPush}
+                disabled={testing || resubscribing}
+              >
+                {testing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
+                )}
+              </Button>
+            </div>
+
+            {lastTestFailed && (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 p-3">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-foreground">Push test thất bại</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Có thể do subscription cũ không khớp khoá VAPID hiện tại. Nhấn "Đăng ký lại" để tạo subscription mới.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleResubscribe}
+                  disabled={resubscribing || testing}
+                >
+                  {resubscribing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang đăng ký…</>
+                  ) : (
+                    "Đăng ký lại"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
