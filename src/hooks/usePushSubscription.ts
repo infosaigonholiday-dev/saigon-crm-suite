@@ -75,7 +75,7 @@ export function usePushSubscription() {
     });
   }, []);
 
-  // Auto-detect VAPID key mismatch & re-subscribe
+  // Auto-detect VAPID key mismatch & re-sync subscription with DB
   useEffect(() => {
     if (!isSupported || !user) return;
     (async () => {
@@ -102,10 +102,7 @@ export function usePushSubscription() {
         })();
 
         if (!keyMatches && VAPID_PUBLIC_KEY) {
-          console.warn(
-            "[push] VAPID key changed — auto re-subscribing existing subscription"
-          );
-          // Xóa cả DB record + browser subscription
+          console.warn("[push] VAPID key changed — auto re-subscribing existing subscription");
           try {
             await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
           } catch (e) {
@@ -118,14 +115,43 @@ export function usePushSubscription() {
           }
           setIsSubscribed(false);
 
-          // Tự động subscribe lại nếu permission='granted' và không trong iframe
           if (Notification.permission === "granted" && !isInIframe()) {
             console.log("[push] auto-creating new subscription with current VAPID key");
             await subscribeRef.current?.();
-          } else {
-            console.log("[push] permission not granted or in iframe — user must re-enable manually");
           }
           return;
+        }
+
+        // VAPID khớp → kiểm tra DB còn record không, nếu thiếu thì upsert lại
+        try {
+          const { data: existing } = await supabase
+            .from("push_subscriptions")
+            .select("id")
+            .eq("endpoint", sub.endpoint)
+            .maybeSingle();
+
+          if (!existing) {
+            console.log("[push] browser sub exists but DB row missing — re-upserting");
+            const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+            const endpoint = json.endpoint || sub.endpoint;
+            const p256dh = json.keys?.p256dh || bufToBase64(sub.getKey ? sub.getKey("p256dh") : null);
+            const authKey = json.keys?.auth || bufToBase64(sub.getKey ? sub.getKey("auth") : null);
+            await supabase
+              .from("push_subscriptions")
+              .upsert(
+                {
+                  user_id: user.id,
+                  endpoint,
+                  p256dh,
+                  auth: authKey,
+                  user_agent: navigator.userAgent,
+                  last_used_at: new Date().toISOString(),
+                },
+                { onConflict: "endpoint" }
+              );
+          }
+        } catch (e) {
+          console.warn("[push] DB sync check failed", e);
         }
 
         setIsSubscribed(true);
