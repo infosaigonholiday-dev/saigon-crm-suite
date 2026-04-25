@@ -462,6 +462,52 @@ export function BudgetEstimatesTab() {
           </div>
 
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!selectedEstimate) return;
+                const html = buildEstimateHtml({
+                  code: selectedEstimate.code,
+                  created_at: selectedEstimate.created_at,
+                  booking_code: selectedEstimate.bookings?.code,
+                  customer_name: selectedEstimate.bookings?.customers?.full_name,
+                  created_by_name: selectedEstimate.profiles?.full_name,
+                  total_estimated: selectedEstimate.total_estimated,
+                  advance_amount: selectedEstimate.advance_amount,
+                  advance_recipient: selectedEstimate.advance_recipient,
+                  advance_purpose: selectedEstimate.advance_purpose,
+                  items: detailItems.map((it: any) => ({
+                    category: ITEM_CATEGORIES.find((c) => c.value === it.category)?.label || it.category,
+                    description: it.description,
+                    unit_price: it.unit_price,
+                    quantity: it.quantity,
+                    supplier: it.vendors?.name,
+                    payment_deadline: it.payment_deadline,
+                  })),
+                });
+                openPrintWindow(html);
+              }}
+            >
+              <Printer className="h-4 w-4 mr-1" /> In phiếu DT
+            </Button>
+            {selectedEstimate?.status === "disbursed" && selectedEstimate?.advance_amount > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const html = buildAdvanceHtml({
+                    code: `TU-${selectedEstimate.code}`,
+                    created_at: selectedEstimate.created_at,
+                    recipient: selectedEstimate.advance_recipient || "—",
+                    amount: selectedEstimate.advance_amount,
+                    purpose: selectedEstimate.advance_purpose || "Tạm ứng tour",
+                    booking_code: selectedEstimate.bookings?.code,
+                  });
+                  openPrintWindow(html);
+                }}
+              >
+                <Printer className="h-4 w-4 mr-1" /> In phiếu Tạm ứng
+              </Button>
+            )}
             {canReview && selectedEstimate?.status === "pending_review" && (
               <>
                 <Button
