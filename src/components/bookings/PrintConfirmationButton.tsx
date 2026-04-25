@@ -2,8 +2,11 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Printer } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useMyDepartmentId } from "@/hooks/useScopedQuery";
+import {
+  canPrintBookingConfirmation,
+  DEPT_PRINT_ROLES,
+} from "@/lib/bookingPrintAccess";
 
 interface Props {
   booking: {
@@ -13,32 +16,18 @@ interface Props {
   };
 }
 
-const ALWAYS_PRINT_ROLES = ["ADMIN", "SUPER_ADMIN", "DIEUHAN", "KETOAN"];
-const DEPT_PRINT_ROLES = ["MANAGER", "GDKD"];
-
 export function PrintConfirmationButton({ booking }: Props) {
   const { user, userRole } = useAuth();
+  const { data: myDeptId } = useMyDepartmentId(
+    !!user && (DEPT_PRINT_ROLES as readonly string[]).includes(userRole || "")
+  );
 
-  const { data: profile } = useQuery({
-    queryKey: ["my-dept-for-print", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("department_id")
-        .eq("id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user && DEPT_PRINT_ROLES.includes(userRole || ""),
+  const canPrint = canPrintBookingConfirmation({
+    userRole,
+    userId: user?.id,
+    myDeptId,
+    booking,
   });
-
-  const canPrint =
-    (userRole && ALWAYS_PRINT_ROLES.includes(userRole)) ||
-    (user && booking.sale_id === user.id) ||
-    (userRole &&
-      DEPT_PRINT_ROLES.includes(userRole) &&
-      profile?.department_id &&
-      booking.department_id === profile.department_id);
 
   if (!canPrint) return null;
 

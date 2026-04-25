@@ -6,9 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
-
-const ALWAYS_PRINT_ROLES = ["ADMIN", "SUPER_ADMIN", "DIEUHAN", "KETOAN"];
-const DEPT_PRINT_ROLES = ["MANAGER", "GDKD"];
+import { canPrintBookingConfirmation } from "@/lib/bookingPrintAccess";
 
 const fmtVnd = (v: number | null | undefined) =>
   v && v > 0 ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "";
