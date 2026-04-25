@@ -181,6 +181,12 @@ Deno.serve(async (req) => {
           if (status === 404 || status === 410) {
             staleIds.push(s.id);
             console.log(`[send-notification] stale subscription removed: ${s.endpoint.slice(0, 60)}…`);
+          } else if (status === 400 && /vapid|VapidPkHashMismatch/i.test(errBody)) {
+            // VAPID key đã đổi nhưng client subscription cũ — sẽ tự re-subscribe ở lần truy cập sau
+            staleIds.push(s.id);
+            console.warn(
+              `[send-notification] VAPID mismatch — stale subscription deleted, client will recreate on next visit. endpoint=${s.endpoint.slice(0, 60)}…`
+            );
           } else {
             console.error(`[send-notification] push failed status=${status} body=${errBody} endpoint=${s.endpoint.slice(0, 60)}…`);
           }
