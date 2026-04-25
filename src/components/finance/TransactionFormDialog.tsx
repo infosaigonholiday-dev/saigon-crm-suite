@@ -119,11 +119,12 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
       };
 
       if (isSubmitter) {
+        // HCNS/HR_MANAGER nhập chi phí → đi qua HR duyệt trước (lớp 1)
         payload.submitted_by = user?.id;
-        payload.approval_status = "PENDING_REVIEW";
+        payload.approval_status = "PENDING_HR";
       } else if (isEdit && transaction?.approval_status === "REJECTED" && transaction?.submitted_by === user?.id) {
         // Resubmit rejected record
-        payload.approval_status = "PENDING_REVIEW";
+        payload.approval_status = "PENDING_HR";
       } else {
         payload.approval_status = "DRAFT";
       }
@@ -139,12 +140,13 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }: Props
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["pending-approval-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-hr-count"] });
       queryClient.invalidateQueries({ queryKey: ["approval-transactions"] });
       const isResubmit = isEdit && transaction?.approval_status === "REJECTED";
-      toast.success(isResubmit ? "Đã gửi lại chờ duyệt" : isSubmitter ? "Đã gửi chi phí chờ duyệt" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
+      toast.success(isResubmit ? "Đã gửi lại chờ duyệt" : isSubmitter ? "Đã gửi chi phí chờ duyệt HR" : isEdit ? "Đã cập nhật phiếu" : "Đã tạo phiếu");
       onOpenChange(false);
     },
-    onError: () => toast.error("Lỗi khi lưu"),
+    onError: (e: any) => toast.error("Lỗi khi lưu: " + (e?.message ?? "")),
   });
 
   const handleCategoryChange = (cat: string) => {

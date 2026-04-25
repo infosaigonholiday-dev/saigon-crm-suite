@@ -192,12 +192,16 @@ function ManagerFinanceView() {
 
 export default function Finance() {
   const { hasPermission, getScope } = usePermissions();
+  const { userRole } = useAuth();
   const hasFinanceView = hasPermission("finance", "view");
   const hasFinanceSubmit = hasPermission("finance", "submit");
 
   const scope = getScope("finance");
   const isFullAccess = scope === "all";
   const isDeptScope = scope === "department";
+
+  const isHrManager = userRole === "HR_MANAGER";
+  const isCeoOrAcc = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "KETOAN";
 
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ["pending-approval-count"],
@@ -209,7 +213,20 @@ export default function Finance() {
       if (error) throw error;
       return count || 0;
     },
-    enabled: isFullAccess,
+    enabled: isCeoOrAcc,
+  });
+
+  const { data: pendingHrCount = 0 } = useQuery({
+    queryKey: ["pending-hr-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("approval_status", "PENDING_HR");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isHrManager || isCeoOrAcc,
   });
 
   // Personal scope: only submitter view
@@ -222,8 +239,8 @@ export default function Finance() {
     return <SubmitterView />;
   }
 
-  // Department scope → manager finance view
-  if (isDeptScope && !isFullAccess) {
+  // Department scope (GDKD/MANAGER) → manager finance view (chỉ Doanh thu)
+  if (isDeptScope && !isFullAccess && !isHrManager) {
     return <ManagerFinanceView />;
   }
 
@@ -237,9 +254,19 @@ export default function Finance() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-          {isFullAccess && (
+          {(isHrManager || isCeoOrAcc) && (
+            <TabsTrigger value="hr-approval" className="relative">
+              HR duyệt CP
+              {pendingHrCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1">
+                  {pendingHrCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
+          {isCeoOrAcc && (
             <TabsTrigger value="approval" className="relative">
-              Duyệt chi phí
+              KT duyệt CP
               {pendingCount > 0 && (
                 <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1">
                   {pendingCount}
@@ -263,7 +290,10 @@ export default function Finance() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
-        {isFullAccess && <TabsContent value="approval" className="mt-4"><ApprovalTab /></TabsContent>}
+        {(isHrManager || isCeoOrAcc) && (
+          <TabsContent value="hr-approval" className="mt-4"><ApprovalTab stage="hr" /></TabsContent>
+        )}
+        {isCeoOrAcc && <TabsContent value="approval" className="mt-4"><ApprovalTab stage="accountant" /></TabsContent>}
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
         <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>

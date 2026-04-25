@@ -4069,6 +4069,8 @@ export type Database = {
       }
       transactions: {
         Row: {
+          accountant_reviewed_at: string | null
+          accountant_reviewed_by: string | null
           amount: number
           approval_status: string | null
           approved_by: string | null
@@ -4078,6 +4080,8 @@ export type Database = {
           description: string | null
           evidence_url: string | null
           expense_category_id: string | null
+          hr_reviewed_at: string | null
+          hr_reviewed_by: string | null
           id: string
           notes: string | null
           payment_method: string | null
@@ -4093,6 +4097,8 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          accountant_reviewed_at?: string | null
+          accountant_reviewed_by?: string | null
           amount?: number
           approval_status?: string | null
           approved_by?: string | null
@@ -4102,6 +4108,8 @@ export type Database = {
           description?: string | null
           evidence_url?: string | null
           expense_category_id?: string | null
+          hr_reviewed_at?: string | null
+          hr_reviewed_by?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -4117,6 +4125,8 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          accountant_reviewed_at?: string | null
+          accountant_reviewed_by?: string | null
           amount?: number
           approval_status?: string | null
           approved_by?: string | null
@@ -4126,6 +4136,8 @@ export type Database = {
           description?: string | null
           evidence_url?: string | null
           expense_category_id?: string | null
+          hr_reviewed_at?: string | null
+          hr_reviewed_by?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
