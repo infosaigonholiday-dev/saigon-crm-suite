@@ -111,31 +111,6 @@ Deno.serve(async (req) => {
 
     console.log(`[send-notification] auth: ${authMethod}`);
 
-    let authedUserId: string | null = null;
-
-    if (!isServiceRole && !isInternalCall) {
-      // Phải là JWT user hợp lệ với claims.sub
-      if (!token) {
-        console.warn("[send-notification] no auth token provided");
-        return new Response(JSON.stringify({ error: "Unauthorized: missing token" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const userClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data, error } = await userClient.auth.getClaims(token);
-      if (error || !data?.claims?.sub) {
-        console.warn("[send-notification] invalid JWT (no sub):", error?.message || "no claims");
-        return new Response(JSON.stringify({ error: "Unauthorized: invalid JWT" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      authedUserId = data.claims.sub as string;
-    }
-
     const body = (await req.json()) as PushBody;
     if (!body.user_id || !body.title) {
       return new Response(JSON.stringify({ error: "user_id and title are required" }), {
