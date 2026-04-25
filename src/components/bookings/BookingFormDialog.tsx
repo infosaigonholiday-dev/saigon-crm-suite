@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PrefillData {
@@ -27,10 +28,18 @@ interface Props {
   prefillData?: PrefillData | null;
 }
 
+type TourSource = "quote" | "package" | "manual";
+
 const initial = {
   code: "",
   customer_id: "",
-  pax_total: "",
+  tour_source: "manual" as TourSource,
+  quote_id: "",
+  tour_package_id: "",
+  tour_name_manual: "",
+  adults: "",
+  children: "",
+  infants: "",
   total_value: "",
   deposit_amount: "",
   deposit_due_at: "",
@@ -43,17 +52,28 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
   const { user } = useAuth();
   const qc = useQueryClient();
 
+  // Reset khi dialog đóng
+  useEffect(() => {
+    if (!open) {
+      setForm(initial);
+      setErrors({});
+    }
+  }, [open]);
+
   // Pre-fill khi mở dialog từ LKH Tour 2026
   useEffect(() => {
     if (open && prefillData) {
       setForm((p) => ({
         ...p,
         code: p.code || `BK-${prefillData.tour_code}`,
+        tour_source: "manual",
+        tour_name_manual: p.tour_name_manual || prefillData.destination || prefillData.tour_code,
         total_value: p.total_value || (prefillData.price_adl ? String(prefillData.price_adl) : ""),
       }));
     }
   }, [open, prefillData]);
 
+  // Customers
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-select"],
     queryFn: async () => {
@@ -67,38 +87,124 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
     enabled: open,
   });
 
-  const set = (k: string, v: string) => {
+  // Quotations: lọc theo customer nếu có chọn, fallback all
+  const { data: quotations = [] } = useQuery({
+    queryKey: ["quotations-select", form.customer_id],
+    queryFn: async () => {
+      let q = supabase
+        .from("quotations")
+        .select("id, code, tour_package_id, tour_packages(name, code, duration_days, duration_nights), valid_from, valid_until, total_value")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (form.customer_id) q = q.eq("customer_id", form.customer_id);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && form.tour_source === "quote",
+  });
+
+  // Tour packages
+  const { data: tourPackages = [] } = useQuery({
+    queryKey: ["tour-packages-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tour_packages")
+        .select("id, name, code, duration_days, duration_nights")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && form.tour_source === "package",
+  });
+
+  const set = (k: keyof typeof initial, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
     setErrors((p) => ({ ...p, [k]: "" }));
   };
+
+  // Auto-fill tên tour & total khi chọn quote
+  const handleQuoteChange = (quoteId: string) => {
+    const q: any = quotations.find((x: any) => x.id === quoteId);
+    if (!q) {
+      setForm((p) => ({ ...p, quote_id: quoteId }));
+      return;
+    }
+    const tpName = q.tour_packages?.name || "";
+    setForm((p) => ({
+      ...p,
+      quote_id: quoteId,
+      tour_name_manual: tpName,
+      total_value: p.total_value || (q.total_value ? String(q.total_value) : p.total_value),
+    }));
+    setErrors((p) => ({ ...p, quote_id: "" }));
+  };
+
+  // Auto-fill tên tour khi chọn package
+  const handlePackageChange = (pkgId: string) => {
+    const p: any = tourPackages.find((x: any) => x.id === pkgId);
+    setForm((prev) => ({
+      ...prev,
+      tour_package_id: pkgId,
+      tour_name_manual: p?.name || prev.tour_name_manual,
+    }));
+    setErrors((prev) => ({ ...prev, tour_package_id: "" }));
+  };
+
+  // Auto-tính pax_total
+  const paxTotal = useMemo(() => {
+    const a = Number(form.adults || 0);
+    const c = Number(form.children || 0);
+    const i = Number(form.infants || 0);
+    return a + c + i;
+  }, [form.adults, form.children, form.infants]);
+
+  // Validation deposit > total
+  const total = Number(form.total_value || 0);
+  const deposit = Number(form.deposit_amount || 0);
+  const depositOver = deposit > 0 && total > 0 && deposit > total;
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.code.trim()) e.code = "Bắt buộc";
     if (!form.customer_id) e.customer_id = "Bắt buộc";
+    if (form.tour_source === "quote" && !form.quote_id) e.quote_id = "Vui lòng chọn báo giá";
+    if (form.tour_source === "package" && !form.tour_package_id) e.tour_package_id = "Vui lòng chọn gói tour";
+    if (form.tour_source === "manual" && !form.tour_name_manual.trim()) e.tour_name_manual = "Bắt buộc";
+    if (depositOver) e.deposit_amount = "Tiền cọc không được vượt tổng giá trị";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("bookings").insert({
+      const payload: any = {
         code: form.code.trim(),
         customer_id: form.customer_id,
         sale_id: user?.id ?? null,
-        pax_total: form.pax_total ? Number(form.pax_total) : 0,
-        total_value: form.total_value ? Number(form.total_value) : 0,
-        deposit_amount: form.deposit_amount ? Number(form.deposit_amount) : 0,
+        pax_total: paxTotal,
+        pax_details: {
+          adults: Number(form.adults || 0),
+          children: Number(form.children || 0),
+          infants: Number(form.infants || 0),
+        },
+        total_value: total,
+        deposit_amount: deposit,
         deposit_due_at: form.deposit_due_at || null,
         remaining_due_at: form.remaining_due_at || null,
         status: "PENDING",
-      });
+        tour_name_manual: form.tour_name_manual.trim() || null,
+      };
+
+      if (form.tour_source === "quote") payload.quote_id = form.quote_id;
+      if (form.tour_source === "package") payload.tour_package_id = form.tour_package_id;
+
+      const { error } = await supabase.from("bookings").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bookings"] });
       toast.success("Thành công", { description: "Đã tạo booking mới" });
-      setForm(initial);
       onOpenChange(false);
     },
     onError: (err: any) => {
@@ -113,7 +219,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Tạo booking</DialogTitle>
         </DialogHeader>
@@ -128,7 +234,9 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
             </div>
           </div>
         )}
+
         <div className="grid gap-4 py-2">
+          {/* Mã + Khách hàng */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Mã booking <span className="text-destructive">*</span></Label>
@@ -148,21 +256,132 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
               {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Nguồn tour */}
+          <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+            <Label className="text-sm font-semibold">Nguồn tour <span className="text-destructive">*</span></Label>
+            <RadioGroup
+              value={form.tour_source}
+              onValueChange={(v) => set("tour_source", v as TourSource)}
+              className="grid grid-cols-3 gap-2"
+            >
+              <label className="flex items-center gap-2 cursor-pointer rounded border border-input bg-background px-3 py-2 text-sm">
+                <RadioGroupItem value="quote" id="src-quote" />
+                <span>Từ báo giá</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer rounded border border-input bg-background px-3 py-2 text-sm">
+                <RadioGroupItem value="package" id="src-package" />
+                <span>Từ gói tour</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer rounded border border-input bg-background px-3 py-2 text-sm">
+                <RadioGroupItem value="manual" id="src-manual" />
+                <span>Nhập tay</span>
+              </label>
+            </RadioGroup>
+
+            {form.tour_source === "quote" && (
+              <div className="space-y-1.5">
+                <Label>Báo giá</Label>
+                <Select value={form.quote_id} onValueChange={handleQuoteChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      form.customer_id
+                        ? (quotations.length === 0 ? "Khách hàng này chưa có báo giá" : "Chọn báo giá")
+                        : "Chọn khách hàng trước"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {quotations.map((q: any) => (
+                      <SelectItem key={q.id} value={q.id}>
+                        {q.code} {q.tour_packages?.name ? `— ${q.tour_packages.name}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.quote_id && <p className="text-xs text-destructive">{errors.quote_id}</p>}
+              </div>
+            )}
+
+            {form.tour_source === "package" && (
+              <div className="space-y-1.5">
+                <Label>Gói tour</Label>
+                <Select value={form.tour_package_id} onValueChange={handlePackageChange}>
+                  <SelectTrigger><SelectValue placeholder="Chọn gói tour" /></SelectTrigger>
+                  <SelectContent>
+                    {tourPackages.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.code ? `${p.code} — ` : ""}{p.name}
+                        {p.duration_days ? ` (${p.duration_days}N${p.duration_nights ?? p.duration_days - 1}Đ)` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.tour_package_id && <p className="text-xs text-destructive">{errors.tour_package_id}</p>}
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <Label>Số khách</Label>
-              <Input type="number" value={form.pax_total} onChange={(e) => set("pax_total", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tổng giá trị</Label>
-              <Input type="number" value={form.total_value} onChange={(e) => set("total_value", e.target.value)} />
+              <Label>Tên tour hiển thị {form.tour_source === "manual" && <span className="text-destructive">*</span>}</Label>
+              <Input
+                value={form.tour_name_manual}
+                onChange={(e) => set("tour_name_manual", e.target.value)}
+                placeholder="VD: NHẬT BẢN 6N5Đ · OSAKA – KYOTO – TOKYO"
+              />
+              <p className="text-xs text-muted-foreground">
+                Tự điền khi chọn báo giá/gói tour. Có thể sửa lại để hiển thị trên phiếu xác nhận.
+              </p>
+              {errors.tour_name_manual && <p className="text-xs text-destructive">{errors.tour_name_manual}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+
+          {/* Số khách */}
+          <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+            <Label className="text-sm font-semibold">Số khách</Label>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Người lớn (NL)</Label>
+                <Input type="number" min="0" value={form.adults} onChange={(e) => set("adults", e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Trẻ em (TE)</Label>
+                <Input type="number" min="0" value={form.children} onChange={(e) => set("children", e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Em bé (EB)</Label>
+                <Input type="number" min="0" value={form.infants} onChange={(e) => set("infants", e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Tổng (auto)</Label>
+                <Input type="number" value={paxTotal} readOnly className="bg-muted font-semibold" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tài chính */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Tổng giá trị</Label>
+              <Input type="number" min="0" value={form.total_value} onChange={(e) => set("total_value", e.target.value)} />
+            </div>
             <div className="space-y-1.5">
               <Label>Tiền cọc</Label>
-              <Input type="number" value={form.deposit_amount} onChange={(e) => set("deposit_amount", e.target.value)} />
+              <Input
+                type="number"
+                min="0"
+                value={form.deposit_amount}
+                onChange={(e) => set("deposit_amount", e.target.value)}
+                className={depositOver ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              {depositOver && (
+                <div className="flex items-start gap-2 rounded-md border border-orange-300 bg-orange-50 p-2 text-xs text-orange-900">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>Tiền cọc ({deposit.toLocaleString("vi-VN")}đ) đang lớn hơn tổng giá trị ({total.toLocaleString("vi-VN")}đ).</span>
+                </div>
+              )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Hạn cọc</Label>
               <Input type="date" value={form.deposit_due_at} onChange={(e) => set("deposit_due_at", e.target.value)} />
@@ -173,9 +392,10 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
             </div>
           </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
-          <Button onClick={handleSubmit} disabled={mutation.isPending}>
+          <Button onClick={handleSubmit} disabled={mutation.isPending || depositOver}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Lưu
           </Button>

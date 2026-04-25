@@ -517,6 +517,8 @@ export type Database = {
           sale_id: string | null
           status: string | null
           total_value: number | null
+          tour_name_manual: string | null
+          tour_package_id: string | null
         }
         Insert: {
           cancellation_fee?: number | null
@@ -536,6 +538,8 @@ export type Database = {
           sale_id?: string | null
           status?: string | null
           total_value?: number | null
+          tour_name_manual?: string | null
+          tour_package_id?: string | null
         }
         Update: {
           cancellation_fee?: number | null
@@ -555,6 +559,8 @@ export type Database = {
           sale_id?: string | null
           status?: string | null
           total_value?: number | null
+          tour_name_manual?: string | null
+          tour_package_id?: string | null
         }
         Relationships: [
           {
@@ -583,6 +589,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_tour_package_id_fkey"
+            columns: ["tour_package_id"]
+            isOneToOne: false
+            referencedRelation: "tour_packages"
             referencedColumns: ["id"]
           },
         ]
