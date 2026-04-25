@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BookingFormDialog from "@/components/bookings/BookingFormDialog";
@@ -37,9 +37,32 @@ const formatCurrency = (v: number | null) =>
 export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const [prefillData, setPrefillData] = useState<any>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
   const { user } = useAuth();
+
+  // Đọc prefill_tour từ URL khi từ Kho Tour B2B chuyển sang
+  useEffect(() => {
+    const tourCode = searchParams.get("prefill_tour");
+    if (tourCode) {
+      supabase
+        .from("b2b_tours")
+        .select("tour_code, destination, departure_date, price_adl")
+        .eq("tour_code", tourCode)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setPrefillData(data);
+            setDialogOpen(true);
+          }
+          searchParams.delete("prefill_tour");
+          setSearchParams(searchParams, { replace: true });
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scope = getScope("bookings");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
@@ -106,7 +129,14 @@ export default function Bookings() {
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
       </div>
-      <BookingFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <BookingFormDialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setPrefillData(null);
+        }}
+        prefillData={prefillData}
+      />
 
       <Card>
         <CardContent className="p-0">

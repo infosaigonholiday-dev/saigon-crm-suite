@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,9 +14,17 @@ import {
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface PrefillData {
+  tour_code: string;
+  destination?: string | null;
+  departure_date?: string | null;
+  price_adl?: number | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefillData?: PrefillData | null;
 }
 
 const initial = {
@@ -29,11 +37,22 @@ const initial = {
   remaining_due_at: "",
 };
 
-export default function BookingFormDialog({ open, onOpenChange }: Props) {
+export default function BookingFormDialog({ open, onOpenChange, prefillData }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Pre-fill khi mở dialog từ Kho Tour B2B
+  useEffect(() => {
+    if (open && prefillData) {
+      setForm((p) => ({
+        ...p,
+        code: p.code || `BK-${prefillData.tour_code}`,
+        total_value: p.total_value || (prefillData.price_adl ? String(prefillData.price_adl) : ""),
+      }));
+    }
+  }, [open, prefillData]);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-select"],
@@ -98,6 +117,17 @@ export default function BookingFormDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Tạo booking</DialogTitle>
         </DialogHeader>
+        {prefillData && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+            <div className="font-semibold mb-1">Tạo từ tour B2B</div>
+            <div>
+              <span className="font-mono">{prefillData.tour_code}</span>
+              {prefillData.destination && <> • {prefillData.destination}</>}
+              {prefillData.departure_date && <> • {prefillData.departure_date}</>}
+              {prefillData.price_adl ? <> • {prefillData.price_adl.toLocaleString("vi-VN")}đ</> : null}
+            </div>
+          </div>
+        )}
         <div className="grid gap-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">

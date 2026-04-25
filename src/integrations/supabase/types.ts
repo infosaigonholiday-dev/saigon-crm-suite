@@ -268,6 +268,114 @@ export type Database = {
           },
         ]
       }
+      b2b_tour_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          tour_code: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          tour_code: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          tour_code?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      b2b_tours: {
+        Row: {
+          available_seats: string | null
+          commission_adl: number | null
+          commission_chd: number | null
+          commission_inf: number | null
+          created_at: string
+          departure_date: string | null
+          destination: string | null
+          flight_dep_code: string | null
+          flight_dep_time: string | null
+          flight_ret_code: string | null
+          flight_ret_time: string | null
+          hold_seats: string | null
+          id: string
+          itinerary_url: string | null
+          notes: string | null
+          price_adl: number | null
+          price_chd: number | null
+          price_inf: number | null
+          return_date: string | null
+          target_market: string | null
+          thang: string | null
+          tour_code: string
+          updated_at: string
+          visa_deadline: string | null
+        }
+        Insert: {
+          available_seats?: string | null
+          commission_adl?: number | null
+          commission_chd?: number | null
+          commission_inf?: number | null
+          created_at?: string
+          departure_date?: string | null
+          destination?: string | null
+          flight_dep_code?: string | null
+          flight_dep_time?: string | null
+          flight_ret_code?: string | null
+          flight_ret_time?: string | null
+          hold_seats?: string | null
+          id?: string
+          itinerary_url?: string | null
+          notes?: string | null
+          price_adl?: number | null
+          price_chd?: number | null
+          price_inf?: number | null
+          return_date?: string | null
+          target_market?: string | null
+          thang?: string | null
+          tour_code: string
+          updated_at?: string
+          visa_deadline?: string | null
+        }
+        Update: {
+          available_seats?: string | null
+          commission_adl?: number | null
+          commission_chd?: number | null
+          commission_inf?: number | null
+          created_at?: string
+          departure_date?: string | null
+          destination?: string | null
+          flight_dep_code?: string | null
+          flight_dep_time?: string | null
+          flight_ret_code?: string | null
+          flight_ret_time?: string | null
+          hold_seats?: string | null
+          id?: string
+          itinerary_url?: string | null
+          notes?: string | null
+          price_adl?: number | null
+          price_chd?: number | null
+          price_inf?: number | null
+          return_date?: string | null
+          target_market?: string | null
+          thang?: string | null
+          tour_code?: string
+          updated_at?: string
+          visa_deadline?: string | null
+        }
+        Relationships: []
+      }
       benefits_policies: {
         Row: {
           category: string | null

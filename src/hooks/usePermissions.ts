@@ -20,6 +20,7 @@ export const ALL_PERMISSION_KEYS = [
   "workflow.view", "workflow.create",
   "settings.view", "settings.edit",
   "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
+  "b2b_tours.view", "b2b_tours.logs",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
@@ -44,6 +45,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   workflow: { label: "Quy trình", keys: ["workflow.view", "workflow.create"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
   raw_contacts: { label: "Kho Data", keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
+  b2b_tours: { label: "Kho Tour B2B", keys: ["b2b_tours.view", "b2b_tours.logs"] },
 };
 
 // Scope rules
@@ -70,6 +72,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view", "settings.edit",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   SUPER_ADMIN: [
     "dashboard.view",
@@ -90,6 +93,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view", "settings.edit",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   GDKD: [
     "dashboard.view",
@@ -108,6 +112,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   MANAGER: [
     "dashboard.view",
@@ -126,6 +131,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   DIEUHAN: [
     "dashboard.view",
@@ -208,6 +214,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_INBOUND: [
     "dashboard.view",
@@ -222,6 +229,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_OUTBOUND: [
     "dashboard.view",
@@ -236,6 +244,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_MICE: [
     "dashboard.view",
@@ -250,6 +259,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   TOUR: [
     "dashboard.view",
@@ -271,6 +281,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
@@ -283,6 +294,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
@@ -307,6 +319,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_DIEUHAN: [
     "dashboard.view",
@@ -325,6 +338,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "b2b_tours.view",
   ],
   INTERN_HCNS: [
     "dashboard.view",
