@@ -117,6 +117,17 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
         <DialogHeader>
           <DialogTitle>Tạo booking</DialogTitle>
         </DialogHeader>
+        {prefillData && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+            <div className="font-semibold mb-1">Tạo từ tour B2B</div>
+            <div>
+              <span className="font-mono">{prefillData.tour_code}</span>
+              {prefillData.destination && <> • {prefillData.destination}</>}
+              {prefillData.departure_date && <> • {prefillData.departure_date}</>}
+              {prefillData.price_adl ? <> • {prefillData.price_adl.toLocaleString("vi-VN")}đ</> : null}
+            </div>
+          </div>
+        )}
         <div className="grid gap-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
