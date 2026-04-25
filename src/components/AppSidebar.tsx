@@ -205,6 +205,7 @@ export function AppSidebar() {
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
+                {renderItems(alertsItems)}
                 {renderItems(visibleFinance)}
                 {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}
