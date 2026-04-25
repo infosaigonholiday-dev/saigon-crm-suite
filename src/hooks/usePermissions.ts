@@ -133,6 +133,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view", "b2b_tours.logs",
   ],
+  DIEUHAN: [
     "dashboard.view",
     "customers.view", "customers.create",
     "leads.view", "leads.create",
