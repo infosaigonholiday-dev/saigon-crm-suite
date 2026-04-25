@@ -1,102 +1,105 @@
 ## 🎯 Mục tiêu
-
-1. Thêm **nút in nhanh 🖨️** vào bảng danh sách Booking (cột Thao tác mới)
-2. **Centralize** label module → đổi tên 1 lần áp dụng mọi nơi (chống lặp lại lỗi "Kho Tour B2B" sót)
-3. **Helper dùng chung** kiểm quyền in phiếu xác nhận booking
-4. Bỏ qua: Read-only mode & ghi log truy cập (theo chỉ đạo)
+Chạy 6 fix gọn trong 1 lần — không cần làm lại.
 
 ---
 
-## 📋 Chi tiết triển khai
+## 1. SUPER_ADMIN — DB constraint + permissions function
 
-### 1. Helper dùng chung — `src/lib/bookingPrintAccess.ts` (MỚI)
+**Hiện trạng:** `profiles_role_check` chỉ liệt kê 21 role, **thiếu `SUPER_ADMIN`** → nếu Admin set role này sẽ lỗi insert/update.
 
-Hàm thuần `canPrintBookingConfirmation({ userRole, userId, myDeptId, booking })`:
-- `ADMIN`, `SUPER_ADMIN`, `KETOAN`, `DIEUHAN` → luôn được in
-- Sale phụ trách (`booking.sale_id === userId`) → được in
-- `MANAGER` / `GDKD` cùng phòng (`booking.department_id === myDeptId`) → được in
-- Còn lại → KHÔNG được in (Sale khác phòng, Sale không phụ trách → ẩn nút)
-
-→ Refactor `PrintConfirmationButton.tsx` và `BookingConfirmationPrint.tsx` để dùng helper này.
+**Fix (migration SQL):**
+- `ALTER TABLE profiles DROP CONSTRAINT profiles_role_check`
+- Tạo lại constraint thêm `'SUPER_ADMIN'` vào danh sách
+- `get_default_permissions_for_role`: case `'ADMIN'` đã gộp `SUPER_ADMIN` (`WHEN 'ADMIN', 'SUPER_ADMIN' THEN`) — đã OK, không cần đổi
 
 ---
 
-### 2. Nút in nhanh ở bảng Booking — `src/pages/Bookings.tsx`
+## 2. Trigger trùng trên customers + leads
 
-- Thêm cột **"Thao tác"** ở cuối bảng
-- Mỗi dòng: `DropdownMenu` với trigger là icon 🖨️ (`<Printer className="h-4 w-4" />`)
-- Click → 2 lựa chọn:
-  - ✈ Tour lẻ → mở `/dat-tour/:id/in-xac-nhan?type=le` (tab mới)
-  - 🚌 Tour đoàn → mở `/dat-tour/:id/in-xac-nhan?type=doan` (tab mới)
-- `e.stopPropagation()` để không trigger navigate vào BookingDetail
-- Chỉ hiển thị khi `canPrintBookingConfirmation(...)` === true (dùng helper)
-- Thêm field `sale_id` và `department_id` vào query select của bookings list (hiện chưa fetch)
-- Fetch `myDeptId` qua `useMyDepartmentId(true)` để check quyền MANAGER/GDKD
+**Hiện trạng:** Mỗi bảng có 2 audit trigger chạy song song (gây log đôi):
+- `customers`: `trg_audit_customers` + `trg_customers_audit`
+- `leads`: `trg_audit_leads` + `trg_leads_audit`
 
-**Tinh chỉnh UX:**
-- Dùng `<TooltipProvider>` cho icon (tooltip "In phiếu xác nhận")
-- Cột rộng cố định ~80px, căn giữa
+**Fix (migration SQL):**
+```sql
+DROP TRIGGER IF EXISTS trg_customers_audit ON customers;
+DROP TRIGGER IF EXISTS trg_leads_audit ON leads;
+```
+Giữ lại `trg_audit_customers` và `trg_audit_leads`.
 
 ---
 
-### 3. Centralize Module Labels — `src/lib/moduleLabels.ts` (MỚI)
+## 3. .gitignore — thêm .env
 
-```ts
-export const MODULE_LABELS: Record<string, string> = {
-  dashboard: "Tổng quan",
-  customers: "Khách hàng",
-  leads: "Tiềm năng",
-  raw_contacts: "Kho Data",
-  quotations: "Báo giá",
-  bookings: "Đặt tour",
-  payments: "Thanh toán",
-  contracts: "Hợp đồng",
-  tour_packages: "Gói tour",
-  itineraries: "Lịch trình",
-  accommodations: "Lưu trú",
-  suppliers: "Nhà cung cấp",
-  b2b_tours: "LKH Tour 2026", // ← single source of truth
-  staff: "Nhân sự",
-  leave: "Nghỉ phép",
-  payroll: "Lương",
-  finance: "Tài chính",
-  workflow: "Quy trình",
-  settings: "Cài đặt",
-};
+**Hiện trạng:** `.gitignore` không chứa `.env` → nguy cơ commit secrets.
 
-export const getModuleLabel = (key: string): string =>
-  MODULE_LABELS[key] ?? key;
+**Fix:** thêm block ở cuối `.gitignore`:
+```
+# Env / secrets
+.env
+.env.local
+.env.*.local
 ```
 
-**Refactor để dùng:**
-- `src/hooks/usePermissions.ts` — function `getModuleLabel()` hoặc array `MODULE_GROUPS` import từ đây thay vì hard-code chuỗi
-- `src/components/AppSidebar.tsx` — nếu có hard-code "LKH Tour 2026" → dùng `getModuleLabel('b2b_tours')`
-- (Không đụng route URL `/kho-tour-b2b` và DB key `b2b_tours` — giữ nguyên cho ổn định)
+---
+
+## 4. INTERN_SALE_MICE — bổ sung b2b_tours.view
+
+**Hiện trạng:** Trong `usePermissions.ts`, 3 INTERN_SALE (DOMESTIC/OUTBOUND/INBOUND) đã có `b2b_tours.view`, riêng `INTERN_SALE_MICE` thiếu.
+
+**Fix:** Thêm `b2b_tours.view` vào DEFAULT_PERMISSIONS của `INTERN_SALE_MICE` trong `src/hooks/usePermissions.ts`.
+
+> Note: function DB `get_default_permissions_for_role` đã gộp 4 INTERN_SALE chung 1 case nên đã có sẵn. Chỉ sync client.
 
 ---
 
-### 4. Files thay đổi (tổng kết)
+## 5. InternalNotes — tích hợp vào Finance (Estimates + Settlements)
 
-**Tạo mới:**
-- `src/lib/moduleLabels.ts`
-- `src/lib/bookingPrintAccess.ts`
+**Hiện trạng đã kiểm tra:**
+- ✅ `LeadDetailDialog` đã có (line 286)
+- ✅ `ContractDetailDialog` đã có (line 287)
+- ✅ `CustomerDetail` đã có
 
-**Chỉnh sửa:**
-- `src/pages/Bookings.tsx` — thêm cột Thao tác + nút in nhanh + fetch sale_id/department_id + check quyền
-- `src/components/bookings/PrintConfirmationButton.tsx` — refactor dùng `canPrintBookingConfirmation`
-- `src/pages/BookingConfirmationPrint.tsx` — refactor dùng `canPrintBookingConfirmation`
-- `src/hooks/usePermissions.ts` — label `b2b_tours` lấy từ `getModuleLabel`
-- (Tuỳ tình hình kiểm tra) `src/components/AppSidebar.tsx`
+**Còn lại — Finance:** cả 2 tab dùng pattern Detail Dialog với `selectedEstimate` / `selectedSettlement`.
+
+**Fix:**
+- `BudgetEstimatesTab.tsx`: thêm section `<InternalNotes entityType="finance" entityId={selectedEstimate.id} entityName={selectedEstimate.code} />` ở cuối Detail Dialog (trước DialogFooter)
+- `BudgetSettlementsTab.tsx`: tương tự trong Detail Dialog của settlement
+
+> Dùng `entityType="finance"` (đã có trong type EntityType). Route mapping → `/tai-chinh`.
 
 ---
 
-## ✅ Acceptance Criteria
+## 6. useAutoMarkNotificationsRead — gắn vào LeadDetailDialog
 
-- [ ] Bảng Bookings: cột Thao tác hiện icon 🖨️ — chỉ user có quyền in mới thấy
-- [ ] Click icon → dropdown 2 lựa chọn → mở tab mới sang trang in chính xác
-- [ ] Click icon KHÔNG navigate vào BookingDetail (stopPropagation OK)
-- [ ] Sale khác phòng / không phụ trách → KHÔNG thấy icon
-- [ ] DIEUHAN, KETOAN, ADMIN → thấy icon mọi booking
-- [ ] MANAGER/GDKD → thấy icon với booking thuộc phòng mình
-- [ ] Đổi label `b2b_tours` trong `moduleLabels.ts` → tự động áp dụng ở Settings > Quyền hạn (không phải tìm sửa nhiều file)
-- [ ] `tsc` build sạch, không lỗi TS
+**Hiện trạng:**
+- ✅ `CustomerDetail` đã có (line 67)
+- ❌ `LeadDetailDialog` chưa có
+
+**Fix:** Trong `LeadDetailDialog.tsx`, thêm:
+```ts
+import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
+// trong component:
+useAutoMarkNotificationsRead("lead", open ? lead?.id : null);
+```
+(Truyền `null` khi dialog đóng để không trigger update sai.)
+
+---
+
+## 📋 Files thay đổi
+| File | Loại |
+|---|---|
+| Migration SQL | constraint + drop 2 trigger |
+| `.gitignore` | append |
+| `src/hooks/usePermissions.ts` | thêm 1 dòng |
+| `src/components/finance/BudgetEstimatesTab.tsx` | thêm InternalNotes |
+| `src/components/finance/BudgetSettlementsTab.tsx` | thêm InternalNotes |
+| `src/components/leads/LeadDetailDialog.tsx` | thêm hook auto-mark-read |
+
+## ✅ Verify sau khi chạy
+- `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='profiles_role_check'` → có `SUPER_ADMIN`
+- `SELECT tgname FROM pg_trigger WHERE tgrelid='customers'::regclass` → không còn `trg_customers_audit`
+- `grep -n "^\.env" .gitignore` → có dòng `.env`
+- `tsc --noEmit` → 0 errors
+
+Anh duyệt thì em chạy hết trong 1 lần.
