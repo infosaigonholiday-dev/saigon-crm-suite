@@ -107,6 +107,10 @@ export function AppSidebar() {
     { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
   ];
 
+  const alertsItems: MenuItem[] = [
+    { title: "Cảnh báo", url: "/canh-bao", icon: AlertTriangle, badge: alertCount > 0 ? alertCount : undefined },
+  ];
+
   const filterItems = (items: MenuItem[]) =>
     items.filter((item) => !item.moduleKey || visibleModules.includes(item.moduleKey));
 
