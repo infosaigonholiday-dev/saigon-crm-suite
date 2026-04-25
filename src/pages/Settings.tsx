@@ -60,7 +60,8 @@ export default function Settings() {
   const showRoles = isAdmin || isHR; // Chỉ ADMIN/SUPER_ADMIN/HR_MANAGER/HCNS thấy bảng quyền hạn
   const showPermissions = isAdmin || ["MANAGER", "GDKD"].includes(userRole || "");
   const showAuditLog = isAdmin;
-  const showNotifications = true; // mọi user có settings.view đều thấy
+  const showExpenseCategories = isAdmin;
+  const showNotifications = true;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
@@ -69,6 +70,7 @@ export default function Settings() {
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
     showPermissions && { value: "permissions", label: "Phân quyền" },
+    showExpenseCategories && { value: "expense_categories", label: "DM Chi phí" },
     showAuditLog && { value: "audit", label: "Nhật ký thay đổi" },
   ].filter(Boolean) as { value: string; label: string }[];
 
