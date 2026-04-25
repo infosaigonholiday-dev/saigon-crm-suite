@@ -14,6 +14,7 @@ import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
+import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
