@@ -43,7 +43,7 @@ export default function Bookings() {
   const { getScope } = usePermissions();
   const { user } = useAuth();
 
-  // Đọc prefill_tour từ URL khi từ Kho Tour B2B chuyển sang
+  // Đọc prefill_tour từ URL khi từ LKH Tour 2026 chuyển sang
   useEffect(() => {
     const tourCode = searchParams.get("prefill_tour");
     if (tourCode) {
