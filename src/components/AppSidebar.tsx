@@ -57,7 +57,7 @@ export function AppSidebar() {
   const crmItems: MenuItem[] = [
     { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
     { title: "Kho Data", url: "/kho-data", icon: Database, moduleKey: "raw_contacts" },
-    { title: "Kho Tour B2B", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
+    { title: "LKH Tour 2026", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
     { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
     { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
@@ -95,32 +95,43 @@ export function AppSidebar() {
     items.filter((item) => !item.moduleKey || visibleModules.includes(item.moduleKey));
 
   const renderItems = (items: MenuItem[]) =>
-    items.map((item) => (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild isActive={
-          item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
-        }>
-          <NavLink
-            to={item.url}
-            end={item.url === "/"}
-            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-            activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {!collapsed && (
-              <span className="flex-1 flex items-center justify-between">
-                {item.title}
-                {item.badge && item.badge > 0 && (
-                  <Badge variant="destructive" className="h-5 min-w-[20px] px-1 text-[10px] ml-auto">
-                    {item.badge > 99 ? "99+" : item.badge}
-                  </Badge>
-                )}
-              </span>
-            )}
-          </NavLink>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    ));
+    items.map((item) => {
+      const isB2B = item.moduleKey === "b2b_tours";
+      return (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton asChild isActive={
+            item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
+          }>
+            <NavLink
+              to={item.url}
+              end={item.url === "/"}
+              className={
+                isB2B
+                  ? "text-sidebar-foreground/70 hover:text-white hover:bg-blue-600"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              }
+              activeClassName={
+                isB2B
+                  ? "bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-medium"
+                  : "bg-sidebar-accent text-sidebar-foreground font-medium"
+              }
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              {!collapsed && (
+                <span className="flex-1 flex items-center justify-between">
+                  {item.title}
+                  {item.badge && item.badge > 0 && (
+                    <Badge variant="destructive" className="h-5 min-w-[20px] px-1 text-[10px] ml-auto">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </Badge>
+                  )}
+                </span>
+              )}
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    });
 
   const dashboardType = getDashboardType(userRole);
   const dashboardLabel = dashboardType === "hr" ? "Tổng quan NS" : dashboardType === "personal" ? "Dashboard" : "Tổng quan";

@@ -118,7 +118,7 @@ export default function B2BTours() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Kho Tour B2B</h1>
+        <h1 className="text-2xl font-bold text-blue-600">LKH Tour 2026</h1>
         <p className="text-sm text-muted-foreground">{totalCount} tour có sẵn</p>
       </div>
 
