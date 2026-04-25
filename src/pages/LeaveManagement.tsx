@@ -25,14 +25,17 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export default function LeaveManagement() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { hasPermission, getScope } = usePermissions();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
   const scope = getScope("leave");
   const canApprove = hasPermission("leave", "approve");
-  const showTeamTab = scope === "all" || scope === "department";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isHrStaff = userRole === "HR_MANAGER" || userRole === "HCNS";
+  // ADMIN, HR_MANAGER, HCNS xem tất cả; Manager/GDKD xem theo phòng
+  const showTeamTab = isAdmin || isHrStaff || scope === "all" || scope === "department";
 
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
 
@@ -130,14 +133,20 @@ export default function LeaveManagement() {
                 {showApproveButtons && (
                   <TableCell>
                     {r.status === "PENDING" && (
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => updateStatus.mutate({ id: r.id, status: "APPROVED" })}>
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => updateStatus.mutate({ id: r.id, status: "REJECTED" })}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      r.employee_id === myEmpId && !isAdmin ? (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">
+                          Chờ cấp trên duyệt
+                        </Badge>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => updateStatus.mutate({ id: r.id, status: "APPROVED" })}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => updateStatus.mutate({ id: r.id, status: "REJECTED" })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )
                     )}
                   </TableCell>
                 )}
@@ -191,7 +200,7 @@ export default function LeaveManagement() {
                 </TabsList>
               </div>
               <TabsContent value="team" className="mt-0">
-                {renderTable(teamRequests, canApprove)}
+                {renderTable(teamRequests, canApprove || isAdmin)}
               </TabsContent>
               <TabsContent value="mine" className="mt-0">
                 {renderTable(myRequests, false)}
