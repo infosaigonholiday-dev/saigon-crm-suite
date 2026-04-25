@@ -21,8 +21,43 @@ const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
 };
 
 export function PushNotificationToggle() {
+  const { user } = useAuth();
   const { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
     usePushSubscription();
+  const [testing, setTesting] = useState(false);
+
+  const handleTestPush = async () => {
+    if (!user) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          user_id: user.id,
+          title: "🔔 Test Web Push",
+          message: "Nếu bạn thấy thông báo này trên màn hình → cấu hình push hoạt động tốt!",
+          url: "/cai-dat",
+          tag: "test-push-" + Date.now(),
+        },
+      });
+      if (error) throw error;
+      const sent = (data as { sent?: number; failed?: number; reason?: string })?.sent ?? 0;
+      const failed = (data as { failed?: number })?.failed ?? 0;
+      const reason = (data as { reason?: string })?.reason;
+      if (sent > 0) {
+        toast.success(`Đã gửi push tới ${sent} thiết bị (${failed} lỗi). Kiểm tra màn hình.`);
+      } else if (reason === "no_subscriptions") {
+        toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này.");
+      } else {
+        toast.error(`Push thất bại (sent=${sent}, failed=${failed})`);
+      }
+    } catch (e: any) {
+      console.error("[push] test failed", e);
+      toast.error("Không gọi được send-notification: " + (e?.message || String(e)));
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   if (!isSupported) {
     return (
