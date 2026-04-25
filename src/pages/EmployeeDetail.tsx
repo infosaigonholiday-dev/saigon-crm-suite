@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { PushNotificationCard } from "@/components/PushNotificationCard";
+import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -51,6 +52,7 @@ export default function EmployeeDetail() {
   const [deleting, setDeleting] = useState(false);
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
+  useAutoMarkNotificationsRead("employee", id);
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],

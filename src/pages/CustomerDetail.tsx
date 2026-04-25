@@ -19,6 +19,7 @@ import CustomerFormDialog from "@/components/customers/CustomerFormDialog";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
 import { Link } from "react-router-dom";
 
 function fmt(n: number | null) {
@@ -63,6 +64,7 @@ export default function CustomerDetail() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const [editOpen, setEditOpen] = useState(false);
+  useAutoMarkNotificationsRead("customer", id);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],

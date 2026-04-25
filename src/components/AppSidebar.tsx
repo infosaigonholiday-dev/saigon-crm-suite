@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -52,13 +52,29 @@ export function AppSidebar() {
     refetchInterval: 60000,
   });
 
+  // Cảnh báo khẩn cấp (priority='high' chưa đọc) cho badge "Cảnh báo"
+  const { data: alertCount = 0 } = useQuery({
+    queryKey: ["alerts-badge", user?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("is_read", false)
+        .eq("priority", "high");
+      return count ?? 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
+
   const visibleModules = getVisibleModules();
 
   const crmItems: MenuItem[] = [
     { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
+    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Kho Data", url: "/kho-data", icon: Database, moduleKey: "raw_contacts" },
     { title: "LKH Tour 2026", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
-    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
     { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
     { title: "Lịch trình", url: "/lich-trinh", icon: Route, moduleKey: "itineraries" },
@@ -89,6 +105,10 @@ export function AppSidebar() {
 
   const settingsItems: MenuItem[] = [
     { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
+  ];
+
+  const alertsItems: MenuItem[] = [
+    { title: "Cảnh báo", url: "/canh-bao", icon: AlertTriangle, badge: alertCount > 0 ? alertCount : undefined },
   ];
 
   const filterItems = (items: MenuItem[]) =>
@@ -185,6 +205,7 @@ export function AppSidebar() {
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Khác</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
+                {renderItems(alertsItems)}
                 {renderItems(visibleFinance)}
                 {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}
