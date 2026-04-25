@@ -25,10 +25,13 @@ export function PushNotificationToggle() {
   const { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
     usePushSubscription();
   const [testing, setTesting] = useState(false);
+  const [resubscribing, setResubscribing] = useState(false);
+  const [lastTestFailed, setLastTestFailed] = useState(false);
 
   const handleTestPush = async () => {
     if (!user) return;
     setTesting(true);
+    setLastTestFailed(false);
     try {
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
@@ -47,14 +50,33 @@ export function PushNotificationToggle() {
         toast.success(`Đã gửi push tới ${sent} thiết bị (${failed} lỗi). Kiểm tra màn hình.`);
       } else if (reason === "no_subscriptions") {
         toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này.");
+        setLastTestFailed(true);
       } else {
-        toast.error(`Push thất bại (sent=${sent}, failed=${failed})`);
+        toast.error(`Push thất bại (sent=${sent}, failed=${failed}). Nhấn "Đăng ký lại" bên dưới.`);
+        setLastTestFailed(true);
       }
     } catch (e: any) {
       console.error("[push] test failed", e);
       toast.error("Không gọi được send-notification: " + (e?.message || String(e)));
+      setLastTestFailed(true);
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleResubscribe = async () => {
+    setResubscribing(true);
+    try {
+      await unsubscribe();
+      const r = await subscribe();
+      if (r.ok) {
+        toast.success("Đã đăng ký lại subscription mới. Bấm 'Gửi thử push' để test.");
+        setLastTestFailed(false);
+      } else {
+        toast.error("Không đăng ký lại được: " + (r.detail || r.error || "lỗi không rõ"));
+      }
+    } finally {
+      setResubscribing(false);
     }
   };
 
