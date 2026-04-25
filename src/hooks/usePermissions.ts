@@ -112,6 +112,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   MANAGER: [
     "dashboard.view",
@@ -130,8 +131,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view", "workflow.create",
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
-  DIEUHAN: [
     "dashboard.view",
     "customers.view", "customers.create",
     "leads.view", "leads.create",
@@ -212,6 +213,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_INBOUND: [
     "dashboard.view",
@@ -226,6 +228,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_OUTBOUND: [
     "dashboard.view",
@@ -240,6 +243,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   SALE_MICE: [
     "dashboard.view",
@@ -254,6 +258,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   TOUR: [
     "dashboard.view",
@@ -275,6 +280,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
@@ -287,6 +293,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
@@ -311,6 +318,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_DIEUHAN: [
     "dashboard.view",
@@ -329,8 +337,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "b2b_tours.view",
   ],
-  INTERN_HCNS: [
     "dashboard.view",
     "settings.view",
     "staff.view",
