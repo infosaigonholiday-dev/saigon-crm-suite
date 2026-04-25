@@ -63,6 +63,7 @@ function ProtectedRoutes() {
         <Route path="/khach-hang/:id" element={<ErrorBoundary><PermissionGuard module="customers" action="view"><CustomerDetail /></PermissionGuard></ErrorBoundary>} />
         <Route path="/tiem-nang" element={<ErrorBoundary><PermissionGuard module="leads" action="view"><Leads /></PermissionGuard></ErrorBoundary>} />
         <Route path="/kho-data" element={<ErrorBoundary><PermissionGuard module="raw_contacts" action="view"><RawContacts /></PermissionGuard></ErrorBoundary>} />
+        <Route path="/b2b-tours" element={<ErrorBoundary><PermissionGuard module="b2b_tours" action="view"><B2BTours /></PermissionGuard></ErrorBoundary>} />
         <Route path="/bao-gia" element={<ErrorBoundary><PermissionGuard module="quotations" action="view"><Quotations /></PermissionGuard></ErrorBoundary>} />
         <Route path="/goi-tour" element={<ErrorBoundary><PermissionGuard module="tour_packages" action="view"><TourPackages /></PermissionGuard></ErrorBoundary>} />
         <Route path="/lich-trinh" element={<ErrorBoundary><PermissionGuard module="itineraries" action="view"><Itineraries /></PermissionGuard></ErrorBoundary>} />
