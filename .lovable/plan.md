@@ -1,125 +1,127 @@
 ## 🎯 Mục tiêu
-1. Sắp xếp lại sidebar: Khách hàng → Tiềm năng → Kho Data → LKH Tour 2026
-2. Ẩn bảng "Quyền hạn hệ thống" khỏi role không phải Admin/HR
-3. Nâng cấp NotificationBell: tabs + filter + group ngày
-4. Tự động đánh dấu đã đọc khi vào trang chi tiết
-5. Tạo trang Cảnh báo (`/canh-bao`)
-6. **FIX LỖI**: `notifications_type_check` chặn các type mới khiến tạo đơn nghỉ phép thất bại
+Tích hợp tính năng **In Phiếu Xác Nhận Booking** vào trang Chi tiết Booking, sử dụng template HTML V10 do anh đính kèm — giữ nguyên 100% giao diện in.
 
 ---
 
-## 🔧 Phần E — Fix lỗi constraint (BẮT BUỘC làm đầu)
+## 📐 Kiến trúc giải pháp
 
-Migration mới mở rộng constraint chấp nhận tất cả type đang dùng:
+**Iframe + postMessage** — đặt template HTML nguyên bản tại `public/print/booking-confirmation.html`, React wrapper fetch data từ Supabase rồi gửi vào iframe qua `postMessage`. Native `window.print()` xuất A4.
 
-```sql
-ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
-ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check
-CHECK (type IN (
-  'birthday','company_anniversary','follow_up','payment_due','contract_expiry','internal_note',
-  'LEAD_FORGOTTEN','FOLLOW_UP_OVERDUE','TRAVEL_DATE_NEAR',
-  'mention','system','reminder',
-  'BOOKING_DEPARTURE_NEAR','PAYMENT_DUE','CONTRACT_APPROVAL_OVERDUE','QUOTATION_NO_RESPONSE',
-  'EMPLOYEE_BIRTHDAY','EMPLOYEE_CONTRACT_EXPIRING',
-  'ESCALATION_LV1','ESCALATION_LV2','ESCALATION_LV3',
-  'LEAVE_REQUEST_NEW','LEAVE_REQUEST_RESULT',
-  'BUDGET_ESTIMATE_NEW','BUDGET_ESTIMATE_RESULT',
-  'BUDGET_SETTLEMENT_STATUS','BUDGET_SETTLEMENT_CLOSED','BUDGET_SETTLEMENT_REJECTED',
-  'TRANSACTION_APPROVAL','TRANSACTION_APPROVED','TRANSACTION_REJECTED'
-));
-```
+**Lý do**: Giữ pixel-perfect bản V10 anh đã chốt, không cần port HTML/CSS sang JSX.
 
 ---
 
-## 📁 Phần A — Sidebar & Settings
+## 📁 Files triển khai
 
-### `src/components/AppSidebar.tsx`
-- Đổi thứ tự `crmItems`:
-  1. Khách hàng (`/khach-hang`)
-  2. Tiềm năng (`/tiem-nang`)
-  3. Kho Data (`/kho-data`)
-  4. LKH Tour 2026 (`/b2b-tours`)
-  5. ... (giữ nguyên các mục còn lại)
-- Thêm mục "Cảnh báo" (`/canh-bao`, icon `AlertTriangle`) với badge đếm notifications priority='high' chưa đọc.
+### Mới (3 files)
 
-### `src/pages/Settings.tsx`
-- Đổi `const showRoles = true` → `const showRoles = isAdmin || isHR;`
-- Chỉ ADMIN, SUPER_ADMIN, HCNS, HR_MANAGER thấy tab "Quyền hạn".
+**1. `public/print/booking-confirmation.html`** — Copy nguyên file `SGH_XacNhan_V10.html` anh upload, chỉnh nhẹ:
+- Bỏ `<div class="toolbar">` (đã có nút In trên React wrapper bên ngoài)
+- Thêm `@page { size: A4; margin: 0 }` để loại header/footer browser
+- Bổ sung `data-field` cho tất cả 24+ ô info card cả 2 tab (Tour lẻ + Tour đoàn): `cust_name`, `cust_phone`, `cust_pax`, `cust_staff`, `staff_phone`, `tour_name`, `tour_code`, `tour_start`, `tour_end`, `tour_duration`, `total`, `deposit`, `remaining`, `remaining_due`, `hold_deadline`, `grp_*` (group variant) v.v.
+- Mở rộng `SGH_fillData(data)` để fill cả `data-field` của info card (không chỉ trường có sẵn)
+- Listen `window.message` event → khi parent gửi `{ type:'fill', data:{...} }` → chạy `SGH_fillData(data)` + `SGH_setType(type)`
+- Đọc `?type=le|doan` từ URL → auto switch tab + ẩn tab bar khi in
+- Expose `window.toggleEdit()` để bật/tắt `contentEditable` cho class `.ef`
 
----
+**2. `src/pages/BookingConfirmationPrint.tsx`** — Route `/dat-tour/:id/in-xac-nhan?type=le|doan` (NGOÀI AppLayout, không sidebar)
 
-## 🔔 Phần B — NotificationBell nâng cao
+Layout:
+- Sticky toolbar trên cùng: nút **🖨️ In PDF**, **✏️ Bật/tắt chỉnh sửa**, **← Quay lại**
+- Iframe full-width chứa template
 
-### `src/components/NotificationBell.tsx` (rewrite)
-- Mở rộng popover lên `w-[420px]`.
-- 2 tabs: **Tất cả** / **Chưa đọc**.
-- Filter dropdown theo nhóm dựa vào `entity_type`:
-  - Tài chính: `transaction`, `budget_estimate`, `budget_settlement`, `payment`
-  - CRM: `lead`, `customer`, `raw_contact`
-  - Tour: `booking`, `b2b_tour`, `quotation`, `contract`
-  - Nhân sự: `leave_request`, `employee`
-  - Khác
-- Group theo ngày: Hôm nay / Hôm qua / Tuần này / Cũ hơn (dùng `date-fns`).
-- Click → điều hướng + tự `mark as read`.
-- Query `notifications` lấy 50 bản ghi gần nhất (cả đọc/chưa đọc) thay vì chỉ 20 unread.
+Logic:
+- Fetch parallel: `bookings + customers join`, `quotations + tour_packages` (qua `quote_id`), `profiles` (qua `sale_id` lấy tên/sđt NV)
+- **Permission check**:
+  ```ts
+  const canPrint = 
+    ['ADMIN','SUPER_ADMIN','DIEUHAN','KETOAN'].includes(role) ||
+    booking.sale_id === user.id ||
+    (['MANAGER','GDKD'].includes(role) && booking.department_id === userDept);
+  ```
+  Nếu không → toast lỗi + `navigate(-1)`
+- Build `dataMap` rồi:
+  ```ts
+  iframe.onload = () => iframe.contentWindow.postMessage({ type:'fill', data: dataMap, printType }, '*');
+  ```
+- Booking đã COMPLETED/CANCELLED: vẫn cho in bình thường (anh đã chốt)
 
----
+**3. `src/components/bookings/PrintConfirmationButton.tsx`** — Dropdown trên BookingDetail:
+- "✈ Tour lẻ" → `window.open('/dat-tour/'+id+'/in-xac-nhan?type=le','_blank')`
+- "🚌 Tour đoàn" → `?type=doan`
+- Nút disabled (ẩn) nếu không có quyền in
 
-## 🪝 Phần C — Auto-mark as Read
+### Sửa (2 files)
 
-### `src/hooks/useAutoMarkNotificationsRead.ts` (mới)
-```ts
-export function useAutoMarkNotificationsRead(entityType: string, entityId?: string) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  useEffect(() => {
-    if (!user?.id || !entityId) return;
-    (async () => {
-      await supabase.from("notifications").update({ is_read: true })
-        .match({ user_id: user.id, entity_type: entityType, entity_id: entityId, is_read: false });
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-    })();
-  }, [user?.id, entityType, entityId]);
-}
-```
+**4. `src/pages/BookingDetail.tsx`** — Thêm `<PrintConfirmationButton booking={booking} />` vào header (cạnh nút Quay lại)
 
-### Tích hợp:
-- `src/pages/BookingDetail.tsx` → `useAutoMarkNotificationsRead("booking", id)`
-- `src/pages/CustomerDetail.tsx` → `useAutoMarkNotificationsRead("customer", id)`
-- `src/pages/EmployeeDetail.tsx` → `useAutoMarkNotificationsRead("employee", id)`
-
----
-
-## 🚨 Phần D — Trang Cảnh báo
-
-### `src/pages/AlertsCenter.tsx` (mới) — route `/canh-bao`
-3 tabs:
-
-1. **Khẩn cấp** — `notifications` `priority='high'` chưa đọc của user hiện tại (cả mention, escalation, overdue).
-2. **Tài chính**:
-   - `transactions` status `PENDING_HR_APPROVAL`/`PENDING_REVIEW`
-   - `budget_settlements` status `pending_accountant`/`pending_ceo`
-   - `payments` quá hạn `due_date < today AND status != PAID`
-3. **Vận hành**:
-   - `bookings` có `departure_date` trong 7 ngày tới
-   - `booking_special_notes` priority `high` chưa xử lý
-   - `contracts` status `PENDING_APPROVAL` quá 3 ngày
-
-Mỗi item có nút "Đi tới" điều hướng đến trang chi tiết tương ứng.
-
-### `src/App.tsx`
-Thêm route:
+**5. `src/App.tsx`** — Thêm route trong `<ProtectedRoutes>` NHƯNG ngoài `<Route element={<AppLayout />}>` (full-screen, không sidebar):
 ```tsx
-<Route path="/canh-bao" element={<ErrorBoundary><AlertsCenter /></ErrorBoundary>} />
+<Route path="/dat-tour/:id/in-xac-nhan" element={
+  <ErrorBoundary><BookingConfirmationPrint /></ErrorBoundary>
+} />
 ```
-(Không cần PermissionGuard — RLS lọc dữ liệu tự động.)
 
 ---
 
-## ✅ Verify sau khi triển khai
-1. Tạo thử đơn nghỉ phép → không còn lỗi `notifications_type_check`.
-2. Mở `/canh-bao` → 3 tab load OK.
-3. Vào BookingDetail của booking có notification → notification biến mất khỏi bell.
-4. NotificationBell hiển thị tabs + filter đúng.
-5. Sidebar đúng thứ tự + có mục Cảnh báo.
-6. Settings: SALE/KETOAN/DIEUHAN không thấy tab "Quyền hạn".
+## 🗺️ Mapping data → template
+
+| `data-field` | Nguồn DB |
+|---|---|
+| `booking_code` / `grp_booking_code` | `bookings.code` |
+| `cust_name` / `grp_leader` | `customers.full_name` (B2B fallback `contact_person`) |
+| `cust_phone` | `customers.phone` (B2B: `contact_person_phone`) |
+| `cust_email` | `customers.email` |
+| `cust_id` | `customers.id_number` |
+| `cust_pax` | `bookings.pax_total` + parse `pax_details` JSON → "X NL + Y TE + Z EB" |
+| `staff_name_sb` / `cust_staff` | `profiles.full_name` (qua `bookings.sale_id`) |
+| `staff_phone` | `profiles.phone` |
+| `tour_name` / `grp_tour_name` | `tour_packages.name` |
+| `tour_code` | `tour_packages.code` |
+| `tour_duration` | `duration_days + duration_nights` → "5N4Đ" |
+| `tour_start` / `tour_end` | `quotations.valid_from/until` (best-effort) |
+| `total` | `bookings.total_value` (format `vi-VN` + " ₫") |
+| `deposit` | `bookings.deposit_amount` |
+| `remaining` | `bookings.remaining_amount` |
+| `remaining_due` | `bookings.remaining_due_at` (DD/MM/YYYY) |
+| `hold_deadline` | `bookings.created_at + 48h` |
+| `bank_*`, flight info, visa | Để trống → Sale tự gõ contentEditable |
+
+**Roster Tour Đoàn**: Để 20 dòng trống — Sale gõ trực tiếp.
+
+---
+
+## 🔐 Quyền in (đã chốt cuối)
+
+| Role | Được in? |
+|---|---|
+| ADMIN, SUPER_ADMIN | ✅ Mọi booking |
+| Sale phụ trách (`sale_id === user.id`) | ✅ Booking của mình |
+| MANAGER, GDKD cùng phòng | ✅ Booking trong phòng |
+| **DIEUHAN** | ✅ Mọi booking (đối chiếu làm tour) |
+| **KETOAN** | ✅ Mọi booking (đối chiếu thu chi) |
+| Sale khác phòng, INTERN, HCNS, MKT... | ❌ Không thấy nút |
+
+---
+
+## 💾 Lưu dữ liệu Sale gõ
+**KHÔNG lưu DB** (anh đã chốt). Sale gõ contentEditable trên iframe → bấm In → xong. Tắt tab gõ lại lần sau.
+
+---
+
+## ⚠️ Lưu ý kỹ thuật
+1. Iframe same-origin (`/print/...html` cùng domain) → `postMessage` + `contentWindow.print()` chạy được
+2. Template `width:794px` = A4 @ 96dpi + `@page A4 margin:0` → vừa khít
+3. Không port HTML sang JSX → giữ pixel-perfect 100%
+4. Không cần migration DB
+5. Booking COMPLETED/CANCELLED: vẫn in (chỉ là phiếu, không sửa data)
+
+---
+
+## 📋 Tasks sẽ tạo khi triển
+1. Copy + chỉnh template V10 thành `public/print/booking-confirmation.html`
+2. Tạo `BookingConfirmationPrint.tsx` (fetch + iframe + print + permission)
+3. Tạo `PrintConfirmationButton.tsx` (dropdown chọn Tour lẻ/đoàn)
+4. Sửa `BookingDetail.tsx` + `App.tsx`
+
+Triển ngay khi được duyệt.
