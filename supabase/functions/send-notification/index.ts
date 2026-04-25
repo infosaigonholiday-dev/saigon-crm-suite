@@ -13,11 +13,8 @@ const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 function normalizeVapidSubject(raw: string): string {
   const v = (raw || "").trim();
   if (!v) return "mailto:info@saigonholiday.com";
-  // Đã có scheme hợp lệ → giữ nguyên
   if (/^(mailto:|https?:\/\/)/i.test(v)) return v;
-  // Email trần → thêm mailto:
   if (v.includes("@")) return `mailto:${v}`;
-  // Còn lại → fallback
   return "mailto:info@saigonholiday.com";
 }
 
@@ -56,28 +53,58 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Auth: accept either an authenticated user OR a service-role call (from other functions)
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
-    const isServiceRole = token === serviceRoleKey;
 
-    if (!isServiceRole) {
-      const userClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data, error } = await userClient.auth.getClaims(token);
-      if (error || !data?.claims) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    // Shared secret riêng cho DB trigger (không qua JWT). 
+    // Dùng SERVICE_ROLE_KEY làm secret — DB trigger gửi qua header x-internal-secret.
+    const internalSecret = req.headers.get("x-internal-secret") || "";
+
+    // 3 luồng auth được chấp nhận:
+    // 1) Service role key trong Authorization (gọi từ edge function khác như daily-reminders)
+    // 2) Internal secret header (gọi từ DB trigger qua pg_net)
+    // 3) JWT user hợp lệ (gọi từ frontend, vd nút "Gửi thử push")
+    const isServiceRole = token === serviceRoleKey;
+    const isInternalCall = internalSecret === serviceRoleKey;
+
+    let authedUserId: string | null = null;
+
+    if (!isServiceRole && !isInternalCall) {
+      // Phải là JWT user
+      if (!token) {
+        console.warn("[send-notification] no auth token provided");
+        return new Response(JSON.stringify({ error: "Unauthorized: missing token" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await userClient.auth.getClaims(token);
+      if (error || !data?.claims?.sub) {
+        console.warn("[send-notification] invalid JWT:", error?.message);
+        return new Response(JSON.stringify({ error: "Unauthorized: invalid JWT" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      authedUserId = data.claims.sub as string;
     }
 
     const body = (await req.json()) as PushBody;
     if (!body.user_id || !body.title) {
       return new Response(JSON.stringify({ error: "user_id and title are required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Bảo vệ: nếu là JWT user → chỉ được gửi cho chính mình (tránh abuse)
+    if (authedUserId && body.user_id !== authedUserId) {
+      console.warn(`[send-notification] user ${authedUserId} tried to push to ${body.user_id} — denied`);
+      return new Response(JSON.stringify({ error: "Forbidden: can only push to self" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -90,6 +117,7 @@ Deno.serve(async (req) => {
       .eq("user_id", body.user_id);
 
     if (subErr) {
+      console.error("[send-notification] DB select failed:", subErr.message);
       return new Response(JSON.stringify({ error: subErr.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -97,6 +125,7 @@ Deno.serve(async (req) => {
     }
 
     if (!subs || subs.length === 0) {
+      console.log(`[send-notification] no subscriptions for user ${body.user_id}`);
       return new Response(JSON.stringify({ sent: 0, failed: 0, reason: "no_subscriptions" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -113,6 +142,7 @@ Deno.serve(async (req) => {
     let failed = 0;
     const staleIds: string[] = [];
     const liveIds: string[] = [];
+    const errorDetails: Array<{ status?: number; body?: string }> = [];
 
     await Promise.all(
       subs.map(async (s) => {
@@ -127,10 +157,13 @@ Deno.serve(async (req) => {
         } catch (err: any) {
           failed++;
           const status = err?.statusCode || err?.status;
+          const errBody = err?.body || err?.message || String(err);
+          errorDetails.push({ status, body: errBody });
           if (status === 404 || status === 410) {
             staleIds.push(s.id);
+            console.log(`[send-notification] stale subscription removed: ${s.endpoint.slice(0, 60)}…`);
           } else {
-            console.error("[send-notification] push failed", status, err?.body || err?.message);
+            console.error(`[send-notification] push failed status=${status} body=${errBody} endpoint=${s.endpoint.slice(0, 60)}…`);
           }
         }
       })
@@ -146,11 +179,16 @@ Deno.serve(async (req) => {
         .in("id", liveIds);
     }
 
-    return new Response(JSON.stringify({ sent, failed, cleaned: staleIds.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log(
+      `[send-notification] result user=${body.user_id} sent=${sent} failed=${failed} cleaned=${staleIds.length}`
+    );
+
+    return new Response(
+      JSON.stringify({ sent, failed, cleaned: staleIds.length, errors: failed > 0 ? errorDetails : undefined }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err: any) {
-    console.error("[send-notification] error", err);
+    console.error("[send-notification] uncaught error:", err);
     return new Response(JSON.stringify({ error: err?.message || "unknown" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
