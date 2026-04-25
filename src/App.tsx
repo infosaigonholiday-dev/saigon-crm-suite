@@ -33,6 +33,7 @@ import ResetPassword from "./pages/ResetPassword";
 import FirstLoginChangePassword from "./pages/FirstLoginChangePassword";
 import RawContacts from "./pages/RawContacts";
 import B2BTours from "./pages/B2BTours";
+import AlertsCenter from "./pages/AlertsCenter";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
