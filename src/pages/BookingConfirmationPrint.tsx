@@ -76,6 +76,20 @@ export default function BookingConfirmationPrint() {
     enabled: !!booking?.quote_id,
   });
 
+  // Fallback: tour_package_id linked directly (no quote)
+  const { data: directPackage } = useQuery({
+    queryKey: ["print-tour-package", (booking as any)?.tour_package_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tour_packages")
+        .select("name, code, duration_days, duration_nights")
+        .eq("id", (booking as any).tour_package_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!(booking as any)?.tour_package_id && !booking?.quote_id,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["print-my-profile", user?.id],
     queryFn: async () => {
