@@ -37,9 +37,32 @@ const formatCurrency = (v: number | null) =>
 export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const [prefillData, setPrefillData] = useState<any>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
   const { user } = useAuth();
+
+  // Đọc prefill_tour từ URL khi từ Kho Tour B2B chuyển sang
+  useEffect(() => {
+    const tourCode = searchParams.get("prefill_tour");
+    if (tourCode) {
+      supabase
+        .from("b2b_tours")
+        .select("tour_code, destination, departure_date, price_adl")
+        .eq("tour_code", tourCode)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setPrefillData(data);
+            setDialogOpen(true);
+          }
+          searchParams.delete("prefill_tour");
+          setSearchParams(searchParams, { replace: true });
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scope = getScope("bookings");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
