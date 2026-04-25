@@ -52,13 +52,29 @@ export function AppSidebar() {
     refetchInterval: 60000,
   });
 
+  // Cảnh báo khẩn cấp (priority='high' chưa đọc) cho badge "Cảnh báo"
+  const { data: alertCount = 0 } = useQuery({
+    queryKey: ["alerts-badge", user?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("is_read", false)
+        .eq("priority", "high");
+      return count ?? 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
+
   const visibleModules = getVisibleModules();
 
   const crmItems: MenuItem[] = [
     { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
+    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Kho Data", url: "/kho-data", icon: Database, moduleKey: "raw_contacts" },
     { title: "LKH Tour 2026", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
-    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
     { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
     { title: "Lịch trình", url: "/lich-trinh", icon: Route, moduleKey: "itineraries" },
