@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -47,6 +47,8 @@ function isInIframe(): boolean {
   }
 }
 
+type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -54,6 +56,7 @@ export function usePushSubscription() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [inIframe, setInIframe] = useState(false);
+  const subscribeRef = useRef<(() => Promise<SubscribeResult>) | null>(null);
 
   useEffect(() => {
     const supported =
@@ -72,20 +75,67 @@ export function usePushSubscription() {
     });
   }, []);
 
+  // Auto-detect VAPID key mismatch & re-subscribe
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported || !user) return;
     (async () => {
       try {
         const reg = await navigator.serviceWorker.getRegistration("/sw.js");
         const sub = await reg?.pushManager.getSubscription();
-        setIsSubscribed(!!sub);
-        console.log("[push] existing subscription?", !!sub);
+        if (!sub) {
+          setIsSubscribed(false);
+          console.log("[push] no existing subscription");
+          return;
+        }
+
+        // So sánh applicationServerKey hiện tại với VAPID_PUBLIC_KEY
+        const currentKey = sub.options?.applicationServerKey;
+        const expectedBytes = VAPID_PUBLIC_KEY ? urlBase64ToUint8Array(VAPID_PUBLIC_KEY) : null;
+        const keyMatches = (() => {
+          if (!currentKey || !expectedBytes) return false;
+          const currentBytes = new Uint8Array(currentKey as ArrayBuffer);
+          if (currentBytes.byteLength !== expectedBytes.byteLength) return false;
+          for (let i = 0; i < currentBytes.length; i++) {
+            if (currentBytes[i] !== expectedBytes[i]) return false;
+          }
+          return true;
+        })();
+
+        if (!keyMatches && VAPID_PUBLIC_KEY) {
+          console.warn(
+            "[push] VAPID key changed — auto re-subscribing existing subscription"
+          );
+          // Xóa cả DB record + browser subscription
+          try {
+            await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          } catch (e) {
+            console.warn("[push] failed to delete old DB record", e);
+          }
+          try {
+            await sub.unsubscribe();
+          } catch (e) {
+            console.warn("[push] failed to unsubscribe browser sub", e);
+          }
+          setIsSubscribed(false);
+
+          // Tự động subscribe lại nếu permission='granted' và không trong iframe
+          if (Notification.permission === "granted" && !isInIframe()) {
+            console.log("[push] auto-creating new subscription with current VAPID key");
+            await subscribeRef.current?.();
+          } else {
+            console.log("[push] permission not granted or in iframe — user must re-enable manually");
+          }
+          return;
+        }
+
+        setIsSubscribed(true);
+        console.log("[push] existing subscription matches current VAPID key");
       } catch (e) {
-        console.warn("[push] getSubscription failed", e);
+        console.warn("[push] subscription check failed", e);
         setIsSubscribed(false);
       }
     })();
-  }, [isSupported]);
+  }, [isSupported, user]);
 
   const subscribe = useCallback(async (): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
     console.log("[push] subscribe() called");
@@ -199,6 +249,11 @@ export function usePushSubscription() {
       setLoading(false);
     }
   }, [isSupported, user, inIframe]);
+
+  // Keep ref in sync so the auto re-subscribe effect can call latest subscribe
+  useEffect(() => {
+    subscribeRef.current = subscribe;
+  }, [subscribe]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported || !user) return { ok: false };

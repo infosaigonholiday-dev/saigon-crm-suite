@@ -25,10 +25,13 @@ export function PushNotificationToggle() {
   const { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
     usePushSubscription();
   const [testing, setTesting] = useState(false);
+  const [resubscribing, setResubscribing] = useState(false);
+  const [lastTestFailed, setLastTestFailed] = useState(false);
 
   const handleTestPush = async () => {
     if (!user) return;
     setTesting(true);
+    setLastTestFailed(false);
     try {
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
@@ -47,14 +50,33 @@ export function PushNotificationToggle() {
         toast.success(`Đã gửi push tới ${sent} thiết bị (${failed} lỗi). Kiểm tra màn hình.`);
       } else if (reason === "no_subscriptions") {
         toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này.");
+        setLastTestFailed(true);
       } else {
-        toast.error(`Push thất bại (sent=${sent}, failed=${failed})`);
+        toast.error(`Push thất bại (sent=${sent}, failed=${failed}). Nhấn "Đăng ký lại" bên dưới.`);
+        setLastTestFailed(true);
       }
     } catch (e: any) {
       console.error("[push] test failed", e);
       toast.error("Không gọi được send-notification: " + (e?.message || String(e)));
+      setLastTestFailed(true);
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleResubscribe = async () => {
+    setResubscribing(true);
+    try {
+      await unsubscribe();
+      const r = await subscribe();
+      if (r.ok) {
+        toast.success("Đã đăng ký lại subscription mới. Bấm 'Gửi thử push' để test.");
+        setLastTestFailed(false);
+      } else {
+        toast.error("Không đăng ký lại được: " + (r.detail || r.error || "lỗi không rõ"));
+      }
+    } finally {
+      setResubscribing(false);
     }
   };
 
@@ -150,23 +172,49 @@ export function PushNotificationToggle() {
         </div>
 
         {isSubscribed && (
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
-            <p className="text-xs text-muted-foreground">
-              Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleTestPush}
-              disabled={testing}
-            >
-              {testing ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
-              ) : (
-                <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
-              )}
-            </Button>
+          <div className="mt-4 space-y-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleTestPush}
+                disabled={testing || resubscribing}
+              >
+                {testing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
+                )}
+              </Button>
+            </div>
+
+            {lastTestFailed && (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 p-3">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-foreground">Push test thất bại</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Có thể do subscription cũ không khớp khoá VAPID hiện tại. Nhấn "Đăng ký lại" để tạo subscription mới.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleResubscribe}
+                  disabled={resubscribing || testing}
+                >
+                  {resubscribing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang đăng ký…</>
+                  ) : (
+                    "Đăng ký lại"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
