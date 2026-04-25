@@ -20,6 +20,7 @@ export const ALL_PERMISSION_KEYS = [
   "workflow.view", "workflow.create",
   "settings.view", "settings.edit",
   "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
+  "b2b_tours.view", "b2b_tours.logs",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
