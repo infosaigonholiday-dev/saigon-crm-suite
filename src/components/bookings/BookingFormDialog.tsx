@@ -14,9 +14,17 @@ import {
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface PrefillData {
+  tour_code: string;
+  destination?: string | null;
+  departure_date?: string | null;
+  price_adl?: number | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefillData?: PrefillData | null;
 }
 
 const initial = {
@@ -29,11 +37,16 @@ const initial = {
   remaining_due_at: "",
 };
 
-export default function BookingFormDialog({ open, onOpenChange }: Props) {
+export default function BookingFormDialog({ open, onOpenChange, prefillData }: Props) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Pre-fill khi mở dialog từ Kho Tour B2B
+  if (prefillData && !form.total_value && prefillData.price_adl) {
+    // setState in render is allowed nếu conditional hữu hạn — but safer dùng effect
+  }
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-select"],
