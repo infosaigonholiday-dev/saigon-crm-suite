@@ -1,8 +1,11 @@
-import { Bell, BellOff, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Bell, BellOff, ExternalLink, Send, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { usePushSubscription, type PushSubscribeError } from "@/hooks/usePushSubscription";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
