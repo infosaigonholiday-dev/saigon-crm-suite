@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BookingFormDialog from "@/components/bookings/BookingFormDialog";
@@ -106,7 +106,14 @@ export default function Bookings() {
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Tạo booking</Button>
       </div>
-      <BookingFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <BookingFormDialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setPrefillData(null);
+        }}
+        prefillData={prefillData}
+      />
 
       <Card>
         <CardContent className="p-0">
