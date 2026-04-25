@@ -35,6 +35,7 @@ export default function BookingDetail() {
   const { user } = useAuth();
   const { userRole } = useAuth();
   const { hasPermission } = usePermissions();
+  useAutoMarkNotificationsRead("booking", id);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["booking", id],
