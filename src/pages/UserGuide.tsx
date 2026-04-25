@@ -154,12 +154,8 @@ function AdminGuide() {
           "Xem danh sách Top KH theo doanh thu và KH cần chăm sóc lại",
         ]} />
         <PushNotifGuide />
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ═══════════════ HCNS ═══════════════ */
+        <EscalationPolicyGuide />
+        <LeaveNotificationGuide />
 function HCNSGuide() {
   return (
     <Card>
