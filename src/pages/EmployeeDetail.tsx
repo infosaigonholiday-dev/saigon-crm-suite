@@ -24,6 +24,8 @@ import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { PushNotificationCard } from "@/components/PushNotificationCard";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -48,6 +50,7 @@ export default function EmployeeDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { hasPermission } = usePermissions();
+  const { user } = useAuth();
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],
