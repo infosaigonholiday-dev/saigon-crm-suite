@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -44,9 +44,15 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
   const qc = useQueryClient();
 
   // Pre-fill khi mở dialog từ Kho Tour B2B
-  if (prefillData && !form.total_value && prefillData.price_adl) {
-    // setState in render is allowed nếu conditional hữu hạn — but safer dùng effect
-  }
+  useEffect(() => {
+    if (open && prefillData) {
+      setForm((p) => ({
+        ...p,
+        code: p.code || `BK-${prefillData.tour_code}`,
+        total_value: p.total_value || (prefillData.price_adl ? String(prefillData.price_adl) : ""),
+      }));
+    }
+  }, [open, prefillData]);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-select"],
