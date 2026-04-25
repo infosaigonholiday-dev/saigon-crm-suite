@@ -25,14 +25,17 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export default function LeaveManagement() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { hasPermission, getScope } = usePermissions();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
   const scope = getScope("leave");
   const canApprove = hasPermission("leave", "approve");
-  const showTeamTab = scope === "all" || scope === "department";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isHrStaff = userRole === "HR_MANAGER" || userRole === "HCNS";
+  // ADMIN, HR_MANAGER, HCNS xem tất cả; Manager/GDKD xem theo phòng
+  const showTeamTab = isAdmin || isHrStaff || scope === "all" || scope === "department";
 
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
 
