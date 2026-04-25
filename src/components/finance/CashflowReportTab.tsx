@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { exportToCSV } from "@/lib/exportUtils";
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const formatVND = (v: number) => {
   if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(1) + "tr";
@@ -26,12 +29,14 @@ export function CashflowReportTab() {
   });
 
   const latest = data.length > 0 ? data[data.length - 1] : null;
+  const negativeMonths = data.filter((r) => (r.net_cashflow ?? 0) < 0);
 
   const chartData = data.map((r) => ({
     month: `T${r.month}`,
     inflow: (r.total_inflow ?? 0) / 1_000_000,
     outflow: (r.total_outflow ?? 0) / 1_000_000,
     net: (r.net_cashflow ?? 0) / 1_000_000,
+    isNegative: (r.net_cashflow ?? 0) < 0,
   }));
 
   if (isLoading) {
@@ -40,7 +45,38 @@ export function CashflowReportTab() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Dòng tiền — {currentYear}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Dòng tiền — {currentYear}</h2>
+        <TooltipProvider>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => exportToCSV(
+                data.map(r => ({
+                  Tháng: r.month,
+                  'Số dư đầu kỳ': r.opening_balance ?? 0,
+                  'Thu vào': r.total_inflow ?? 0,
+                  'Chi ra': r.total_outflow ?? 0,
+                  'Dòng tiền ròng': r.net_cashflow ?? 0,
+                  'Số dư cuối kỳ': r.closing_balance ?? 0,
+                })),
+                'bao-cao-dong-tien'
+              )} disabled={data.length === 0}>
+                <Download className="h-4 w-4 mr-2" />Xuất CSV
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Tải file CSV — mở bằng Google Sheet hoặc Excel</TooltipContent>
+          </UiTooltip>
+        </TooltipProvider>
+      </div>
+
+      {negativeMonths.length > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <span className="font-medium">
+            ⚠️ Cảnh báo: dòng tiền âm trong {negativeMonths.length} tháng ({negativeMonths.map((r) => `T${r.month}`).join(", ")})
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -58,7 +94,9 @@ export function CashflowReportTab() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">Dòng tiền ròng tháng gần nhất</p>
-            <p className="text-2xl font-bold mt-1">{formatVND(latest?.net_cashflow ?? 0)}</p>
+            <p className={`text-2xl font-bold mt-1 ${(latest?.net_cashflow ?? 0) < 0 ? "text-destructive" : ""}`}>
+              {formatVND(latest?.net_cashflow ?? 0)}
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -651,6 +651,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           id: string
+          last_reminder_at: string | null
           review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -667,6 +668,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           id?: string
+          last_reminder_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -683,6 +685,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           id?: string
+          last_reminder_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -794,6 +797,7 @@ export type Database = {
           created_by: string
           estimate_id: string
           id: string
+          last_reminder_at: string | null
           refund_amount: number | null
           refund_status: string | null
           review_note: string | null
@@ -822,6 +826,7 @@ export type Database = {
           created_by: string
           estimate_id: string
           id?: string
+          last_reminder_at?: string | null
           refund_amount?: number | null
           refund_status?: string | null
           review_note?: string | null
@@ -850,6 +855,7 @@ export type Database = {
           created_by?: string
           estimate_id?: string
           id?: string
+          last_reminder_at?: string | null
           refund_amount?: number | null
           refund_status?: string | null
           review_note?: string | null
