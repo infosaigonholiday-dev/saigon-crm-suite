@@ -30,9 +30,19 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
-export function ApprovalTab() {
+interface Props {
+  /** 'hr' = HR_MANAGER duyệt lớp 1 (PENDING_HR → PENDING_REVIEW). 'accountant' = KETOAN duyệt lớp 2 (PENDING_REVIEW → APPROVED). */
+  stage?: "hr" | "accountant";
+}
+
+export function ApprovalTab({ stage = "accountant" }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  const sourceStatus = stage === "hr" ? "PENDING_HR" : "PENDING_REVIEW";
+  const nextStatus = stage === "hr" ? "PENDING_REVIEW" : "APPROVED";
+  const stageLabel = stage === "hr" ? "HR duyệt lớp 1" : "Kế toán duyệt";
+  const queryKeyBase = stage === "hr" ? "approval-hr" : "approval-accountant";
 
   const [filterCategory, setFilterCategory] = useState("ALL");
   const [filterSubmitter, setFilterSubmitter] = useState("ALL");
@@ -43,26 +53,18 @@ export function ApprovalTab() {
   const [rejectNote, setRejectNote] = useState("");
 
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["approval-transactions", filterCategory, filterSubmitter, dateFrom, dateTo],
+    queryKey: [queryKeyBase, "list", filterCategory, filterSubmitter, dateFrom, dateTo],
     queryFn: async () => {
       let query = supabase
         .from("transactions")
         .select("*, profiles!transactions_submitted_by_fkey(full_name)")
-        .eq("approval_status", "PENDING_REVIEW")
+        .eq("approval_status", sourceStatus)
         .order("created_at", { ascending: false });
 
-      if (filterCategory !== "ALL") {
-        query = query.eq("category", filterCategory);
-      }
-      if (filterSubmitter !== "ALL") {
-        query = query.eq("submitted_by", filterSubmitter);
-      }
-      if (dateFrom) {
-        query = query.gte("transaction_date", dateFrom);
-      }
-      if (dateTo) {
-        query = query.lte("transaction_date", dateTo);
-      }
+      if (filterCategory !== "ALL") query = query.eq("category", filterCategory);
+      if (filterSubmitter !== "ALL") query = query.eq("submitted_by", filterSubmitter);
+      if (dateFrom) query = query.gte("transaction_date", dateFrom);
+      if (dateTo) query = query.lte("transaction_date", dateTo);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -70,22 +72,18 @@ export function ApprovalTab() {
     },
   });
 
-  // Get distinct submitters for filter
   const { data: submitters = [] } = useQuery({
-    queryKey: ["approval-submitters"],
+    queryKey: [queryKeyBase, "submitters"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
         .select("submitted_by, profiles!transactions_submitted_by_fkey(full_name)")
-        .eq("approval_status", "PENDING_REVIEW")
+        .eq("approval_status", sourceStatus)
         .not("submitted_by", "is", null);
       if (error) throw error;
-      // Deduplicate
       const map = new Map<string, string>();
       (data || []).forEach((r: any) => {
-        if (r.submitted_by && r.profiles?.full_name) {
-          map.set(r.submitted_by, r.profiles.full_name);
-        }
+        if (r.submitted_by && r.profiles?.full_name) map.set(r.submitted_by, r.profiles.full_name);
       });
       return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
     },
@@ -93,42 +91,58 @@ export function ApprovalTab() {
 
   const approveMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const updates = ids.map((id) =>
-        supabase.from("transactions").update({
-          approval_status: "APPROVED",
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-        }).eq("id", id)
-      );
+      const stamp = new Date().toISOString();
+      const patch: any = { approval_status: nextStatus };
+      if (stage === "hr") {
+        patch.hr_reviewed_by = user?.id;
+        patch.hr_reviewed_at = stamp;
+      } else {
+        patch.reviewed_by = user?.id;
+        patch.reviewed_at = stamp;
+        patch.accountant_reviewed_by = user?.id;
+        patch.accountant_reviewed_at = stamp;
+      }
+      const updates = ids.map((id) => supabase.from("transactions").update(patch).eq("id", id));
       const results = await Promise.all(updates);
       const err = results.find((r) => r.error);
       if (err?.error) throw err.error;
     },
     onSuccess: (_, ids) => {
-      queryClient.invalidateQueries({ queryKey: ["approval-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["approval-submitters"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-hr"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-accountant"] });
       queryClient.invalidateQueries({ queryKey: ["pending-approval-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-hr-count"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`Đã duyệt ${ids.length} phiếu`);
+      toast.success(stage === "hr" ? `Đã chuyển ${ids.length} phiếu sang Kế toán` : `Đã duyệt ${ids.length} phiếu`);
       setSelectedIds([]);
     },
-    onError: () => toast.error("Lỗi khi duyệt"),
+    onError: (e: any) => toast.error("Lỗi khi duyệt: " + (e?.message ?? "")),
   });
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, note }: { id: string; note: string }) => {
-      const { error } = await supabase.from("transactions").update({
+      const stamp = new Date().toISOString();
+      const patch: any = {
         approval_status: "REJECTED",
-        reviewed_by: user?.id,
-        reviewed_at: new Date().toISOString(),
         review_note: note || null,
-      }).eq("id", id);
+      };
+      if (stage === "hr") {
+        patch.hr_reviewed_by = user?.id;
+        patch.hr_reviewed_at = stamp;
+      } else {
+        patch.reviewed_by = user?.id;
+        patch.reviewed_at = stamp;
+        patch.accountant_reviewed_by = user?.id;
+        patch.accountant_reviewed_at = stamp;
+      }
+      const { error } = await supabase.from("transactions").update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["approval-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["approval-submitters"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-hr"] });
+      queryClient.invalidateQueries({ queryKey: ["approval-accountant"] });
       queryClient.invalidateQueries({ queryKey: ["pending-approval-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-hr-count"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Đã từ chối phiếu");
       setRejectTarget(null);
@@ -138,22 +152,16 @@ export function ApprovalTab() {
   });
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   const toggleAll = () => {
-    if (selectedIds.length === transactions.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(transactions.map((t: any) => t.id));
-    }
+    if (selectedIds.length === transactions.length) setSelectedIds([]);
+    else setSelectedIds(transactions.map((t: any) => t.id));
   };
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-end">
@@ -193,28 +201,21 @@ export function ApprovalTab() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base">
-            Chi phí chờ duyệt ({transactions.length})
+            {stageLabel} ({transactions.length})
           </CardTitle>
           {selectedIds.length > 0 && (
-            <Button
-              size="sm"
-              onClick={() => approveMutation.mutate(selectedIds)}
-              disabled={approveMutation.isPending}
-            >
+            <Button size="sm" onClick={() => approveMutation.mutate(selectedIds)} disabled={approveMutation.isPending}>
               <CheckCheck className="h-4 w-4 mr-1" />
-              Duyệt {selectedIds.length} phiếu
+              {stage === "hr" ? `Chuyển ${selectedIds.length} sang KT` : `Duyệt ${selectedIds.length} phiếu`}
             </Button>
           )}
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : transactions.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">Không có chi phí nào chờ duyệt</p>
           ) : (
@@ -222,10 +223,7 @@ export function ApprovalTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={selectedIds.length === transactions.length && transactions.length > 0}
-                      onCheckedChange={toggleAll}
-                    />
+                    <Checkbox checked={selectedIds.length === transactions.length && transactions.length > 0} onCheckedChange={toggleAll} />
                   </TableHead>
                   <TableHead>Ngày</TableHead>
                   <TableHead>Người nhập</TableHead>
@@ -240,42 +238,22 @@ export function ApprovalTab() {
                 {transactions.map((t: any) => (
                   <TableRow key={t.id}>
                     <TableCell>
-                      <Checkbox
-                        checked={selectedIds.includes(t.id)}
-                        onCheckedChange={() => toggleSelect(t.id)}
-                      />
+                      <Checkbox checked={selectedIds.includes(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{t.transaction_date}</TableCell>
                     <TableCell>{(t.profiles as any)?.full_name || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{CATEGORY_LABELS[t.category] || t.category}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant="outline">{CATEGORY_LABELS[t.category] || t.category}</Badge></TableCell>
                     <TableCell className="max-w-[250px] truncate">{t.description || "—"}</TableCell>
-                    <TableCell className="text-right font-medium text-destructive">
-                      -{formatCurrency(Number(t.amount))}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {t.payment_method === "CASH" ? "Tiền mặt" : "CK"}
-                    </TableCell>
+                    <TableCell className="text-right font-medium text-destructive">-{formatCurrency(Number(t.amount))}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{t.payment_method === "CASH" ? "Tiền mặt" : "CK"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => approveMutation.mutate([t.id])}
-                          disabled={approveMutation.isPending}
-                          title="Duyệt"
-                        >
+                        <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => approveMutation.mutate([t.id])} disabled={approveMutation.isPending} title={stage === "hr" ? "Chuyển KT" : "Duyệt"}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => { setRejectTarget(t); setRejectNote(""); }}
-                          title="Từ chối"
-                        >
+                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => { setRejectTarget(t); setRejectNote(""); }} title="Từ chối">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -288,12 +266,9 @@ export function ApprovalTab() {
         </CardContent>
       </Card>
 
-      {/* Reject Dialog */}
       <Dialog open={!!rejectTarget} onOpenChange={(o) => { if (!o) setRejectTarget(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Từ chối chi phí</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Từ chối chi phí</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {rejectTarget && (
               <div className="text-sm text-muted-foreground">
@@ -303,20 +278,12 @@ export function ApprovalTab() {
             )}
             <div>
               <Label>Lý do từ chối *</Label>
-              <Textarea
-                value={rejectNote}
-                onChange={(e) => setRejectNote(e.target.value)}
-                rows={3}
-                placeholder="Nhập lý do từ chối..."
-              />
+              <Textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={3} placeholder="Nhập lý do từ chối..." />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setRejectTarget(null)}>Huỷ</Button>
-              <Button
-                variant="destructive"
-                onClick={() => rejectMutation.mutate({ id: rejectTarget.id, note: rejectNote })}
-                disabled={rejectMutation.isPending || !rejectNote.trim()}
-              >
+              <Button variant="destructive" onClick={() => rejectMutation.mutate({ id: rejectTarget.id, note: rejectNote })}
+                disabled={rejectMutation.isPending || !rejectNote.trim()}>
                 Từ chối
               </Button>
             </div>
