@@ -156,6 +156,12 @@ function AdminGuide() {
         <PushNotifGuide />
         <EscalationPolicyGuide />
         <LeaveNotificationGuide />
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════ HCNS ═══════════════ */
 function HCNSGuide() {
   return (
     <Card>
