@@ -9,10 +9,15 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, AlertCircle, AlertTriangle, Loader2, Printer } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
+import { canPrintBookingConfirmation, DEPT_PRINT_ROLES } from "@/lib/bookingPrintAccess";
 
 const PAGE_SIZE = 20;
 
@@ -41,7 +46,7 @@ export default function Bookings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   // Đọc prefill_tour từ URL khi từ LKH Tour 2026 chuyển sang
   useEffect(() => {
@@ -66,6 +71,11 @@ export default function Bookings() {
 
   const scope = getScope("bookings");
   const { data: myDeptId } = useMyDepartmentId(scope === "department");
+
+  // Lấy department_id cho check quyền in (cần thiết cho MANAGER/GDKD ngay cả khi scope=all).
+  const needPrintDept = (DEPT_PRINT_ROLES as readonly string[]).includes(userRole || "") && scope !== "department";
+  const { data: myDeptIdForPrint } = useMyDepartmentId(needPrintDept);
+  const effectiveMyDeptId = myDeptId ?? myDeptIdForPrint ?? null;
 
   function applyScopeFilter(q: any) {
     if (scope === "personal" && user?.id) {
@@ -93,7 +103,7 @@ export default function Bookings() {
     queryFn: async () => {
       let q = supabase
         .from("bookings")
-        .select("id, code, customer_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
+        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
@@ -153,6 +163,7 @@ export default function Bookings() {
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Hạn cọc</TableHead>
                   <TableHead>Hạn thanh toán</TableHead>
+                  <TableHead className="text-center w-[80px]">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -162,6 +173,12 @@ export default function Bookings() {
                   const depositOverdue = status === "PENDING" && isOverdue(b.deposit_due_at);
                   const paymentOverdue = status === "DEPOSITED" && isOverdue(b.remaining_due_at);
                   const customerName = (b.customers as any)?.full_name ?? "—";
+                  const canPrint = canPrintBookingConfirmation({
+                    userRole,
+                    userId: user?.id,
+                    myDeptId: effectiveMyDeptId,
+                    booking: { sale_id: (b as any).sale_id, department_id: (b as any).department_id },
+                  });
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
                       <TableCell className="font-mono text-xs">
@@ -188,11 +205,47 @@ export default function Bookings() {
                           {b.remaining_due_at ?? "—"}
                         </span>
                       </TableCell>
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        {canPrint ? (
+                          <DropdownMenu>
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Printer className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>In phiếu xác nhận</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  window.open(`/dat-tour/${b.id}/in-xac-nhan?type=le`, "_blank", "noopener,noreferrer")
+                                }
+                              >
+                                ✈ Tour lẻ (Cá nhân/Gia đình)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  window.open(`/dat-tour/${b.id}/in-xac-nhan?type=doan`, "_blank", "noopener,noreferrer")
+                                }
+                              >
+                                🚌 Tour đoàn (Nhóm/Doanh nghiệp)
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {bookings.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
