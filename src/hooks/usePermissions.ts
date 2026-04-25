@@ -45,6 +45,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   workflow: { label: "Quy trình", keys: ["workflow.view", "workflow.create"] },
   settings: { label: "Cài đặt", keys: ["settings.view", "settings.edit"] },
   raw_contacts: { label: "Kho Data", keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
+  b2b_tours: { label: "Kho Tour B2B", keys: ["b2b_tours.view", "b2b_tours.logs"] },
 };
 
 // Scope rules
