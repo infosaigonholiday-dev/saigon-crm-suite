@@ -2,9 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const VAPID_PUBLIC_KEY =
-  (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ||
-  "BNpfULcP4VHvXsJez4GYvQLR_6uhSW6vWPzSo9QiZW5T7toIMU-YaJkX5ue4EI96HFJHclyVslPdXpdFe3tEXJ4";
+const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ?? "";
+
+if (!VAPID_PUBLIC_KEY && typeof window !== "undefined") {
+  console.error(
+    "[push] VITE_VAPID_PUBLIC_KEY is missing in .env — Web Push will fail. " +
+    "Add it to .env and restart dev server."
+  );
+}
 
 export type PushSubscribeError =
   | "unsupported"

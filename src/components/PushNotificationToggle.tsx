@@ -1,8 +1,11 @@
-import { Bell, BellOff, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Bell, BellOff, ExternalLink, Send, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { usePushSubscription, type PushSubscribeError } from "@/hooks/usePushSubscription";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
@@ -18,8 +21,43 @@ const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
 };
 
 export function PushNotificationToggle() {
+  const { user } = useAuth();
   const { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
     usePushSubscription();
+  const [testing, setTesting] = useState(false);
+
+  const handleTestPush = async () => {
+    if (!user) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          user_id: user.id,
+          title: "🔔 Test Web Push",
+          message: "Nếu bạn thấy thông báo này trên màn hình → cấu hình push hoạt động tốt!",
+          url: "/cai-dat",
+          tag: "test-push-" + Date.now(),
+        },
+      });
+      if (error) throw error;
+      const sent = (data as { sent?: number; failed?: number; reason?: string })?.sent ?? 0;
+      const failed = (data as { failed?: number })?.failed ?? 0;
+      const reason = (data as { reason?: string })?.reason;
+      if (sent > 0) {
+        toast.success(`Đã gửi push tới ${sent} thiết bị (${failed} lỗi). Kiểm tra màn hình.`);
+      } else if (reason === "no_subscriptions") {
+        toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này.");
+      } else {
+        toast.error(`Push thất bại (sent=${sent}, failed=${failed})`);
+      }
+    } catch (e: any) {
+      console.error("[push] test failed", e);
+      toast.error("Không gọi được send-notification: " + (e?.message || String(e)));
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   if (!isSupported) {
     return (
@@ -110,6 +148,27 @@ export function PushNotificationToggle() {
             disabled={loading || permission === "denied" || inIframe}
           />
         </div>
+
+        {isSubscribed && (
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <p className="text-xs text-muted-foreground">
+              Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleTestPush}
+              disabled={testing}
+            >
+              {testing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
+              ) : (
+                <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
