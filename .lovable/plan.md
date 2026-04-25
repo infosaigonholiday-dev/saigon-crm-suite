@@ -1,81 +1,62 @@
+## 🎨 Phần 1 — Đổi tên & màu LKH Tour 2026
 
-# Plan: Hệ thống cảnh báo nâng cao (Lớp 1+2+3+6)
+**`src/components/AppSidebar.tsx`**
+- Đổi label `"Kho Tour B2B"` → `"LKH Tour 2026"` (giữ nguyên route `/b2b-tours`, moduleKey `b2b_tours`)
+- Khi item `moduleKey === "b2b_tours"` active: override class sang `bg-blue-600 text-white hover:bg-blue-700`
 
-## Lớp 1 — Schema + Trigger leave_requests (Migration)
+**`src/pages/B2BTours.tsx`**
+- Đổi tiêu đề trang → "LKH Tour 2026"
+- Các nút chính + badge giá: `bg-blue-600 hover:bg-blue-700`
+- Icon header + active indicators: `text-blue-600`
 
-**1.1 Mở rộng `notifications`:**
-- Thêm cột: `read_at TIMESTAMPTZ`, `escalation_level SMALLINT DEFAULT 0`, `escalated_at TIMESTAMPTZ`, `priority TEXT DEFAULT 'normal'` (low/normal/high/critical)
-- Index: `idx_notif_unread_age (user_id, is_read, created_at) WHERE is_read=false`, `idx_notif_dedup (user_id, entity_id, type, created_at)`
+> Giữ nguyên: route, permission keys, tên bảng DB → không phá phân quyền.
 
-**1.2 Trigger auto `read_at`:**
-- Function `set_notification_read_at()` BEFORE UPDATE: nếu `is_read` chuyển false→true thì set `read_at = now()`
+---
 
-**1.3 Trigger `leave_requests`:**
-- Kiểm tra schema bảng `leave_requests` thực tế trước khi viết
-- Function `notify_leave_request_change()`:
-  - INSERT: insert notifications cho HR_MANAGER + HCNS + ADMIN + MANAGER cùng `department_id` với người tạo đơn (priority=high)
-  - UPDATE status (APPROVED/REJECTED): notify chính người tạo đơn
-  - Dùng `pg_net.http_post` gọi `send-notification` để fire web push ngay
+## 🔐 Phần 2 — Fix luồng duyệt nghỉ phép (Phương án 2)
 
-## Lớp 2 — Escalation Lv1 (`daily-reminders`)
+### Migration SQL
 
-Block mới đầu function:
-- Query notifications WHERE `is_read=false` AND `escalation_level=0` AND `created_at < now()-3d`
-- Group by user_id, đếm số noti tồn đọng
-- Tìm Manager/GDKD cùng `department_id` của staff
-- Insert 1 noti gộp cho Manager: *"⚠️ {staff_name} có {N} cảnh báo chưa đọc quá 3 ngày"*
-- UPDATE batch: set `escalation_level=1`, `escalated_at=now()` cho noti gốc
-- Bắn web push qua `sendPush` helper
+**2.1. Cập nhật trigger `notify_leave_request_change`:**
+- Loại người tạo đơn khỏi recipients
+- Nhận diện cấp quản lý qua role (`ADMIN/SUPER_ADMIN/HR_MANAGER/HCNS/MANAGER/GDKD/DIEUHAN`) HOẶC position (`GIAM_DOC/PHO_GIAM_DOC/TRUONG_PHONG/PHO_PHONG`)
+- Cấp quản lý xin nghỉ → chỉ ADMIN+SUPER_ADMIN+HR_MANAGER nhận noti
+- Nhân viên thường → HR/HCNS + Manager/GDKD cùng phòng nhận
 
-## Lớp 3 — Mở rộng deadline alerts (`daily-reminders`)
+**2.2. RLS policy `leave_requests_update_approval`:**
+- Không tự duyệt đơn của mình
+- ADMIN/HR_MANAGER duyệt được tất cả
+- Manager/GDKD chỉ duyệt nhân viên thường cùng phòng (loại trừ Manager+/HR/Admin/Trưởng-Phó phòng)
 
-Thêm 6 block (verify schema cột trước khi query):
+---
 
-| # | Loại | Điều kiện | Người nhận | Type | Priority |
-|---|------|-----------|------------|------|----------|
-| 3.1 | Booking khởi hành | T-7, T-3, T-1 | sale + Manager + DIEUHAN | BOOKING_DEPARTURE_NEAR | high (T-1=critical) |
-| 3.2 | Hạn thanh toán | deposit_due_at/remaining_due_at ≤ today+3 | sale + KETOAN | PAYMENT_DUE | high |
-| 3.3 | Contract chờ duyệt | status=DRAFT >2 ngày | GDKD + MANAGER + DIEUHAN | CONTRACT_APPROVAL_OVERDUE | normal |
-| 3.4 | Quotation không phản hồi | status=SENT >5 ngày | sale | QUOTATION_NO_RESPONSE | normal |
-| 3.5 | Sinh nhật nhân viên | date_of_birth=today | HR_MANAGER + HCNS + Manager dept | EMPLOYEE_BIRTHDAY | normal |
-| 3.6 | HĐLĐ sắp hết hạn | T-30, T-7 (nếu cột tồn tại) | HR_MANAGER + HCNS + ADMIN | EMPLOYEE_CONTRACT_EXPIRING | high |
+## 🖥️ Phần 3 — UI `LeaveManagement.tsx`
 
-Mỗi insert thành công → fire push qua `sendPush`. Dedup theo (user_id, entity_id, type, created_at hôm nay).
+- Ẩn nút Duyệt/Từ chối cho đơn của chính mình → badge "Chờ cấp trên duyệt"
+- Thêm cột "Cấp": badge `Quản lý` (đỏ cam) vs `Nhân viên` (xanh)
+- Banner "⚠️ Đơn này cần ADMIN duyệt" khi Manager/GDKD xem đơn cấp ngang/trên + disable buttons
 
-**Cập nhật `NotificationBell.tsx`:**
-- Import icons: Plane, CreditCard, FileSignature, FileText, Cake, UserX
-- Mở rộng `typeIcons` map cho 6 type mới
-- Mở rộng `entityRouteMap`: `quotation → /bao-gia`, `contract → /hop-dong`, `booking → /dat-tour/{id}`, `employee → /nhan-su/{id}`, `leave_request → /quan-ly-nghi-phep`
+---
 
-## Lớp 6 — UserGuide.tsx
+## 📚 Phần 4 — `UserGuide.tsx`
 
-**6.1 Rewrite `PushNotifGuide()`:**
-- Thay nội dung "vào Cài đặt" bằng 2 cách: Header (BellOff icon) + Hồ sơ cá nhân (PushNotificationCard)
-- Lưu ý đa thiết bị / iOS Add to Home Screen / iframe / browser blocked / Intern-Sales mọi role đều bật được
+Mở rộng `LeaveNotificationGuide()` document quy tắc PA2:
+- Nhân viên → Manager + HR duyệt
+- Trưởng/Phó phòng → CHỈ ADMIN + HR Trưởng
+- HR Trưởng/HCNS → CHỈ ADMIN
+- Không ai tự duyệt
 
-**6.2 Thêm `EscalationPolicyGuide()`** (render cho ADMIN/GDKD/MANAGER/HR_MANAGER):
-- Giải thích Lv0 → Lv1 → Lv2 (lớp 5 sắp triển khai)
-- Liệt kê 8 loại cảnh báo tự động
+---
 
-**6.3 Thêm `LeaveNotificationGuide()`** (render cho HR + Manager):
-- Khi nào nhận noti đơn nghỉ phép
-- Cách approve/reject
+## 📂 Files thay đổi
 
-## Files thay đổi
+| File | Loại |
+|---|---|
+| Migration mới | DB (trigger + RLS) |
+| `src/components/AppSidebar.tsx` | Edit |
+| `src/pages/B2BTours.tsx` | Edit |
+| `src/pages/LeaveManagement.tsx` | Edit |
+| `src/pages/UserGuide.tsx` | Edit |
+| `mem://features/notifications/automated-alerts` | Update memory |
 
-| File | Loại | Ghi chú |
-|---|---|---|
-| Migration mới (3 phần) | DB schema | notifications cols + read_at trigger + leave_requests trigger |
-| `supabase/functions/daily-reminders/index.ts` | Edit | +1 block escalation + 6 block deadline |
-| `src/components/NotificationBell.tsx` | Edit | +6 icons & routes |
-| `src/pages/UserGuide.tsx` | Edit | Rewrite PushNotifGuide + 2 section mới |
-
-## NGOÀI PHẠM VI (hoãn lượt sau)
-- Lớp 4: Dashboard EscalationWatchCard
-- Lớp 5: Auto-acknowledge khi user thao tác form
-- KHÔNG đụng: usePermissions.ts, B2B Tour, Settings, Dashboard hiện tại
-
-## An toàn khi triển khai
-- Verify schema cột thực tế (`bookings.deposit_due_at`, `quotations.status/sent_at`, `employees.date_of_birth/contract_end_date`, `leave_requests.*`) trước khi viết SQL/edge function
-- Cột nào không tồn tại → SKIP block đó, báo lại cho anh, KHÔNG tự ý tạo cột mới
-- Dùng `pg_net` (đã enabled cho daily-reminders cron) — verify extension trước khi tạo trigger leave_requests
+**KHÔNG đụng**: routes, permission keys, các module khác, theme cam toàn cục.
