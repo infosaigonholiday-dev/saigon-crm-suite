@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
