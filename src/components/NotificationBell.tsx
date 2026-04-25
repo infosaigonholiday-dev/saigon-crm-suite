@@ -1,12 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock, Plane, MessageSquare, FileSignature, FileCheck, CalendarDays, UserCheck, ShieldAlert } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Bell, Cake, Building2, Phone, CreditCard, FileText, AlertTriangle, Clock,
+  Plane, MessageSquare, FileSignature, FileCheck, CalendarDays, UserCheck,
+  ShieldAlert, Wallet, Receipt,
+} from "lucide-react";
+import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
 import { vi } from "date-fns/locale";
 
 const typeIcons: Record<string, typeof Cake> = {
@@ -14,13 +22,13 @@ const typeIcons: Record<string, typeof Cake> = {
   company_anniversary: Building2,
   follow_up: Phone,
   payment_due: CreditCard,
+  PAYMENT_DUE: CreditCard,
   LEAD_FORGOTTEN: AlertTriangle,
   FOLLOW_UP_OVERDUE: Clock,
   TRAVEL_DATE_NEAR: Plane,
   internal_note: MessageSquare,
-  // ===== New types (Layer 1+2+3) =====
+  mention: MessageSquare,
   BOOKING_DEPARTURE_NEAR: Plane,
-  PAYMENT_DUE: CreditCard,
   CONTRACT_APPROVAL_OVERDUE: FileSignature,
   QUOTATION_NO_RESPONSE: FileCheck,
   EMPLOYEE_BIRTHDAY: Cake,
@@ -28,6 +36,16 @@ const typeIcons: Record<string, typeof Cake> = {
   LEAVE_REQUEST_NEW: UserCheck,
   LEAVE_REQUEST_RESULT: UserCheck,
   ESCALATION_LV1: ShieldAlert,
+  ESCALATION_LV2: ShieldAlert,
+  ESCALATION_LV3: ShieldAlert,
+  BUDGET_ESTIMATE_NEW: Wallet,
+  BUDGET_ESTIMATE_RESULT: Wallet,
+  BUDGET_SETTLEMENT_STATUS: Receipt,
+  BUDGET_SETTLEMENT_CLOSED: Receipt,
+  BUDGET_SETTLEMENT_REJECTED: Receipt,
+  TRANSACTION_APPROVAL: Wallet,
+  TRANSACTION_APPROVED: Wallet,
+  TRANSACTION_REJECTED: Wallet,
 };
 
 const entityRouteMap: Record<string, (id: string) => string> = {
@@ -40,7 +58,34 @@ const entityRouteMap: Record<string, (id: string) => string> = {
   payment: () => "/thanh-toan",
   employee: (id) => `/nhan-su/${id}`,
   finance: () => "/tai-chinh",
-  leave_request: () => "/quan-ly-nghi-phep",
+  transaction: () => "/tai-chinh",
+  budget_estimate: () => "/tai-chinh",
+  budget_settlement: () => "/tai-chinh",
+  leave_request: () => "/nghi-phep",
+};
+
+type FilterGroup = "all" | "finance" | "crm" | "tour" | "hr";
+
+const ENTITY_GROUPS: Record<FilterGroup, string[]> = {
+  all: [],
+  finance: ["transaction", "budget_estimate", "budget_settlement", "payment", "finance"],
+  crm: ["lead", "customer", "raw_contact"],
+  tour: ["booking", "b2b_tour", "quotation", "contract"],
+  hr: ["leave_request", "employee"],
+};
+
+function dateBucket(d: Date): "today" | "yesterday" | "week" | "older" {
+  if (isToday(d)) return "today";
+  if (isYesterday(d)) return "yesterday";
+  if (isThisWeek(d, { weekStartsOn: 1 })) return "week";
+  return "older";
+}
+
+const bucketLabels: Record<string, string> = {
+  today: "Hôm nay",
+  yesterday: "Hôm qua",
+  week: "Tuần này",
+  older: "Cũ hơn",
 };
 
 export function NotificationBell() {
@@ -48,17 +93,18 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"unread" | "all">("unread");
+  const [group, setGroup] = useState<FilterGroup>("all");
 
   const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications-unread", user?.id],
+    queryKey: ["notifications-all", user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
         .select("*")
         .eq("user_id", user!.id)
-        .eq("is_read", false)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(50);
       return data ?? [];
     },
     enabled: !!user?.id,
@@ -71,77 +117,135 @@ export function NotificationBell() {
       .channel("my-notifications")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => queryClient.invalidateQueries({ queryKey: ["notifications-unread", user.id] })
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["notifications-all", user.id] });
+          queryClient.invalidateQueries({ queryKey: ["alerts-badge", user.id] });
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
+  const filtered = useMemo(() => {
+    let list = notifications;
+    if (tab === "unread") list = list.filter((n: any) => !n.is_read);
+    if (group !== "all") {
+      const allowed = ENTITY_GROUPS[group];
+      list = list.filter((n: any) => allowed.includes(n.entity_type ?? ""));
+    }
+    return list;
+  }, [notifications, tab, group]);
+
+  const grouped = useMemo(() => {
+    const buckets: Record<string, any[]> = { today: [], yesterday: [], week: [], older: [] };
+    for (const n of filtered) {
+      buckets[dateBucket(new Date(n.created_at))].push(n);
+    }
+    return buckets;
+  }, [filtered]);
+
   const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    queryClient.invalidateQueries({ queryKey: ["notifications-unread", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
     setOpen(false);
     if (entityType && entityId) {
       const builder = entityRouteMap[entityType];
-      if (builder) {
-        navigate(builder(entityId));
-        return;
-      }
-      // legacy fallback
-      if (entityType === "lead") navigate("/tiem-nang");
-      else navigate(`/khach-hang/${entityId}`);
+      if (builder) { navigate(builder(entityId)); return; }
     }
+    if (entityType === "lead") navigate("/tiem-nang");
   };
 
   const markAllRead = async () => {
     if (!user?.id) return;
     await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
-    queryClient.invalidateQueries({ queryKey: ["notifications-unread", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-all", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-badge", user.id] });
   };
-
-  const count = notifications.length;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {count > 0 && (
+          {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-              {count > 99 ? "99+" : count}
+              {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
-        <div className="border-b px-4 py-3 font-medium text-sm">Thông báo</div>
-        <div className="max-h-80 overflow-auto">
-          {count === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Không có thông báo mới</p>
-          ) : (
-            notifications.map((n: any) => {
-              const Icon = typeIcons[n.type] || FileText;
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => markAsRead(n.id, n.entity_id, n.entity_type)}
-                  className="flex w-full gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-                >
-                  <Icon className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight truncate">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: vi })}
-                    </p>
-                  </div>
-                </button>
-              );
-            })
-          )}
+      <PopoverContent align="end" className="w-[420px] p-0">
+        <div className="border-b px-4 py-3 flex items-center justify-between">
+          <span className="font-medium text-sm">Thông báo</span>
+          <Select value={group} onValueChange={(v) => setGroup(v as FilterGroup)}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả nhóm</SelectItem>
+              <SelectItem value="finance">Tài chính</SelectItem>
+              <SelectItem value="crm">CRM</SelectItem>
+              <SelectItem value="tour">Tour</SelectItem>
+              <SelectItem value="hr">Nhân sự</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        {count > 0 && (
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+          <div className="border-b px-2 pt-2">
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="unread" className="text-xs">Chưa đọc {unreadCount > 0 && `(${unreadCount})`}</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">Tất cả</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value={tab} className="mt-0">
+            <div className="max-h-[480px] overflow-auto">
+              {filtered.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Không có thông báo</p>
+              ) : (
+                (["today", "yesterday", "week", "older"] as const).map((bk) =>
+                  grouped[bk].length === 0 ? null : (
+                    <div key={bk}>
+                      <div className="sticky top-0 bg-muted/50 backdrop-blur px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b">
+                        {bucketLabels[bk]}
+                      </div>
+                      {grouped[bk].map((n: any) => {
+                        const Icon = typeIcons[n.type] || FileText;
+                        const isHigh = n.priority === "high";
+                        return (
+                          <button
+                            key={n.id}
+                            onClick={() => markAsRead(n.id, n.entity_id, n.entity_type)}
+                            className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-b last:border-b-0 ${
+                              !n.is_read ? "bg-primary/5" : ""
+                            }`}
+                          >
+                            <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${isHigh ? "text-destructive" : "text-primary"}`} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium leading-tight">{n.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{n.message}</p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">
+                                {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: vi })}
+                              </p>
+                            </div>
+                            {!n.is_read && <span className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                )
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {unreadCount > 0 && (
           <div className="border-t px-4 py-2">
             <button onClick={markAllRead} className="text-xs text-primary hover:underline w-full text-center">
               Đánh dấu tất cả đã đọc
