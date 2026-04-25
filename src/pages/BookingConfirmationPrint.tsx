@@ -76,6 +76,20 @@ export default function BookingConfirmationPrint() {
     enabled: !!booking?.quote_id,
   });
 
+  // Fallback: tour_package_id linked directly (no quote)
+  const { data: directPackage } = useQuery({
+    queryKey: ["print-tour-package", (booking as any)?.tour_package_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tour_packages")
+        .select("name, code, duration_days, duration_nights")
+        .eq("id", (booking as any).tour_package_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!(booking as any)?.tour_package_id && !booking?.quote_id,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["print-my-profile", user?.id],
     queryFn: async () => {
@@ -112,7 +126,8 @@ export default function BookingConfirmationPrint() {
   const dataMap = useMemo(() => {
     if (!booking) return null;
     const c: any = booking.customers || {};
-    const tp: any = quote?.tour_packages || {};
+    const tp: any = quote?.tour_packages || directPackage || {};
+    const manualName = (booking as any).tour_name_manual as string | null | undefined;
 
     const isB2B = c.type === "B2B" || c.type === "CORPORATE";
     const cust_name = isB2B ? (c.contact_person || c.full_name || "") : (c.full_name || "");
@@ -124,9 +139,9 @@ export default function BookingConfirmationPrint() {
     const chd = pd.children ?? pd.child ?? pd.chd ?? null;
     const inf = pd.infants ?? pd.infant ?? pd.inf ?? null;
     const paxParts: string[] = [];
-    if (adl != null) paxParts.push(`${adl} NL`);
-    if (chd != null) paxParts.push(`${chd} TE`);
-    if (inf != null) paxParts.push(`${inf} EB`);
+    if (adl != null && Number(adl) > 0) paxParts.push(`${adl} NL`);
+    if (chd != null && Number(chd) > 0) paxParts.push(`${chd} TE`);
+    if (inf != null && Number(inf) > 0) paxParts.push(`${inf} EB`);
     const cust_pax = paxParts.length ? paxParts.join(" + ") : `${booking.pax_total ?? 0} khách`;
 
     const dur = tp.duration_days
@@ -162,10 +177,10 @@ export default function BookingConfirmationPrint() {
       cust_id: c.id_number || "",
       cust_pax,
       grp_pax_count: cust_pax,
-      tour_name: tp.name || "",
-      tour_name_v: tp.name || "",
-      grp_tour_name: tp.name || "",
-      tour_code: tp.code || "",
+      tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
+      tour_name_v: tp.name || manualName || "[Chưa có thông tin tour]",
+      grp_tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
+      tour_code: tp.code || "—",
       tour_start: fmtDate(quote?.valid_from),
       tour_end: fmtDate(quote?.valid_until),
       tour_duration: dur,
@@ -174,7 +189,7 @@ export default function BookingConfirmationPrint() {
       remaining: fmtVnd(booking.remaining_amount as number),
       remaining_due: fmtDate(booking.remaining_due_at),
     };
-  }, [booking, quote, sale]);
+  }, [booking, quote, sale, directPackage]);
 
   // Send to iframe
   const handleIframeLoad = () => {
