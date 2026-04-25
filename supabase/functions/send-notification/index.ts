@@ -56,16 +56,20 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
 
+    // Shared secret riêng cho DB trigger (không qua JWT). 
+    // Dùng SERVICE_ROLE_KEY làm secret — DB trigger gửi qua header x-internal-secret.
+    const internalSecret = req.headers.get("x-internal-secret") || "";
+
     // 3 luồng auth được chấp nhận:
-    // 1) Service role key (gọi từ edge function khác như daily-reminders)
-    // 2) Anon key (gọi từ DB trigger notify_push_on_insert qua pg_net)
+    // 1) Service role key trong Authorization (gọi từ edge function khác như daily-reminders)
+    // 2) Internal secret header (gọi từ DB trigger qua pg_net)
     // 3) JWT user hợp lệ (gọi từ frontend, vd nút "Gửi thử push")
     const isServiceRole = token === serviceRoleKey;
-    const isAnonInternal = token === anonKey;
+    const isInternalCall = internalSecret === serviceRoleKey;
 
     let authedUserId: string | null = null;
 
-    if (!isServiceRole && !isAnonInternal) {
+    if (!isServiceRole && !isInternalCall) {
       // Phải là JWT user
       if (!token) {
         console.warn("[send-notification] no auth token provided");
@@ -85,7 +89,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      authedUserId = data.claims.sub;
+      authedUserId = data.claims.sub as string;
     }
 
     const body = (await req.json()) as PushBody;
