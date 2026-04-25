@@ -182,6 +182,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "suppliers.view", "suppliers.create",
     "staff.view",
     "leave.view", "leave.create",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   MKT: [
     "dashboard.view",
@@ -331,6 +332,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "b2b_tours.view",
   ],
   INTERN_MKT: [
     "dashboard.view",
@@ -359,6 +361,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "workflow.view",
     "staff.view",
     "payroll.view",
+    "b2b_tours.view",
   ],
 };
 
