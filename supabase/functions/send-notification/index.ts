@@ -64,7 +64,18 @@ Deno.serve(async (req) => {
     // 3) JWT user hợp lệ (gọi từ frontend đã login, vd nút "Gửi thử push")
     const isServiceRole = token === serviceRoleKey;
     const isAnonKey = token === anonKey;
-    const isInternalCall = isAnonKey && req.headers.get("x-internal-call") === "true";
+    const internalCallHeader = req.headers.get("x-internal-call") === "true";
+    const isInternalCall = isAnonKey && internalCallHeader;
+
+    console.log("[send-notification] auth check:", {
+      hasToken: !!token,
+      tokenLen: token.length,
+      anonKeyLen: anonKey.length,
+      tokenMatchesAnon: isAnonKey,
+      tokenMatchesService: isServiceRole,
+      hasInternalHeader: internalCallHeader,
+      decision: isServiceRole ? "service" : isInternalCall ? "internal" : "jwt-user",
+    });
 
     let authedUserId: string | null = null;
 
