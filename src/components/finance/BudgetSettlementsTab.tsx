@@ -531,6 +531,39 @@ export function BudgetSettlementsTab() {
           )}
 
           <DialogFooter className="flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!selectedSettlement) return;
+                const html = buildSettlementHtml({
+                  code: selectedSettlement.code,
+                  created_at: selectedSettlement.created_at,
+                  estimate_code: selectedSettlement.budget_estimates?.code,
+                  booking_code: selectedSettlement.bookings?.code,
+                  customer_name: selectedSettlement.bookings?.customers?.full_name,
+                  created_by_name: selectedSettlement.profiles?.full_name,
+                  total_estimated: selectedSettlement.total_estimated,
+                  total_actual: selectedSettlement.total_actual,
+                  variance: selectedSettlement.variance,
+                  variance_pct: selectedSettlement.variance_pct,
+                  advance_amount: selectedSettlement.advance_amount,
+                  refund_amount: selectedSettlement.refund_amount,
+                  additional_amount: selectedSettlement.additional_amount,
+                  refund_status: selectedSettlement.refund_status,
+                  topup_status: selectedSettlement.topup_status,
+                  items: detailItems.map((it: any) => ({
+                    category: getCategoryLabel(it.category),
+                    description: it.description,
+                    estimated_amount: it.estimated_amount,
+                    actual_amount: it.actual_amount,
+                    receipt_url: it.receipt_url,
+                  })),
+                });
+                openPrintWindow(html);
+              }}
+            >
+              <Printer className="h-4 w-4 mr-1" /> In phiếu QT
+            </Button>
             {/* Operator: submit to accountant */}
             {selectedSettlement?.status === "draft" && selectedSettlement?.created_by === user?.id && (
               <Button onClick={() => submitMutation.mutate(selectedSettlement.id)}>Gửi KT duyệt</Button>
