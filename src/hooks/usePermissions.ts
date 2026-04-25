@@ -340,6 +340,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "b2b_tours.view",
   ],
+  INTERN_HCNS: [
     "dashboard.view",
     "settings.view",
     "staff.view",
