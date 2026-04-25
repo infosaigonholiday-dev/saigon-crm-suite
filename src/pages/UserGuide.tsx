@@ -206,12 +206,8 @@ function HCNSGuide() {
           "Tìm kiếm thông tin cần thiết",
         ]} />
         <PushNotifGuide />
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ═══════════════ ĐIỀU HÀNH ═══════════════ */
+        <LeaveNotificationGuide />
+        <EscalationPolicyGuide />
 function OpsGuide() {
   return (
     <Card>
