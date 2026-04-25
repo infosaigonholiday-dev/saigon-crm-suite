@@ -175,8 +175,8 @@ export function AppSidebar() {
               <SidebarMenu>
                 {renderItems(visibleFinance)}
                 {renderItems(visibleSop)}
-                {renderItems(visibleGuide)}
                 {renderItems(visibleSettings)}
+                {renderItems(visibleGuide)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

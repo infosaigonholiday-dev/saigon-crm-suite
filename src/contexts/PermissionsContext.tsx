@@ -132,11 +132,10 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   );
 
   const getVisibleModules = useCallback((): string[] => {
-    const rolePerms = getDefaultPermissions(userRole || "");
-    if (!rolePerms.length) return [];
-    const modules = new Set(rolePerms.map((k) => k.split(".")[0]));
+    if (!permissions.size) return [];
+    const modules = new Set(Array.from(permissions).map((key) => key.split(".")[0]));
     return Array.from(modules);
-  }, [userRole]);
+  }, [permissions]);
 
   return (
     <PermissionsContext.Provider value={{ permissions, hasPermission, hasAnyPermission, getScope, getVisibleModules, loading }}>
