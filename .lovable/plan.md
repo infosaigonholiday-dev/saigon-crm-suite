@@ -1,132 +1,69 @@
-## Mục tiêu
-Web Push hiện chỉ chạy khi vài trigger gọi `send-notification` trực tiếp. Mọi notification khác (mention, alerts center, daily-reminders) chỉ INSERT vào bảng `notifications` nhưng KHÔNG gửi push → user không thấy notification trên màn hình.
+# Kế hoạch fix Booking + Phiếu xác nhận + Logo
 
-## 4 bước fix
+## 1. Migration DB
+- `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tour_name_manual text` — fallback khi không link quotation/tour_package.
+- `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tour_package_id uuid REFERENCES tour_packages(id) ON DELETE SET NULL` — cho phép link trực tiếp gói tour không qua báo giá.
 
-### 1. Trigger `AFTER INSERT ON notifications` → gọi `send-notification` (QUAN TRỌNG NHẤT)
+## 2. `BookingFormDialog.tsx` — bổ sung toàn diện
 
-**Migration:** Tạo function `notify_push_on_insert()` + trigger:
+**Nguồn tour (radio 3 lựa chọn)**:
+1. **Từ Báo giá** → dropdown `quotations` (lọc theo `customer_id` đã chọn nếu có; fallback all). Khi chọn → fetch quote + `tour_packages` join → auto-fill `tour_name_manual` (snapshot tên tour để hiển thị) + lưu `quote_id`.
+2. **Từ Gói tour** → dropdown `tour_packages` (status=ACTIVE). Khi chọn → lưu `tour_package_id` + snapshot tên vào `tour_name_manual`.
+3. **Nhập tay** → input text → lưu thẳng vào `tour_name_manual`.
 
-```sql
-CREATE OR REPLACE FUNCTION public.notify_push_on_insert()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  v_func_url text := 'https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/send-notification';
-  v_anon_key text := '<anon key>';
-  v_url text;
-BEGIN
-  -- Bỏ qua nếu là notification đã đọc (unlikely on insert) hoặc user_id NULL
-  IF NEW.user_id IS NULL THEN RETURN NEW; END IF;
+**Pax chi tiết (3 input số)**:
+- Người lớn (adults), Trẻ em (children), Em bé (infants).
+- `pax_total = adults + children + infants` (auto-tính, readonly).
+- Lưu `pax_details = { adults, children, infants }` (jsonb).
 
-  -- Map entity_type → URL
-  v_url := CASE NEW.entity_type
-    WHEN 'lead' THEN '/tiem-nang'
-    WHEN 'customer' THEN '/khach-hang'
-    WHEN 'booking' THEN '/dat-tour'
-    WHEN 'budget_estimate' THEN '/tai-chinh'
-    WHEN 'budget_settlement' THEN '/tai-chinh'
-    WHEN 'transaction' THEN '/tai-chinh'
-    WHEN 'leave_request' THEN '/quan-ly-nghi-phep'
-    WHEN 'contract' THEN '/hop-dong'
-    ELSE '/canh-bao'
-  END;
+**Validation deposit**:
+- Nếu `deposit_amount > total_value` → set error `"Tiền cọc không được vượt tổng giá trị"`, chặn submit.
+- Hiện cả banner cảnh báo inline màu cam dưới ô nhập.
 
-  BEGIN
-    PERFORM net.http_post(
-      url := v_func_url,
-      headers := jsonb_build_object(
-        'Content-Type','application/json',
-        'Authorization','Bearer ' || v_anon_key
-      ),
-      body := jsonb_build_object(
-        'user_id', NEW.user_id,
-        'title', NEW.title,
-        'message', COALESCE(NEW.message,''),
-        'url', v_url,
-        'tag', COALESCE(NEW.type,'notif') || '-' || NEW.id
-      )
-    );
-  EXCEPTION WHEN OTHERS THEN
-    -- Bước 2: log lỗi vào audit_logs thay vì swallow
-    INSERT INTO audit_logs (action, table_name, record_id, change_summary, new_data)
-    VALUES ('SYSTEM', 'notifications', NEW.id, 'Push send failed: ' || SQLERRM,
-            jsonb_build_object('user_id', NEW.user_id, 'title', NEW.title, 'error', SQLERRM));
-  END;
+**Prefill từ B2B Tour 2026** (giữ logic cũ):
+- Khi có `prefillData` → set `tour_name_manual` = destination, `total_value` = price_adl, không link quote/package.
 
-  RETURN NEW;
-END;
-$$;
+## 3. `BookingConfirmationPrint.tsx` — chuỗi fallback tour name
 
-CREATE TRIGGER trg_notifications_push
-AFTER INSERT ON public.notifications
-FOR EACH ROW EXECUTE FUNCTION public.notify_push_on_insert();
-```
-
-**Tác động:** Mọi notification mới (từ bất kỳ nguồn nào — trigger DB, edge function, frontend) đều tự động gửi Web Push. Các trigger hiện có (`notify_budget_estimate_change`, `notify_budget_settlement_change`, `notify_transaction_approval`, `notify_leave_request_change`) sẽ trùng push. → Em sẽ **xóa các block `net.http_post` trong các trigger đó** để không gửi 2 lần.
-
-### 2. Bỏ `EXCEPTION WHEN OTHERS THEN NULL` → log vào `audit_logs`
-
-Sửa 4 trigger function trên để bỏ block `net.http_post` (vì giờ trigger global lo). Chỉ còn `INSERT INTO notifications`.
-
-Đối với function `notify_push_on_insert()` mới, em đã dùng `EXCEPTION ... INSERT INTO audit_logs` để có log thật khi push fail.
-
-Cần thêm cột `change_summary` cho phép giá trị `'SYSTEM'` trong `audit_logs_action_check`. Kiểm tra constraint hiện tại — nếu chỉ cho phép `CREATE/UPDATE/DELETE/STATUS_CHANGE/REASSIGN`, em sẽ thêm `SYSTEM`.
-
-### 3. Nút "Test Push" trong Settings
-
-**File:** `src/components/PushNotificationToggle.tsx`
-
-Thêm nút "Gửi thông báo test" bên cạnh toggle. Khi click:
+Thay đoạn lấy `tp.name`:
 ```ts
-await supabase.functions.invoke('send-notification', {
-  body: {
-    user_id: user.id,
-    title: '🔔 Test Web Push',
-    message: 'Nếu bạn thấy notification này → cấu hình push hoạt động tốt!',
-    url: '/cai-dat',
-    tag: 'test-push'
-  }
-});
+const tourName =
+  tp.name ||
+  booking.tour_name_manual ||
+  "[Chưa có thông tin tour]";
 ```
-Toast kết quả: hiện `sent`/`failed` từ response. Chỉ enable khi `isSubscribed = true`.
+Áp dụng cho cả `tour_name`, `tour_name_v`, `grp_tour_name`. Tương tự `tour_code` → fallback "—".
 
-### 4. Bỏ VAPID fallback hardcoded
+Thêm query `tour_packages` riêng khi `booking.tour_package_id` có nhưng `quote_id` null.
 
-**File:** `src/hooks/usePushSubscription.ts`
+## 4. Logo — kiểm toán & xác nhận
 
-Hiện tại:
-```ts
-const VAPID_PUBLIC_KEY =
-  (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ||
-  "BNpfULcP4VHvXsJez4GYvQLR_6uhSW6vWPzSo9QiZW5T7toIMU-YaJkX5ue4EI96HFJHclyVslPdXpdFe3tEXJ4";
-```
+Đã rà soát: tất cả vị trí đều dùng đúng logo Saigon Holiday, **không có logo Lovable nào**:
+- ✅ `src/components/AppSidebar.tsx` — dùng `@/assets/logo.jpg`
+- ✅ `src/pages/Login.tsx` — dùng `@/assets/logo.jpg`
+- ✅ `public/favicon.ico` — đã tồn tại (favicon hiện tại là của dự án)
+- ✅ `public/print/booking-confirmation.html` — dùng SVG eagle inline + text "SAIGON HOLIDAY Travel" màu cam #F26522
+- ⚠️ `index.html` `og:image` đang trỏ tới ảnh `gpt-engineer-file-uploads` (social card mặc định Lovable) → **sẽ thay** bằng `/favicon.ico` hoặc copy `logo.jpg` vào `public/og-image.jpg` rồi link.
+- ⚠️ `public/placeholder.svg` (Lovable default) — chỉ dùng làm placeholder ảnh chung, không hiển thị ở UI chính → **giữ** (không gây ảnh hưởng).
 
-Sửa thành:
-```ts
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-// Trong subscribe(), check sớm:
-if (!VAPID_PUBLIC_KEY) {
-  console.error('[push] VITE_VAPID_PUBLIC_KEY missing in .env');
-  return { ok: false, error: 'vapid_invalid', detail: 'VITE_VAPID_PUBLIC_KEY not set' };
-}
-```
+**Hành động logo**:
+- Copy `src/assets/logo.jpg` → `public/og-image.jpg`.
+- Cập nhật `index.html`: `og:image` + `twitter:image` trỏ tới `/og-image.jpg` (đường dẫn tuyệt đối với domain).
 
-Đồng thời check `.env` đã có `VITE_VAPID_PUBLIC_KEY` chưa — nếu chưa, em sẽ thêm vào `.env` (giá trị giống `VAPID_PUBLIC_KEY` secret hiện tại).
+## 5. Files chỉnh sửa
 
-## Files sẽ thay đổi
+| File | Thay đổi |
+|---|---|
+| `supabase/migrations/...sql` (mới) | Thêm `tour_name_manual`, `tour_package_id` vào `bookings` |
+| `src/components/bookings/BookingFormDialog.tsx` | Thêm radio nguồn tour, pax 3 input, validation deposit |
+| `src/pages/BookingConfirmationPrint.tsx` | Fallback chain cho tên tour + query tour_package khi cần |
+| `index.html` | Thay og:image + twitter:image |
+| `public/og-image.jpg` (mới) | Copy từ `src/assets/logo.jpg` |
 
-1. **Migration mới:** Tạo `notify_push_on_insert()` + trigger; sửa 4 trigger function bỏ block `net.http_post`; mở rộng `audit_logs_action_check` cho phép `SYSTEM`.
-2. `src/components/PushNotificationToggle.tsx` — thêm nút Test push.
-3. `src/hooks/usePushSubscription.ts` — bỏ fallback hardcoded.
-4. `.env` — đảm bảo `VITE_VAPID_PUBLIC_KEY` tồn tại.
-
-## Kết quả mong đợi
-
-- Mọi `INSERT INTO notifications` → tự động Push lên thiết bị đã subscribe.
-- Khi push fail → có log trong `audit_logs` để debug.
-- User có thể tự test push trong Settings.
-- Nếu thiếu VAPID env → báo lỗi rõ thay vì âm thầm dùng key cũ sai project.
+## 6. Test sau khi triển khai
+1. Tạo booking mới → chọn quote → in phiếu → tên tour hiện đầy đủ.
+2. Tạo booking mới → chọn tour_package trực tiếp → in → tên tour hiện đúng.
+3. Tạo booking mới → nhập tay tour name → in → hiện đúng.
+4. Booking cũ (quote_id null) → in → hiện "[Chưa có thông tin tour]" thay vì trống.
+5. Nhập deposit > total → form chặn, hiện cảnh báo cam.
+6. Pax: 2 NL + 1 TE + 1 EB → phiếu in hiện "2 NL + 1 TE + 1 EB".
