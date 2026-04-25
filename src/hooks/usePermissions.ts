@@ -151,6 +151,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "leave.view", "leave.create", "leave.approve",
     "payroll.view",
     "settings.view",
+    "raw_contacts.view",
+    "b2b_tours.view", "b2b_tours.logs",
   ],
   HR_MANAGER: [
     "dashboard.view",
