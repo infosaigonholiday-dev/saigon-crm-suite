@@ -312,6 +312,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
+    "b2b_tours.view",
   ],
   INTERN_SALE_INBOUND: [
     "dashboard.view",
