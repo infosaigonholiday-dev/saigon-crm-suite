@@ -12,6 +12,7 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
 import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
+import { PrintConfirmationButton } from "@/components/bookings/PrintConfirmationButton";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
@@ -106,6 +107,7 @@ export default function BookingDetail() {
             {customer?.full_name ?? "Không có KH"} • {booking.pax_total ?? 0} khách • {formatCurrency(booking.total_value)}
           </p>
         </div>
+        <PrintConfirmationButton booking={{ id: booking.id, sale_id: booking.sale_id, department_id: booking.department_id }} />
       </div>
 
       {/* Locked booking banner */}
