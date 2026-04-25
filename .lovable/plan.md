@@ -1,94 +1,125 @@
-## 🔐 Phần 1 — Migration DB
+## 🎯 Mục tiêu
 
-### 1.1. Trigger `notify_leave_request_change`
-- Loại requester khỏi recipients (không tự nhận noti đơn của mình)
-- Phân loại cấp quản lý qua `profiles.role` HOẶC `employees.position`:
-  - Cấp quản lý: `ADMIN/SUPER_ADMIN/HR_MANAGER/HCNS/MANAGER/GDKD/DIEUHAN` hoặc position `GIAM_DOC/PHO_GIAM_DOC/TRUONG_PHONG/PHO_PHONG`
-- **Cấp quản lý xin nghỉ → chỉ ADMIN + HR_MANAGER nhận noti**
-- **ADMIN xin nghỉ → fallback HR_MANAGER nếu không có ADMIN khác active** (đếm `profiles WHERE role IN ('ADMIN','SUPER_ADMIN') AND is_active AND id != requester`)
-- Nhân viên thường → HR_MANAGER + HCNS + Manager/GDKD cùng phòng
+Sửa triệt để vấn đề: **kế toán/MKT/Sale Intern không thấy nút "Tạo đơn nghỉ phép"** vì hồ sơ `profiles` chưa link với `employees`. Hiện trạng:
 
-### 1.2. RLS policies `leave_requests`
-- DROP & recreate `leave_requests_update_approval`:
-  - ADMIN/SUPER_ADMIN bypass (duyệt được tất cả, kể cả của mình)
-  - HR_MANAGER duyệt mọi đơn TRỪ đơn của chính mình
-  - MANAGER/GDKD chỉ duyệt nhân viên thường cùng phòng (loại trừ position TRUONG_PHONG/PHO_PHONG/GIAM_DOC/PHO_GIAM_DOC + role MANAGER/GDKD/HR_MANAGER/ADMIN/HCNS/DIEUHAN)
-- CREATE `leave_requests_self_edit_pending`: user UPDATE/DELETE đơn của mình khi `status = 'PENDING'`
-- CREATE/đảm bảo `leave_requests_insert_self`: WITH CHECK `employee_id = get_my_employee_id()` HOẶC user là HR/ADMIN
-- CREATE/đảm bảo `leave_requests_read_hr_all`: ADMIN/SUPER_ADMIN/HR_MANAGER/HCNS xem được toàn bộ (cho chấm công)
+| User | Role | Có employee? | profile_id link? |
+|---|---|---|---|
+| Admin (`nguyentuanphuong1990`) | ADMIN | ❌ KHÔNG | — |
+| Mai Xuân Khánh (`marketing.saigonholiday`) | MANAGER | ✅ CÓ | ❌ NULL |
+| Gia Bảo (`operator1.saigonholiday`) | INTERN_SALE_DOMESTIC | ✅ CÓ | ❌ NULL |
 
-### 1.3. Cập nhật `get_default_permissions_for_role`
-Thêm `leave.create` cho các role còn thiếu:
-- `KETOAN`, `MKT`, `SALE_DOMESTIC`, `SALE_INBOUND`, `SALE_OUTBOUND`, `SALE_MICE`
-- `INTERN_SALE_*`, `INTERN_KETOAN`, `INTERN_MKT`, `INTERN_DIEUHAN`, `INTERN_HCNS`
-- `TOUR`, `DIEUHAN`, `GDKD`, `MANAGER`
-- Đồng bộ `DEFAULT_PERMISSIONS` trong `usePermissions.ts`
+→ 2 user đã có hồ sơ nhưng không link → UI ẩn cards + disable nút.
+→ ADMIN chưa có hồ sơ → cần tạo hoặc cho phép tạo đơn không cần employee_id (KHÔNG khả thi vì FK).
 
 ---
 
-## 🎨 Phần 2 — Đổi tên & màu LKH Tour 2026
+## 🔧 Phần 1 — Migration: Auto-link profile ↔ employee
 
-### `src/components/AppSidebar.tsx`
-- Đổi `title: "Kho Tour B2B"` → `title: "LKH Tour 2026"` (giữ route `/b2b-tours`, moduleKey `b2b_tours`)
-- Khi item `moduleKey === "b2b_tours"`: override active class sang `bg-blue-600 text-white hover:bg-blue-700`
+**SQL UPDATE** (chạy 1 lần, idempotent):
+```sql
+UPDATE employees e
+SET profile_id = p.id
+FROM profiles p
+WHERE e.profile_id IS NULL
+  AND e.deleted_at IS NULL
+  AND p.is_active = true
+  AND lower(trim(p.email)) = lower(trim(e.email));
+```
+→ Khớp 2 record: MKT Manager + Sale Intern.
 
-### `src/pages/B2BTours.tsx`
-- Đổi tiêu đề trang → "LKH Tour 2026"
-- Nút primary + badge giá: `bg-blue-600 hover:bg-blue-700`
-- Icon header + active indicator: `text-blue-600`
+**Tạo employee cho ADMIN** (Admin cần xin nghỉ thì mới có hồ sơ):
+```sql
+INSERT INTO employees (profile_id, full_name, email, position, status, hire_date)
+SELECT p.id, p.full_name, p.email, 'GIAM_DOC', 'ACTIVE', CURRENT_DATE
+FROM profiles p
+WHERE p.role IN ('ADMIN','SUPER_ADMIN')
+  AND p.is_active = true
+  AND NOT EXISTS (SELECT 1 FROM employees e WHERE e.profile_id = p.id AND e.deleted_at IS NULL);
+```
 
-> Giữ nguyên: route, permission keys, tên bảng DB
+**Trigger tự động link khi tạo employee mới** (đảm bảo tương lai):
+```sql
+CREATE OR REPLACE FUNCTION public.auto_link_employee_to_profile()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.profile_id IS NULL AND NEW.email IS NOT NULL THEN
+    SELECT id INTO NEW.profile_id FROM profiles
+    WHERE lower(trim(email)) = lower(trim(NEW.email)) AND is_active = true LIMIT 1;
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER auto_link_employee_to_profile_trg
+  BEFORE INSERT OR UPDATE OF email ON employees
+  FOR EACH ROW EXECUTE FUNCTION auto_link_employee_to_profile();
+```
 
 ---
 
-## 🖥️ Phần 3 — `src/pages/LeaveManagement.tsx` overhaul
+## 🎨 Phần 2 — UI fallback (`src/pages/LeaveManagement.tsx`)
 
-### 3.1. Nút tạo đơn + Dialog
-- Header thêm nút **"Tạo đơn nghỉ phép"** (hiển thị nếu user có `leave.create` và có `employee_id`)
-- Dialog form: chọn `leave_type`, `start_date`, `end_date`, `reason` → auto-tính `total_days`
-- INSERT với `employee_id = get_my_employee_id()` (lấy từ `useQuery employees WHERE profile_id = user.id`)
+Hiện tại nút "Tạo đơn" và 3 cards thống kê **bị ẩn** khi `myEmpId === null`. Sửa:
 
-### 3.2. 3 Cards thống kê (lấy từ `leave_policies`)
-- Query `leave_policies` để lấy `days_per_year` theo từng `leave_type`
-- Card 1: **Phép năm còn lại** (ANNUAL) — `policy.days_per_year - usedAnnual`
-- Card 2: **Đã sử dụng** (tổng các loại APPROVED năm hiện tại, breakdown by type)
-- Card 3: **Đơn chờ duyệt** (PENDING của user)
-- KHÔNG hardcode 12 ngày — đọc từ `leave_policies`
+### 2.1. Luôn hiển thị nút "Tạo đơn nghỉ phép" nếu có `leave.create`
+- Bỏ điều kiện `disabled={!myEmpId}` cứng
+- Thay vì disable hoàn toàn → cho click, dialog hiện cảnh báo rõ ràng "Chưa có hồ sơ nhân viên — liên hệ HR" + nút "Liên hệ HR"
+- Nếu vẫn muốn disable: hiện tooltip rõ ràng "Tài khoản chưa liên kết hồ sơ nhân viên. Liên hệ HCNS."
 
-### 3.3. Bảng đơn
-- Cột mới **"Cấp"**: badge `Quản lý` (orange) / `Nhân viên` (blue) dựa trên position/role của employee đơn
-- Cột Action:
-  - Đơn của chính mình + không phải ADMIN → badge "Chờ cấp trên duyệt" + nút Hủy (nếu PENDING)
-  - Manager/GDKD xem đơn cấp ngang/trên → button disabled + tooltip "Cần ADMIN duyệt"
-  - Còn lại: Duyệt/Từ chối bình thường
-- Banner cảnh báo trên cùng nếu user là Manager đang có đơn pending của cấp ngang/trên
+### 2.2. Hiển thị banner cảnh báo (giữ nguyên đã có)
+- Đã có ở line 314-322 ✅. Thêm CTA "Mở Cài đặt > Nhân sự" link sang `/staff` để HR tạo nhanh.
 
-### 3.4. Tab visibility
-- `showTeamTab = isAdmin || isHrStaff || scope IN ('all','department')`
-- HR_MANAGER + HCNS luôn thấy toàn bộ đơn (chấm công)
+### 2.3. Cards thống kê — show skeleton khi không có employee
+- Bỏ điều kiện `{myEmpId && (...)}` ở line 324
+- Thay bằng: nếu không có employee → hiện cards với placeholder "—" + dòng "Chưa có hồ sơ"
+- Nếu có policies nhưng chưa có employee → vẫn hiện limit từ `leave_policies.ANNUAL.days_per_year` để user biết quota
+
+### 2.4. Tab visibility cho KETOAN
+Trong `PermissionsContext.tsx`, KETOAN có `default: "all"` → thấy tab "Đơn của team". Sửa:
+```typescript
+KETOAN: { default: "all", leave: "personal", ... },
+MKT: { default: "personal", leave: "personal" },
+TOUR: { default: "personal", leave: "personal" },
+SALE_*: { default: "personal", leave: "personal" }, // đã đúng
+INTERN_*: { default: "personal", leave: "personal" }, // đã đúng
+```
+→ KETOAN/MKT/TOUR/Sale chỉ thấy đơn của mình. Quản lý/HR/Admin mới thấy team.
 
 ---
 
-## 📚 Phần 4 — `src/pages/UserGuide.tsx`
+## 📊 Phần 3 — Verify flow đầy đủ
 
-Mở rộng `LeaveNotificationGuide()`:
-- Matrix duyệt: Nhân viên → Manager+HR | Trưởng/Phó phòng → ADMIN+HR Trưởng | HR Trưởng → ADMIN | ADMIN → ADMIN khác (fallback HR Trưởng)
-- Quy tắc thông báo theo cấp
-- Hướng dẫn xem số ngày phép còn lại (lấy từ leave_policies)
-- Quy tắc tự hủy đơn PENDING
+Sau khi chạy Phần 1+2, test matrix:
+
+| Role | Tạo đơn? | Thấy cards? | Thấy tab Team? | Duyệt được? |
+|---|---|---|---|---|
+| ADMIN | ✅ (sau khi tạo employee) | ✅ | ✅ | ✅ tất cả |
+| HR_MANAGER | ✅ | ✅ | ✅ | ✅ trừ đơn của mình |
+| HCNS | ✅ | ✅ | ✅ (read-only) | ❌ |
+| GDKD/MANAGER | ✅ | ✅ | ✅ (cùng phòng) | ✅ NV cùng phòng |
+| DIEUHAN | ✅ | ✅ | ✅ (cùng phòng) | ✅ NV cùng phòng |
+| KETOAN | ✅ | ✅ | ❌ chỉ của mình | ❌ |
+| MKT | ✅ | ✅ | ❌ | ❌ |
+| SALE_* / INTERN_* | ✅ | ✅ | ❌ | ❌ |
+| TOUR | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
 ## 📂 Files thay đổi
 
-| File | Loại |
-|---|---|
-| Migration mới | DB (trigger + 4 RLS policies + permissions function) |
-| `src/hooks/usePermissions.ts` | Edit (DEFAULT_PERMISSIONS sync leave.create) |
-| `src/components/AppSidebar.tsx` | Edit (rename + blue active) |
-| `src/pages/B2BTours.tsx` | Edit (title + blue accents) |
-| `src/pages/LeaveManagement.tsx` | Edit lớn (nút tạo + cards từ policies + UI duyệt) |
-| `src/pages/UserGuide.tsx` | Edit (docs đầy đủ) |
-| `mem://features/notifications/automated-alerts` | Update memory |
+| File | Loại | Nội dung |
+|---|---|---|
+| Migration mới | DB | UPDATE auto-link + INSERT employee cho ADMIN + trigger `auto_link_employee_to_profile` |
+| `src/pages/LeaveManagement.tsx` | Edit | Bỏ điều kiện ẩn cards/nút, hiện banner + cards với placeholder, link CTA |
+| `src/contexts/PermissionsContext.tsx` | Edit | Set `leave: "personal"` cho KETOAN, MKT, TOUR |
 
-**KHÔNG đụng**: routes, permission keys hiện có, theme cam toàn cục, module khác.
+**KHÔNG đụng**: trigger notify, RLS policies, permissions function (Phần 1 trước đã xong).
+
+---
+
+## ⚠️ Lưu ý
+
+- ADMIN sẽ được tạo employee với position `GIAM_DOC` — nếu user muốn position khác thì sửa thủ công sau.
+- Email matching dùng `lower(trim())` để xử lý case-insensitive + whitespace.
+- Trigger BEFORE INSERT/UPDATE đảm bảo mọi employee mới đều tự link nếu profile email khớp.
+
+OK duyệt thì chạy hết.
