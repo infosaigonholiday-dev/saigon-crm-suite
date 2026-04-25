@@ -1,50 +1,91 @@
-
-
-## Cấp quyền `settings.view` cho TẤT CẢ thực tập sinh để bật được thông báo
+## Tách quyền bật thông báo khỏi quyền Cài đặt quản trị
 
 ### Vấn đề
-Đã thêm tab "Thông báo" trong Cài đặt cho mọi user, nhưng 8 role INTERN_* không có `settings.view` → không vào được trang Cài đặt → không bật được Web Push → vô nghĩa hoàn toàn.
+Hiện tại hệ thống dùng `settings.view` để mở trang `/cai-dat` và hiển thị nút **Cài đặt** trong sidebar.
+
+Hậu quả:
+- Muốn cho thực tập sinh bật Web Push thì phải cấp `settings.view`
+- Nhưng `settings.view` cũng đồng thời mở luôn trang **Cài đặt** và tab **Quyền hạn**
+- Điều này không đúng yêu cầu: thực tập sinh chỉ cần vào chỗ bật thông báo, không phải được mở toàn bộ khu vực cài đặt
 
 ### Sẽ sửa
 
-**File:** `src/hooks/usePermissions.ts`
+#### 1) Tạo điểm vào riêng cho thông báo thiết bị
+**File:** `src/pages/NotificationSettings.tsx` (mới)
 
-Thêm `"settings.view"` vào default permissions của 8 role thực tập sinh:
+Tạo 1 trang riêng, chỉ chứa:
+- tiêu đề đơn giản kiểu “Thông báo trên thiết bị này”
+- mô tả bật riêng trên từng thiết bị
+- component `<PushNotificationToggle />`
 
-| Role | Dòng hiện tại |
-|---|---|
-| `INTERN_SALE_DOMESTIC` | ~263 |
-| `INTERN_SALE_OUTBOUND` | ~274 |
-| `INTERN_SALE_MICE` | ~285 |
-| `INTERN_SALE_INBOUND` | ~296 |
-| `INTERN_DIEUHAN` | ~307 |
-| `INTERN_MKT` | ~315 |
-| `INTERN_HCNS` | ~323 |
-| `INTERN_KETOAN` | ~330 |
+Trang này là nơi duy nhất dành cho user phổ thông / thực tập sinh bật Web Push.
 
-Mỗi role chỉ thêm 1 dòng `"settings.view",` ngay sau `"dashboard.view",`.
+#### 2) Thêm route riêng không phụ thuộc `settings.view`
+**File:** `src/App.tsx`
 
-### Đồng bộ DB (BẮT BUỘC)
+Thêm route mới, ví dụ:
+- `/thong-bao`
 
-**File migration mới:** cập nhật function `get_default_permissions_for_role` trong DB — thêm `'settings.view'` vào perms của 8 INTERN role tương ứng để khớp với client (nguyên tắc Client-Server Sync trong memory).
+Route này không dùng `PermissionGuard module="settings" action="view"`.
+Thay vào đó, cho mọi user đã đăng nhập truy cập được.
 
-Sau migration, chạy:
-```sql
-UPDATE role_permissions rp
-SET permissions = array_append(permissions, 'settings.view')
-WHERE rp.role LIKE 'INTERN_%'
-  AND NOT ('settings.view' = ANY(permissions));
-```
-(nếu hệ thống có lưu `role_permissions` cache — kiểm tra trước, nếu không có thì bỏ qua bước UPDATE)
+#### 3) Thêm menu riêng “Thông báo” trên sidebar
+**File:** `src/components/AppSidebar.tsx`
+
+Tách **Thông báo** khỏi nhóm **Cài đặt**:
+- thêm item sidebar riêng: `/thong-bao`
+- item này không gắn `moduleKey: "settings"`
+- vẫn giữ **Cài đặt** cho nhóm role quản trị / trưởng phòng như hiện tại
+
+Kết quả:
+- thực tập sinh thấy nút **Thông báo**
+- không cần thấy nút **Cài đặt**
+
+#### 4) Thu hẹp lại quyền `settings.view` của INTERN
+**Files:**
+- `src/hooks/usePermissions.ts`
+- migration mới cho DB function `get_default_permissions_for_role`
+
+Gỡ lại `settings.view` khỏi toàn bộ role `INTERN_*` để tránh mở nhầm khu vực quản trị.
+
+Đồng bộ client + DB theo rule memory `Client Server Sync`.
+
+#### 5) Giữ tab “Thông báo” bên trong Cài đặt cho role quản trị
+**File:** `src/pages/Settings.tsx`
+
+Không bỏ tab hiện tại cho Admin/HR/Manager nếu vẫn muốn họ bật ngay trong Cài đặt.
+Nhưng phần cho user thường sẽ đi qua route `/thong-bao` riêng.
+
+Nếu cần gọn hơn, có thể đổi tab trong Cài đặt thành bản tái sử dụng chung cùng nội dung với trang mới để tránh lặp UI.
+
+#### 6) Cập nhật hướng dẫn sử dụng
+**File:** `src/pages/UserGuide.tsx`
+
+Đổi các bước hiện tại từ:
+- `Cài đặt → Tab "Thông báo"`
+
+thành:
+- `Vào mục "Thông báo" ở menu bên trái`
+
+để đúng cho cả thực tập sinh và toàn bộ user thường.
 
 ### Kết quả sau khi sửa
-- INTERN đăng nhập → menu Cài đặt **xuất hiện** ở sidebar
-- Vào Cài đặt → chỉ thấy 2 tab: **"Quyền hạn"** + **"Thông báo"** (bị filter bởi `ACCOUNT_MANAGER_ROLES`, `isAdmin`, `isHR` — đã có sẵn logic)
-- Bật toggle Web Push thành công → nhận thông báo @mention, follow-up, sinh nhật KH
+- Thực tập sinh có thể bật thông báo
+- Thực tập sinh **không** được mở khu vực Cài đặt quản trị
+- Admin/HR vẫn giữ nguyên trang Cài đặt và các tab quản trị
+- Hướng dẫn sử dụng khớp với luồng thực tế
+
+### Technical details
+- `settings.view` sẽ quay về đúng nghĩa: quyền vào khu vực quản trị Settings
+- trang `/thong-bao` là trang riêng cho self-service notification setup
+- sidebar sẽ có 2 entry độc lập:
+  - `Cài đặt` → cần `settings.view`
+  - `Thông báo` → chỉ cần đăng nhập
+- migration DB bắt buộc để loại lại `settings.view` khỏi các role INTERN trong `get_default_permissions_for_role`
 
 ### Test
-1. Đăng nhập bằng tài khoản INTERN_SALE_DOMESTIC → sidebar hiện "Cài đặt"
-2. Click vào → thấy 2 tab "Quyền hạn" + "Thông báo"
-3. Bật toggle Web Push → trình duyệt hỏi quyền → Cho phép → toast success
-4. Các role INTERN khác (HCNS, KETOAN, MKT, DIEUHAN) cùng hành vi
-
+1. Đăng nhập bằng INTERN → sidebar có **Thông báo**, không có **Cài đặt**
+2. Vào `/thong-bao` → bật toggle thành công
+3. INTERN vào `/cai-dat` trực tiếp → bị chặn như cũ
+4. Đăng nhập bằng ADMIN → vẫn thấy cả **Cài đặt** và **Thông báo**
+5. User Guide hiển thị đúng đường dẫn mới cho mọi phòng ban
