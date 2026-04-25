@@ -10,6 +10,7 @@ import { SettingsLevelsTab } from "@/components/settings/SettingsLevelsTab";
 import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
+import { SettingsExpenseCategoriesTab } from "@/components/settings/SettingsExpenseCategoriesTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
