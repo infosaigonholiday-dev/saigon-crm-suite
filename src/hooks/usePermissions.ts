@@ -262,6 +262,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_DOMESTIC: [
     "dashboard.view",
+    "settings.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
@@ -273,6 +274,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
+    "settings.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
@@ -284,6 +286,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
+    "settings.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
@@ -295,6 +298,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_SALE_INBOUND: [
     "dashboard.view",
+    "settings.view",
     "customers.view", "customers.create", "customers.edit",
     "leads.view", "leads.create",
     "bookings.view", "bookings.create",
@@ -306,6 +310,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_DIEUHAN: [
     "dashboard.view",
+    "settings.view",
     "bookings.view",
     "leave.view", "leave.create",
     "workflow.view",
@@ -314,6 +319,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_MKT: [
     "dashboard.view",
+    "settings.view",
     "leads.view", "leads.create", "leads.edit",
     "leave.view", "leave.create",
     "workflow.view",
@@ -322,6 +328,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_HCNS: [
     "dashboard.view",
+    "settings.view",
     "staff.view",
     "leave.view", "leave.create",
     "workflow.view",
@@ -329,6 +336,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
   ],
   INTERN_KETOAN: [
     "dashboard.view",
+    "settings.view",
     "bookings.view",
     "payments.view",
     "leave.view", "leave.create",
