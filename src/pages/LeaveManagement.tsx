@@ -301,53 +301,83 @@ export default function LeaveManagement() {
           </p>
         </div>
         {canCreate && (
-          <Button
-            onClick={() => setCreateOpen(true)}
-            disabled={!myEmpId}
-            title={!myEmpId ? "Bạn chưa có hồ sơ nhân viên" : ""}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Tạo đơn nghỉ phép
-          </Button>
+          myEmpId ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Tạo đơn nghỉ phép
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" disabled className="opacity-70">
+                    <AlertTriangle className="h-4 w-4 mr-1 text-warning" /> Tạo đơn nghỉ phép
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Tài khoản chưa liên kết hồ sơ nhân viên — liên hệ HCNS</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
         )}
       </div>
 
-      {canCreate && !myEmpId && user && (
-        <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/30 text-sm">
+      {canCreate && !myEmpId && (
+        <div className="flex items-start gap-3 p-3 rounded-md bg-warning/10 border border-warning/30 text-sm">
           <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-warning">Chưa có hồ sơ nhân viên</p>
-            <p className="text-xs text-muted-foreground">Tài khoản của bạn chưa được liên kết hồ sơ nhân viên. Liên hệ HR/HCNS để tạo hồ sơ trước khi gửi đơn nghỉ phép.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tài khoản của bạn chưa được liên kết hồ sơ nhân viên. Liên hệ HR/HCNS để tạo hồ sơ trước khi gửi đơn nghỉ phép.
+            </p>
           </div>
+          {(isAdmin || isHrStaff) && (
+            <Button size="sm" variant="outline" onClick={() => window.location.href = "/nhan-su"}>
+              Mở Nhân sự
+            </Button>
+          )}
         </div>
       )}
 
-      {myEmpId && (
+      {/* Cards thống kê — luôn hiển thị nếu user có quyền create */}
+      {canCreate && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Phép năm còn lại</p>
-              <p className={`text-2xl font-bold ${annualRemaining < 0 ? "text-destructive" : annualRemaining < 3 ? "text-warning" : ""}`}>
-                {annualRemaining} / {annualLimit} ngày
-              </p>
+              {myEmpId ? (
+                <p className={`text-2xl font-bold ${annualRemaining < 0 ? "text-destructive" : annualRemaining < 3 ? "text-warning" : ""}`}>
+                  {annualRemaining} / {annualLimit} ngày
+                </p>
+              ) : (
+                <p className="text-2xl font-bold text-muted-foreground">— / {annualLimit} ngày</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">Năm {currentYear}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Đã sử dụng năm nay</p>
-              <p className="text-2xl font-bold">{myApprovedThisYear.reduce((s: number, r: any) => s + Number(r.total_days), 0)} ngày</p>
-              <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-1.5">
-                {Object.entries(usageByType).slice(0, 3).map(([type, days]) => (
-                  <span key={type} className="px-1.5 py-0.5 rounded bg-muted">{leaveTypes[type] ?? type}: {days}</span>
-                ))}
-                {Object.keys(usageByType).length === 0 && <span>Chưa có đơn được duyệt</span>}
-              </div>
+              {myEmpId ? (
+                <>
+                  <p className="text-2xl font-bold">{myApprovedThisYear.reduce((s: number, r: any) => s + Number(r.total_days), 0)} ngày</p>
+                  <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-1.5">
+                    {Object.entries(usageByType).slice(0, 3).map(([type, days]) => (
+                      <span key={type} className="px-1.5 py-0.5 rounded bg-muted">{leaveTypes[type] ?? type}: {days}</span>
+                    ))}
+                    {Object.keys(usageByType).length === 0 && <span>Chưa có đơn được duyệt</span>}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-muted-foreground">—</p>
+                  <p className="text-xs text-muted-foreground mt-1">Chưa có hồ sơ nhân viên</p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Đơn của tôi đang chờ</p>
-              <p className="text-2xl font-bold">{myPendingCount}</p>
+              <p className="text-2xl font-bold">{myEmpId ? myPendingCount : "—"}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {policies.length > 0 ? `${policies.length} loại phép có sẵn` : ""}
               </p>
@@ -355,6 +385,7 @@ export default function LeaveManagement() {
           </Card>
         </div>
       )}
+
 
       <Card>
         <CardHeader className="pb-3">
