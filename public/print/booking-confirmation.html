@@ -628,6 +628,21 @@ window.SGH_fillData = function(data) {
   if (t === 'le' || t === 'doan') SGH_setType(t);
   // Khi webapp dùng: edit mode OFF mặc định (chỉ xem & in)
 })();
+
+// ── POSTMESSAGE BRIDGE ─────────────────────────────────────────
+window.addEventListener('message', function(ev){
+  var msg = ev.data || {};
+  if (msg && msg.type === 'fill' && msg.data) {
+    if (msg.printType === 'le' || msg.printType === 'doan') SGH_setType(msg.printType);
+    SGH_fillData(msg.data);
+    // Notify parent ready to print
+    try { ev.source && ev.source.postMessage({ type: 'filled' }, '*'); } catch(e){}
+  } else if (msg && msg.type === 'print') {
+    window.print();
+  } else if (msg && msg.type === 'toggleEdit') {
+    toggleEdit();
+  }
+});
 </script>
 </body>
 </html>
