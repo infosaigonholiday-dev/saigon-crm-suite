@@ -47,6 +47,8 @@ function isInIframe(): boolean {
   }
 }
 
+type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -54,6 +56,7 @@ export function usePushSubscription() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [inIframe, setInIframe] = useState(false);
+  const subscribeRef = useRef<(() => Promise<SubscribeResult>) | null>(null);
 
   useEffect(() => {
     const supported =
