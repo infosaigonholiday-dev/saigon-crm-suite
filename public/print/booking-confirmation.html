@@ -355,9 +355,9 @@ body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::befo
         <tr><td>Em bé (INF)</td><td>Dưới 2 tuổi</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
         <tr><td>Phụ thu phòng đơn</td><td>Nếu có yêu cầu</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
         <tr><td>🎁 Chiết khấu / Ưu đãi</td><td></td><td style="text-align:right">—</td><td style="text-align:center">—</td><td class="r" style="color:#1a7a1a"></td></tr>
-        <tr class="tr-total"><td colspan="4" style="text-align:right;letter-spacing:1px">💳 TỔNG THANH TOÁN</td><td class="r"></td></tr>
-        <tr class="tr-dep"><td colspan="4" style="text-align:right">✅ Đã đặt cọc</td><td class="r"></td></tr>
-        <tr class="tr-rem"><td colspan="4" style="text-align:right">⏳ Còn lại — Thanh toán trước <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY"></span></td><td class="r"></td></tr>
+        <tr class="tr-total"><td colspan="4" style="text-align:right;letter-spacing:1px">💳 TỔNG THANH TOÁN</td><td class="r" data-field="total"></td></tr>
+        <tr class="tr-dep"><td colspan="4" style="text-align:right">✅ Đã đặt cọc</td><td class="r" data-field="deposit"></td></tr>
+        <tr class="tr-rem"><td colspan="4" style="text-align:right">⏳ Còn lại — Thanh toán trước <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="remaining_due"></span></td><td class="r" data-field="remaining"></td></tr>
       </tbody>
     </table>
 
