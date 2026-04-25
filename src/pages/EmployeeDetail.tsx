@@ -52,6 +52,7 @@ export default function EmployeeDetail() {
   const [deleting, setDeleting] = useState(false);
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
+  useAutoMarkNotificationsRead("employee", id);
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ["employee", id],
