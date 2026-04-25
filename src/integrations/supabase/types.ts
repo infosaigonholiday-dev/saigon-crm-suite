@@ -2714,9 +2714,13 @@ export type Database = {
           created_at: string | null
           entity_id: string | null
           entity_type: string | null
+          escalated_at: string | null
+          escalation_level: number | null
           id: string
           is_read: boolean | null
           message: string | null
+          priority: string | null
+          read_at: string | null
           title: string
           type: string
           user_id: string
@@ -2725,9 +2729,13 @@ export type Database = {
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
           id?: string
           is_read?: boolean | null
           message?: string | null
+          priority?: string | null
+          read_at?: string | null
           title: string
           type: string
           user_id: string
@@ -2736,9 +2744,13 @@ export type Database = {
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
           id?: string
           is_read?: boolean | null
           message?: string | null
+          priority?: string | null
+          read_at?: string | null
           title?: string
           type?: string
           user_id?: string
