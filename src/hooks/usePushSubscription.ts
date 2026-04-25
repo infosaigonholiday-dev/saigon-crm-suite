@@ -250,6 +250,11 @@ export function usePushSubscription() {
     }
   }, [isSupported, user, inIframe]);
 
+  // Keep ref in sync so the auto re-subscribe effect can call latest subscribe
+  useEffect(() => {
+    subscribeRef.current = subscribe;
+  }, [subscribe]);
+
   const unsubscribe = useCallback(async () => {
     if (!isSupported || !user) return { ok: false };
     setLoading(true);
