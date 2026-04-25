@@ -277,7 +277,11 @@ export default function LeaveManagement() {
                 <TableCell>{r.start_date}</TableCell>
                 <TableCell>{r.end_date}</TableCell>
                 <TableCell className="font-medium">{r.total_days}</TableCell>
-                <TableCell className="max-w-[150px] truncate text-sm">{r.reason ?? "—"}</TableCell>
+                <TableCell className="max-w-[340px] text-sm align-top">
+                  <p className="line-clamp-3 whitespace-pre-wrap break-words leading-snug" title={r.reason ?? ""}>
+                    {r.reason ?? "—"}
+                  </p>
+                </TableCell>
                 <TableCell><Badge variant="outline" className={st.className}>{st.label}</Badge></TableCell>
                 {showActions && <TableCell className="text-right">{actionUI}</TableCell>}
               </TableRow>
