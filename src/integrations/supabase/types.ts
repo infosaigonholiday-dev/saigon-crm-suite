@@ -644,6 +644,7 @@ export type Database = {
       budget_estimates: {
         Row: {
           advance_amount: number | null
+          advance_purpose: string | null
           advance_recipient: string | null
           booking_id: string
           code: string | null
@@ -659,6 +660,7 @@ export type Database = {
         }
         Insert: {
           advance_amount?: number | null
+          advance_purpose?: string | null
           advance_recipient?: string | null
           booking_id: string
           code?: string | null
@@ -674,6 +676,7 @@ export type Database = {
         }
         Update: {
           advance_amount?: number | null
+          advance_purpose?: string | null
           advance_recipient?: string | null
           booking_id?: string
           code?: string | null
@@ -792,7 +795,13 @@ export type Database = {
           estimate_id: string
           id: string
           refund_amount: number | null
+          refund_status: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
+          topup_amount: number | null
+          topup_status: string | null
           total_actual: number | null
           total_estimated: number | null
           variance: number | null
@@ -814,7 +823,13 @@ export type Database = {
           estimate_id: string
           id?: string
           refund_amount?: number | null
+          refund_status?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          topup_amount?: number | null
+          topup_status?: string | null
           total_actual?: number | null
           total_estimated?: number | null
           variance?: number | null
@@ -836,7 +851,13 @@ export type Database = {
           estimate_id?: string
           id?: string
           refund_amount?: number | null
+          refund_status?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          topup_amount?: number | null
+          topup_status?: string | null
           total_actual?: number | null
           total_estimated?: number | null
           variance?: number | null
@@ -2123,6 +2144,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      expense_categories: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
       }
       insurance_records: {
         Row: {
@@ -4031,6 +4076,8 @@ export type Database = {
           category: string
           created_at: string | null
           description: string | null
+          evidence_url: string | null
+          expense_category_id: string | null
           id: string
           notes: string | null
           payment_method: string | null
@@ -4053,6 +4100,8 @@ export type Database = {
           category: string
           created_at?: string | null
           description?: string | null
+          evidence_url?: string | null
+          expense_category_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -4075,6 +4124,8 @@ export type Database = {
           category?: string
           created_at?: string | null
           description?: string | null
+          evidence_url?: string | null
+          expense_category_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -4095,6 +4146,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_expense_category_id_fkey"
+            columns: ["expense_category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
             referencedColumns: ["id"]
           },
           {
@@ -4220,6 +4278,7 @@ export type Database = {
         Returns: boolean
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      is_booking_closed: { Args: { _booking_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
