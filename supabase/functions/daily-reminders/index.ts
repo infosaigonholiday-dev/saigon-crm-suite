@@ -510,6 +510,130 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== FINANCE ESCALATION 48h/72h: Dự toán & Quyết toán chưa duyệt =====
+    const now = new Date();
+    const h48 = new Date(now.getTime() - 48 * 3600 * 1000).toISOString();
+    const h72 = new Date(now.getTime() - 72 * 3600 * 1000).toISOString();
+
+    const { data: ketoanUsers } = await supabase
+      .from("profiles").select("id")
+      .in("role", ["KETOAN", "ADMIN", "SUPER_ADMIN"])
+      .eq("is_active", true);
+    const { data: adminUsers } = await supabase
+      .from("profiles").select("id")
+      .in("role", ["ADMIN", "SUPER_ADMIN"])
+      .eq("is_active", true);
+
+    // Estimates pending_review > 48h
+    const { data: staleEstimates } = await supabase
+      .from("budget_estimates")
+      .select("id, code, created_at, last_reminder_at")
+      .eq("status", "pending_review")
+      .lt("created_at", h48);
+
+    for (const est of staleEstimates || []) {
+      const ageHours = (now.getTime() - new Date(est.created_at).getTime()) / 3600000;
+      const recipients = ageHours >= 72 ? adminUsers : ketoanUsers;
+      if (!recipients?.length) continue;
+      // Skip nếu đã nhắc trong 24h qua
+      if (est.last_reminder_at && new Date(est.last_reminder_at) > new Date(now.getTime() - 24 * 3600 * 1000)) continue;
+
+      const title = ageHours >= 72
+        ? `🚨 Dự toán ${est.code} quá hạn duyệt 3 ngày`
+        : `⏰ Nhắc duyệt dự toán ${est.code}`;
+      const message = ageHours >= 72
+        ? `Dự toán ${est.code} chờ duyệt đã quá ${Math.floor(ageHours)}h. Cần xử lý gấp.`
+        : `Dự toán ${est.code} đã chờ duyệt ${Math.floor(ageHours)}h. Vui lòng duyệt.`;
+
+      for (const u of recipients) {
+        notifications.push({
+          user_id: u.id,
+          type: ageHours >= 72 ? "BUDGET_ESTIMATE_OVERDUE" : "BUDGET_ESTIMATE_REMIND",
+          title, message,
+          entity_type: "finance",
+          entity_id: est.id,
+          priority: "high",
+        });
+      }
+      await supabase.from("budget_estimates").update({ last_reminder_at: now.toISOString() }).eq("id", est.id);
+    }
+
+    // Settlements pending_accountant or pending_ceo > 48h
+    const { data: staleSettlements } = await supabase
+      .from("budget_settlements")
+      .select("id, code, status, created_at, last_reminder_at")
+      .in("status", ["pending_accountant", "pending_ceo"])
+      .lt("created_at", h48);
+
+    for (const st of staleSettlements || []) {
+      const ageHours = (now.getTime() - new Date(st.created_at).getTime()) / 3600000;
+      // Pending CEO → escalate cho ADMIN. Pending KT → KT (≥72h thì admin)
+      const recipients = st.status === "pending_ceo" || ageHours >= 72 ? adminUsers : ketoanUsers;
+      if (!recipients?.length) continue;
+      if (st.last_reminder_at && new Date(st.last_reminder_at) > new Date(now.getTime() - 24 * 3600 * 1000)) continue;
+
+      const title = ageHours >= 72
+        ? `🚨 Quyết toán ${st.code} quá hạn duyệt 3 ngày`
+        : `⏰ Nhắc duyệt quyết toán ${st.code}`;
+      const message = `Quyết toán ${st.code} (${st.status}) đã chờ ${Math.floor(ageHours)}h.`;
+
+      for (const u of recipients) {
+        notifications.push({
+          user_id: u.id,
+          type: ageHours >= 72 ? "BUDGET_SETTLEMENT_OVERDUE" : "BUDGET_SETTLEMENT_REMIND",
+          title, message,
+          entity_type: "finance",
+          entity_id: st.id,
+          priority: "high",
+        });
+      }
+      await supabase.from("budget_settlements").update({ last_reminder_at: now.toISOString() }).eq("id", st.id);
+    }
+
+    // Công nợ KH quá hạn > 30 ngày → ADMIN
+    const d30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const { data: overdueAR } = await supabase
+      .from("accounts_receivable")
+      .select("id, customer_id, amount_remaining, due_date, customers(full_name)")
+      .lt("due_date", d30)
+      .gt("amount_remaining", 0);
+    if (overdueAR?.length && adminUsers?.length) {
+      for (const ar of overdueAR) {
+        for (const u of adminUsers) {
+          notifications.push({
+            user_id: u.id,
+            type: "AR_OVERDUE_30D",
+            title: `💰 Công nợ quá hạn > 30 ngày`,
+            message: `KH ${(ar as any).customers?.full_name || "?"} còn nợ ${Number(ar.amount_remaining).toLocaleString("vi-VN")}đ — hạn ${ar.due_date}`,
+            entity_type: "finance",
+            entity_id: ar.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
+    // Dòng tiền âm tháng hiện tại → ADMIN
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    const { data: cf } = await supabase
+      .from("cashflow_monthly")
+      .select("id, net_cashflow")
+      .eq("year", curYear).eq("month", curMonth).maybeSingle();
+    if (cf && Number(cf.net_cashflow ?? 0) < 0 && adminUsers?.length) {
+      for (const u of adminUsers) {
+        notifications.push({
+          user_id: u.id,
+          type: "CASHFLOW_NEGATIVE",
+          title: `⚠️ Dòng tiền tháng ${curMonth} âm`,
+          message: `Net cashflow tháng ${curMonth}/${curYear}: ${Number(cf.net_cashflow).toLocaleString("vi-VN")}đ`,
+          entity_type: "finance",
+          entity_id: cf.id,
+          priority: "high",
+        });
+      }
+    }
+
     // ===== Deduplicate & Insert =====
     let sent = 0;
     const pushBatch: Notif[] = [];
