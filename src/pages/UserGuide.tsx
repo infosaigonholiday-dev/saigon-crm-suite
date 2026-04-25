@@ -208,6 +208,12 @@ function HCNSGuide() {
         <PushNotifGuide />
         <LeaveNotificationGuide />
         <EscalationPolicyGuide />
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════ ĐIỀU HÀNH ═══════════════ */
 function OpsGuide() {
   return (
     <Card>
