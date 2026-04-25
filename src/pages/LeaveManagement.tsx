@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
-import { useAuth as useAuthCtx } from "@/contexts/AuthContext";
 
 const leaveTypes: Record<string, string> = {
   ANNUAL: "Phép năm", SICK: "Ốm đau", COMPENSATORY: "Phép bù",
