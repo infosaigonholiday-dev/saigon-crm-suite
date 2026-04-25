@@ -200,29 +200,9 @@ body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::befo
 </head>
 <body>
 
-<div class="toolbar" id="toolbar">
-  <span class="toolbar-title">⚙ SAIGON HOLIDAY — Phiếu Xác Nhận Booking</span>
+<!-- Toolbar removed; React wrapper handles print/edit toggle -->
+<input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="loadLogo(event)">
 
-  <div class="logo-size-wrap">
-    🖼️
-    <input type="range" id="logo-size" min="60" max="140" value="90"
-           oninput="resizeLogo(this.value)" title="Phóng to / thu nhỏ logo">
-    <span id="logo-size-val">90px</span>
-  </div>
-
-  <button class="tbtn tbtn-logo" onclick="document.getElementById('logo-file-input').click()" title="Chọn file logo">
-    📁 Đổi Logo
-  </button>
-
-  <button class="tbtn tbtn-edit" id="edit-btn" onclick="toggleEdit()" title="Bật/tắt chỉnh sửa">
-    ✏️ Chỉnh sửa
-  </button>
-
-  <button class="tbtn tbtn-pdf" onclick="window.print()" title="Xuất PDF qua trình duyệt">
-    🖨️ Xuất PDF
-  </button>
-</div>
-<div class="page">
 
 <!-- HEADER (shared) -->
 <header class="hd">
