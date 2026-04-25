@@ -32,6 +32,7 @@ import UserGuide from "./pages/UserGuide";
 import ResetPassword from "./pages/ResetPassword";
 import FirstLoginChangePassword from "./pages/FirstLoginChangePassword";
 import RawContacts from "./pages/RawContacts";
+import B2BTours from "./pages/B2BTours";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
