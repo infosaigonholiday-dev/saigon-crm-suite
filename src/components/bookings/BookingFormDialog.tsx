@@ -43,7 +43,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  // Pre-fill khi mở dialog từ Kho Tour B2B
+  // Pre-fill khi mở dialog từ LKH Tour 2026
   useEffect(() => {
     if (open && prefillData) {
       setForm((p) => ({
@@ -119,7 +119,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
         </DialogHeader>
         {prefillData && (
           <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-            <div className="font-semibold mb-1">Tạo từ tour B2B</div>
+            <div className="font-semibold mb-1">Tạo từ LKH Tour 2026</div>
             <div>
               <span className="font-mono">{prefillData.tour_code}</span>
               {prefillData.destination && <> • {prefillData.destination}</>}
