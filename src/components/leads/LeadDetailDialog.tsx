@@ -20,6 +20,7 @@ import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import LostReasonDialog from "./LostReasonDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +68,9 @@ export default function LeadDetailDialog({ open, onOpenChange, lead }: Props) {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
+
+  // Auto-mark notifications related to this lead as read when dialog is open
+  useAutoMarkNotificationsRead("lead", open ? lead?.id : null);
 
   const updateStatus = useMutation({
     mutationFn: async ({ status, extra }: { status: string; extra?: Record<string, any> }) => {

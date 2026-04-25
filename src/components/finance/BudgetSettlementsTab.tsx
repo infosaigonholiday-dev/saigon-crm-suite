@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import InternalNotes from "@/components/shared/InternalNotes";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
@@ -519,6 +520,13 @@ export function BudgetSettlementsTab() {
           )}
           {selectedSettlement?.ceo_note && (
             <div className="text-sm"><span className="font-medium">Ghi chú CEO:</span> {selectedSettlement.ceo_note}</div>
+          )}
+
+          {selectedSettlement?.id && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-semibold mb-2">💬 Ghi chú nội bộ</p>
+              <InternalNotes entityType="finance" entityId={selectedSettlement.id} entityName={selectedSettlement.code} />
+            </div>
           )}
 
           <DialogFooter className="flex-wrap gap-2">

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Eye, Check, X, Banknote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import InternalNotes from "@/components/shared/InternalNotes";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
@@ -450,6 +451,13 @@ export function BudgetEstimatesTab() {
                 ))}
               </TableBody>
             </Table>
+
+            {selectedEstimate?.id && (
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold mb-2">💬 Ghi chú nội bộ</p>
+                <InternalNotes entityType="finance" entityId={selectedEstimate.id} entityName={selectedEstimate.code} />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
