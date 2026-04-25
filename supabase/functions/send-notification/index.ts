@@ -9,10 +9,28 @@ const corsHeaders = {
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:info@saigonholiday.com";
+
+function normalizeVapidSubject(raw: string): string {
+  const v = (raw || "").trim();
+  if (!v) return "mailto:info@saigonholiday.com";
+  // Đã có scheme hợp lệ → giữ nguyên
+  if (/^(mailto:|https?:\/\/)/i.test(v)) return v;
+  // Email trần → thêm mailto:
+  if (v.includes("@")) return `mailto:${v}`;
+  // Còn lại → fallback
+  return "mailto:info@saigonholiday.com";
+}
+
+const VAPID_SUBJECT = normalizeVapidSubject(Deno.env.get("VAPID_SUBJECT") || "");
+console.log("[send-notification] VAPID_SUBJECT normalized to:", VAPID_SUBJECT);
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    console.log("[send-notification] webpush VAPID details configured OK");
+  } catch (e) {
+    console.error("[send-notification] setVapidDetails failed:", e);
+  }
 }
 
 interface PushBody {
