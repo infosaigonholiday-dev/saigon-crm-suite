@@ -193,6 +193,9 @@ export default function EmployeeDetail() {
                 <InfoItem icon={User} label="Mã số thuế" value={employee.tax_code} />
               </CardContent>
             </Card>
+            {employee.profile_id && employee.profile_id === user?.id && (
+              <PushNotificationCard />
+            )}
           </div>
         </TabsContent>
 
