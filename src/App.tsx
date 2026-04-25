@@ -34,6 +34,7 @@ import FirstLoginChangePassword from "./pages/FirstLoginChangePassword";
 import RawContacts from "./pages/RawContacts";
 import B2BTours from "./pages/B2BTours";
 import AlertsCenter from "./pages/AlertsCenter";
+import BookingConfirmationPrint from "./pages/BookingConfirmationPrint";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -84,6 +85,9 @@ function ProtectedRoutes() {
         <Route path="/canh-bao" element={<ErrorBoundary><AlertsCenter /></ErrorBoundary>} />
         <Route path="/huong-dan" element={<ErrorBoundary><UserGuide /></ErrorBoundary>} />
       </Route>
+      <Route path="/dat-tour/:id/in-xac-nhan" element={
+        <ErrorBoundary><BookingConfirmationPrint /></ErrorBoundary>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

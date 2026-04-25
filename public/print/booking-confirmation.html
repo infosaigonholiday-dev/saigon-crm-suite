@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGH – Phiếu Xác Nhận Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --org:#F26522;--org-dk:#C84B0F;--org-lt:#FF8040;
+  --org-pale:#FFF4ED;--org-tint:#FFF9F5;--org-mid:#F5C9AD;
+  --ink:#1E1E1E;--gray:#555;--div:#EDD9CE;--white:#fff;--row-alt:#FFF9F5;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Be Vietnam Pro",sans-serif;font-size:10.5pt;color:var(--ink);background:#CCC;line-height:1.6;}
+.page{width:794px;margin:24px auto;background:var(--white);box-shadow:0 8px 48px rgba(0,0,0,.22);overflow:hidden;}
+
+/* TAB SWITCHER */
+.tab-bar{display:flex;background:#f0f0f0;border-bottom:2px solid var(--org);}
+.tab-btn{flex:1;padding:10px 0;text-align:center;font-size:10pt;font-weight:700;cursor:pointer;letter-spacing:1px;border:none;background:transparent;color:var(--gray);transition:all .2s;}
+.tab-btn.active{background:var(--org);color:#fff;}
+.tab-btn:hover:not(.active){background:var(--org-pale);color:var(--org-dk);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* HEADER */
+.hd{background:var(--org);position:relative;overflow:hidden;min-height:118px;}
+.hd-wave{position:absolute;right:0;top:0;height:100%;width:55%;z-index:1;pointer-events:none;}
+.hd-inner{position:relative;z-index:2;display:flex;align-items:center;padding:14px 22px;gap:16px;}
+.logo-wrap{flex-shrink:0;width:82px;height:82px;display:flex;align-items:center;justify-content:center;}
+.logo-svg{width:90px;height:90px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3));transition:width .2s,height .2s;}
+.hd-company{flex:1;color:#fff;}
+.hd-name{font-size:16pt;font-weight:800;letter-spacing:.5px;line-height:1.15;text-shadow:0 1px 6px rgba(0,0,0,.2);}
+.hd-name .travel{font-size:10pt;font-weight:300;opacity:.88;letter-spacing:5px;display:block;margin-top:2px;}
+.hd-tagline{font-family:"Playfair Display",serif;font-style:italic;font-size:9pt;color:rgba(255,255,255,.88);margin:4px 0 9px;letter-spacing:1.5px;}
+.hd-contacts{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;}
+.hci{font-size:7.8pt;color:rgba(255,255,255,.84);display:flex;align-items:center;gap:4px;}
+.hci b{color:#fff;}
+.hd-right{flex-shrink:0;text-align:right;padding:0 4px;}
+.hd-right .gpkd{font-size:8pt;color:rgba(255,255,255,.75);line-height:1.8;}
+.hd-right .gpkd b{color:rgba(255,255,255,.95);}
+.gold-bar{height:4px;background:linear-gradient(to right,#8A6A10,#E8A832,#F5D060,#E8A832,#8A6A10);}
+
+/* TITLE BANNER */
+.title-banner{background:var(--org-pale);border-bottom:2px solid var(--org-mid);padding:11px 50px 9px;text-align:center;position:relative;}
+.title-banner::before,.title-banner::after{content:"✈";position:absolute;top:50%;transform:translateY(-50%);color:var(--org);font-size:13pt;}
+.title-banner::before{left:18px;} .title-banner::after{right:18px;transform:translateY(-50%) scaleX(-1);}
+.tb-main{font-size:13pt;font-weight:800;color:var(--org-dk);letter-spacing:2.5px;text-transform:uppercase;}
+.tb-sub{font-size:8.5pt;color:var(--gray);margin-top:1px;font-style:italic;}
+
+/* STATUS BAR */
+.status-bar{background:var(--ink);padding:8px 22px;display:flex;align-items:center;gap:0;font-size:8.5pt;}
+.sb-item{color:rgba(255,255,255,.72);padding:0 16px;border-right:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:1px;}
+.sb-item:first-child{padding-left:0;} .sb-item:last-child{border:none;margin-left:auto;}
+.sb-label{font-size:6.8pt;color:rgba(255,255,255,.48);text-transform:uppercase;letter-spacing:.8px;}
+.sb-val{font-weight:700;color:#fff;}
+.status-badge{background:var(--org);color:#fff;padding:4px 14px;border-radius:20px;font-size:8.5pt;font-weight:700;letter-spacing:.5px;}
+
+/* BODY */
+.body{padding:16px 22px 22px;}
+.greeting{background:var(--org-pale);border-left:3px solid var(--org);border-radius:0 6px 6px 0;padding:8px 13px;margin-bottom:13px;font-size:9pt;color:var(--gray);}
+.greeting b{color:var(--ink);}
+.sec{display:flex;align-items:center;gap:8px;margin:15px 0 8px;}
+.sec-icon{width:26px;height:26px;background:var(--org);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11pt;flex-shrink:0;}
+.sec-title{font-size:9pt;font-weight:700;color:var(--org-dk);letter-spacing:1.2px;text-transform:uppercase;}
+.sec-line{flex:1;height:1px;background:linear-gradient(to right,var(--div),transparent);}
+
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+.icard{background:var(--row-alt);border:1px solid var(--div);border-radius:7px;padding:9px 12px;border-top:2px solid var(--org);}
+.icard.gold{border-top-color:#C9A227;}
+.icard-title{font-size:7.5pt;font-weight:700;color:var(--org);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px dashed var(--div);}
+.icard.gold .icard-title{color:#C9A227;}
+.il{display:flex;gap:5px;margin-bottom:3px;font-size:9pt;}
+.il-lbl{color:var(--gray);min-width:112px;white-space:nowrap;flex-shrink:0;}
+.il-val{font-weight:600;}
+.il-val.warn{color:var(--org-dk);}
+
+.flight-row{display:flex;align-items:flex-start;gap:7px;margin-bottom:5px;font-size:9pt;}
+.fdir{background:var(--org);color:#fff;padding:1px 7px;border-radius:3px;font-size:7.5pt;font-weight:700;flex-shrink:0;margin-top:2px;}
+.flight-note{font-size:8pt;color:var(--gray);font-style:italic;margin-top:4px;padding:5px 8px;background:rgba(242,101,34,.07);border-radius:4px;}
+.hl-list{list-style:none;padding:0;}
+.hl-list li{font-size:9pt;padding:2.5px 0 2.5px 18px;position:relative;border-bottom:1px solid var(--div);}
+.hl-list li:last-child{border:none;}
+.hl-list li::before{content:"⭐";position:absolute;left:0;font-size:8.5pt;}
+
+table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:4px;}
+thead tr{background:var(--org);color:#fff;}
+thead th{padding:7px 9px;text-align:left;font-weight:600;font-size:8.5pt;}
+thead th:first-child{border-radius:5px 0 0 0;} thead th:last-child{border-radius:0 5px 0 0;}
+tbody tr:nth-child(even){background:var(--row-alt);}
+tbody td{padding:5px 9px;border-bottom:1px solid var(--div);vertical-align:middle;}
+tbody td.r{text-align:right;font-weight:600;}
+.tr-total td{background:var(--org-pale)!important;font-weight:700;font-size:10pt;border-top:2px solid var(--org)!important;color:var(--org-dk);}
+.tr-dep td{background:#F0FFF0!important;color:#1a7a1a;font-weight:600;}
+.tr-rem td{background:#FFF5F0!important;color:var(--org-dk);font-weight:700;font-size:10pt;}
+
+.bank-wrap{padding:9px 11px;background:var(--row-alt);border:1px solid var(--div);border-radius:7px;border-top:2px solid var(--ink);margin-bottom:9px;}
+.bank-title{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;color:var(--ink);}
+.bl{display:flex;gap:6px;margin-bottom:3px;font-size:9pt;}
+.bl .lbl{color:var(--gray);min-width:68px;}
+.bl .val{font-weight:700;}
+.bank-note{font-size:8pt;color:var(--gray);font-style:italic;margin-top:6px;padding:5px 8px;background:rgba(242,101,34,.07);border-radius:4px;border-left:2px solid var(--org);}
+
+.incl-box{padding:9px 11px;background:var(--row-alt);border:1px solid var(--div);border-radius:7px;margin-bottom:7px;}
+.incl-title{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.incl-title.yes{color:#1a7a1a;} .incl-title.no{color:var(--org-dk);}
+.incl-list{list-style:none;}
+.incl-list li{font-size:8.5pt;padding:2px 0 2px 15px;position:relative;color:var(--gray);}
+.incl-list li::before{position:absolute;left:0;}
+.incl-list.yes li::before{content:"✓";color:#1a7a1a;font-weight:700;}
+.incl-list.no li::before{content:"✗";color:var(--org);font-weight:700;}
+
+table.cancel th{background:var(--ink);color:#fff;padding:7px 11px;font-size:8.5pt;}
+table.cancel th:first-child{border-radius:5px 0 0 0;} table.cancel th:last-child{border-radius:0 5px 0 0;text-align:right;}
+table.cancel td:last-child{text-align:right;font-weight:700;color:var(--org-dk);}
+
+.alert-box{background:#FFF8F4;border:1px solid var(--org-mid);border-left:3px solid var(--org);border-radius:0 7px 7px 0;padding:9px 13px;margin:11px 0;}
+.alert-title{font-size:8pt;font-weight:700;color:var(--org);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.alert-list{list-style:none;}
+.alert-list li{font-size:8.5pt;color:var(--gray);padding-left:13px;position:relative;margin-bottom:3px;line-height:1.5;}
+.alert-list li::before{content:"•";position:absolute;left:0;color:var(--org);font-weight:700;}
+
+/* Roster table (Tour Đoàn) */
+.roster-wrap{overflow-x:auto;}
+table.roster thead th{font-size:8pt;padding:6px 7px;}
+table.roster tbody td{padding:5px 7px;font-size:8.5pt;}
+.group-extra{background:var(--org-pale);border:1px solid var(--org-mid);border-radius:7px;padding:10px 13px;margin-bottom:10px;}
+.group-extra-title{font-size:8pt;font-weight:700;color:var(--org-dk);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+
+.wish-banner{text-align:center;background:var(--org);color:#fff;padding:9px;font-size:10pt;font-weight:700;letter-spacing:2px;margin:14px 0 11px;}
+.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:4px;}
+.sig-block{text-align:center;padding:7px;}
+.sig-title{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--org-dk);margin-bottom:3px;}
+.sig-hint{font-size:8pt;color:var(--gray);margin-bottom:46px;}
+.sig-line{border-bottom:1.5px solid var(--ink);margin:0 14px 4px;}
+.sig-name{font-size:8.5pt;font-weight:600;}
+
+.gold-bar2{height:4px;background:linear-gradient(to right,#8A6A10,#E8A832,#F5D060,#E8A832,#8A6A10);}
+.footer{background:var(--org);padding:9px 22px;display:flex;align-items:center;justify-content:space-between;}
+.footer-tag{font-family:"Playfair Display",serif;font-style:italic;font-size:9pt;color:rgba(255,255,255,.88);}
+.footer-tag b{font-style:normal;font-family:"Be Vietnam Pro",sans-serif;font-size:7pt;letter-spacing:3px;color:rgba(255,255,255,.7);display:block;font-weight:500;margin-top:2px;}
+.footer-right{font-size:8pt;color:rgba(255,255,255,.85);text-align:right;line-height:1.7;}
+.footer-right b{color:#fff;}
+
+@page{size:A4;margin:0;}
+@media print{body{background:#fff;margin:0;}.page{margin:0;box-shadow:none;width:100%;}.tab-bar{display:none !important;}.tab-content{display:none !important;}.tab-content.active{display:block !important;}}
+
+/* ── EDITABLE FIELDS ─────────── */
+.ef{display:inline;min-width:30px;padding:1px 3px;border-bottom:1.5px dashed rgba(242,101,34,.5);
+    outline:none;cursor:text;border-radius:2px;transition:background .15s;}
+.ef:focus{background:rgba(242,101,34,.09);border-bottom-style:solid;border-bottom-color:var(--org);}
+.ef:empty::before{content:attr(data-ph);color:rgba(180,110,60,.45);font-style:italic;font-weight:400;}
+.ef-blk{display:block;min-height:1em;}
+@media print{.ef,.ef-blk{border-bottom:none !important;}
+  .ef:empty::before,.ef-blk:empty::before{content:'' !important;}}
+/* ── WISH BANNER – smaller font ─ */
+.wish-banner{font-size:9pt;letter-spacing:1.2px;}
+
+/* ── TOOLBAR ─────────────────────────────────────────────── */
+.toolbar{
+  width:794px;margin:0 auto 8px;
+  display:flex;align-items:center;gap:8px;
+  background:#fff;border-radius:10px;
+  padding:8px 14px;box-shadow:0 2px 12px rgba(0,0,0,.13);
+}
+.toolbar-title{font-size:8.5pt;font-weight:700;color:#555;letter-spacing:1px;margin-right:auto;}
+.tbtn{
+  display:flex;align-items:center;gap:5px;
+  padding:7px 14px;border-radius:6px;border:none;cursor:pointer;
+  font-family:"Be Vietnam Pro",sans-serif;font-size:8.5pt;font-weight:700;
+  transition:all .15s;
+}
+.tbtn-pdf{background:#F26522;color:#fff;}
+.tbtn-pdf:hover{background:#C84B0F;}
+.tbtn-edit{background:#f3f0ec;color:#333;}
+.tbtn-edit.on{background:#1E1E1E;color:#fff;}
+.tbtn-logo{background:#f3f0ec;color:#333;}
+.tbtn-logo:hover{background:#e8e5e0;}
+.logo-size-wrap{display:flex;align-items:center;gap:6px;font-size:8pt;color:#555;}
+.logo-size-wrap input[type=range]{width:80px;accent-color:#F26522;}
+@media print{.toolbar{display:none !important;}}
+
+/* ── EDIT MODE ───────────────────────────────────────────── */
+body.edit-mode .ef, body.edit-mode .ef-blk{
+  border-bottom:1.5px solid rgba(242,101,34,.7) !important;
+  background:rgba(242,101,34,.04);
+}
+body.edit-mode .ef:empty::before, body.edit-mode .ef-blk:empty::before{
+  opacity:.7;
+}
+body:not(.edit-mode) .ef, body:not(.edit-mode) .ef-blk{
+  border-bottom:none;
+}
+body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::before{
+  opacity:.3;
+}
+</style>
+</head>
+<body>
+
+<!-- Toolbar removed; React wrapper handles print/edit toggle -->
+<input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="loadLogo(event)">
+
+<div class="page">
+
+
+<!-- HEADER (shared) -->
+<header class="hd">
+  <svg class="hd-wave" viewBox="0 0 420 118" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M420 0 L420 118 L0 118 Q100 118 150 75 Q200 32 260 58 Q320 82 380 30 Q400 10 420 0 Z" fill="rgba(255,255,255,.1)"/>
+    <path d="M420 0 L420 118 L120 118 Q175 118 215 78 Q260 36 318 60 Q368 80 420 38 Z" fill="rgba(255,255,255,.07)"/>
+  </svg>
+  <div class="hd-inner">
+    <div class="logo-wrap" id="logo-area" onclick="document.getElementById('logo-file-input').click()" title="Click để thay logo" style="cursor:pointer;position:relative;">
+      <img id="logo-img" src="" alt="SGH Logo" style="width:90px;height:90px;object-fit:contain;display:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3));">
+      <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="loadLogo(event)">
+      <svg viewBox="0 0 210 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ① BODY RING: thick circular arc forming left C-shape of eagle body -->
+  <path d="M 125 22 A 76 76 0 1 0 48 170"
+        stroke="white" stroke-width="24" fill="none" stroke-linecap="round"/>
+
+  <!-- ② WING BAND 1 — top, widest, sweeps upper-right -->
+  <path d="M 58 50
+           C 90 34, 145 22, 198 14
+           L 194 36
+           C 148 40, 94 54, 66 72 Z"
+        fill="white"/>
+
+  <!-- ③ WING BAND 2 — middle -->
+  <path d="M 62 76
+           C 94 62, 142 56, 190 52
+           L 187 70
+           C 142 74, 93 80, 66 94 Z"
+        fill="white"/>
+
+  <!-- ④ WING BAND 3 — lower, shorter -->
+  <path d="M 64 100
+           C 92 89, 132 84, 170 82
+           L 168 98
+           C 130 100, 90 105, 67 116 Z"
+        fill="white"/>
+
+  <!-- ⑤ HEAD — oval between wing and body -->
+  <ellipse cx="96" cy="118" rx="16" ry="11"
+           transform="rotate(-10, 96, 118)" fill="white"/>
+
+  <!-- ⑥ BEAK — triangle pointing right -->
+  <path d="M 108 112 L 128 119 L 108 126 Z" fill="white"/>
+
+  <!-- ⑦ TAIL BODY — lower curl completing the circle -->
+  <path d="M 62 132
+           C 56 152, 54 170, 64 182
+           C 74 194, 96 198, 112 190
+           C 128 182, 130 162, 120 150
+           C 110 138, 92 136, 82 144
+           C 76 148, 72 140, 78 133 Z"
+        fill="white"/>
+</svg>
+    </div>
+    <div class="hd-company">
+      <div class="hd-name">SAIGON HOLIDAY<span class="travel">T &nbsp;r &nbsp;a &nbsp;v &nbsp;e &nbsp;l</span></div>
+      <div class="hd-tagline">✦ Đi để cảm nhận ✦</div>
+      <div class="hd-contacts">
+        <div class="hci">📍 <span>01 Hoa Cúc, P.07, Q.Phú Nhuận, TP.HCM</span></div>
+        <div class="hci">📞 <b>0905 33 55 16</b> – 0902 141 901</div>
+        <div class="hci">📍 <span>VP: 1009 Hoàng Sa, P.11, Q.3, TP.HCM</span></div>
+        <div class="hci">🌐 <b>www.saigonholiday.vn</b></div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <div class="gpkd">
+        <b>CÔNG TY TNHH DU LỊCH</b><br>
+        <b>SAIGON HOLIDAY</b><br><br>
+        GPLHQT: <b>79–1000/2019/TCDL</b><br>
+        MST: <b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</b>
+      </div>
+    </div>
+  </div>
+</header>
+<div class="gold-bar"></div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="le" onclick="switchTab('le', this)">✈ TOUR LẺ (Cá nhân / Gia đình)</button>
+  <button class="tab-btn" data-tab="doan" onclick="switchTab('doan', this)">🚌 TOUR ĐOÀN (Nhóm / Doanh nghiệp)</button>
+</div>
+
+<!-- ════════════════════════════════ TOUR LẺ ════════════════════════════════ -->
+<div id="tab-le" class="tab-content active">
+
+  <div class="title-banner">
+    <div class="tb-main">Phiếu Xác Nhận Giữ Chỗ Tour</div>
+    <div class="tb-sub ef ef-blk" contenteditable="true" data-ph="Nhập tên tour — VD: NHẬT BẢN 6N5Đ · OSAKA – KYOTO – TOKYO" data-field="tour_name"></div>
+  </div>
+
+  <div class="status-bar">
+    <div class="sb-item"><span class="sb-label">Mã Booking</span><span class="sb-val ef" contenteditable="true" data-ph="SGH-XXXXX" data-field="booking_code"></span></div>
+    <div class="sb-item"><span class="sb-label">Ngày đặt</span><span class="sb-val ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="booking_date"></span></div>
+    <div class="sb-item"><span class="sb-label">⏰ Hạn giữ chỗ (48h)</span><span class="sb-val ef" contenteditable="true" data-ph="HH:MM – DD/MM/YYYY" data-field="hold_deadline"></span></div>
+    <div class="sb-item"><span class="sb-label">NV tư vấn</span><span class="sb-val ef" contenteditable="true" data-ph="Tên NV Sale" data-field="staff_name_sb"></span></div>
+    <div class="sb-item"><span class="status-badge">🟢 ĐANG GIỮ CHỖ</span></div>
+  </div>
+
+  <div class="body">
+    <div class="greeting">Kính gửi Quý khách <b><span class="ef" contenteditable="true" data-ph="Họ và Tên Khách Hàng" data-field="customer_name"></span></b>, Saigon Holiday Travel trân trọng cảm ơn Quý khách đã tin tưởng lựa chọn. Dưới đây là toàn bộ thông tin xác nhận giữ chỗ tour.</div>
+
+    <div class="sec"><div class="sec-icon">👤</div><div class="sec-title">1. Thông Tin Khách Hàng & Tour</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div class="icard">
+        <div class="icard-title">👤 Người Đặt Tour</div>
+        <div class="il"><span class="il-lbl">Họ và tên:</span><span class="il-val" data-field="cust_name"></span></div>
+        <div class="il"><span class="il-lbl">Điện thoại:</span><span class="il-val" data-field="cust_phone"></span></div>
+        <div class="il"><span class="il-lbl">Email:</span><span class="il-val" data-field="cust_email"></span></div>
+        <div class="il"><span class="il-lbl">CMND/Passport:</span><span class="il-val" data-field="cust_id"></span></div>
+        <div class="il"><span class="il-lbl">Số khách:</span><span class="il-val" data-field="cust_pax"></span></div>
+        <div class="il"><span class="il-lbl">NV tư vấn:</span><span class="il-val" data-field="cust_staff"></span></div>
+      </div>
+      <div class="icard gold">
+        <div class="icard-title">🗺️ Thông Tin Tour</div>
+        <div class="il"><span class="il-lbl">Tên tour:</span><span class="il-val" data-field="tour_name_v"></span></div>
+        <div class="il"><span class="il-lbl">Mã tour:</span><span class="il-val" data-field="tour_code"></span></div>
+        <div class="il"><span class="il-lbl">Ngày đi:</span><span class="il-val" data-field="tour_start"></span></div>
+        <div class="il"><span class="il-lbl">Ngày về:</span><span class="il-val" data-field="tour_end"></span></div>
+        <div class="il"><span class="il-lbl">Thời gian:</span><span class="il-val" data-field="tour_duration"></span></div>
+        <div class="il"><span class="il-lbl">⚠️ Hạn xin visa:</span><span class="il-val warn ef" contenteditable="true" data-ph="DD/MM/YYYY"></span></div>
+      </div>
+    </div>
+
+    <div class="sec"><div class="sec-icon">✈️</div><div class="sec-title">2. Chuyến Bay Dự Kiến & Hành Trình</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div class="icard">
+        <div class="icard-title">✈️ Chuyến Bay</div>
+        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="flight-note">📌 Lịch bay dự kiến, có thể thay đổi. SGH sẽ cập nhật kịp thời.</div>
+      </div>
+      <div class="icard gold">
+        <div class="icard-title">⭐ Điểm Nổi Bật</div>
+        <ul class="hl-list">
+          <li class="ef" contenteditable="true" data-ph="Điểm tham quan 1"></li><li class="ef" contenteditable="true" data-ph="Điểm tham quan 2"></li><li class="ef" contenteditable="true" data-ph="Điểm tham quan 3"></li>
+          <li class="ef" contenteditable="true" data-ph="Đặc sản / Ẩm thực"></li><li class="ef" contenteditable="true" data-ph="Bữa ăn đặc biệt"></li><li class="ef" contenteditable="true" data-ph="Trải nghiệm unique"></li>
+          <li class="ef" contenteditable="true" data-ph="Khách sạn hạng X★"></li><li class="ef" contenteditable="true" data-ph="Điểm check-in nổi tiếng"></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec"><div class="sec-icon">💰</div><div class="sec-title">3. Chi Tiết Giá Tour</div><div class="sec-line"></div></div>
+    <table>
+      <thead><tr><th>Đối tượng</th><th>Ghi chú</th><th style="text-align:right">Đơn giá (₫)</th><th style="text-align:center;width:44px">SL</th><th style="text-align:right">Thành tiền (₫)</th></tr></thead>
+      <tbody>
+        <tr><td>Người lớn (ADL)</td><td>Từ 12 tuổi trở lên</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Trẻ em (CHD)</td><td>2–11 tuổi, ngủ chung bố mẹ</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Em bé (INF)</td><td>Dưới 2 tuổi</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Phụ thu phòng đơn</td><td>Nếu có yêu cầu</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>🎁 Chiết khấu / Ưu đãi</td><td></td><td style="text-align:right">—</td><td style="text-align:center">—</td><td class="r" style="color:#1a7a1a"></td></tr>
+        <tr class="tr-total"><td colspan="4" style="text-align:right;letter-spacing:1px">💳 TỔNG THANH TOÁN</td><td class="r" data-field="total"></td></tr>
+        <tr class="tr-dep"><td colspan="4" style="text-align:right">✅ Đã đặt cọc</td><td class="r" data-field="deposit"></td></tr>
+        <tr class="tr-rem"><td colspan="4" style="text-align:right">⏳ Còn lại — Thanh toán trước <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="remaining_due"></span></td><td class="r" data-field="remaining"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="sec"><div class="sec-icon">🏦</div><div class="sec-title">4. Thanh Toán & Dịch Vụ</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div>
+        <div class="bank-wrap"><div class="bank-title">🏦 Ngân hàng ACB</div><div class="bl"><span class="lbl">Số TK:</span><span class="val"></span></div><div class="bl"><span class="lbl">Chủ TK:</span><span class="val">CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY</span></div></div>
+        <div class="bank-wrap"><div class="bank-title">🏦 Ngân hàng Vietcombank (VCB)</div><div class="bl"><span class="lbl">Số TK:</span><span class="val"></span></div><div class="bl"><span class="lbl">Chủ TK:</span><span class="val">CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY</span></div></div>
+        <div class="bank-note">📌 Nội dung CK: <b>[Họ tên] + [Mã Booking]</b><br>Gửi bill về Zalo NV tư vấn sau khi chuyển khoản.</div>
+      </div>
+      <div>
+        <div class="incl-box"><div class="incl-title yes">✅ Bao Gồm</div><ul class="incl-list yes"><li>Vé máy bay khứ hồi</li><li>Khách sạn theo tiêu chuẩn tour</li><li>Ăn theo chương trình</li><li>Vé tham quan trong lịch trình</li><li>HDV chuyên nghiệp suốt tuyến</li><li>Bảo hiểm du lịch | VAT 8%</li></ul></div>
+        <div class="incl-box"><div class="incl-title no">✗ Không Bao Gồm</div><ul class="incl-list no"><li>Chi phí visa (nếu cần)</li><li>Hành lý ký gửi</li><li>Ăn uống ngoài tour</li><li>Chi phí cá nhân</li><li>Tip HDV & tài xế</li></ul></div>
+      </div>
+    </div>
+
+    <div class="sec"><div class="sec-icon">⚠️</div><div class="sec-title">5. Chính Sách Hủy Tour</div><div class="sec-line"></div></div>
+    <table class="cancel"><thead><tr><th>Thời điểm hủy tour</th><th style="text-align:right">Phí hủy</th></tr></thead>
+    <tbody>
+      <tr><td>Hủy ngay sau khi đặt / trước khởi hành 15 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">30% giá tour</td></tr>
+      <tr><td>Hủy trước ngày khởi hành 7 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">50% giá tour</td></tr>
+      <tr><td>Hủy trước ngày khởi hành 3 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">70% giá tour</td></tr>
+      <tr><td>Hủy trong vòng 24 giờ trước khởi hành</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">100% giá tour</td></tr>
+    </tbody></table>
+    <p style="font-size:8pt;color:var(--gray);margin-top:4px;font-style:italic;">⚠️ Không áp dụng dịp Lễ/Tết. Không tính Thứ 7, Chủ nhật.</p>
+
+    <div class="alert-box"><div class="alert-title">📢 Lưu Ý Quan Trọng</div><ul class="alert-list">
+      <li>HDV SGH sẽ liên hệ Quý khách trước ngày khởi hành 1 ngày (tour sáng) hoặc sáng ngày khởi hành (tour đêm). Vui lòng bắt máy số lạ.</li>
+      <li>Nếu chưa có HDV liên hệ đúng giờ → gọi ngay Hotline: <b>0905 33 55 16</b></li>
+      <li>⏰ Hạn giữ chỗ: <b><span class="ef" contenteditable="true" data-ph="HH:MM DD/MM/YYYY"></span></b> — Quá hạn hệ thống tự động hủy chỗ.</li>
+      <li>✈️ Hộ chiếu phải còn hiệu lực trên <b>6 tháng</b> kể từ ngày về.</li>
+    </ul></div>
+
+    <div class="wish-banner">Saigon Holiday Travel đồng hành cùng quý khách trong từng chuyến đi.</div>
+    <div class="sig-row">
+      <div class="sig-block"><div class="sig-title">Saigon Holiday Travel</div><div class="sig-hint">NV tư vấn: <b><span class="ef" contenteditable="true" data-ph="Tên NV Sale | SĐT"></span></b><br>Hotline: 0905 33 55 16 | saigonholiday.vn</div><div class="sig-line"></div><div class="sig-name"><span class="ef" contenteditable="true" data-ph="Họ tên NV Sale"></span></div></div>
+      <div class="sig-block"><div class="sig-title">Đại Diện Công Ty</div><div class="sig-hint">TP. Hồ Chí Minh, ngày <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY"></span><br>(Ký tên, đóng dấu)</div><div class="sig-line"></div><div class="sig-name">Giám Đốc / Người Ủy Quyền</div></div>
+    </div>
+  </div>
+</div><!-- /tab-le -->
+
+<!-- ════════════════════════════════ TOUR ĐOÀN ════════════════════════════════ -->
+<div id="tab-doan" class="tab-content">
+
+  <div class="title-banner">
+    <div class="tb-main">Phiếu Xác Nhận Booking Tour Đoàn</div>
+    <div class="tb-sub ef ef-blk" contenteditable="true" data-ph="Tên đoàn / Tên công ty — Điểm đến — Ngày đi" data-field="grp_tour_name"></div>
+  </div>
+
+  <div class="status-bar">
+    <div class="sb-item"><span class="sb-label">Mã Booking Đoàn</span><span class="sb-val ef" contenteditable="true" data-ph="SGH-GRP-XXXX" data-field="grp_booking_code"></span></div>
+    <div class="sb-item"><span class="sb-label">Ngày đặt</span><span class="sb-val ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="booking_date"></span></div>
+    <div class="sb-item"><span class="sb-label">Tổng số khách</span><span class="sb-val ef" contenteditable="true" data-ph="XX NL + XX TE + XX EB" data-field="grp_pax_count"></span></div>
+    <div class="sb-item"><span class="sb-label">NV phụ trách</span><span class="sb-val ef" contenteditable="true" data-ph="Tên NV Sale" data-field="cust_staff"></span></div>
+    <div class="sb-item"><span class="status-badge">🚌 ĐOÀN ĐÃ XÁC NHẬN</span></div>
+  </div>
+
+  <div class="body">
+    <div class="greeting">Kính gửi <b><span class="ef" contenteditable="true" data-ph="Tên Trưởng đoàn / Đại diện đơn vị" data-field="grp_leader"></span></b>, Saigon Holiday Travel trân trọng xác nhận booking Tour Đoàn. Vui lòng kiểm tra và xác nhận thông tin bên dưới.</div>
+
+    <!-- Group Info -->
+    <div class="sec"><div class="sec-icon">🏢</div><div class="sec-title">1. Thông Tin Đoàn & Liên Hệ</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div class="icard">
+        <div class="icard-title">👥 Thông Tin Đoàn</div>
+        <div class="il"><span class="il-lbl">Tên đoàn:</span><span class="il-val ef" contenteditable="true" data-ph="Tên đoàn"></span></div>
+        <div class="il"><span class="il-lbl">Đơn vị / Công ty:</span><span class="il-val" data-field="grp_company"></span></div>
+        <div class="il"><span class="il-lbl">Trưởng đoàn:</span><span class="il-val" data-field="grp_leader_v"></span></div>
+        <div class="il"><span class="il-lbl">SĐT trưởng đoàn:</span><span class="il-val" data-field="cust_phone"></span></div>
+        <div class="il"><span class="il-lbl">Email liên hệ:</span><span class="il-val" data-field="cust_email"></span></div>
+        <div class="il"><span class="il-lbl">Số lượng NL / TE / EB:</span><span class="il-val" data-field="cust_pax"></span></div>
+      </div>
+      <div class="icard gold">
+        <div class="icard-title">🗺️ Thông Tin Tour Đoàn</div>
+        <div class="il"><span class="il-lbl">Tên tour:</span><span class="il-val" data-field="tour_name_v"></span></div>
+        <div class="il"><span class="il-lbl">Mã tour:</span><span class="il-val" data-field="tour_code"></span></div>
+        <div class="il"><span class="il-lbl">Ngày đi:</span><span class="il-val" data-field="tour_start"></span></div>
+        <div class="il"><span class="il-lbl">Ngày về:</span><span class="il-val" data-field="tour_end"></span></div>
+        <div class="il"><span class="il-lbl">HDV phụ trách:</span><span class="il-val ef" contenteditable="true" data-ph="Tên HDV"></span></div>
+        <div class="il"><span class="il-lbl">Loại xe đưa đón:</span><span class="il-val ef" contenteditable="true" data-ph="VD: 45 chỗ"></span></div>
+      </div>
+    </div>
+
+    <!-- Flight -->
+    <div class="sec"><div class="sec-icon">✈️</div><div class="sec-title">2. Chuyến Bay Dự Kiến</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div class="icard">
+        <div class="icard-title">✈️ Lịch Bay Đoàn</div>
+        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="il" style="margin-top:6px"><span class="il-lbl">Điểm tập kết:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Giờ tập kết:</span><span class="il-val warn"></span></div>
+        <div class="flight-note">📌 Lịch bay dự kiến, có thể thay đổi. SGH sẽ cập nhật kịp thời đến Trưởng đoàn.</div>
+      </div>
+      <div class="icard gold">
+        <div class="icard-title">🏨 Khách Sạn & Phòng Nghỉ</div>
+        <div class="il"><span class="il-lbl">Hạng khách sạn:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Số phòng đôi:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Số phòng đơn:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Phòng trưởng đoàn:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Yêu cầu đặc biệt:</span><span class="il-val"></span></div>
+        <div class="il"><span class="il-lbl">Ăn uống đặc biệt:</span><span class="il-val"></span></div>
+      </div>
+    </div>
+
+    <!-- Roster -->
+    <div class="sec"><div class="sec-icon">📋</div><div class="sec-title">3. Danh Sách Hành Khách (Roster)</div><div class="sec-line"></div></div>
+    <div class="roster-wrap">
+    <table class="roster">
+      <thead><tr><th style="width:28px">#</th><th>Họ và Tên</th><th>Năm sinh</th><th>CCCD / Hộ chiếu</th><th>Ngày cấp</th><th>Nơi cấp / Ngày hết hạn</th><th style="width:52px">Loại</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>2</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>3</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>4</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>5</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>6</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>7</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>8</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>9</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>10</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>11</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>12</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>13</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>14</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>15</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>NL</td><td></td></tr>
+<tr><td>16</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>TE</td><td></td></tr>
+<tr><td>17</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>TE</td><td></td></tr>
+<tr><td>18</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>TE</td><td></td></tr>
+<tr><td>19</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>TE</td><td></td></tr>
+<tr><td>20</td><td>&nbsp;</td><td></td><td></td><td></td><td></td><td>TE</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <!-- Pricing -->
+    <div class="sec"><div class="sec-icon">💰</div><div class="sec-title">4. Báo Giá Tour Đoàn</div><div class="sec-line"></div></div>
+    <table>
+      <thead><tr><th>Đối tượng</th><th>Tiêu chí</th><th style="text-align:right">Đơn giá (₫)</th><th style="text-align:center;width:44px">SL</th><th style="text-align:right">Thành tiền (₫)</th></tr></thead>
+      <tbody>
+        <tr><td>Người lớn (ADL)</td><td>Từ 12 tuổi trở lên</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Trẻ em (CHD)</td><td>2–11 tuổi, ngủ chung bố mẹ</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Em bé (INF)</td><td>Dưới 2 tuổi</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>Phụ thu phòng đơn</td><td>Theo yêu cầu</td><td class="r"></td><td style="text-align:center"></td><td class="r"></td></tr>
+        <tr><td>🎁 Ưu đãi đoàn (nhóm ≥<span class="ef" contenteditable="true" data-ph="X"></span> người)</td><td></td><td style="text-align:right">—</td><td style="text-align:center">—</td><td class="r" style="color:#1a7a1a"></td></tr>
+        <tr class="tr-total"><td colspan="4" style="text-align:right;letter-spacing:1px">💳 TỔNG THANH TOÁN</td><td class="r" data-field="total"></td></tr>
+        <tr class="tr-dep"><td colspan="4" style="text-align:right">✅ Đã đặt cọc</td><td class="r" data-field="deposit"></td></tr>
+        <tr class="tr-rem"><td colspan="4" style="text-align:right">⏳ Còn lại — Thanh toán trước <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="remaining_due"></span></td><td class="r" data-field="remaining"></td></tr>
+      </tbody>
+    </table>
+
+    <!-- Thanh toán -->
+    <div class="sec"><div class="sec-icon">🏦</div><div class="sec-title">5. Thanh Toán & Dịch Vụ</div><div class="sec-line"></div></div>
+    <div class="cols2">
+      <div>
+        <div class="bank-wrap"><div class="bank-title">🏦 Ngân hàng ACB</div><div class="bl"><span class="lbl">Số TK:</span><span class="val"></span></div><div class="bl"><span class="lbl">Chủ TK:</span><span class="val">CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY</span></div></div>
+        <div class="bank-wrap"><div class="bank-title">🏦 Ngân hàng Vietcombank (VCB)</div><div class="bl"><span class="lbl">Số TK:</span><span class="val"></span></div><div class="bl"><span class="lbl">Chủ TK:</span><span class="val">CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY</span></div></div>
+        <div class="bank-note">📌 Nội dung CK: <b>[Tên Đoàn] + [Mã Booking]</b><br>Gửi bill về Zalo NV phụ trách sau khi chuyển khoản.</div>
+      </div>
+      <div>
+        <div class="incl-box"><div class="incl-title yes">✅ Bao Gồm</div><ul class="incl-list yes"><li>Vé máy bay khứ hồi toàn đoàn</li><li>Xe đưa đón sân bay & trong tour</li><li>Khách sạn theo tiêu chuẩn</li><li>Ăn theo chương trình</li><li>HDV chuyên nghiệp suốt tuyến</li><li>Bảo hiểm du lịch | VAT 8%</li></ul></div>
+        <div class="incl-box"><div class="incl-title no">✗ Không Bao Gồm</div><ul class="incl-list no"><li>Chi phí visa (nếu cần)</li><li>Hành lý ký gửi extra</li><li>Ăn uống ngoài tour</li><li>Chi phí cá nhân</li><li>Tip HDV & tài xế</li></ul></div>
+      </div>
+    </div>
+
+    <!-- Hủy -->
+    <div class="sec"><div class="sec-icon">⚠️</div><div class="sec-title">6. Chính Sách Hủy Tour Đoàn</div><div class="sec-line"></div></div>
+    <table class="cancel"><thead><tr><th>Thời điểm hủy</th><th style="text-align:right">Phí hủy</th></tr></thead>
+    <tbody>
+      <tr><td>Hủy ngay sau đặt / trước khởi hành 30 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">20% giá tour</td></tr>
+      <tr><td>Hủy trước ngày khởi hành 15–29 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">40% giá tour</td></tr>
+      <tr><td>Hủy trước ngày khởi hành 7–14 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">60% giá tour</td></tr>
+      <tr><td>Hủy trước ngày khởi hành 3–6 ngày</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">80% giá tour</td></tr>
+      <tr><td>Hủy trong vòng 48 giờ trước khởi hành</td><td style="text-align:right;font-weight:700;color:var(--org-dk)">100% giá tour</td></tr>
+    </tbody></table>
+
+    <div class="alert-box"><div class="alert-title">📢 Lưu Ý Đặc Biệt Cho Tour Đoàn</div><ul class="alert-list">
+      <li>HDV SGH sẽ liên hệ Trưởng đoàn trước ngày khởi hành <b>2 ngày</b> để xác nhận lịch trình.</li>
+      <li>Danh sách khách (Roster) cần được xác nhận chính xác trước <b>15 ngày</b> khởi hành.</li>
+      <li>Hộ chiếu của toàn bộ thành viên phải còn hiệu lực trên <b>6 tháng</b> kể từ ngày về.</li>
+      <li>Hotline khẩn cấp: <b>0905 33 55 16</b> — Liên hệ 24/7 khi cần hỗ trợ.</li>
+    </ul></div>
+
+    <div class="wish-banner">✈ &nbsp;KÍNH CHÚC ĐOÀN MỘT HÀNH TRÌNH THÀNH CÔNG & ĐÁNG NHỚ&nbsp; ✈</div>
+    <div class="sig-row">
+      <div class="sig-block"><div class="sig-title">Đại Diện Đoàn / Trưởng Đoàn</div><div class="sig-hint">(Ký, ghi rõ họ tên)</div><div class="sig-line"></div><div class="sig-name">[Họ tên Trưởng đoàn]</div></div>
+      <div class="sig-block"><div class="sig-title">Saigon Holiday Travel</div><div class="sig-hint">TP. Hồ Chí Minh, ngày <span class="ef" contenteditable="true" data-ph="DD/MM/YYYY"></span><br>(Ký tên, đóng dấu)</div><div class="sig-line"></div><div class="sig-name">Giám Đốc / Người Ủy Quyền</div></div>
+    </div>
+  </div>
+</div><!-- /tab-doan -->
+
+<!-- FOOTER (shared) -->
+<div class="gold-bar2"></div>
+<footer class="footer">
+  <div class="footer-tag"><em>Saigon Holiday Travel đồng hành cùng quý khách trong từng chuyến đi.</em><b>✦ ĐI ĐỂ CẢM NHẬN ✦</b></div>
+  <div class="footer-right"><b>CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY</b><br>📞 0905 33 55 16 – 0902 141 901<br>🌐 www.saigonholiday.vn</div>
+</footer>
+
+</div><!-- /page -->
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── LOGO ───────────────────────────────────────────────────────
+function loadLogo(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) { SGH_setLogo(ev.target.result); };
+  reader.readAsDataURL(file);
+}
+function SGH_setLogo(url) {
+  var img = document.getElementById('logo-img');
+  var svg = document.getElementById('logo-svg');
+  img.src = url; img.style.display = 'block';
+  if (svg) svg.style.display = 'none';
+}
+function resizeLogo(px) {
+  var sz = px + 'px';
+  document.getElementById('logo-size-val').textContent = sz;
+  ['logo-img','logo-svg'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) { el.style.width = sz; el.style.height = sz; }
+  });
+  document.querySelector('.logo-wrap').style.width = sz;
+  document.querySelector('.logo-wrap').style.height = sz;
+}
+
+// ── EDIT MODE TOGGLE ───────────────────────────────────────────
+var _editOn = false;
+function toggleEdit() {
+  _editOn = !_editOn;
+  document.body.classList.toggle('edit-mode', _editOn);
+  var btn = document.getElementById('edit-btn');
+  btn.classList.toggle('on', _editOn);
+  btn.innerHTML = _editOn ? '✅ Đang chỉnh sửa' : '✏️ Chỉnh sửa';
+  // En/disable contenteditable on all .ef fields
+  document.querySelectorAll('.ef,[contenteditable]').forEach(function(el){
+    if (el.closest('.toolbar')) return;
+    el.contentEditable = _editOn ? 'true' : 'false';
+  });
+}
+
+// ── WEBAPP API ─────────────────────────────────────────────────
+window.SGH_setType = function(type) {
+  switchTab(type, document.querySelector('[data-tab="' + type + '"]'));
+  document.querySelector('.tab-bar').style.display = 'none';
+};
+window.SGH_fillData = function(data) {
+  Object.keys(data).forEach(function(key) {
+    if (key === 'logo_url') { SGH_setLogo(data[key]); return; }
+    document.querySelectorAll('[data-field="' + key + '"]').forEach(function(el){
+      el.textContent = data[key] || '';
+    });
+  });
+};
+
+// ── URL PARAM ──────────────────────────────────────────────────
+(function(){
+  var p = new URLSearchParams(window.location.search);
+  var t = p.get('type');
+  if (t === 'le' || t === 'doan') SGH_setType(t);
+  // Khi webapp dùng: edit mode OFF mặc định (chỉ xem & in)
+})();
+
+// ── POSTMESSAGE BRIDGE ─────────────────────────────────────────
+window.addEventListener('message', function(ev){
+  var msg = ev.data || {};
+  if (msg && msg.type === 'fill' && msg.data) {
+    if (msg.printType === 'le' || msg.printType === 'doan') SGH_setType(msg.printType);
+    SGH_fillData(msg.data);
+    // Notify parent ready to print
+    try { ev.source && ev.source.postMessage({ type: 'filled' }, '*'); } catch(e){}
+  } else if (msg && msg.type === 'print') {
+    window.print();
+  } else if (msg && msg.type === 'toggleEdit') {
+    toggleEdit();
+  }
+});
+</script>
+</body>
+</html>
