@@ -155,13 +155,20 @@ function OverviewTab() {
 }
 
 function SubmitterView() {
+  const [importOpen, setImportOpen] = useState(false);
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Nhập chi phí</h1>
-        <p className="text-sm text-muted-foreground">Nhập chi phí và gửi Kế toán duyệt</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Nhập chi phí</h1>
+          <p className="text-sm text-muted-foreground">Nhập chi phí và gửi Kế toán duyệt</p>
+        </div>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" /> Import Excel
+        </Button>
       </div>
       <TransactionListTab submitterOnly />
+      <ImportExpensesDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
