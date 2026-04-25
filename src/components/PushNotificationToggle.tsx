@@ -148,6 +148,27 @@ export function PushNotificationToggle() {
             disabled={loading || permission === "denied" || inIframe}
           />
         </div>
+
+        {isSubscribed && (
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <p className="text-xs text-muted-foreground">
+              Gửi một thông báo thử để kiểm tra Web Push hoạt động trên thiết bị này.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleTestPush}
+              disabled={testing}
+            >
+              {testing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang gửi…</>
+              ) : (
+                <><Send className="h-4 w-4 mr-2" /> Gửi thử push</>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
