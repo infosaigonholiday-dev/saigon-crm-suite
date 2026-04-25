@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PushToggleButton } from "@/components/PushToggleButton";
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
@@ -18,6 +19,7 @@ export function AppLayout() {
           <header className="h-14 flex items-center border-b bg-card px-4 gap-4 shrink-0">
             <SidebarTrigger />
             <div className="flex items-center gap-2 ml-auto">
+              <PushToggleButton />
               <NotificationBell />
               <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">
