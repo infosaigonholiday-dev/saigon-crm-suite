@@ -187,7 +187,7 @@ export function ImportExpensesDialog({ open, onOpenChange }: Props) {
           {parsed.length > 0 && (
             <>
               <div className="flex gap-3 text-sm">
-                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <Badge variant="outline" className="bg-success/10 text-success border-success/20">
                   Hợp lệ: {validCount}
                 </Badge>
                 {errorCount > 0 && (
