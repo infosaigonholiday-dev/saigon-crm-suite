@@ -56,7 +56,7 @@ export default function Settings() {
   const showAccounts = ACCOUNT_MANAGER_ROLES.includes(userRole || "");
   const showDepartments = isAdmin || isHR;
   const showLevels = isAdmin || isHR;
-  const showRoles = true; // anyone with settings.view
+  const showRoles = isAdmin || isHR; // Chỉ ADMIN/SUPER_ADMIN/HR_MANAGER/HCNS thấy bảng quyền hạn
   const showPermissions = isAdmin || ["MANAGER", "GDKD"].includes(userRole || "");
   const showAuditLog = isAdmin;
   const showNotifications = true; // mọi user có settings.view đều thấy
