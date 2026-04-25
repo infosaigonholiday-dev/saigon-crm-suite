@@ -217,7 +217,7 @@ export default function B2BTours() {
                             <Button size="sm" variant="outline" onClick={() => handleViewDetail(t)}>
                               <Eye className="h-3.5 w-3.5 mr-1" /> Chi tiết
                             </Button>
-                            <Button size="sm" onClick={() => handleCreateBooking(t)}>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleCreateBooking(t)}>
                               <CalendarPlus className="h-3.5 w-3.5 mr-1" /> Booking
                             </Button>
                           </div>
