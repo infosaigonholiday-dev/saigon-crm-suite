@@ -3308,46 +3308,38 @@ export type Database = {
         }
         Relationships: []
       }
-      push_subscriptions: {
+      push_send_log: {
         Row: {
-          auth: string
           created_at: string
-          endpoint: string
+          error: string | null
           id: string
-          last_used_at: string
-          p256dh: string
-          user_agent: string | null
-          user_id: string
+          notification_id: string | null
+          request_id: number | null
+          title: string | null
+          url: string | null
+          user_id: string | null
         }
         Insert: {
-          auth: string
           created_at?: string
-          endpoint: string
+          error?: string | null
           id?: string
-          last_used_at?: string
-          p256dh: string
-          user_agent?: string | null
-          user_id: string
+          notification_id?: string | null
+          request_id?: number | null
+          title?: string | null
+          url?: string | null
+          user_id?: string | null
         }
         Update: {
-          auth?: string
           created_at?: string
-          endpoint?: string
+          error?: string | null
           id?: string
-          last_used_at?: string
-          p256dh?: string
-          user_agent?: string | null
-          user_id?: string
+          notification_id?: string | null
+          request_id?: number | null
+          title?: string | null
+          url?: string | null
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       quotations: {
         Row: {
