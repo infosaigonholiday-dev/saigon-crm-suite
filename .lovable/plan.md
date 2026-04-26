@@ -1,57 +1,46 @@
-## Mục tiêu
-Sửa lỗi hiện tại khi bấm “Gửi thử push” bị báo `Không gọi được send-notification: Failed to send a request to the Edge Function`, rồi kiểm tra lại để tách bạch lỗi gọi function với lỗi gửi push thật.
+# Nguyên nhân gốc rễ (đã xác định bằng log)
 
-## Chẩn đoán đã xác nhận
-- Screenshot mới cho thấy đây là lỗi ở bước gọi Edge Function, chưa phải lỗi push delivery.
-- `src/components/PushNotificationToggle.tsx` gọi `supabase.functions.invoke("send-notification")` đúng pattern.
-- Project đang dùng `@supabase/supabase-js` 2.104.1.
-- `supabase/functions/send-notification/index.ts` đang khai báo CORS hẹp:
-  - chỉ cho `authorization, x-client-info, apikey, content-type`
-- Trong cùng project, `manage-employee-accounts` đã cho phép thêm các header mới của Supabase client:
-  - `x-supabase-client-platform`
-  - `x-supabase-client-platform-version`
-  - `x-supabase-client-runtime`
-  - `x-supabase-client-runtime-version`
-- Với Supabase client hiện tại, thiếu các header này rất dễ gây preflight fail và hiện đúng thông báo “Failed to send a request to the Edge Function”.
+Đối chiếu fingerprint trực tiếp:
 
-## Kế hoạch sửa
-1. Cập nhật CORS của `send-notification`.
-   - Mở rộng `Access-Control-Allow-Headers` để khớp với các header thực tế mà client gửi.
-   - Giữ CORS này ở mọi response, kể cả error response và OPTIONS.
+| Nơi | Public key fingerprint | Khớp? |
+|---|---|---|
+| Client (`.env` → `VITE_VAPID_PUBLIC_KEY`) | `BKSOWNaUPd…cE3U` (len=87) | ❌ |
+| Server (Supabase secret `VAPID_PUBLIC_KEY`, từ edge log) | `BHmaQ9wVam…RPgRhs` (len=87) | ❌ |
 
-2. Tăng khả năng chẩn đoán ở client.
-   - Trong `PushNotificationToggle.tsx`, phân biệt rõ:
-     - lỗi không gọi được function
-     - function gọi được nhưng `sent=0`
-     - function gọi được nhưng push provider trả lỗi
-   - Nếu `errors` được trả về từ function, hiện reason ngắn gọn hơn trong toast/log để dễ truy vết.
+→ **HAI KHOÁ HOÀN TOÀN KHÁC NHAU.** Browser đăng ký bằng khoá A, server ký JWT bằng khoá B → push provider trả 403 `VapidPkHashMismatch` → vòng lặp xoá-tạo lại không bao giờ xong. Đây KHÔNG phải lỗi code, là lỗi cấu hình secret.
 
-3. Làm sạch auth/CORS consistency của Edge Function.
-   - Giữ cơ chế auth hiện tại, nhưng chuẩn hóa helper response để không có nhánh nào quên CORS headers.
-   - Không đổi behavior business logic gửi push ở bước này, chỉ sửa transport layer + observability.
+# Giải pháp
 
-4. Test sau khi triển khai.
-   - Test gọi `send-notification` từ UI để xác nhận không còn lỗi “Failed to send a request to the Edge Function”.
-   - Nếu request đi qua được, kiểm tra tiếp response thực tế:
-     - `no_subscriptions`
-     - `sent > 0`
-     - `failed > 0` với body lỗi từ push service
-   - Khi transport đã ổn, mới đánh giá tiếp bước đăng ký subscription hoặc VAPID mismatch nếu còn.
+Tạo MỘT cặp VAPID mới hoàn toàn, ghi đè đồng thời cả 3 nơi để đảm bảo khớp 100%:
 
-## File dự kiến chỉnh
-- `supabase/functions/send-notification/index.ts`
-- `src/components/PushNotificationToggle.tsx`
+## Bước 1 — Sinh cặp VAPID mới
+Chạy script Deno trong sandbox để sinh cặp ECDSA P-256 mới (public + private), in ra dưới dạng base64url. Public key 65 bytes uncompressed (bắt đầu `0x04`), private key 32 bytes.
 
-## Kết quả mong đợi
-- Bấm “Gửi thử push” không còn fail ngay ở mức invoke/preflight.
-- UI báo đúng là:
-  - không gọi được function,
-  - chưa có subscription,
-  - hay push provider từ chối.
-- Nếu còn lỗi sau đó, ta sẽ có message cụ thể hơn để fix tiếp đúng điểm.
+## Bước 2 — Cập nhật 3 nơi cùng lúc
+1. **Client `.env`** → ghi `VITE_VAPID_PUBLIC_KEY="<NEW_PUBLIC>"` (ghi đè giá trị cũ `BKSOWNaU…`).
+2. **Supabase secret `VAPID_PUBLIC_KEY`** → cập nhật bằng `update_secret` thành `<NEW_PUBLIC>` (ghi đè `BHmaQ9wV…`).
+3. **Supabase secret `VAPID_PRIVATE_KEY`** → cập nhật bằng `update_secret` thành `<NEW_PRIVATE>` (cùng cặp).
 
-## Chi tiết kỹ thuật
-- Ưu tiên dùng bộ CORS headers đầy đủ tương thích `supabase-js` mới.
-- Có thể giữ dạng manual CORS như các function khác trong project, hoặc chuyển sang `@supabase/supabase-js/cors` nếu runtime/deploy cho phép.
-- Không cần thay DB schema ở bước này.
-- Đây là fix transport + diagnostics, không phải redesign push flow.
+## Bước 3 — Wipe sạch subscription cũ
+Xoá toàn bộ rows trong `push_subscriptions` (qua migration DELETE) vì chúng đã đăng ký với khoá cũ và sẽ luôn lệch.
+
+## Bước 4 — Re-deploy edge function
+Deploy lại `send-notification` để chắc chắn nó pick up secret mới.
+
+## Bước 5 — Verify
+- Gọi edge function và xem log: fingerprint `vapid_public=` PHẢI bắt đầu bằng cùng prefix với `.env` mới.
+- Anh mở app trong tab thật → Cài đặt → Thông báo → bấm "Đăng ký lại" (browser sẽ subscribe bằng khoá mới) → bấm "Gửi thử push" → notification HIỆN.
+
+# Files / actions
+
+- (script tạm) `/tmp/gen-vapid.ts` — sinh cặp VAPID
+- `update_secret` × 2 — `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+- `.env` — đổi `VITE_VAPID_PUBLIC_KEY`
+- migration SQL — `DELETE FROM push_subscriptions;`
+- `deploy_edge_functions(["send-notification"])`
+- `curl_edge_functions` để verify fingerprint trong log mới
+
+# Cam kết
+Sau khi xong tôi sẽ đối chiếu fingerprint lần cuối và báo cáo: "client=Xxxx, server=Xxxx, KHỚP". Nếu vẫn lệch tôi nhận thua thật sự, nhưng với cách này thì không thể lệch được vì cả 3 nơi đều ghi cùng một giá trị trong cùng một lượt.
+
+Sau khi anh duyệt tôi triển khai ngay.
