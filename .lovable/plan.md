@@ -1,53 +1,47 @@
-# Plan: Fix Web Push Notification không gửi tới ĐT/Laptop
+# Kế hoạch: Update OneSignal App API Key + Verify Push
 
-## 🎯 Root Cause đã xác định
-**REST API Key OneSignal đang lưu trong `system_config.ONESIGNAL_REST_API_KEY` bị OneSignal API trả về 403 ở MỌI endpoint, MỌI format header.**
+## 🎯 Mục tiêu
+Thay key cũ (Legacy, đang trả 403) bằng key mới `os_v2_app_l23tfx...xbedtcevehvkifjzdpa` user vừa tạo, sau đó test ngay để xác nhận push notification hoạt động trên ĐT/Laptop.
 
-- 19/19 push notification trong 24h vừa qua đều fail với cùng lỗi `403 Access denied`.
-- Test trực tiếp `curl` từ sandbox với 3 format header (`Basic`, `Key`, `Bearer`) đều fail → key này không phải REST API Key hợp lệ của app.
-- App ID hợp lệ (frontend init OneSignal SDK thành công).
+## 🛠️ Các bước thực hiện
 
-## ✅ Việc cần user làm trước (KHÔNG code được)
-**Lấy đúng App API Key (REST API Key) từ OneSignal Dashboard:**
+### Bước 1 — Migration update key (`supabase--migration`)
+```sql
+UPDATE public.system_config
+SET 
+  value = 'os_v2_app_l23tfx3w5rh2tb2bcfjhbi44mzn5mb32ecvenf5es4spz3ig7lj6bst55bc3qvxcv2sjzkrc6lach5znxxx4xbedtcevehvkifjzdpa',
+  updated_at = now()
+WHERE key = 'ONESIGNAL_REST_API_KEY';
+```
 
-1. Vào https://dashboard.onesignal.com → chọn app có ID `5eb732df-76ec-4fa9-8741-115270a39c66`.
-2. Vào **Settings → Keys & IDs**.
-3. Tìm mục **"App API Key"** (KHÔNG phải "User Auth Key" hay "Organization API Key").
-4. Nếu chưa có key nào → bấm **"Create new key"**, chọn scope **Full Access** (hoặc tối thiểu phải có quyền `notifications:write`).
-5. Copy **toàn bộ** chuỗi key (cẩn thận không bị cắt giữa).
-6. Gửi key mới cho tôi để cập nhật `system_config`.
+Trigger `notify_push_on_insert()` đã được setup ở migration trước để **auto-detect prefix `os_v2_`** → dùng header `Authorization: Key <token>` (đúng chuẩn OneSignal v16). Không cần sửa code thêm.
 
-## 🛠️ Việc tôi sẽ làm khi có key đúng
+### Bước 2 — Verify ngay sau khi update
+Chạy `supabase--read_query` để:
+1. Đọc lại `system_config` xác nhận key đã update.
+2. Insert 1 push test qua RPC `rpc_send_test_push()` (gọi từ logged-in admin) → check `v_push_health` xem `status_code = 200/202` chưa.
 
-### 1. Cập nhật key qua migration
-- `UPDATE system_config SET value = '<KEY MỚI>', updated_at = now() WHERE key = 'ONESIGNAL_REST_API_KEY';`
-- Nếu Authorization phải là `Key <token>` (OneSignal v16 mới) thay vì `Basic <token>`: sửa lại `notify_push_on_insert()` cho phù hợp. Sẽ test cả 2 format và chọn cái trả về 200/202.
+Nếu có lỗi:
+- **403 lại** → key vẫn sai scope (chưa tick Full Access). Hướng dẫn user vào lại OneSignal sửa permissions.
+- **400 invalid player_id** → user chưa subscribe trên thiết bị nào. Hướng dẫn vào Cài đặt → Thông báo bật toggle.
+- **200 OK** → ✅ xong, thông báo cho user vào nút "Gửi thử push" để xác nhận thấy notification trên màn hình thật.
 
-### 2. Test ngay sau khi update
-- Insert 1 notification giả vào `notifications` (target user_id của ADMIN).
-- Đọc `push_send_log` + `net._http_response` để xác nhận status_code = 200/202.
-- Nếu vẫn fail: log chi tiết response trả về để debug tiếp.
+### Bước 3 — Hướng dẫn user test cuối cùng
+1. Mở app trong **tab thật** (https://app.saigonholiday.vn — không phải iframe editor).
+2. Vào **Cài đặt → Thông báo**:
+   - Bật toggle "Thông báo" → cấp quyền cho trình duyệt.
+   - Bấm **"Gửi thử push"** → nhận toast `✅ OneSignal nhận push OK` + thông báo thật xuất hiện trên màn hình (như Zalo).
+3. Test trên ĐT: cài web app vào màn hình chính (Add to Home Screen) trên Chrome Android hoặc Safari iOS → mở app → bật thông báo → test tương tự.
 
-### 3. Thêm trang chẩn đoán Push (Settings → Thông báo)
-- Thêm 1 button **"Test Push Notification"** trong `PushNotificationToggle.tsx` để admin tự test:
-  - Gọi 1 RPC mới `rpc_send_test_push(target_user_id)` insert vào `notifications` rồi đọc lại push_send_log → trả về status 200/4xx/5xx + thông báo cụ thể.
-  - Hiển thị cho user "✅ Đã gửi thành công" hoặc "❌ Lỗi: <chi tiết>".
-- Hữu ích về sau khi key đổi/hết hạn không cần đợi user phàn nàn.
+### Bước 4 — Cleanup (sau khi user xác nhận thành công)
+- Vào OneSignal Dashboard → **Disable Legacy API Key** cho gọn (key cũ không cần dùng nữa).
+- Update memory `mem://features/notifications/web-push` ghi rõ ngày fix + format key mới.
 
-### 4. Thêm cảnh báo cho admin trong app
-- Tạo cron job nhỏ (hoặc check trong AlertsCenter): nếu trong 1h gần nhất có > 5 push fail liên tiếp → hiện banner đỏ trên dashboard "Hệ thống Push Notification đang lỗi, liên hệ admin kiểm tra OneSignal".
+## ⚠️ Rủi ro cần lưu ý
+- Key này là **secret nhạy cảm** — sau khi paste vào migration thì migration file sẽ nằm trong repo. Đây là pattern hiện tại của project (cả key cũ cũng đã ở trong DB). Nếu sau này muốn an toàn hơn, có thể chuyển sang Supabase Secrets + Edge Function gọi push thay vì DB trigger — nhưng việc đó nằm ngoài phạm vi fix lần này.
+- Nếu bạn lo bảo mật, sau khi key được lưu vào DB thành công, có thể quay lại OneSignal **Rotate** key (tạo mới + xoá cái này) rồi gửi tôi key mới hơn để update lại.
 
-### 5. Cập nhật memory
-- Ghi lại memory `mem://features/notifications/web-push` về việc:
-  - Có 3 loại key trong OneSignal dễ nhầm — chỉ App API Key dùng được cho `/notifications`.
-  - Lệnh debug nhanh: `SELECT psl.*, hr.status_code, hr.content FROM push_send_log psl LEFT JOIN net._http_response hr ON hr.id = psl.request_id ORDER BY psl.created_at DESC LIMIT 10;`
-
-## ❓ Câu hỏi cho user trước khi làm
-1. **Bạn có truy cập được dashboard OneSignal không?** Nếu chưa, cần thêm tài khoản (https://dashboard.onesignal.com → Settings → Team → Invite).
-2. Trong **Settings → Keys & IDs** của app, bạn thấy có sẵn 1 key tên gì không (App API Key đã tạo) hay phải tạo mới?
-3. Có muốn tôi luôn thêm nút **"Test Push"** trong giao diện không, hay chỉ fix key là đủ?
-
-## ⚠️ Lưu ý
-- KHÔNG đổi App ID (đã đúng).
-- KHÔNG đụng vào frontend OneSignal init / Service Worker (đã hoạt động đúng — SDK login user.id thành công).
-- Chỉ thay key + có thể tinh chỉnh format `Authorization` header trong trigger.
+## ✅ Kết quả mong đợi
+- Push notification gửi thành công với status 200/202 từ OneSignal.
+- Tất cả thiết bị đã subscribe (laptop + ĐT) sẽ nhận thông báo realtime khi có @mention, lead cần follow-up, duyệt nghỉ phép, v.v.
+- Có nút "Gửi thử push" trong Settings để admin tự kiểm tra mỗi khi nghi ngờ lỗi push.
