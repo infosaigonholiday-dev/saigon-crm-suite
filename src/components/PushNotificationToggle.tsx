@@ -47,6 +47,42 @@ export function PushNotificationToggle() {
     }
   };
 
+  const [testing, setTesting] = useState(false);
+  const handleTestPush = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.rpc("rpc_send_test_push");
+      if (error) {
+        toast.error(`Lỗi RPC: ${error.message}`);
+        return;
+      }
+      const result = data as {
+        ok?: boolean;
+        status_code?: number;
+        response?: string;
+        hint?: string;
+        stage?: string;
+        error?: string;
+      } | null;
+      if (result?.ok) {
+        toast.success("✅ OneSignal nhận push OK — kiểm tra thông báo trên màn hình", {
+          description: result.hint,
+          duration: 8000,
+        });
+      } else {
+        toast.error(
+          `❌ Push fail: ${result?.status_code ?? result?.stage ?? result?.error ?? "unknown"}`,
+          { description: result?.hint || result?.response, duration: 15000 }
+        );
+        console.error("[push test] full result:", result);
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi: ${e?.message || String(e)}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const openInNewTab = () => {
     window.open(window.location.href, "_blank", "noopener,noreferrer");
   };
