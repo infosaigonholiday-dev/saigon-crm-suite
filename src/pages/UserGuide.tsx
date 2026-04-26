@@ -54,7 +54,7 @@ function PushNotifGuide() {
 
       <p className="font-medium text-foreground mt-3">Cách 2 — Từ Hồ sơ cá nhân:</p>
       <Step n={1} text="Vào icon avatar góc phải → Hồ sơ cá nhân (hoặc Cài đặt)" />
-      <Step n={2} text="Tìm thẻ 'Thông báo Web Push' → Gạt công tắc sang BẬT" />
+      <Step n={2} text="Tìm thẻ 'Thông báo' → Gạt công tắc sang BẬT" />
 
       <p className="font-medium text-foreground mt-3">Lưu ý quan trọng:</p>
       <Step n={1} text="Bật RIÊNG trên MỖI thiết bị (laptop công ty, laptop cá nhân, điện thoại...) — push không đồng bộ giữa thiết bị" />
@@ -95,12 +95,12 @@ function LeaveNotificationGuide() {
   return (
     <Section title="📋 Thông báo Đơn xin nghỉ phép (Real-time)">
       <p className="text-foreground font-medium">Khi nhân viên gửi đơn:</p>
-      <Step n={1} text="HR (HR_MANAGER, HCNS) + Admin nhận thông báo NGAY LẬP TỨC (real-time + Web Push)" />
+      <Step n={1} text="HR (HR_MANAGER, HCNS) + Admin nhận thông báo NGAY LẬP TỨC" />
       <Step n={2} text="Trưởng phòng/GDKD cùng phòng ban với nhân viên cũng nhận thông báo" />
       <Step n={3} text="Nhấn chuông thông báo → Click vào đơn → Tự động chuyển đến trang Quản lý nghỉ phép" />
 
       <p className="text-foreground font-medium mt-3">Khi quản lý duyệt/từ chối:</p>
-      <Step n={1} text="Nhân viên tạo đơn TỰ ĐỘNG nhận thông báo kết quả (real-time + Web Push)" />
+      <Step n={1} text="Nhân viên tạo đơn TỰ ĐỘNG nhận thông báo kết quả" />
       <Step n={2} text="Nội dung noti hiển thị: ngày bắt đầu, ngày kết thúc, trạng thái" />
     </Section>
   );

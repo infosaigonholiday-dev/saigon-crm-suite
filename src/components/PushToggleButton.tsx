@@ -29,11 +29,11 @@ export function PushToggleButton() {
 
   const handleClick = async () => {
     if (initError) {
-      toast.error("OneSignal Web Push chưa cấu hình xong. Vào Cài đặt → Thông báo để xem chi tiết.");
+      toast.error("Hệ thống thông báo chưa sẵn sàng. Vào Cài đặt → Thông báo để xem chi tiết.");
       return;
     }
     if (!isReady && !loading) {
-      toast.message("Đang tải OneSignal SDK, đợi vài giây rồi thử lại.");
+      toast.message("Đang tải hệ thống thông báo, đợi vài giây rồi thử lại.");
       return;
     }
     if (isSubscribed) {
@@ -55,16 +55,16 @@ export function PushToggleButton() {
     } else if (r.error === "denied") {
       toast.error("Bạn đã từ chối quyền thông báo.");
     } else if (r.error === "init_failed") {
-      toast.error("OneSignal chưa hoạt động. Vào Cài đặt → Thông báo để xem chi tiết.");
+      toast.error("Thông báo chưa hoạt động. Vào Cài đặt → Thông báo để xem chi tiết.");
     } else {
       toast.error("Không thể bật thông báo. Hãy thử tải lại trang.");
     }
   };
 
   const tooltipText = initError
-    ? "OneSignal lỗi cấu hình — bấm để xem"
+    ? "Thông báo đang lỗi cấu hình — bấm để xem"
     : !isReady
-    ? "Đang tải OneSignal SDK…"
+    ? "Đang tải thông báo…"
     : isSubscribed
     ? "Đã bật thông báo — nhấn để tắt"
     : permission === "denied"
