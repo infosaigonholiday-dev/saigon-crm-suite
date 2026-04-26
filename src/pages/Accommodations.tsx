@@ -32,7 +32,7 @@ export default function Accommodations() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("accommodations" as any)
-        .select("*")
+        .select("id, name, type, location, city, country, rating, status, contact_phone, contact_email, website, amenities, notes")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as any[];

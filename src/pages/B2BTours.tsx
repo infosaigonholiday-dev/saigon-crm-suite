@@ -91,7 +91,7 @@ export default function B2BTours() {
     queryFn: async () => {
       let q = supabase
         .from("b2b_tours")
-        .select("*")
+        .select("id, tour_code, target_market, destination, thang, departure_date, return_date, price_adl, price_chd, price_inf, commission_adl, commission_chd, commission_inf, available_seats, hold_seats, notes, visa_deadline, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, itinerary_url")
         .order("departure_date", { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (filterMarket !== "all") q = q.eq("target_market", filterMarket);
