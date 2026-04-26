@@ -1,49 +1,39 @@
-## Việc làm ngay sau khi approve
+## Mục tiêu
+Đổi cách build `Authorization` header trong Edge Function `send-notification` thành `Basic <KEY>` cho mọi trường hợp (bỏ nhánh `Key ...` cho prefix `os_v2_`), deploy lại, rồi test INSERT notification để xem OneSignal trả về gì.
 
-### 1. Update `public.system_config`
-```sql
-UPDATE public.system_config
-SET value = 'os_v2_app_numioy5i2zamhnochiokt5p2j6cvzmx3p7rutvngrivo4yjxyzyautvpkrcugiv23rvcpzfw2cmrgkmu2em5vjb6wvdynxelfuop6ki',
-    updated_at = now()
-WHERE key = 'ONESIGNAL_REST_API_KEY';
+## Thay đổi code
+
+**File:** `supabase/functions/send-notification/index.ts` (dòng ~57–60)
+
+Trước:
+```ts
+const authHeader = ONESIGNAL_REST_API_KEY.startsWith("os_v2_")
+  ? `Key ${ONESIGNAL_REST_API_KEY}`
+  : `Basic ${ONESIGNAL_REST_API_KEY}`;
 ```
 
-### 2. Lưu vào Supabase Edge Secrets
-- `ONESIGNAL_REST_API_KEY` = key mới
-- `ONESIGNAL_APP_ID` = `5eb732df-76ec-4fa9-8741-115270a39c66`
-(để dùng được cả ở edge function nếu sau này chuyển sang gọi qua edge thay vì DB trigger).
-
-### 3. Verify SQL update
-```sql
-SELECT key, LEFT(value, 30) || '...' AS preview, updated_at 
-FROM public.system_config 
-WHERE key IN ('ONESIGNAL_APP_ID','ONESIGNAL_REST_API_KEY');
+Sau:
+```ts
+const authHeader = `Basic ${ONESIGNAL_REST_API_KEY}`;
 ```
 
-### 4. Test thật bằng `rpc_send_test_push()`
-Gọi RPC để hệ thống tự INSERT notification → trigger `notify_push_on_insert` → `pg_net` → OneSignal, rồi đọc lại `net._http_response`.
+Giữ nguyên:
+- Endpoint: `https://api.onesignal.com/notifications`
+- Body OneSignal (app_id, include_aliases.external_id, headings, contents, url, web_url)
+- Debug log secrets ở đầu function
 
-```sql
-SELECT public.rpc_send_test_push();
-```
+## Thực thi
+1. Edit `supabase/functions/send-notification/index.ts` đúng 1 đoạn trên.
+2. Deploy lại function `send-notification` (`supabase--deploy_edge_functions`).
+3. Test:
+   - INSERT 1 dòng vào `public.notifications` cho user `21587d06-9c1e-47c2-aa78-f7daadea4ddb` để kích hoạt trigger `notify_push_on_insert` → gọi `send-notification` → gọi OneSignal.
+   - Đồng thời gọi trực tiếp `send-notification` qua `supabase--curl_edge_functions` với cùng payload để có response ngay lập tức (không phải đợi pg_net).
+4. Đọc log function (`supabase--edge_function_logs send-notification`) để lấy:
+   - `DEBUG_SECRETS` (xác nhận key vẫn 113 ký tự)
+   - HTTP status OneSignal trả về
+   - Body JSON OneSignal trả về (errors / id / recipients)
+5. Paste nguyên văn cho bạn: status + body OneSignal.
 
-Mong đợi: `status_code = 200` và `id` trả về từ OneSignal.
-
-### 5. Đọc 3 dòng `push_send_log` mới nhất + response thật
-```sql
-SELECT l.created_at, l.title, l.request_id, r.status_code, LEFT(r.content::text, 300) AS body
-FROM public.push_send_log l
-LEFT JOIN net._http_response r ON r.id = l.request_id
-ORDER BY l.created_at DESC LIMIT 3;
-```
-
-### 6. Báo kết quả thật cho user
-- Paste `status_code` thật (200 / 400 / 403…)
-- Paste body response thật từ OneSignal
-- Nếu 200 nhưng "All included players are not subscribed" → user phải bấm "Bật thông báo" trong app trước rồi test lại (đây là vấn đề subscribe thiết bị, không phải key).
-- Nếu 200 và có recipient → push sẽ hiện trên thiết bị đã subscribe. User cần xác nhận trên điện thoại/máy tính.
-
-### Không làm
-- Không sửa frontend.
-- Không sửa trigger `notify_push_on_insert` (đã đúng logic `Key ` cho `os_v2_*`).
-- Không tạo bảng/edge function mới.
+## Kết quả mong đợi
+- Nếu `Basic` đúng → status 200, body có `id` + `recipients > 0` → push tới thiết bị.
+- Nếu vẫn 401/403 → key thực sự không hợp lệ với endpoint v1/v2 này (lúc đó bạn cho biết sandbox của bạn dùng URL + header chính xác nào, tôi sẽ map đúng).

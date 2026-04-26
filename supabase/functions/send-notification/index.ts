@@ -64,10 +64,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Format Authorization header theo prefix key
-    const authHeader = ONESIGNAL_REST_API_KEY.startsWith("os_v2_")
-      ? `Key ${ONESIGNAL_REST_API_KEY}`
-      : `Basic ${ONESIGNAL_REST_API_KEY}`;
+    // OneSignal yêu cầu Basic auth cho endpoint /notifications (kể cả với key os_v2_*)
+    const authHeader = `Basic ${ONESIGNAL_REST_API_KEY}`;
 
     const fullUrl = `https://app.saigonholiday.vn${url || "/"}`;
 
