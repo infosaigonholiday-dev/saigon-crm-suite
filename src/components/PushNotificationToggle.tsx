@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 const ERROR_HINTS: Record<string, string> = {
   "App not configured for web push":
-    "OneSignal app chưa bật Web Push. Admin cần vào dashboard.onesignal.com → Settings → Web Configuration → bật Web Push và nhập Site URL = https://app.saigonholiday.vn",
+    "Hệ thống thông báo chưa được cấu hình xong trong OneSignal. Admin cần vào dashboard.onesignal.com → Settings → Web Configuration và kiểm tra Site URL = https://app.saigonholiday.vn",
 };
 
 function friendlyInitError(msg: string): string {
@@ -55,7 +55,7 @@ export function PushNotificationToggle() {
         <div className="flex items-start gap-3">
           <BellOff className="h-5 w-5 text-muted-foreground mt-0.5" />
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Thông báo Web Push</p>
+            <p className="text-sm font-medium text-foreground">Thông báo</p>
             <p className="text-xs text-muted-foreground">
               Trình duyệt không hỗ trợ. Hãy dùng Chrome / Edge / Firefox trên máy tính hoặc Android.
               Trên iPhone cần cài app vào màn hình chính (PWA).
@@ -83,18 +83,14 @@ export function PushNotificationToggle() {
     );
   }
 
-  // SDK init thực sự bị lỗi → hiển thị lỗi rõ ràng, KHÔNG cho bật toggle
   if (initError) {
     return (
       <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4">
         <div className="flex items-start gap-3">
           <AlertOctagon className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
           <div className="space-y-1.5">
-            <p className="text-sm font-medium text-foreground">OneSignal Web Push chưa hoạt động</p>
+            <p className="text-sm font-medium text-foreground">Thông báo chưa hoạt động</p>
             <p className="text-xs text-foreground/90">{friendlyInitError(initError)}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Lỗi gốc: <code>{initError}</code>
-            </p>
           </div>
         </div>
       </div>
@@ -148,11 +144,11 @@ export function PushNotificationToggle() {
             <Bell className="h-5 w-5 text-primary mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="push-toggle" className="text-sm font-medium text-foreground cursor-pointer">
-                Thông báo Web Push
+                Thông báo
               </Label>
               <p className="text-xs text-muted-foreground">
                 Nhận thông báo trực tiếp trên thiết bị (như Zalo) khi có @mention, lead cần follow-up,
-                duyệt đơn nghỉ phép, v.v. Powered by OneSignal.
+                duyệt đơn nghỉ phép, v.v.
               </p>
             </div>
           </div>
