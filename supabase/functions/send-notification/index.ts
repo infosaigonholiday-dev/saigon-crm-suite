@@ -64,10 +64,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Organization-level key (os_v2_org_*) dùng Bearer; App-level (os_v2_app_*) dùng Basic
-    const authHeader = ONESIGNAL_REST_API_KEY.startsWith("os_v2_org_")
-      ? `Bearer ${ONESIGNAL_REST_API_KEY}`
-      : `Basic ${ONESIGNAL_REST_API_KEY}`;
+    const authHeader = `Basic ${ONESIGNAL_REST_API_KEY}`;
 
     const fullUrl = `https://app.saigonholiday.vn${url || "/"}`;
 
