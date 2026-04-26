@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setIsReady(true);
 
-      // Tách khỏi OneSignal khi logout
-      if (typeof window !== "undefined") {
+      // Tách khỏi OneSignal khi user thực sự đăng xuất (không gọi khi bootstrap với session=null)
+      if (typeof window !== "undefined" && source === "SIGNED_OUT") {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async (OneSignal) => {
           try { await OneSignal.logout(); } catch (e) { console.warn("[onesignal] logout failed", e); }
