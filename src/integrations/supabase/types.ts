@@ -664,6 +664,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           id: string
+          kt_assigned_id: string | null
           last_reminder_at: string | null
           review_note: string | null
           reviewed_at: string | null
@@ -681,6 +682,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           id?: string
+          kt_assigned_id?: string | null
           last_reminder_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
@@ -698,6 +700,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           id?: string
+          kt_assigned_id?: string | null
           last_reminder_at?: string | null
           review_note?: string | null
           reviewed_at?: string | null
@@ -724,6 +727,13 @@ export type Database = {
           {
             foreignKeyName: "budget_estimates_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_estimates_kt_assigned_id_fkey"
+            columns: ["kt_assigned_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -810,6 +820,7 @@ export type Database = {
           created_by: string
           estimate_id: string
           id: string
+          kt_assigned_id: string | null
           last_reminder_at: string | null
           refund_amount: number | null
           refund_status: string | null
@@ -839,6 +850,7 @@ export type Database = {
           created_by: string
           estimate_id: string
           id?: string
+          kt_assigned_id?: string | null
           last_reminder_at?: string | null
           refund_amount?: number | null
           refund_status?: string | null
@@ -868,6 +880,7 @@ export type Database = {
           created_by?: string
           estimate_id?: string
           id?: string
+          kt_assigned_id?: string | null
           last_reminder_at?: string | null
           refund_amount?: number | null
           refund_status?: string | null
@@ -916,6 +929,13 @@ export type Database = {
             columns: ["estimate_id"]
             isOneToOne: false
             referencedRelation: "budget_estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_settlements_kt_assigned_id_fkey"
+            columns: ["kt_assigned_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -4323,6 +4343,12 @@ export type Database = {
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_booking_closed: { Args: { _booking_id: string }; Returns: boolean }
+      rpc_dashboard_business: {
+        Args: { p_dept_id?: string; p_scope: string; p_user_id: string }
+        Returns: Json
+      }
+      rpc_dashboard_ceo: { Args: { p_dept_id?: string }; Returns: Json }
+      rpc_dashboard_personal: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
