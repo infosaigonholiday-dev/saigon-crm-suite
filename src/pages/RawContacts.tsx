@@ -536,8 +536,18 @@ export default function RawContacts() {
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-              ) : renderTable(myData, false)}
+              ) : renderTable(pagedData, false)}
             </CardContent>
+            {totalCount > PAGE_SIZE && activeTab === "my" && (
+              <div className="flex items-center justify-between border-t px-4 py-2 text-sm">
+                <span className="text-muted-foreground">{totalCount} kết quả</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Trước</Button>
+                  <span>Trang {page + 1}/{totalPages}</span>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Sau</Button>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
         {showDeptTab && (
@@ -546,8 +556,18 @@ export default function RawContacts() {
               <CardContent className="p-0">
                 {loadingDept ? (
                   <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                ) : renderTable(filteredDeptData, true)}
+                ) : renderTable(pagedData, true)}
               </CardContent>
+              {totalCount > PAGE_SIZE && activeTab === "dept" && (
+                <div className="flex items-center justify-between border-t px-4 py-2 text-sm">
+                  <span className="text-muted-foreground">{totalCount} kết quả</span>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Trước</Button>
+                    <span>Trang {page + 1}/{totalPages}</span>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Sau</Button>
+                  </div>
+                </div>
+              )}
             </Card>
           </TabsContent>
         )}
