@@ -40,7 +40,7 @@ export default function Vendors() {
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendors").select("*").order("name");
+      const { data, error } = await supabase.from("vendors").select("id, name, category, contact_person, phone, email, address, notes, status").order("name");
       if (error) throw error;
       return data;
     },

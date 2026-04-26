@@ -63,7 +63,7 @@ export default function BookingItineraryTab({ bookingId, readOnly = false }: Pro
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("booking_itineraries")
-        .select("*")
+        .select("id, day_number, destination, actual_date, activities, booking_id")
         .eq("booking_id", bookingId)
         .order("day_number", { ascending: true });
       if (error) throw error;

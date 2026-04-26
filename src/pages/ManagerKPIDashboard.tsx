@@ -190,7 +190,7 @@ export default function ManagerKPIDashboard() {
       queryFn: async () => {
         const { data } = await supabase
           .from("employee_kpis")
-          .select("*")
+          .select("id, employee_id, kpi_name, target_value, actual_value, achievement_pct, unit, note")
           .eq("department_id", departmentId)
           .eq("period_type", "monthly")
           .eq("period_year", currentYear)

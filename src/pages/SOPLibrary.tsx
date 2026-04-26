@@ -99,7 +99,7 @@ export default function SOPLibrary() {
     setLoading(true);
 
     const [sopRes, deptRes, empRes] = await Promise.all([
-      supabase.from("department_sops").select("*").order("sort_order").order("created_at", { ascending: false }),
+      supabase.from("department_sops").select("id, title, description, content, category, level, department_id, file_url, file_name, is_required, sort_order, created_at, created_by").order("sort_order").order("created_at", { ascending: false }),
       supabase.from("departments").select("id, code, name").order("name"),
       supabase.from("employees").select("id").eq("profile_id", user.id).is("deleted_at", null).maybeSingle(),
     ]);
