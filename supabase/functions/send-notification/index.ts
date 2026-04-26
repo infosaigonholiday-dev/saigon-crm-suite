@@ -212,14 +212,13 @@ interface PushBody {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
   try {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-      return new Response(
-        JSON.stringify({ error: "VAPID keys not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "VAPID keys not configured" }, 500);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -248,18 +247,14 @@ Deno.serve(async (req) => {
       }
     } else {
       if (!token) {
-        return new Response(JSON.stringify({ error: "Unauthorized: missing token" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Unauthorized: missing token" }, 401);
       }
       const userClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
       const { data, error } = await userClient.auth.getClaims(token);
       if (error || !data?.claims?.sub) {
-        return new Response(JSON.stringify({ error: "Unauthorized: invalid JWT" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Unauthorized: invalid JWT" }, 401);
       }
       authedUserId = data.claims.sub as string;
       authMethod = "jwt_user";
@@ -267,17 +262,18 @@ Deno.serve(async (req) => {
 
     console.log(`[send-notification] auth=${authMethod}`);
 
-    const body = (await req.json()) as PushBody;
-    if (!body.user_id || !body.title) {
-      return new Response(JSON.stringify({ error: "user_id and title are required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let body: PushBody;
+    try {
+      body = (await req.json()) as PushBody;
+    } catch (e: any) {
+      return jsonResponse({ error: "Invalid JSON body: " + (e?.message || "parse failed") }, 400);
+    }
+    if (!body?.user_id || !body?.title) {
+      return jsonResponse({ error: "user_id and title are required" }, 400);
     }
 
     if (authedUserId && body.user_id !== authedUserId) {
-      return new Response(JSON.stringify({ error: "Forbidden: can only push to self" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Forbidden: can only push to self" }, 403);
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
@@ -287,15 +283,11 @@ Deno.serve(async (req) => {
       .eq("user_id", body.user_id);
 
     if (subErr) {
-      return new Response(JSON.stringify({ error: subErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: subErr.message }, 500);
     }
 
     if (!subs || subs.length === 0) {
-      return new Response(JSON.stringify({ sent: 0, failed: 0, reason: "no_subscriptions" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ sent: 0, failed: 0, reason: "no_subscriptions" });
     }
 
     const payload = JSON.stringify({
@@ -347,14 +339,14 @@ Deno.serve(async (req) => {
 
     console.log(`[send-notification] result user=${body.user_id} sent=${sent} failed=${failed} cleaned=${staleIds.length}`);
 
-    return new Response(
-      JSON.stringify({ sent, failed, cleaned: staleIds.length, errors: failed > 0 ? errorDetails : undefined }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      sent,
+      failed,
+      cleaned: staleIds.length,
+      errors: failed > 0 ? errorDetails : undefined,
+    });
   } catch (err: any) {
     console.error("[send-notification] uncaught:", err?.message || err);
-    return new Response(JSON.stringify({ error: err?.message || "unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: err?.message || "unknown" }, 500);
   }
 });
