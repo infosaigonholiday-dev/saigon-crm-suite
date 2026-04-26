@@ -75,7 +75,7 @@ export function BudgetSettlementsTab() {
     queryFn: async () => {
       let q = supabase
         .from("budget_settlements")
-        .select("*, bookings(code, customer_id, customers(full_name)), budget_estimates(code), profiles!budget_settlements_created_by_fkey(full_name)")
+        .select("id, code, status, total_estimated, total_actual, variance, variance_pct, created_by, booking_id, estimate_id, accountant_note, ceo_note, created_at, bookings(code, customer_id, customers(full_name)), budget_estimates(code), profiles!budget_settlements_created_by_fkey(full_name)")
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
       const { data, error } = await q;
@@ -103,7 +103,7 @@ export function BudgetSettlementsTab() {
   const loadEstimateItems = async (estimateId: string) => {
     const { data, error } = await supabase
       .from("budget_estimate_items")
-      .select("*")
+      .select("category, description, unit_price, quantity, sort_order")
       .eq("estimate_id", estimateId)
       .order("sort_order");
     if (error) { toast.error(error.message); return; }
@@ -126,7 +126,7 @@ export function BudgetSettlementsTab() {
       if (!selectedSettlement) return [];
       const { data, error } = await supabase
         .from("settlement_items")
-        .select("*")
+        .select("id, category, description, estimated_amount, actual_amount, receipt_url, sort_order")
         .eq("settlement_id", selectedSettlement.id)
         .order("sort_order");
       if (error) throw error;

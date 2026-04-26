@@ -65,7 +65,7 @@ function OverviewTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profit_loss_monthly")
-        .select("*")
+        .select("month, gross_revenue, gross_profit, net_profit, net_margin_pct")
         .eq("year", currentYear)
         .order("month", { ascending: true });
       if (error) throw error;
@@ -78,7 +78,7 @@ function OverviewTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("revenue_records")
-        .select("*")
+        .select("month, booking_count, gross_revenue")
         .eq("year", currentYear)
         .order("month", { ascending: true });
       if (error) throw error;

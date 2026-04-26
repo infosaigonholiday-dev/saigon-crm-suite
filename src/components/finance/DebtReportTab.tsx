@@ -22,7 +22,7 @@ export function DebtReportTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("accounts_receivable")
-        .select("*, customers(full_name), bookings(code)")
+        .select("id, amount_due, amount_paid, amount_remaining, due_date, status, customers(full_name), bookings(code)")
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data;
@@ -34,7 +34,7 @@ export function DebtReportTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("accounts_payable")
-        .select("*")
+        .select("id, supplier_name, description, amount_due, amount_paid, amount_remaining, due_date, status")
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data;

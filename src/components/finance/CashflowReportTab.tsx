@@ -20,7 +20,7 @@ export function CashflowReportTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cashflow_monthly")
-        .select("*")
+        .select("month, opening_balance, total_inflow, total_outflow, net_cashflow, closing_balance")
         .eq("year", currentYear)
         .order("month", { ascending: true });
       if (error) throw error;

@@ -27,7 +27,7 @@ export function RevenueReportTab({ departmentFilter }: RevenueReportTabProps) {
     queryFn: async () => {
       let query = supabase
         .from("revenue_records")
-        .select("*")
+        .select("month, booking_count, gross_revenue, department_id")
         .eq("year", year)
         .order("month", { ascending: true });
       if (departmentFilter) {

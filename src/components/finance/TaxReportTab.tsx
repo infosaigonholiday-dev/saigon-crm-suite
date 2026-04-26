@@ -19,7 +19,7 @@ export function TaxReportTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tax_records")
-        .select("*")
+        .select("id, period_start, period_end, vat_output, vat_input, vat_payable, cit_amount, status")
         .order("period_start", { ascending: false });
       if (error) throw error;
       return data;
