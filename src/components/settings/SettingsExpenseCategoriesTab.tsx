@@ -22,7 +22,7 @@ export function SettingsExpenseCategoriesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expense_categories")
-        .select("*")
+        .select("id, name, sort_order, is_active")
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return data;

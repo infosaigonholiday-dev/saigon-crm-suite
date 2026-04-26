@@ -62,7 +62,7 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documents")
-        .select("*")
+        .select("id, name, file_url, file_type, file_size, created_at")
         .eq("entity_type", "contract")
         .eq("entity_id", contractId!);
       if (error) throw error;

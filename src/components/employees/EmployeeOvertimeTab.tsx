@@ -29,7 +29,7 @@ export function EmployeeOvertimeTab({ employeeId }: { employeeId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("overtime_records")
-        .select("*")
+        .select("id, date, hours, ot_type, rate_multiplier, ot_pay, notes")
         .eq("employee_id", employeeId)
         .order("date", { ascending: false });
       if (error) throw error;

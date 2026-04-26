@@ -39,7 +39,7 @@ export function KpiProgressCard() {
 
       const { data } = await supabase
         .from("employee_kpis")
-        .select("*")
+        .select("id, kpi_name, target_value, actual_value, achievement_pct, unit")
         .eq("employee_id", emp.id)
         .eq("period_type", "monthly")
         .eq("period_year", now.getFullYear())

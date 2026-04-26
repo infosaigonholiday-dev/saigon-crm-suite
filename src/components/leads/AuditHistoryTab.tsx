@@ -74,7 +74,7 @@ export default function AuditHistoryTab({ tableName, recordId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_logs")
-        .select("*")
+        .select("id, action, user_full_name, user_role, change_summary, changed_fields, old_data, new_data, created_at")
         .eq("table_name", tableName)
         .eq("record_id", recordId)
         .order("created_at", { ascending: false })

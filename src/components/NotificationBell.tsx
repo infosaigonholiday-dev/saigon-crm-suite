@@ -96,19 +96,34 @@ export function NotificationBell() {
   const [tab, setTab] = useState<"unread" | "all">("unread");
   const [group, setGroup] = useState<FilterGroup>("all");
 
+  // Badge count nhẹ — poll 60s, head-only (không tải data)
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["alerts-badge", user?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("is_read", false);
+      return count ?? 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
+
+  // Danh sách 50 notification — chỉ fetch khi user mở popover
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications-all", user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id, user_id, type, title, message, entity_type, entity_id, is_read, priority, created_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
       return data ?? [];
     },
-    enabled: !!user?.id,
-    refetchInterval: 60000,
+    enabled: !!user?.id && open,
   });
 
   useEffect(() => {
@@ -126,8 +141,6 @@ export function NotificationBell() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
-
-  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   const filtered = useMemo(() => {
     let list = notifications;
