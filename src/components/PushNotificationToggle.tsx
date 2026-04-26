@@ -1,8 +1,10 @@
-import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2, AlertOctagon } from "lucide-react";
+import { useState } from "react";
+import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2, AlertOctagon, Send, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useOneSignal } from "@/hooks/useOneSignal";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const ERROR_HINTS: Record<string, string> = {
@@ -42,6 +44,42 @@ export function PushNotificationToggle() {
     } else {
       const r = await unsubscribe();
       if (r.ok) toast.success("Đã tắt thông báo trên thiết bị này");
+    }
+  };
+
+  const [testing, setTesting] = useState(false);
+  const handleTestPush = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.rpc("rpc_send_test_push");
+      if (error) {
+        toast.error(`Lỗi RPC: ${error.message}`);
+        return;
+      }
+      const result = data as {
+        ok?: boolean;
+        status_code?: number;
+        response?: string;
+        hint?: string;
+        stage?: string;
+        error?: string;
+      } | null;
+      if (result?.ok) {
+        toast.success("✅ OneSignal nhận push OK — kiểm tra thông báo trên màn hình", {
+          description: result.hint,
+          duration: 8000,
+        });
+      } else {
+        toast.error(
+          `❌ Push fail: ${result?.status_code ?? result?.stage ?? result?.error ?? "unknown"}`,
+          { description: result?.hint || result?.response, duration: 15000 }
+        );
+        console.error("[push test] full result:", result);
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi: ${e?.message || String(e)}`);
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -176,6 +214,23 @@ export function PushNotificationToggle() {
               SDK: <strong>{isReady ? "sẵn sàng" : "đang tải"}</strong> · Quyền: <strong>{permission}</strong>
             </p>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/50">
+          <p className="text-[11px] text-muted-foreground">
+            Bấm để hệ thống gửi 1 push thử và hiển thị kết quả thật từ OneSignal.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleTestPush}
+            disabled={testing}
+            className="shrink-0"
+          >
+            {testing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+            Gửi thử push
+          </Button>
         </div>
       </div>
     </div>
