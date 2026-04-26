@@ -4,6 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ?? "";
 
+function keyFingerprint(key: string): string {
+  if (!key) return "missing";
+  return `${key.slice(0, 10)}…${key.slice(-6)} (len=${key.length})`;
+}
+
 if (!VAPID_PUBLIC_KEY && typeof window !== "undefined") {
   console.error(
     "[push] VITE_VAPID_PUBLIC_KEY is missing in .env — Web Push will fail. " +
@@ -102,6 +107,7 @@ export function usePushSubscription() {
       inIframe: isInIframe(),
       permission: supported ? Notification.permission : "n/a",
       vapidKeyLength: VAPID_PUBLIC_KEY.length,
+      vapidFingerprint: keyFingerprint(VAPID_PUBLIC_KEY),
     });
   }, []);
 
