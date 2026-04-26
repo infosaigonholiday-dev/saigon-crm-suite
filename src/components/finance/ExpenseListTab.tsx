@@ -37,7 +37,7 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
       const endDate = `${currentYear + 1}-01-01`;
       const { data, error } = await supabase
         .from(tableName)
-        .select("*")
+        .select("id, expense_date, category, description, amount")
         .gte("expense_date", startDate)
         .lt("expense_date", endDate)
         .order("expense_date", { ascending: false });
