@@ -1,47 +1,75 @@
-# Kế hoạch: Update OneSignal App API Key + Verify Push
+## 🎯 Vấn đề đã xác định
 
-## 🎯 Mục tiêu
-Thay key cũ (Legacy, đang trả 403) bằng key mới `os_v2_app_l23tfx...xbedtcevehvkifjzdpa` user vừa tạo, sau đó test ngay để xác nhận push notification hoạt động trên ĐT/Laptop.
+Sau khi kiểm tra log thật trong DB:
 
-## 🛠️ Các bước thực hiện
+- ✅ OneSignal SDK browser đã hoạt động (bạn nhận được welcome notification khi subscribe).
+- ✅ Trigger DB `notify_push_on_insert` đang được kích hoạt mỗi khi có `notifications` mới (10 push gần nhất đều có log).
+- ❌ **Nhưng 100% request gửi đến OneSignal đều bị `403 Access denied`** với cùng một message:
+  > `"Access denied. Please include an 'Authorization: ...' header with a valid API key"`
 
-### Bước 1 — Migration update key (`supabase--migration`)
+### Nguyên nhân gốc
+
+Trigger đang dùng logic:
 ```sql
-UPDATE public.system_config
-SET 
-  value = 'os_v2_app_l23tfx3w5rh2tb2bcfjhbi44mzn5mb32ecvenf5es4spz3ig7lj6bst55bc3qvxcv2sjzkrc6lach5znxxx4xbedtcevehvkifjzdpa',
-  updated_at = now()
-WHERE key = 'ONESIGNAL_REST_API_KEY';
+IF v_rest_key LIKE 'os_v2_%' THEN
+  v_auth_header := 'Key ' || v_rest_key;   -- ❌ SAI cho app-level key
+ELSE
+  v_auth_header := 'Basic ' || v_rest_key;
+END IF;
 ```
 
-Trigger `notify_push_on_insert()` đã được setup ở migration trước để **auto-detect prefix `os_v2_`** → dùng header `Authorization: Key <token>` (đúng chuẩn OneSignal v16). Không cần sửa code thêm.
+Sự thật về OneSignal v16:
+| Loại key | Prefix | Header đúng |
+|---|---|---|
+| Legacy REST API Key | (không prefix) | `Basic <key>` |
+| Organization-level v2 | `os_v2_org_*` | `Key <key>` |
+| **App-level v2** | **`os_v2_app_*`** | **`Basic <key>`** ✅ |
 
-### Bước 2 — Verify ngay sau khi update
-Chạy `supabase--read_query` để:
-1. Đọc lại `system_config` xác nhận key đã update.
-2. Insert 1 push test qua RPC `rpc_send_test_push()` (gọi từ logged-in admin) → check `v_push_health` xem `status_code = 200/202` chưa.
+Key bạn vừa tạo trên dashboard SGH-CRM là **app-level key** (`os_v2_app_l23tfx3w5rh2...`) — vẫn phải dùng `Basic`, không phải `Key`.
 
-Nếu có lỗi:
-- **403 lại** → key vẫn sai scope (chưa tick Full Access). Hướng dẫn user vào lại OneSignal sửa permissions.
-- **400 invalid player_id** → user chưa subscribe trên thiết bị nào. Hướng dẫn vào Cài đặt → Thông báo bật toggle.
-- **200 OK** → ✅ xong, thông báo cho user vào nút "Gửi thử push" để xác nhận thấy notification trên màn hình thật.
+---
 
-### Bước 3 — Hướng dẫn user test cuối cùng
-1. Mở app trong **tab thật** (https://app.saigonholiday.vn — không phải iframe editor).
-2. Vào **Cài đặt → Thông báo**:
-   - Bật toggle "Thông báo" → cấp quyền cho trình duyệt.
-   - Bấm **"Gửi thử push"** → nhận toast `✅ OneSignal nhận push OK` + thông báo thật xuất hiện trên màn hình (như Zalo).
-3. Test trên ĐT: cài web app vào màn hình chính (Add to Home Screen) trên Chrome Android hoặc Safari iOS → mở app → bật thông báo → test tương tự.
+## 🔧 Việc cần làm
 
-### Bước 4 — Cleanup (sau khi user xác nhận thành công)
-- Vào OneSignal Dashboard → **Disable Legacy API Key** cho gọn (key cũ không cần dùng nữa).
-- Update memory `mem://features/notifications/web-push` ghi rõ ngày fix + format key mới.
+### 1. Sửa hàm `notify_push_on_insert()` trong DB
 
-## ⚠️ Rủi ro cần lưu ý
-- Key này là **secret nhạy cảm** — sau khi paste vào migration thì migration file sẽ nằm trong repo. Đây là pattern hiện tại của project (cả key cũ cũng đã ở trong DB). Nếu sau này muốn an toàn hơn, có thể chuyển sang Supabase Secrets + Edge Function gọi push thay vì DB trigger — nhưng việc đó nằm ngoài phạm vi fix lần này.
-- Nếu bạn lo bảo mật, sau khi key được lưu vào DB thành công, có thể quay lại OneSignal **Rotate** key (tạo mới + xoá cái này) rồi gửi tôi key mới hơn để update lại.
+Đổi logic chọn header — luôn dùng `Basic` cho mọi key, trừ khi prefix là `os_v2_org_`:
 
-## ✅ Kết quả mong đợi
-- Push notification gửi thành công với status 200/202 từ OneSignal.
-- Tất cả thiết bị đã subscribe (laptop + ĐT) sẽ nhận thông báo realtime khi có @mention, lead cần follow-up, duyệt nghỉ phép, v.v.
-- Có nút "Gửi thử push" trong Settings để admin tự kiểm tra mỗi khi nghi ngờ lỗi push.
+```sql
+IF v_rest_key LIKE 'os_v2_org_%' THEN
+  v_auth_header := 'Key ' || v_rest_key;        -- chỉ org-level mới dùng Key
+ELSE
+  v_auth_header := 'Basic ' || v_rest_key;      -- mọi key khác dùng Basic
+END IF;
+```
+
+### 2. Sửa edge function gửi push (nếu có)
+
+Kiểm tra edge function `daily-reminders` và bất kỳ nơi nào khác gọi OneSignal API có dùng cùng logic header → sửa đồng nhất.
+
+### 3. Test thực tế sau khi sửa
+
+- Chạy lại `rpc_send_test_push()` từ giao diện Cài đặt → Thông báo.
+- Kiểm tra `net._http_response` để xác nhận status `200` thay vì `403`.
+- Xác nhận thấy notification thật bật ra trên thiết bị (khi tab không focus).
+
+### 4. Cleanup
+
+Xóa file migration cũ (đã có) hoặc giữ lại — không ảnh hưởng vì lần này chỉ sửa logic hàm, không đổi key.
+
+---
+
+## ❓ Tại sao trước đây đoán sai?
+
+OneSignal docs mới (2024+) mô tả `Key <token>` là format chuẩn cho v2 keys, nhưng thực tế chỉ áp dụng cho **organization-level keys**. App-level keys vẫn theo format `Basic` cũ. Đây là điểm gây nhầm lẫn rất phổ biến trong cộng đồng — nhiều developer cũng gặp y hệt vấn đề này khi nâng cấp.
+
+---
+
+## ✅ Kết quả mong đợi sau khi sửa
+
+- Toast "Gửi thử push" → status `200/202` thay vì `403`.
+- Tin nhắn @mention trong ghi chú → push thật bật ra trên thiết bị.
+- Đơn nghỉ phép, lead reminder, duyệt chi phí... → push tự động hoạt động.
+- Welcome notification (đã chạy) tiếp tục hoạt động — không thay đổi.
+
+Sau khi bạn duyệt plan, mình sẽ thực thi migration sửa hàm DB và yêu cầu bạn bấm "Gửi thử push" để xác nhận.
