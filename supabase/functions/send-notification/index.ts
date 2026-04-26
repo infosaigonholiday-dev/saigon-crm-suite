@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
       target_channel: "push",
       headings: { en: title, vi: title },
       contents: { en: message, vi: message },
-      url: fullUrl,
       web_url: fullUrl,
     };
 
