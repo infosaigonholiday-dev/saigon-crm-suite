@@ -214,6 +214,24 @@ export function PushNotificationToggle() {
               SDK: <strong>{isReady ? "sẵn sàng" : "đang tải"}</strong> · Quyền: <strong>{permission}</strong>
             </p>
           </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/50">
+          <p className="text-[11px] text-muted-foreground">
+            Bấm để hệ thống gửi 1 push thử và hiển thị kết quả thật từ OneSignal.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleTestPush}
+            disabled={testing}
+            className="shrink-0"
+          >
+            {testing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+            Gửi thử push
+          </Button>
         </div>
       </div>
     </div>
