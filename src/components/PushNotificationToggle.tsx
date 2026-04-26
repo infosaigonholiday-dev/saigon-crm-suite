@@ -214,7 +214,6 @@ export function PushNotificationToggle() {
               SDK: <strong>{isReady ? "sẵn sàng" : "đang tải"}</strong> · Quyền: <strong>{permission}</strong>
             </p>
           </div>
-          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/50">
