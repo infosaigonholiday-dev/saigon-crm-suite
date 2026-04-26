@@ -21,7 +21,7 @@ export interface OneSignalAPI {
   Notifications: {
     permission: boolean;
     permissionNative: NotificationPermission;
-    requestPermission(): Promise<NotificationPermission>;
+    requestPermission(): Promise<void>;
     addEventListener(event: "permissionChange" | "permissionPromptDisplay", cb: (perm: boolean) => void): void;
   };
   User: {
