@@ -316,6 +316,9 @@ export function usePushSubscription() {
       }
 
       setIsSubscribed(true);
+      setHasBrowserSubscription(true);
+      setHasDbSubscription(true);
+      setStatusReason("ready");
       return { ok: true };
     } catch (e) {
       console.error("[push] subscribe error (outer)", e);
@@ -341,6 +344,9 @@ export function usePushSubscription() {
         await sub.unsubscribe();
       }
       setIsSubscribed(false);
+      setHasBrowserSubscription(false);
+      setHasDbSubscription(false);
+      setStatusReason("no_browser_sub");
       return { ok: true };
     } catch (e) {
       console.error("[push] unsubscribe error", e);
@@ -350,5 +356,16 @@ export function usePushSubscription() {
     }
   }, [isSupported, user]);
 
-  return { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe };
+  return {
+    isSupported,
+    isSubscribed,
+    permission,
+    loading,
+    inIframe,
+    hasBrowserSubscription,
+    hasDbSubscription,
+    statusReason,
+    subscribe,
+    unsubscribe,
+  };
 }
