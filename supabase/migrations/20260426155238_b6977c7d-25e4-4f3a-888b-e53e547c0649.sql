@@ -1,0 +1,1 @@
+UPDATE public.system_config SET value = 'os_v2_org_rn6dgae7tbaojce5wzzao7y7jl6plub5fw3uazfhzvdbrtuaa6uki3cqtdm3rzkiib6hbbivrjugygkj4csmbrfddhgwuk4iyrqg2ka', updated_at = now() WHERE key = 'ONESIGNAL_REST_API_KEY';
