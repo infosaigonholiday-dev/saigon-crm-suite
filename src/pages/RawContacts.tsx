@@ -114,6 +114,8 @@ export default function RawContacts() {
   // Staff filter for dept tab
   const [filterStaffId, setFilterStaffId] = useState<string>("all");
   const [notesOpenId, setNotesOpenId] = useState<string | null>(null);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(0);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments-list"],
@@ -133,7 +135,7 @@ export default function RawContacts() {
     enabled: !!user,
   });
 
-  const selectFields = "*, assigned_profile:profiles!raw_contacts_assigned_to_fkey(full_name), departments(name)";
+  const selectFields = "id, full_name, phone, email, company_name, contact_type, source, note, status, call_count, last_called_at, assigned_to, created_by, department_id, converted_lead_id, created_at, company_size, planned_event_date, assigned_profile:profiles!raw_contacts_assigned_to_fkey(full_name), departments(name)";
 
   // My data query
   const { data: myData = [], isLoading: loadingMy } = useQuery({
@@ -184,6 +186,17 @@ export default function RawContacts() {
 
   const currentData = activeTab === "my" ? myData : filteredDeptData;
   const loading = activeTab === "my" ? loadingMy : loadingDept;
+
+  // Pagination cho currentData
+  const totalCount = currentData.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pagedData = useMemo(
+    () => currentData.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [currentData, page]
+  );
+
+  // Reset page khi đổi tab/search/filter
+  useEffect(() => { setPage(0); }, [activeTab, search, filterStaffId, selectedDeptId]);
 
   // Reset staff filter when switching tabs
   useEffect(() => {
