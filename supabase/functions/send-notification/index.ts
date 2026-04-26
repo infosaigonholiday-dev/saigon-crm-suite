@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
       osJson = JSON.parse(osText);
     } catch { /* keep as text */ }
 
+    console.log("ONESIGNAL_RESPONSE", JSON.stringify({ status: osRes.status, body: osJson }));
+
+
     return new Response(
       JSON.stringify({
         ok: osRes.ok,
