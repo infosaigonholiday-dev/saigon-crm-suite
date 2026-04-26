@@ -8,7 +8,6 @@ const ADMIN_ROLES = ["ADMIN"];
 const MANAGER_ROLES = ["MANAGER", "GDKD", "DIEUHAN"];
 const FINANCE_ROLES = ["KETOAN"];
 const HR_ROLES = ["HCNS", "HR_MANAGER"];
-const SELF_ROLES = ["SALE_DOMESTIC", "SALE_INBOUND", "SALE_OUTBOUND", "SALE_MICE", "MKT", "TOUR"];
 
 export function getDataScope(role: string | null): DataScope {
   if (!role) return "self";
@@ -25,22 +24,35 @@ export function getDashboardType(role: string | null): "business" | "personal" |
   return "personal";
 }
 
-function groupByMonth(rows: { total_value: number | null; created_at: string | null }[]) {
-  const months = Array.from({ length: 12 }, (_, i) => ({ month: `T${i + 1}`, value: 0 }));
-  for (const r of rows) {
-    if (!r.created_at) continue;
-    const m = new Date(r.created_at).getMonth();
-    months[m].value += Math.round((Number(r.total_value) || 0) / 1_000_000);
-  }
-  return months;
+interface BusinessDashboardResult {
+  stats: {
+    monthly_revenue: number;
+    new_bookings: number;
+    new_leads: number;
+    customer_count: number;
+  };
+  revenue_by_month: { month: string; value: number }[];
+  deadlines: { customer: string; tour: string; type: string; amount: string }[];
 }
+
+interface PersonalDashboardResult {
+  stats: {
+    my_revenue: number;
+    my_booking_count: number;
+    my_lead_count: number;
+    my_customer_count: number;
+  };
+  monthly_chart: { month: string; value: number }[];
+}
+
+const STALE_5_MIN = 5 * 60 * 1000;
 
 export function useBusinessDashboardData() {
   const { user, userRole } = useAuth();
   const scope = getDataScope(userRole);
 
   const { data: profile } = useQuery({
-    queryKey: ["my-profile", user?.id],
+    queryKey: ["my-profile-deptid", user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data } = await supabase
@@ -51,235 +63,100 @@ export function useBusinessDashboardData() {
       return data;
     },
     enabled: !!user && !!userRole,
+    staleTime: STALE_5_MIN,
   });
 
-  const departmentId = profile?.department_id;
+  const departmentId = profile?.department_id ?? null;
+  const ready = !!user && !!userRole && (scope !== "team" || profile !== undefined);
 
-  const { data: bookingStats, isLoading: loadingBookings } = useQuery({
-    queryKey: ["dashboard-bookings", scope, user?.id, departmentId],
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-business-rpc", user?.id, scope, departmentId],
     queryFn: async () => {
-      let query = supabase.from("bookings").select("id, total_value, created_at, customer_id, sale_id");
-
-      if (scope === "team" && departmentId) {
-        query = query.eq("department_id", departmentId);
-      } else if (scope === "self") {
-        query = query.eq("sale_id", user!.id);
-      }
-
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      query = query.gte("created_at", startOfMonth);
-
-      const { data } = await query;
-      return data || [];
-    },
-    enabled: !!user && !!userRole,
-  });
-
-  const { data: leadStats, isLoading: loadingLeads } = useQuery({
-    queryKey: ["dashboard-leads", scope, user?.id, departmentId],
-    queryFn: async () => {
-      let query = supabase.from("leads").select("id, created_at");
-
-      if (scope === "team" && departmentId) {
-        query = query.eq("department_id", departmentId);
-      } else if (scope === "self") {
-        query = query.eq("assigned_to", user!.id);
-      }
-
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      query = query.gte("created_at", startOfMonth);
-
-      const { data } = await query;
-      return data || [];
-    },
-    enabled: !!user && !!userRole,
-  });
-
-  const { data: customerCount, isLoading: loadingCustomers } = useQuery({
-    queryKey: ["dashboard-customers", scope, user?.id, departmentId],
-    queryFn: async () => {
-      let query = supabase.from("customers").select("id", { count: "exact", head: true });
-
-      if (scope === "team" && departmentId) {
-        query = query.eq("department_id", departmentId);
-      } else if (scope === "self") {
-        query = query.eq("assigned_sale_id", user!.id);
-      }
-
-      const { count } = await query;
-      return count || 0;
-    },
-    enabled: !!user && !!userRole,
-  });
-
-  const { data: revenueByMonth, isLoading: loadingRevenue } = useQuery({
-    queryKey: ["dashboard-revenue-chart", scope, user?.id, departmentId],
-    queryFn: async () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const startOfYear = new Date(year, 0, 1).toISOString();
-      const endOfYear = new Date(year + 1, 0, 1).toISOString();
-
-      let query = supabase
-        .from("bookings")
-        .select("total_value, created_at")
-        .gte("created_at", startOfYear)
-        .lt("created_at", endOfYear);
-
-      if (scope === "team" && departmentId) {
-        query = query.eq("department_id", departmentId);
-      } else if (scope === "self") {
-        query = query.eq("sale_id", user!.id);
-      }
-
-      const { data } = await query;
-      return groupByMonth(data || []);
-    },
-    enabled: !!user && !!userRole,
-  });
-
-  const { data: deadlines } = useQuery({
-    queryKey: ["dashboard-deadlines", scope, user?.id, departmentId],
-    queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
-
-      let depositQuery = supabase
-        .from("bookings")
-        .select("id, code, total_value, deposit_amount, deposit_due_at, customer_id, customers(full_name)")
-        .eq("deposit_due_at", today);
-
-      let remainingQuery = supabase
-        .from("bookings")
-        .select("id, code, total_value, remaining_amount, remaining_due_at, customer_id, customers(full_name)")
-        .eq("remaining_due_at", today);
-
-      if (scope === "team" && departmentId) {
-        depositQuery = depositQuery.eq("department_id", departmentId);
-        remainingQuery = remainingQuery.eq("department_id", departmentId);
-      } else if (scope === "self") {
-        depositQuery = depositQuery.eq("sale_id", user!.id);
-        remainingQuery = remainingQuery.eq("sale_id", user!.id);
-      }
-
-      const [{ data: deposits }, { data: remaining }] = await Promise.all([depositQuery, remainingQuery]);
-
-      const items: { customer: string; tour: string; type: string; amount: string }[] = [];
-
-      (deposits || []).forEach((b: any) => {
-        items.push({
-          customer: b.customers?.full_name || "N/A",
-          tour: b.code,
-          type: "Đặt cọc",
-          amount: new Intl.NumberFormat("vi-VN").format(b.deposit_amount || 0) + "đ",
-        });
+      const { data, error } = await supabase.rpc("rpc_dashboard_business" as any, {
+        p_user_id: user!.id,
+        p_scope: scope,
+        p_dept_id: departmentId,
       });
-
-      (remaining || []).forEach((b: any) => {
-        items.push({
-          customer: b.customers?.full_name || "N/A",
-          tour: b.code,
-          type: "Thanh toán",
-          amount: new Intl.NumberFormat("vi-VN").format(b.remaining_amount || 0) + "đ",
-        });
-      });
-
-      return items;
+      if (error) throw error;
+      return data as unknown as BusinessDashboardResult;
     },
-    enabled: !!user && !!userRole,
+    enabled: ready,
+    staleTime: STALE_5_MIN,
   });
-
-  const monthlyRevenue = (bookingStats || []).reduce((s, b) => s + (Number(b.total_value) || 0), 0);
 
   return {
     scope,
     stats: {
-      monthlyRevenue,
-      newBookings: bookingStats?.length || 0,
-      newLeads: leadStats?.length || 0,
-      customerCount: customerCount || 0,
+      monthlyRevenue: Number(data?.stats?.monthly_revenue ?? 0),
+      newBookings: data?.stats?.new_bookings ?? 0,
+      newLeads: data?.stats?.new_leads ?? 0,
+      customerCount: data?.stats?.customer_count ?? 0,
     },
-    revenueByMonth: revenueByMonth || [],
-    deadlines: deadlines || [],
-    loading: loadingBookings || loadingLeads || loadingCustomers || loadingRevenue,
+    revenueByMonth: data?.revenue_by_month ?? [],
+    deadlines: data?.deadlines ?? [],
+    loading: isLoading,
   };
 }
 
 export function usePersonalDashboardData() {
   const { user } = useAuth();
 
-  const { data: myBookings } = useQuery({
-    queryKey: ["personal-bookings", user?.id],
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-personal-rpc", user?.id],
     queryFn: async () => {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const { data } = await supabase
-        .from("bookings")
-        .select("id, total_value, status, created_at")
-        .eq("sale_id", user!.id)
-        .gte("created_at", startOfMonth);
-      return data || [];
+      const { data, error } = await supabase.rpc("rpc_dashboard_personal" as any, {
+        p_user_id: user!.id,
+      });
+      if (error) throw error;
+      return data as unknown as PersonalDashboardResult;
     },
     enabled: !!user,
+    staleTime: STALE_5_MIN,
   });
-
-  const { data: myLeads } = useQuery({
-    queryKey: ["personal-leads", user?.id],
-    queryFn: async () => {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const { data } = await supabase
-        .from("leads")
-        .select("id, status, created_at")
-        .eq("assigned_to", user!.id)
-        .gte("created_at", startOfMonth);
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  const { data: myCustomers } = useQuery({
-    queryKey: ["personal-customers", user?.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("customers")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_sale_id", user!.id);
-      return count || 0;
-    },
-    enabled: !!user,
-  });
-
-  const { data: monthlyData } = useQuery({
-    queryKey: ["personal-monthly-chart", user?.id],
-    queryFn: async () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const startOfYear = new Date(year, 0, 1).toISOString();
-      const endOfYear = new Date(year + 1, 0, 1).toISOString();
-
-      const { data } = await supabase
-        .from("bookings")
-        .select("total_value, created_at")
-        .eq("sale_id", user!.id)
-        .gte("created_at", startOfYear)
-        .lt("created_at", endOfYear);
-
-      return groupByMonth(data || []);
-    },
-    enabled: !!user,
-  });
-
-  const myRevenue = (myBookings || []).reduce((s, b) => s + (Number(b.total_value) || 0), 0);
 
   return {
     stats: {
-      myRevenue,
-      myBookingCount: myBookings?.length || 0,
-      myLeadCount: myLeads?.length || 0,
-      myCustomerCount: myCustomers || 0,
+      myRevenue: Number(data?.stats?.my_revenue ?? 0),
+      myBookingCount: data?.stats?.my_booking_count ?? 0,
+      myLeadCount: data?.stats?.my_lead_count ?? 0,
+      myCustomerCount: data?.stats?.my_customer_count ?? 0,
     },
-    monthlyData: monthlyData || [],
+    monthlyData: data?.monthly_chart ?? [],
+    loading: isLoading,
   };
+}
+
+interface CeoDashboardResult {
+  customer_overview: {
+    total: number;
+    new_this_month: number;
+    tier_diamond: number;
+    tier_gold: number;
+    tier_silver: number;
+    tier_new: number;
+    blacklisted: number;
+  };
+  pipeline_funnel: Record<string, number>;
+  sale_performance: { sale_id: string; full_name: string; revenue: number; bookings: number }[];
+  revenue_chart: { month: string; revenue: number }[];
+}
+
+export function useCeoDashboardData(deptId: string | null = null) {
+  const { user, userRole } = useAuth();
+  const allowed = ["ADMIN", "SUPER_ADMIN", "GDKD", "MANAGER", "DIEUHAN", "KETOAN"].includes(userRole ?? "");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-ceo-rpc", user?.id, deptId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("rpc_dashboard_ceo" as any, {
+        p_dept_id: deptId,
+      });
+      if (error) throw error;
+      return data as unknown as CeoDashboardResult;
+    },
+    enabled: !!user && allowed,
+    staleTime: STALE_5_MIN,
+  });
+
+  return { data, loading: isLoading };
 }

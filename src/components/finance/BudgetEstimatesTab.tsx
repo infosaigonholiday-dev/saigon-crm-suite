@@ -67,9 +67,26 @@ export function BudgetEstimatesTab() {
   // Form state
   const [formBookingId, setFormBookingId] = useState("");
   const [formAdvance, setFormAdvance] = useState(0);
+  const [formKtAssigned, setFormKtAssigned] = useState<string>("");
   const [formItems, setFormItems] = useState<EstimateItem[]>([
     { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 },
   ]);
+
+  // Danh sách Kế toán (để gán phụ trách dự toán này)
+  const { data: accountants = [] } = useQuery({
+    queryKey: ["accountants-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "KETOAN")
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: estimates = [], isLoading } = useQuery({
     queryKey: ["budget-estimates", statusFilter],
@@ -116,6 +133,7 @@ export function BudgetEstimatesTab() {
           booking_id: formBookingId,
           created_by: user!.id,
           advance_amount: formAdvance,
+          kt_assigned_id: formKtAssigned || null,
           status: "draft",
         })
         .select()
@@ -329,6 +347,19 @@ export function BudgetEstimatesTab() {
                 <Label>Số tiền tạm ứng</Label>
                 <Input type="number" value={formAdvance} onChange={(e) => setFormAdvance(Number(e.target.value))} />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Kế toán phụ trách</Label>
+              <Select value={formKtAssigned || "none"} onValueChange={(v) => setFormKtAssigned(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="— Tự động chọn —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Tự động chọn KT đầu tiên —</SelectItem>
+                  {(accountants as any[]).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

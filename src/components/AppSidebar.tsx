@@ -70,19 +70,24 @@ export function AppSidebar() {
 
   const visibleModules = getVisibleModules();
 
-  const crmItems: MenuItem[] = [
-    { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
-    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
+  // 💼 KINH DOANH — luồng nguồn → khách → đơn hàng
+  const businessItems: MenuItem[] = [
     { title: "Kho Data", url: "/kho-data", icon: Database, moduleKey: "raw_contacts" },
-    { title: "LKH Tour 2026", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
+    { title: "Tiềm năng", url: "/tiem-nang", icon: ClipboardList, moduleKey: "leads", badge: followUpCount > 0 ? followUpCount : undefined },
+    { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
+    { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, moduleKey: "bookings" },
+    { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, moduleKey: "contracts" },
+    { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, moduleKey: "payments" },
+  ];
+
+  // 📦 SẢN PHẨM TOUR — kho sản phẩm và đối tác
+  const productItems: MenuItem[] = [
     { title: "Gói tour", url: "/goi-tour", icon: Package, moduleKey: "tour_packages" },
     { title: "Lịch trình", url: "/lich-trinh", icon: Route, moduleKey: "itineraries" },
     { title: "Lưu trú", url: "/luu-tru", icon: Hotel, moduleKey: "accommodations" },
     { title: "Nhà cung cấp", url: "/nha-cung-cap", icon: Building2, moduleKey: "suppliers" },
-    { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, moduleKey: "bookings" },
-    { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, moduleKey: "contracts" },
-    { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, moduleKey: "payments" },
+    { title: "LKH Tour 2026", url: "/b2b-tours", icon: Package, moduleKey: "b2b_tours" },
   ];
 
   const hrItems: MenuItem[] = [
@@ -160,7 +165,8 @@ export function AppSidebar() {
     { title: dashboardLabel, url: "/", icon: LayoutDashboard },
   ];
 
-  const visibleCrm = filterItems(crmItems);
+  const visibleBusiness = filterItems(businessItems);
+  const visibleProduct = filterItems(productItems);
   const visibleHr = filterItems(hrItems);
   const visibleFinance = filterItems(financeItems);
   const visibleSop = filterItems(sopItems);
@@ -186,10 +192,19 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {renderItems(dashboardItem)}
-              {visibleCrm.length > 0 && renderItems(visibleCrm)}
+              {visibleBusiness.length > 0 && renderItems(visibleBusiness)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleProduct.length > 0 && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Sản phẩm</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{renderItems(visibleProduct)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {visibleHr.length > 0 && (
           <SidebarGroup>
