@@ -12,8 +12,10 @@ const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
   denied: "Trình duyệt đã chặn quyền thông báo. Mở 🔒 trên thanh địa chỉ → Cho phép.",
   sw_unreachable: "Không tải được Service Worker. Vui lòng tải lại trang.",
   sw_register_failed: "Đăng ký Service Worker thất bại.",
+  sw_not_active: "Service Worker chưa kích hoạt. Vui lòng tải lại trang.",
   vapid_invalid: "Khoá VAPID không hợp lệ. Liên hệ admin.",
   subscribe_failed: "Trình duyệt từ chối đăng ký push.",
+  subscribe_blocked: "Trình duyệt chặn đăng ký push dù đã cấp quyền — hãy mở app ở tab thật, tải lại trang, hoặc tắt extension chặn notification.",
   db_failed: "Lưu đăng ký lên server thất bại.",
   error: "Lỗi không xác định khi bật thông báo.",
 };
