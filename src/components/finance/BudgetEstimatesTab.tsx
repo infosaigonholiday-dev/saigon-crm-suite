@@ -133,6 +133,7 @@ export function BudgetEstimatesTab() {
           booking_id: formBookingId,
           created_by: user!.id,
           advance_amount: formAdvance,
+          kt_assigned_id: formKtAssigned || null,
           status: "draft",
         })
         .select()
@@ -346,6 +347,19 @@ export function BudgetEstimatesTab() {
                 <Label>Số tiền tạm ứng</Label>
                 <Input type="number" value={formAdvance} onChange={(e) => setFormAdvance(Number(e.target.value))} />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Kế toán phụ trách</Label>
+              <Select value={formKtAssigned || "none"} onValueChange={(v) => setFormKtAssigned(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="— Tự động chọn —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Tự động chọn KT đầu tiên —</SelectItem>
+                  {(accountants as any[]).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
