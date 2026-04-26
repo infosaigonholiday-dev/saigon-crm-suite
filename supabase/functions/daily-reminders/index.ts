@@ -16,48 +16,8 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const entityRouteMap: Record<string, (id: string) => string> = {
-      raw_contact: () => "/kho-data",
-      lead: () => "/tiem-nang",
-      customer: (id) => `/khach-hang/${id}`,
-      booking: (id) => `/dat-tour/${id}`,
-      quotation: () => "/bao-gia",
-      contract: () => "/hop-dong",
-      payment: () => "/thanh-toan",
-      employee: (id) => `/nhan-su/${id}`,
-      finance: () => "/tai-chinh",
-      leave_request: () => "/quan-ly-nghi-phep",
-    };
-
-    const sendPush = async (n: {
-      user_id: string;
-      title: string;
-      message: string;
-      entity_type: string;
-      entity_id: string;
-      type: string;
-    }) => {
-      try {
-        const builder = entityRouteMap[n.entity_type];
-        const url = builder ? builder(n.entity_id) : "/";
-        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify({
-            user_id: n.user_id,
-            title: n.title,
-            message: n.message,
-            url,
-            tag: `${n.type}-${n.entity_id}`,
-          }),
-        });
-      } catch (e) {
-        console.warn("[daily-reminders] push failed:", (e as Error).message);
-      }
-    };
+    // Web Push được gửi tự động qua DB trigger notify_push_on_insert → OneSignal
+    // (function này chỉ cần insert notifications, không cần gọi push thủ công nữa)
 
     const today = new Date();
     type Notif = {
@@ -636,7 +596,6 @@ Deno.serve(async (req) => {
 
     // ===== Deduplicate & Insert =====
     let sent = 0;
-    const pushBatch: Notif[] = [];
     for (const n of notifications) {
       const { count } = await supabase
         .from("notifications")
@@ -649,7 +608,7 @@ Deno.serve(async (req) => {
       if ((count || 0) > 0) continue;
 
       const { error } = await supabase.from("notifications").insert(n);
-      if (!error) { sent++; pushBatch.push(n); }
+      if (!error) { sent++; }
     }
 
     // ===== LỚP 2: Escalation Lv1 — noti chưa đọc >3 ngày =====
@@ -712,14 +671,6 @@ Deno.serve(async (req) => {
             const { error } = await supabase.from("notifications").insert(escNotif);
             if (!error) {
               escalated++;
-              await sendPush({
-                user_id: mgr.id,
-                title: escNotif.title,
-                message: escNotif.message,
-                entity_type: "employee",
-                entity_id: userId,
-                type: "ESCALATION_LV1",
-              });
             }
           }
         }
@@ -732,8 +683,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fire push for daily batch
-    await Promise.allSettled(pushBatch.map(sendPush));
+    // Web Push được trigger DB tự gửi qua OneSignal — không cần fire thủ công
 
     return new Response(JSON.stringify({ sent, escalated, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
