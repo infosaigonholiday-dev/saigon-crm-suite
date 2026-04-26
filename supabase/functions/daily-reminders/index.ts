@@ -594,6 +594,123 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== A3. Payment Overdue: bookings còn nợ + remaining_due_at < today =====
+    const { data: ketoanUsersA3 } = await supabase
+      .from("profiles").select("id")
+      .eq("role", "KETOAN").eq("is_active", true);
+    const ketoanIds = (ketoanUsersA3 ?? []).map((u: any) => u.id);
+
+    const { data: overdueBookings } = await supabase
+      .from("bookings")
+      .select("id, code, remaining_amount, remaining_due_at, sale_id, customers(full_name)")
+      .gt("remaining_amount", 0)
+      .not("remaining_due_at", "is", null)
+      .lt("remaining_due_at", todayStr);
+
+    if (overdueBookings) {
+      for (const b of overdueBookings as any[]) {
+        const customerName = b.customers?.full_name ?? "(không rõ KH)";
+        const amountStr = Number(b.remaining_amount ?? 0).toLocaleString("vi-VN");
+        const title = `⏰ Thanh toán quá hạn: ${b.code ?? b.id}`;
+        const message = `Còn nợ ${amountStr} VNĐ — KH: ${customerName}`;
+        const recipients = new Set<string>();
+        if (b.sale_id) recipients.add(b.sale_id);
+        for (const ktId of ketoanIds) recipients.add(ktId);
+        for (const uid of recipients) {
+          notifications.push({
+            user_id: uid,
+            type: "payment_overdue",
+            title,
+            message,
+            entity_type: "booking",
+            entity_id: b.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
+    // ===== B1. Contract Expiry: full_payment_due_at trong 7 ngày tới =====
+    const { data: dieuhanUsers } = await supabase
+      .from("profiles").select("id")
+      .eq("role", "DIEUHAN").eq("is_active", true);
+    const dieuhanIds = (dieuhanUsers ?? []).map((u: any) => u.id);
+
+    const sevenDaysAhead = offsetDateStr(7);
+    const { data: expiringContracts } = await supabase
+      .from("contracts")
+      .select("id, code, full_payment_due_at, status, booking_id, bookings(sale_id, customers(full_name))")
+      .not("full_payment_due_at", "is", null)
+      .gte("full_payment_due_at", todayStr)
+      .lte("full_payment_due_at", sevenDaysAhead);
+
+    if (expiringContracts) {
+      for (const c of expiringContracts as any[]) {
+        if (c.status && !["active", "signed", "approved"].includes(String(c.status).toLowerCase())) {
+          // skip non-active contracts
+        }
+        const dueDate = new Date(c.full_payment_due_at);
+        const daysLeft = Math.max(0, Math.ceil((dueDate.getTime() - today.getTime()) / 86400000));
+        const customerName = c.bookings?.customers?.full_name ?? "(không rõ KH)";
+        const saleId = c.bookings?.sale_id;
+        const title = `📄 HĐ sắp đến hạn: ${c.code ?? c.id}`;
+        const message = `Còn ${daysLeft} ngày — KH: ${customerName}`;
+        const recipients = new Set<string>();
+        if (saleId) recipients.add(saleId);
+        for (const dhId of dieuhanIds) recipients.add(dhId);
+        for (const uid of recipients) {
+          notifications.push({
+            user_id: uid,
+            type: "contract_expiry",
+            title,
+            message,
+            entity_type: "contract",
+            entity_id: c.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
+    // ===== B2. Tour Departure: remaining_due_at trong 3 ngày tới =====
+    const { data: tourUsers } = await supabase
+      .from("profiles").select("id")
+      .eq("role", "TOUR").eq("is_active", true);
+    const tourIds = (tourUsers ?? []).map((u: any) => u.id);
+
+    const threeDaysAhead = offsetDateStr(3);
+    const { data: upcomingBookings } = await supabase
+      .from("bookings")
+      .select("id, code, remaining_due_at, pax_total, sale_id, status, customers(full_name)")
+      .not("remaining_due_at", "is", null)
+      .gte("remaining_due_at", todayStr)
+      .lte("remaining_due_at", threeDaysAhead);
+
+    if (upcomingBookings) {
+      for (const b of upcomingBookings as any[]) {
+        const st = String(b.status ?? "").toUpperCase();
+        if (st === "CANCELLED" || st === "CLOSED") continue;
+        const customerName = b.customers?.full_name ?? "(không rõ KH)";
+        const title = `✈️ Tour sắp khởi hành: ${b.code ?? b.id}`;
+        const message = `${customerName} — ${b.pax_total ?? "?"} khách — Hạn TT: ${b.remaining_due_at}`;
+        const recipients = new Set<string>();
+        if (b.sale_id) recipients.add(b.sale_id);
+        for (const dhId of dieuhanIds) recipients.add(dhId);
+        for (const tId of tourIds) recipients.add(tId);
+        for (const uid of recipients) {
+          notifications.push({
+            user_id: uid,
+            type: "tour_departure",
+            title,
+            message,
+            entity_type: "booking",
+            entity_id: b.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
     // ===== Deduplicate & Insert =====
     let sent = 0;
     for (const n of notifications) {
