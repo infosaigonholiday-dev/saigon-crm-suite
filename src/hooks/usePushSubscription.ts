@@ -49,6 +49,18 @@ function isInIframe(): boolean {
 
 type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
 
+export type PushStatusReason =
+  | "ready"                  // browser sub + DB row khớp VAPID
+  | "missing_vapid_env"      // VITE_VAPID_PUBLIC_KEY trống / sai
+  | "unsupported"            // trình duyệt không hỗ trợ
+  | "iframe_blocked"         // đang chạy trong iframe editor
+  | "permission_denied"      // user đã chặn quyền notify
+  | "permission_default"     // chưa hỏi quyền
+  | "no_browser_sub"         // chưa subscribe ở browser
+  | "vapid_mismatch"         // browser sub dùng VAPID cũ
+  | "db_row_missing"         // browser có sub nhưng DB không có
+  | "unknown";
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -56,6 +68,9 @@ export function usePushSubscription() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [inIframe, setInIframe] = useState(false);
+  const [hasBrowserSubscription, setHasBrowserSubscription] = useState(false);
+  const [hasDbSubscription, setHasDbSubscription] = useState(false);
+  const [statusReason, setStatusReason] = useState<PushStatusReason>("unknown");
   const subscribeRef = useRef<(() => Promise<SubscribeResult>) | null>(null);
 
   useEffect(() => {
@@ -77,16 +92,40 @@ export function usePushSubscription() {
 
   // Auto-detect VAPID key mismatch & re-sync subscription with DB
   useEffect(() => {
-    if (!isSupported || !user) return;
+    if (!isSupported) {
+      setStatusReason("unsupported");
+      return;
+    }
+    if (inIframe) {
+      setStatusReason("iframe_blocked");
+      return;
+    }
+    if (!VAPID_PUBLIC_KEY) {
+      setStatusReason("missing_vapid_env");
+      return;
+    }
+    if (!user) return;
+
     (async () => {
       try {
         const reg = await navigator.serviceWorker.getRegistration("/sw.js");
         const sub = await reg?.pushManager.getSubscription();
         if (!sub) {
           setIsSubscribed(false);
+          setHasBrowserSubscription(false);
+          setHasDbSubscription(false);
+          setStatusReason(
+            Notification.permission === "denied"
+              ? "permission_denied"
+              : Notification.permission === "default"
+              ? "permission_default"
+              : "no_browser_sub"
+          );
           console.log("[push] no existing subscription");
           return;
         }
+
+        setHasBrowserSubscription(true);
 
         // So sánh applicationServerKey hiện tại với VAPID_PUBLIC_KEY
         const currentKey = sub.options?.applicationServerKey;
@@ -114,6 +153,9 @@ export function usePushSubscription() {
             console.warn("[push] failed to unsubscribe browser sub", e);
           }
           setIsSubscribed(false);
+          setHasBrowserSubscription(false);
+          setHasDbSubscription(false);
+          setStatusReason("vapid_mismatch");
 
           if (Notification.permission === "granted" && !isInIframe()) {
             console.log("[push] auto-creating new subscription with current VAPID key");
@@ -123,6 +165,7 @@ export function usePushSubscription() {
         }
 
         // VAPID khớp → kiểm tra DB còn record không, nếu thiếu thì upsert lại
+        let dbHasRow = false;
         try {
           const { data: existing } = await supabase
             .from("push_subscriptions")
@@ -136,7 +179,7 @@ export function usePushSubscription() {
             const endpoint = json.endpoint || sub.endpoint;
             const p256dh = json.keys?.p256dh || bufToBase64(sub.getKey ? sub.getKey("p256dh") : null);
             const authKey = json.keys?.auth || bufToBase64(sub.getKey ? sub.getKey("auth") : null);
-            await supabase
+            const { error: upErr } = await supabase
               .from("push_subscriptions")
               .upsert(
                 {
@@ -149,19 +192,25 @@ export function usePushSubscription() {
                 },
                 { onConflict: "endpoint" }
               );
+            dbHasRow = !upErr;
+          } else {
+            dbHasRow = true;
           }
         } catch (e) {
           console.warn("[push] DB sync check failed", e);
         }
 
+        setHasDbSubscription(dbHasRow);
         setIsSubscribed(true);
+        setStatusReason(dbHasRow ? "ready" : "db_row_missing");
         console.log("[push] existing subscription matches current VAPID key");
       } catch (e) {
         console.warn("[push] subscription check failed", e);
         setIsSubscribed(false);
+        setStatusReason("unknown");
       }
     })();
-  }, [isSupported, user]);
+  }, [isSupported, user, inIframe]);
 
   const subscribe = useCallback(async (): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
     console.log("[push] subscribe() called");
@@ -267,6 +316,9 @@ export function usePushSubscription() {
       }
 
       setIsSubscribed(true);
+      setHasBrowserSubscription(true);
+      setHasDbSubscription(true);
+      setStatusReason("ready");
       return { ok: true };
     } catch (e) {
       console.error("[push] subscribe error (outer)", e);
@@ -292,6 +344,9 @@ export function usePushSubscription() {
         await sub.unsubscribe();
       }
       setIsSubscribed(false);
+      setHasBrowserSubscription(false);
+      setHasDbSubscription(false);
+      setStatusReason("no_browser_sub");
       return { ok: true };
     } catch (e) {
       console.error("[push] unsubscribe error", e);
@@ -301,5 +356,16 @@ export function usePushSubscription() {
     }
   }, [isSupported, user]);
 
-  return { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe };
+  return {
+    isSupported,
+    isSubscribed,
+    permission,
+    loading,
+    inIframe,
+    hasBrowserSubscription,
+    hasDbSubscription,
+    statusReason,
+    subscribe,
+    unsubscribe,
+  };
 }
