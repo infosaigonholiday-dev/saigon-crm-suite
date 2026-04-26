@@ -596,7 +596,6 @@ Deno.serve(async (req) => {
 
     // ===== Deduplicate & Insert =====
     let sent = 0;
-    const pushBatch: Notif[] = [];
     for (const n of notifications) {
       const { count } = await supabase
         .from("notifications")
@@ -609,7 +608,7 @@ Deno.serve(async (req) => {
       if ((count || 0) > 0) continue;
 
       const { error } = await supabase.from("notifications").insert(n);
-      if (!error) { sent++; pushBatch.push(n); }
+      if (!error) { sent++; }
     }
 
     // ===== LỚP 2: Escalation Lv1 — noti chưa đọc >3 ngày =====
@@ -684,8 +683,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fire push for daily batch
-    await Promise.allSettled(pushBatch.map(sendPush));
+    // Web Push được trigger DB tự gửi qua OneSignal — không cần fire thủ công
 
     return new Response(JSON.stringify({ sent, escalated, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
