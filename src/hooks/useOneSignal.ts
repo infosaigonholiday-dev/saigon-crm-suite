@@ -126,13 +126,22 @@ export function useOneSignal(): UseOneSignalReturn {
     setLoading(true);
     try {
       const sdk = sdkRef.current;
-      if (Notification.permission === "default") {
-        const perm = await sdk.Notifications.requestPermission();
-        setPermission(perm);
-        if (perm !== "granted") return { ok: false, error: "denied" };
-      } else if (Notification.permission === "denied") {
+      if (Notification.permission === "denied") {
         setPermission("denied");
         return { ok: false, error: "denied" };
+      }
+      // OneSignal v16: requestPermission() trả Promise<void>, KHÔNG phải permission string.
+      // Phải đọc Notification.permission SAU khi user phản hồi prompt.
+      if (Notification.permission === "default") {
+        try {
+          await sdk.Notifications.requestPermission();
+        } catch (e) {
+          console.warn("[onesignal] requestPermission threw", e);
+        }
+        // Đọc lại qua biến gián tiếp để TS không narrow về "default"
+        const perm = (window.Notification?.permission ?? "default") as NotificationPermission;
+        setPermission(perm);
+        if (perm !== "granted") return { ok: false, error: "denied" };
       }
 
       await sdk.User.PushSubscription.optIn();
