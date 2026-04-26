@@ -21,6 +21,11 @@ function jsonResponse(body: unknown, status = 200) {
 const VAPID_PUBLIC_KEY = (Deno.env.get("VAPID_PUBLIC_KEY") || "").trim();
 const VAPID_PRIVATE_KEY = (Deno.env.get("VAPID_PRIVATE_KEY") || "").trim();
 
+function keyFingerprint(key: string): string {
+  if (!key) return "missing";
+  return `${key.slice(0, 10)}…${key.slice(-6)} (len=${key.length})`;
+}
+
 function normalizeVapidSubject(raw: string): string {
   const v = (raw || "").trim();
   if (!v) return "mailto:info@saigonholiday.com";
@@ -220,6 +225,8 @@ Deno.serve(async (req) => {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return jsonResponse({ error: "VAPID keys not configured" }, 500);
     }
+
+    console.log(`[send-notification] vapid_public=${keyFingerprint(VAPID_PUBLIC_KEY)}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
