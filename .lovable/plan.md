@@ -1,72 +1,73 @@
-# Fix hệ thống Push OneSignal — 3 vấn đề chặn
+## Kết luận kiểm tra lại từ đầu đến cuối
 
-Sau khi audit từ frontend → DB trigger, hệ thống cũ đã được xóa sạch nhưng **3 lỗi sau khiến push không bao giờ hoạt động**, dù cài đặt OneSignal credentials đã xong.
+Hiện tại mình xác nhận được 3 điều:
 
-## ❌ Vấn đề #1 — Thiếu Service Worker `OneSignalSDKWorker.js`
+- Service worker mới đã có: `public/OneSignalSDKWorker.js` tồn tại và đang được serve đúng tại `https://app.saigonholiday.vn/OneSignalSDKWorker.js`.
+- Luồng OneSignal mới đã có mặt trong app: `index.html` nạp SDK v16, `src/main.tsx` gọi `OneSignal.init(...)`, `AuthContext.tsx` map user vào `external_id`, và DB trigger `notify_push_on_insert()` đang dùng `Authorization: Basic`.
+- Nhưng hệ thống vẫn chưa “sạch hoàn toàn” và vẫn còn rủi ro lỗi do tàn dư bản cũ.
 
-**Hiện trạng**: Thư mục `public/` chỉ có `favicon.ico, og-image.jpg, placeholder.svg, print/, robots.txt`. **Không có** `OneSignalSDKWorker.js`.
+## Vấn đề còn tồn tại
 
-**Hậu quả**: OneSignal SDK v16 init xong nhưng khi user nhấn "Bật thông báo" → SDK gọi `navigator.serviceWorker.register('/OneSignalSDKWorker.js')` → **404** → không tạo subscription được. Toggle vẫn hiển thị "đã bật" nhưng push không bao giờ tới.
+1. Legacy chưa xóa hết
+- Bảng `public.push_subscriptions` vẫn còn tồn tại và hiện còn 4 dòng dữ liệu cũ.
+- `src/integrations/supabase/types.ts` vẫn còn type cho `push_subscriptions`.
+- Trong repo vẫn còn nhiều migration lịch sử nhắc tới `send-notification`/VAPID (không chạy nữa, nhưng gây nhiễu khi audit).
 
-**Cách fix**: Copy file user đã upload (`user-uploads://OneSignalSDKWorker.js`) vào `public/OneSignalSDKWorker.js`. Nội dung file đã đúng:
-```js
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+2. Trình duyệt có khả năng vẫn đang dùng client/SW cũ
+- Ảnh chụp của bạn hiển thị các chuỗi như `Gửi thử push`, `Đăng ký lại`, `send-notification`, `VAPID`.
+- Các chuỗi này không còn tồn tại trong code hiện tại nữa.
+- Điều đó cho thấy ít nhất một browser/device vẫn đang giữ bundle hoặc service worker cũ trong cache.
+
+3. Khả năng quan sát lỗi backend còn yếu
+- `notify_push_on_insert()` hiện gọi `net.http_post(...)` nhưng không lưu request id/response để dò lỗi OneSignal 4xx/5xx.
+- Vì vậy có thể gặp lỗi thật mà app không log rõ ràng trong `audit_logs`.
+- Trong `net._http_response` hiện chỉ thấy response cũ của luồng `send-notification` trước đó (`reason: no_subscriptions`), chưa có đủ dấu vết để xác nhận một lần gửi OneSignal mới thành công end-to-end sau migration.
+
+## Plan sửa triệt để
+
+### 1) Dọn sạch tàn dư bản cũ
+- Tạo migration dọn legacy push:
+  - xóa/rename/archive bảng `push_subscriptions`
+  - ghi chú rõ OneSignal là luồng duy nhất
+- Regenerate hoặc cập nhật Supabase types để bỏ `push_subscriptions` khỏi client types.
+- Rà lại UI/help text nếu còn chỗ nào nhắc VAPID, `send-notification`, “DB row”, “Đăng ký lại”.
+
+### 2) Thêm cleanup phía trình duyệt
+- Trong `src/main.tsx`, thêm bước cleanup một lần để unregister service worker cũ kiểu VAPID (`/sw.js` hoặc registration cũ nếu có).
+- Khai báo explicit `serviceWorkerPath: "/OneSignalSDKWorker.js"` khi init OneSignal để tránh lệ thuộc default behavior.
+- Nếu phát hiện đang chạy trong context cũ, hiển thị hướng dẫn rõ: refresh mạnh / clear site data / mở tab thật.
+
+### 3) Tăng khả năng debug luồng OneSignal
+- Cập nhật `notify_push_on_insert()` để lưu request id từ `net.http_post(...)` vào `audit_logs` hoặc metadata debug.
+- Thêm cách tra cứu rõ giữa `notification.id` và `net._http_response` để biết request nào trả 200/400/401.
+- Nếu cần, thêm logging nhẹ ở client cho trạng thái init/login/subscription của OneSignal.
+
+### 4) Xác minh end-to-end sau cleanup
+- Test trên domain thật `https://app.saigonholiday.vn` trong tab riêng.
+- Clear site data/browser cache trước khi test.
+- Đăng nhập lại, bật push, xác nhận subscription xuất hiện trong OneSignal Audience với đúng `external_id = user.id`.
+- Tạo 1 notification thật (ví dụ @mention hoặc leave request), rồi kiểm tra:
+  - notification row được insert
+  - request OneSignal được queue
+  - response không còn là luồng `send-notification` cũ
+  - máy nhận được push thật
+
+## Technical details
+
+```text
+Current intended flow
+Browser -> OneSignal SDK v16 -> OneSignal subscription
+AuthContext -> OneSignal.login(user.id as external_id)
+notifications INSERT -> DB trigger notify_push_on_insert()
+DB trigger -> net.http_post() -> OneSignal Notifications API
+OneSignal -> push to subscribed browser for that external_id
 ```
 
-## ❌ Vấn đề #2 — Sai header Authorization trong DB trigger
+Các file chính sẽ chỉnh khi triển khai:
+- `src/main.tsx`
+- `src/hooks/useOneSignal.ts` (nếu cần tăng debug/state)
+- `src/components/PushNotificationToggle.tsx` (nếu cần copy/hướng dẫn cleanup)
+- `src/integrations/supabase/types.ts`
+- `supabase/migrations/...` (cleanup legacy + improve DB observability)
 
-**Hiện trạng** (`notify_push_on_insert`):
-```sql
-'Authorization', 'Key ' || v_rest_key
-```
-
-**API key user cấp**: `os_v2_app_numioy5i...` — đây là **App API Key v2** (định dạng mới của OneSignal). Theo doc OneSignal REST API hiện hành, header bắt buộc là:
-```
-Authorization: Basic <REST_API_KEY>
-```
-
-**Hậu quả**: OneSignal API trả `401 Unauthorized`. Lỗi được catch và ghi vào `audit_logs` (action `SYSTEM`, table `notifications`) — UI không thấy gì, push âm thầm không gửi.
-
-**Cách fix**: Migration sửa function `notify_push_on_insert`, đổi `'Key ' || v_rest_key` thành `'Basic ' || v_rest_key`.
-
-## ⚠️ Vấn đề #3 — `AuthContext` gọi `OneSignal.logout()` dư khi bootstrap
-
-**Hiện trạng** (`src/contexts/AuthContext.tsx` lines 51-57): Mỗi khi `syncAuthState` chạy với `newSession = null` (kể cả lúc bootstrap session lần đầu khi user CHƯA login), code đẩy `OneSignal.logout()` vào `OneSignalDeferred`.
-
-**Hậu quả**: Không crash (vì OneSignal v16 chấp nhận logout khi chưa login), nhưng dư + log warning console. Ngoài ra trên trang `/login` cứ refresh là warning. Không phải lỗi chặn nhưng nên dọn cùng lúc.
-
-**Cách fix**: Chỉ gọi `OneSignal.logout()` khi `source === "SIGNED_OUT"` (event thực sự, không phải BOOTSTRAP với session null).
-
-## Files sẽ thay đổi
-
-**Tạo mới:**
-- `public/OneSignalSDKWorker.js` — copy từ file user đã upload
-
-**Sửa:**
-- `src/contexts/AuthContext.tsx` — guard `OneSignal.logout()` chỉ gọi khi event SIGNED_OUT
-- Migration mới: `CREATE OR REPLACE FUNCTION notify_push_on_insert` đổi header `Key` → `Basic`
-
-**Không đụng**:
-- `src/main.tsx`, `src/hooks/useOneSignal.ts`, `src/types/onesignal.d.ts`, `index.html` — đã đúng
-- Các UI component `PushNotificationToggle/Card/PushToggleButton` — đã đúng
-- `system_config` table data — credentials đã insert đúng
-- Secrets VAPID cũ — giữ tạm phòng rollback (vô hại)
-
-## Test sau khi fix
-
-1. Mở **tab thật** `https://app.saigonholiday.vn` (KHÔNG dùng iframe Lovable preview)
-2. Đăng nhập → vào **Cài đặt → Thông báo** → bật toggle "Thông báo trình duyệt" → Cho phép permission
-3. Mở DevTools > Application > Service Workers → phải thấy `OneSignalSDKWorker.js` đã activate
-4. Vào https://dashboard.onesignal.com → Audience → có 1 subscription với `external_id` = user.id của bạn
-5. Test end-to-end:
-   - Cách A: Tự mention chính mình trong InternalNotes của 1 lead/booking
-   - Cách B: Tạo 1 đơn nghỉ phép (sẽ tạo notification cho HR)
-6. Kiểm tra notification hiện trên cả desktop browser + điện thoại (nếu đã subscribe trên cả 2)
-7. Nếu vẫn không có push → check OneSignal Dashboard > Delivery để xem từng request có pass hay fail (sẽ rõ lỗi 401 nếu header vẫn sai)
-
-## Rủi ro
-
-- **Không** cần tạo lại OneSignal app, không cần đổi credentials
-- DB migration là `CREATE OR REPLACE FUNCTION` — không mất data, không khóa bảng
-- File `OneSignalSDKWorker.js` chỉ là 1 dòng `importScripts`, không có logic phức tạp
-- Sau khi fix sẽ test ngay, nếu vẫn fail tôi sẽ check `audit_logs` action=SYSTEM để xem chính xác lỗi từ OneSignal API trả về
+Mục tiêu của lần sửa này là: không chỉ “có vẻ đúng”, mà phải dọn sạch bản cũ, loại cache/SW cũ, và làm cho mọi lỗi OneSignal về sau đều truy ra được.
