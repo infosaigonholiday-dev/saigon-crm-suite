@@ -1,8 +1,10 @@
-import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2, AlertOctagon } from "lucide-react";
+import { useState } from "react";
+import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2, AlertOctagon, Send, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useOneSignal } from "@/hooks/useOneSignal";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const ERROR_HINTS: Record<string, string> = {
