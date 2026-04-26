@@ -1,78 +1,150 @@
-# 🎯 Bằng chứng: code đúng, KEY SAI
+## Kết quả thực tế đã lấy được
 
-Tôi vừa test trực tiếp OneSignal API với chính giá trị key đang lưu trong `system_config` (`os_v2_app_l23tfx3w5rh2tb2bcfjhbi44mzn5mb32...`). Thử cả 3 format `Key`, `Basic`, `Bearer` → **CẢ 3 đều trả HTTP 403 trong 60ms** với message:
-
-> "Access denied. Please include an 'Authorization: ...' header with a valid API key."
-
-→ OneSignal không nhận key này là hợp lệ. Vấn đề KHÔNG phải ở:
-- ❌ Edge Function (trigger DB gọi trực tiếp `pg_net`, không qua Edge Function)
-- ❌ Timeout (response trả về sau 60ms — UI báo "5s timeout" do bug polling, không phải mạng chậm)
-- ❌ Format header `Authorization`
-- ❌ App ID (App ID `5eb732df-76ec-4fa9-8741-115270a39c66` đúng)
-
-Vấn đề duy nhất: **giá trị key trong DB bị OneSignal từ chối** — có thể do:
-1. Key đã bị **rotate/xoá** trên dashboard OneSignal nhưng không update DB
-2. Key này là **User Auth Key** (account-level) chứ không phải **App API Key**, OneSignal `/notifications` chỉ chấp nhận App API Key
-3. App `Saigon Holiday CRM` đã bị xoá hoặc đổi trên OneSignal
-
-Lovable không có cách nào sửa được điều này từ code — phải lấy key mới từ dashboard.
-
----
-
-## ✅ Việc bạn (admin) phải làm — KHÔNG cần Lovable code
-
-### Bước 1: Tạo App API Key mới
-1. Đăng nhập https://dashboard.onesignal.com
-2. Chọn app **Saigon Holiday CRM** (App ID: `5eb732df-76ec-4fa9-8741-115270a39c66`)
-3. Vào **Settings → Keys & IDs**
-4. Trong section **App API Keys** (KHÔNG phải User Auth Key) → bấm **Add Key**
-   - Name: `CRM Backend Push`
-   - **KHÔNG bật IP allowlist** (Supabase IP có thể đổi)
-5. Copy key ngay (chỉ hiện 1 lần) — dạng `os_v2_app_xxxxxxx...`
-
-### Bước 2: Update key vào Supabase
-Mở SQL Editor của Supabase và chạy:
+### Bước 1 — Secrets
+Kết quả khi chạy đúng câu SQL user yêu cầu:
 ```sql
-UPDATE public.system_config
-SET value = 'KEY_MỚI_VỪA_COPY'
-WHERE key = 'ONESIGNAL_REST_API_KEY';
+SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name IN ('ONESIGNAL_APP_ID', 'ONESIGNAL_REST_API_KEY');
+```
+Trả về:
+```text
+blocked_query: query attempted to access vault.decrypted_secrets
 ```
 
-### Bước 3: Test
-Vào **Cài đặt → Thông báo → "Gửi thử push"**
-- ✅ `status_code: 200` → push hoạt động → kiểm tra device
-- ✅ `status_code: 400 "All included players are not subscribed"` → key OK, chỉ cần bật toggle push trên thiết bị
-- ❌ Vẫn `403` → key vẫn sai (paste nhầm User Auth Key thay vì App API Key)
+Dữ liệu thực tế đọc được thêm từ project:
 
----
+- Runtime secrets hiện có:
+```text
+LOVABLE_API_KEY
+VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY
+VAPID_SUBJECT
+```
+- Không có `ONESIGNAL_APP_ID` và `ONESIGNAL_REST_API_KEY` trong Supabase runtime secrets.
 
-## 🔧 Việc Lovable sẽ làm SAU KHI bạn đã update key xong
+- Giá trị đang dùng trong DB `system_config`:
+```text
+ONESIGNAL_APP_ID = 5eb732df-76ec-4fa9-8741-115270a39c66
+ONESIGNAL_REST_API_KEY = os_v2_app_l23tfx3w5rh2tb2bcfjhbi44mzn5mb32ecvenf5es4spz3ig7lj6bst55bc3qvxcv2sjzkrc6lach5znxxx4xbedtcevehvkifjzdpa
+```
 
-Sau khi bạn confirm test ra **400 hoặc 200** (tức key đã đúng), mình sẽ:
+### Bước 2 — Toàn bộ code `notify_push_on_insert`
+```sql
+DECLARE
+  v_app_id text;
+  v_rest_key text;
+  v_url text;
+  v_full_url text;
+  v_origin text := 'https://app.saigonholiday.vn';
+  v_request_id bigint;
+  v_auth_header text;
+BEGIN
+  IF NEW.user_id IS NULL THEN RETURN NEW; END IF;
 
-### 1. Sửa bug polling 5s trong `rpc_send_test_push()`
-Hiện tại function poll `net._http_response` 20 lần × 0.25s = 5s, không đủ vì pg_net commit response async sau transaction. Fix:
-- Tăng lên 60 lần × 0.5s = 30s
-- Set `search_path = public, net` để truy cập đúng schema
-- Thêm hint cụ thể cho status 403 (hướng dẫn rotate key) và 400 (hướng dẫn subscribe trước)
+  SELECT value INTO v_app_id FROM public.system_config WHERE key = 'ONESIGNAL_APP_ID';
+  SELECT value INTO v_rest_key FROM public.system_config WHERE key = 'ONESIGNAL_REST_API_KEY';
 
-### 2. Verify trigger `notify_push_on_insert` chạy với key mới
-Insert thử các loại notification thật (LEAVE_REQUEST_NEW, mention, BUDGET_ESTIMATE_NEW…) và check `push_send_log` để xác nhận `status_code = 200`.
+  IF v_app_id IS NULL OR v_rest_key IS NULL OR v_app_id = '' OR v_rest_key = '' THEN
+    INSERT INTO public.push_send_log (notification_id, user_id, title, error)
+    VALUES (NEW.id, NEW.user_id, NEW.title, 'OneSignal credentials missing in system_config');
+    RETURN NEW;
+  END IF;
 
-### 3. Cập nhật memory
-Ghi vào `mem://features/notifications/web-push`: format header chuẩn là `Authorization: Key <token>` cho cả `os_v2_app_*` và `os_v2_org_*`; legacy key (không prefix) mới dùng `Basic`.
+  IF v_rest_key LIKE 'os_v2_%' THEN
+    v_auth_header := 'Key ' || v_rest_key;
+  ELSE
+    v_auth_header := 'Basic ' || v_rest_key;
+  END IF;
 
----
+  v_url := CASE COALESCE(NEW.entity_type,'')
+    WHEN 'lead' THEN '/tiem-nang'
+    WHEN 'customer' THEN '/khach-hang'
+    WHEN 'booking' THEN '/dat-tour'
+    WHEN 'budget_estimate' THEN '/tai-chinh'
+    WHEN 'budget_settlement' THEN '/tai-chinh'
+    WHEN 'transaction' THEN '/tai-chinh'
+    WHEN 'leave_request' THEN '/quan-ly-nghi-phep'
+    WHEN 'contract' THEN '/hop-dong'
+    WHEN 'payment' THEN '/thanh-toan'
+    WHEN 'employee' THEN '/nhan-su'
+    ELSE '/canh-bao'
+  END;
+  v_full_url := v_origin || v_url;
 
-## ❓ Câu hỏi quyết định
+  BEGIN
+    SELECT net.http_post(
+      url := 'https://api.onesignal.com/notifications',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', v_auth_header
+      ),
+      body := jsonb_build_object(
+        'app_id', v_app_id,
+        'target_channel', 'push',
+        'include_aliases', jsonb_build_object('external_id', jsonb_build_array(NEW.user_id::text)),
+        'headings', jsonb_build_object('en', COALESCE(NEW.title, 'Thông báo mới')),
+        'contents', jsonb_build_object('en', COALESCE(NEW.message, '')),
+        'url', v_full_url,
+        'priority', CASE WHEN COALESCE(NEW.priority,'') IN ('high','urgent') THEN 10 ELSE 5 END
+      )
+    ) INTO v_request_id;
 
-Bạn đã có key mới rồi và muốn mình paste vào (cho mình key qua chat) hay bạn tự update qua SQL Editor?
+    INSERT INTO public.push_send_log (notification_id, user_id, title, request_id, error)
+    VALUES (NEW.id, NEW.user_id, NEW.title, v_request_id, NULL);
+  EXCEPTION WHEN OTHERS THEN
+    INSERT INTO public.push_send_log (notification_id, user_id, title, error)
+    VALUES (NEW.id, NEW.user_id, NEW.title, 'http_post failed: ' || SQLERRM);
+  END;
 
-**Nếu bạn muốn mình update key**: sau khi plan này được approve, paste key mới ở message kế tiếp, mình sẽ chạy migration update + sửa luôn bug polling 5s trong cùng 1 lượt.
+  RETURN NEW;
+END;
+```
 
-**Nếu bạn tự update**: approve plan, chạy `UPDATE system_config` ở SQL Editor, test lại, báo kết quả → mình mới sửa bug polling.
+### Bước 3 — `supabase/functions/send-notification/index.ts`
+Kết quả thực tế:
+```text
+File not found: supabase/functions/send-notification/index.ts
+```
 
-<lov-actions>
-<lov-link url="https://dashboard.onesignal.com">Mở OneSignal Dashboard</lov-link>
-<lov-link url="https://supabase.com/dashboard/project/aneazkhnqkkpqtcxunqd/sql/new">Mở Supabase SQL Editor</lov-link>
-</lov-actions>
+### Bước 4 — Logs / test path hiện tại
+Kết quả thực tế với edge function `send-notification`:
+```text
+edge_function_logs('send-notification') => No logs found for edge function 'send-notification'
+curl_edge_functions GET /send-notification => 404 NOT_FOUND
+analytics_query(function_edge_logs where function_id='send-notification') => []
+```
+
+5 kết quả push gần nhất trong hệ thống hiện tại:
+```text
+2026-04-26 12:13:27Z | request_id=49 | status=403 | title=🔔 Test push từ Saigon Holiday CRM
+response={"errors": ["Access denied.  Please include an 'Authorization: ...' header with a valid API key..."]}
+
+2026-04-26 12:12:02Z | request_id=48 | status=403 | title=❌ Đơn nghỉ phép bị từ chối
+response={"errors": ["Access denied.  Please include an 'Authorization: ...' header with a valid API key..."]}
+
+2026-04-26 12:05:13Z | request_id=47 | status=403 | title=❌ Đơn nghỉ phép bị từ chối
+response={"errors": ["Access denied.  Please include an 'Authorization: ...' header with a valid API key..."]}
+
+2026-04-26 11:59:09Z | request_id=46 | status=403 | title=❌ Đơn nghỉ phép bị từ chối
+response={"errors": ["Access denied.  Please include an 'Authorization: ...' header with a valid API key..."]}
+
+2026-04-26 11:57:53Z | request_id=45 | status=403 | title=❌ Đơn nghỉ phép bị từ chối
+response={"errors": ["Access denied.  Please include an 'Authorization: ...' header with a valid API key..."]}
+```
+
+## Kết luận lỗi
+- Hệ thống hiện tại **không dùng edge function `send-notification`**.
+- Push đang đi theo luồng: `notifications` trigger DB `notify_push_on_insert` -> `pg_net` -> `https://api.onesignal.com/notifications`.
+- `ONESIGNAL_APP_ID` trong DB đang đúng: `5eb732df-76ec-4fa9-8741-115270a39c66`.
+- `ONESIGNAL_REST_API_KEY` trong DB **đang có giá trị nhưng bị OneSignal từ chối** với `403 Access denied`.
+- Supabase runtime secrets hiện tại **không có** `ONESIGNAL_APP_ID` / `ONESIGNAL_REST_API_KEY`.
+- Không có gì cho thấy lỗi nằm ở edge function, vì edge function đó hiện **không tồn tại**.
+
+## Việc sẽ làm ngay sau khi rời read-only mode
+1. Cập nhật nguồn credential push về giá trị hợp lệ:
+   - tối thiểu: update `public.system_config.ONESIGNAL_REST_API_KEY` bằng App API Key hợp lệ.
+2. Chạy lại test insert notification thật.
+3. Paste kết quả thật từ `push_send_log` + `net._http_response`.
+4. Nếu user muốn kiến trúc dùng secrets thay vì DB, chuyển sang edge function `send-notification` đọc runtime secrets rồi deploy lại.
+
+## Chi tiết kỹ thuật
+Sửa tối thiểu để push hoạt động lại không phải là sửa frontend, không phải sửa `rpc_send_test_push`, và cũng không phải debug edge logs. Việc cần làm là thay `ONESIGNAL_REST_API_KEY` hiện tại vì OneSignal đang trả `403` trên các request thực tế.
