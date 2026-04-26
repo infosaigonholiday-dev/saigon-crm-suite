@@ -4325,7 +4325,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_push_health: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          pre_request_error: string | null
+          request_id: number | null
+          response_body: string | null
+          response_error: string | null
+          status_code: number | null
+          title: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_default_permissions_for_role: {
@@ -4349,6 +4362,7 @@ export type Database = {
       }
       rpc_dashboard_ceo: { Args: { p_dept_id?: string }; Returns: Json }
       rpc_dashboard_personal: { Args: { p_user_id: string }; Returns: Json }
+      rpc_send_test_push: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never
