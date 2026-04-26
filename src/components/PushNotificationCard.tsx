@@ -3,39 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { usePushSubscription, type PushSubscribeError } from "@/hooks/usePushSubscription";
+import { useOneSignal } from "@/hooks/useOneSignal";
 import { toast } from "sonner";
-
-const ERROR_MESSAGES: Record<PushSubscribeError, string> = {
-  unsupported: "Trình duyệt không hỗ trợ Web Push.",
-  iframe: "Đang chạy trong iframe — hãy mở trang trong tab mới.",
-  denied: "Trình duyệt đã chặn quyền thông báo. Mở 🔒 trên thanh địa chỉ → Cho phép.",
-  sw_unreachable: "Không tải được Service Worker. Vui lòng tải lại trang.",
-  sw_register_failed: "Đăng ký Service Worker thất bại.",
-  sw_not_active: "Service Worker chưa kích hoạt. Vui lòng tải lại trang.",
-  vapid_invalid: "Khoá VAPID không hợp lệ. Liên hệ admin.",
-  subscribe_failed: "Trình duyệt từ chối đăng ký push.",
-  subscribe_blocked: "Trình duyệt chặn đăng ký push dù đã cấp quyền — hãy mở app ở tab thật, tải lại trang, hoặc tắt extension chặn notification.",
-  db_failed: "Lưu đăng ký lên server thất bại.",
-  error: "Lỗi không xác định khi bật thông báo.",
-};
 
 /**
  * Section "Thông báo" hiển thị trong trang Hồ sơ cá nhân (EmployeeDetail khi xem bản thân).
  */
 export function PushNotificationCard() {
-  const { isSupported, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
-    usePushSubscription();
+  const { isSupported, configured, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
+    useOneSignal();
 
   const handleToggle = async (checked: boolean) => {
     if (checked) {
       const r = await subscribe();
-      if (r.ok) {
-        toast.success("Đã bật thông báo Web Push trên thiết bị này");
-      } else if (r.error) {
-        const msg = ERROR_MESSAGES[r.error] || "Không thể bật thông báo.";
-        toast.error(r.detail ? `${msg} (${r.detail})` : msg);
-      }
+      if (r.ok) toast.success("Đã bật thông báo trên thiết bị này");
+      else if (r.error === "denied") toast.error("Bạn đã từ chối quyền thông báo.");
+      else if (r.error === "iframe") toast.error("Hãy mở app trong tab thật.");
+      else toast.error("Không thể bật thông báo.");
     } else {
       const r = await unsubscribe();
       if (r.ok) toast.success("Đã tắt thông báo trên thiết bị này");
@@ -55,6 +39,10 @@ export function PushNotificationCard() {
           <p className="text-sm text-muted-foreground">
             Trình duyệt không hỗ trợ. Vui lòng dùng Chrome / Edge / Firefox trên máy tính hoặc Android.
             Trên iPhone cần cài app vào màn hình chính (PWA).
+          </p>
+        ) : !configured ? (
+          <p className="text-sm text-muted-foreground">
+            Hệ thống thông báo đẩy chưa được cấu hình. Liên hệ admin.
           </p>
         ) : (
           <>

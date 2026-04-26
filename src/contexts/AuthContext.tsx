@@ -48,6 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setIsReady(true);
 
+      // Tách khỏi OneSignal khi logout
+      if (typeof window !== "undefined") {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async (OneSignal) => {
+          try { await OneSignal.logout(); } catch (e) { console.warn("[onesignal] logout failed", e); }
+        });
+      }
+
       if (source === "SIGNED_OUT" && !RECOVERY_PATHS.includes(window.location.pathname)) {
         toast.error("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại");
         window.location.href = "/login";
@@ -58,6 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set session immediately so queries can use the token
     if (id !== syncIdRef.current) return;
     setSession(newSession);
+
+    // Liên kết user với OneSignal external_id để trigger DB push được tới đúng người
+    if (typeof window !== "undefined") {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async (OneSignal) => {
+        try { await OneSignal.login(newSession.user.id); } catch (e) { console.warn("[onesignal] login failed", e); }
+      });
+    }
 
     try {
       const { data } = await supabase
