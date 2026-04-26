@@ -203,22 +203,7 @@ export default function InternalNotes({ entityType, entityId, entityName }: Prop
           entity_id: entityId,
         }));
         await supabase.from("notifications").insert(notifRows);
-
-        // Send Web Push to each recipient (best effort — don't block toast)
-        const url = entityRouteMap[entityType](entityId);
-        await Promise.allSettled(
-          recipientIds.map((uid) =>
-            supabase.functions.invoke("send-notification", {
-              body: {
-                user_id: uid,
-                title: notifTitle,
-                message: preview,
-                url,
-                tag: `note-${entityId}`,
-              },
-            })
-          )
-        );
+        // Web Push được gửi tự động qua DB trigger notify_push_on_insert → OneSignal
       }
 
       toast.success("Đã gửi ghi chú");
