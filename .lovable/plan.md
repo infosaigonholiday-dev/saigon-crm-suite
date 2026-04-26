@@ -1,47 +1,57 @@
 ## Mục tiêu
-Khôi phục lại nút “Gửi thử push” và làm rõ vì sao hiện tại người dùng thấy “không được”, thay vì ẩn nút theo trạng thái nội bộ khó hiểu.
+Sửa lỗi hiện tại khi bấm “Gửi thử push” bị báo `Không gọi được send-notification: Failed to send a request to the Edge Function`, rồi kiểm tra lại để tách bạch lỗi gọi function với lỗi gửi push thật.
 
-## Những gì đang xảy ra
-- `PushNotificationToggle` hiện chỉ hiển thị nút `Gửi thử push` khi `isSubscribed === true`.
-- `isSubscribed` được quyết định bởi `usePushSubscription()` sau khi kiểm tra Service Worker + subscription trình duyệt + bản ghi trong `push_subscriptions`.
-- Log Edge Function gần nhất cho thấy subscription cũ đã bị xóa vì `VAPID mismatch`, nên UI rất dễ rơi về trạng thái “không subscribed” và làm nút test biến mất.
-- Người dùng hiện đang ở `/login` trong preview, nên ngay cả khi preview mở được, cũng không thể xác nhận push flow cho user chưa đăng nhập.
+## Chẩn đoán đã xác nhận
+- Screenshot mới cho thấy đây là lỗi ở bước gọi Edge Function, chưa phải lỗi push delivery.
+- `src/components/PushNotificationToggle.tsx` gọi `supabase.functions.invoke("send-notification")` đúng pattern.
+- Project đang dùng `@supabase/supabase-js` 2.104.1.
+- `supabase/functions/send-notification/index.ts` đang khai báo CORS hẹp:
+  - chỉ cho `authorization, x-client-info, apikey, content-type`
+- Trong cùng project, `manage-employee-accounts` đã cho phép thêm các header mới của Supabase client:
+  - `x-supabase-client-platform`
+  - `x-supabase-client-platform-version`
+  - `x-supabase-client-runtime`
+  - `x-supabase-client-runtime-version`
+- Với Supabase client hiện tại, thiếu các header này rất dễ gây preflight fail và hiện đúng thông báo “Failed to send a request to the Edge Function”.
 
 ## Kế hoạch sửa
-1. Cập nhật `PushNotificationToggle` để không ẩn hoàn toàn phần test push theo `isSubscribed` nữa.
-   - Luôn hiển thị khu vực chẩn đoán trạng thái.
-   - Nếu chưa subscribed: hiện nút/CTA rõ ràng như `Bật thông báo` hoặc `Đăng ký lại` thay vì biến mất.
-   - Nếu đang ở iframe: vẫn hiện lý do bị chặn + nút `Mở tab mới`.
+1. Cập nhật CORS của `send-notification`.
+   - Mở rộng `Access-Control-Allow-Headers` để khớp với các header thực tế mà client gửi.
+   - Giữ CORS này ở mọi response, kể cả error response và OPTIONS.
 
-2. Cập nhật `usePushSubscription` để trả thêm trạng thái chẩn đoán rõ ràng.
-   - Ví dụ: `hasBrowserSubscription`, `hasDbSubscription`, `statusReason`.
-   - Phân biệt các trường hợp:
-     - trình duyệt chưa cấp quyền
-     - có subscription trong browser nhưng mất row DB
-     - DB bị cleanup do VAPID mismatch
-     - đang chạy trong iframe
-     - thiếu `VITE_VAPID_PUBLIC_KEY`
+2. Tăng khả năng chẩn đoán ở client.
+   - Trong `PushNotificationToggle.tsx`, phân biệt rõ:
+     - lỗi không gọi được function
+     - function gọi được nhưng `sent=0`
+     - function gọi được nhưng push provider trả lỗi
+   - Nếu `errors` được trả về từ function, hiện reason ngắn gọn hơn trong toast/log để dễ truy vết.
 
-3. Điều chỉnh logic UI thông báo lỗi/hướng dẫn.
-   - Khi chưa subscribed: hiện đúng nguyên nhân và action tương ứng.
-   - Khi test thất bại: giữ nút test hiển thị, không phụ thuộc vào toggle bị reset.
-   - Thêm copy tiếng Việt rõ ràng để người dùng biết cần làm gì tiếp theo.
+3. Làm sạch auth/CORS consistency của Edge Function.
+   - Giữ cơ chế auth hiện tại, nhưng chuẩn hóa helper response để không có nhánh nào quên CORS headers.
+   - Không đổi behavior business logic gửi push ở bước này, chỉ sửa transport layer + observability.
 
-4. Kiểm tra lại đường đi hiện tại trong app.
-   - Xác nhận `PushNotificationToggle` đang được render ở cả `Settings > Thông báo` và cuối `SettingsAccountsTab`.
-   - Loại bỏ khả năng user vào nhầm chỗ nhưng tưởng tính năng bị mất.
+4. Test sau khi triển khai.
+   - Test gọi `send-notification` từ UI để xác nhận không còn lỗi “Failed to send a request to the Edge Function”.
+   - Nếu request đi qua được, kiểm tra tiếp response thực tế:
+     - `no_subscriptions`
+     - `sent > 0`
+     - `failed > 0` với body lỗi từ push service
+   - Khi transport đã ổn, mới đánh giá tiếp bước đăng ký subscription hoặc VAPID mismatch nếu còn.
+
+## File dự kiến chỉnh
+- `supabase/functions/send-notification/index.ts`
+- `src/components/PushNotificationToggle.tsx`
 
 ## Kết quả mong đợi
-- Nút test không còn “mất mẹ luôn” chỉ vì `isSubscribed` tụt về false.
-- UI luôn cho thấy trạng thái hiện tại của push và bước tiếp theo cần làm.
-- Sau khi user đăng nhập ở tab thật, có thể bật lại subscription và test lại dễ hơn.
+- Bấm “Gửi thử push” không còn fail ngay ở mức invoke/preflight.
+- UI báo đúng là:
+  - không gọi được function,
+  - chưa có subscription,
+  - hay push provider từ chối.
+- Nếu còn lỗi sau đó, ta sẽ có message cụ thể hơn để fix tiếp đúng điểm.
 
 ## Chi tiết kỹ thuật
-- File dự kiến chỉnh:
-  - `src/components/PushNotificationToggle.tsx`
-  - `src/hooks/usePushSubscription.ts`
-- Hướng triển khai:
-  - đổi từ conditional render `isSubscribed && ...` sang render theo state machine nhẹ
-  - thêm reason enums / derived flags trong hook
-  - nếu thiếu env VAPID, ném lỗi rõ ràng hoặc surface thành trạng thái lỗi cố định ở UI
-- Không cần đổi DB cho bước này; đây là fix UX + chẩn đoán phía client để người dùng không bị mù trạng thái.
+- Ưu tiên dùng bộ CORS headers đầy đủ tương thích `supabase-js` mới.
+- Có thể giữ dạng manual CORS như các function khác trong project, hoặc chuyển sang `@supabase/supabase-js/cors` nếu runtime/deploy cho phép.
+- Không cần thay DB schema ở bước này.
+- Đây là fix transport + diagnostics, không phải redesign push flow.

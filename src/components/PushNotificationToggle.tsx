@@ -68,21 +68,54 @@ export function PushNotificationToggle() {
           tag: "test-push-" + Date.now(),
         },
       });
-      if (error) throw error;
-      const sent = (data as { sent?: number; failed?: number; reason?: string })?.sent ?? 0;
-      const failed = (data as { failed?: number })?.failed ?? 0;
-      const reason = (data as { reason?: string })?.reason;
+      if (error) {
+        // Cố gắng đọc body chi tiết từ FunctionsHttpError nếu có
+        let detail = error.message || String(error);
+        const ctx: any = (error as any)?.context;
+        if (ctx) {
+          try {
+            const j = await ctx.json?.();
+            if (j?.error) detail = j.error;
+          } catch {
+            try {
+              const t = await ctx.text?.();
+              if (t) detail = t;
+            } catch {}
+          }
+        }
+        console.error("[push] invoke error", error, "detail:", detail);
+        toast.error("Không gọi được send-notification: " + detail);
+        setLastTestFailed(true);
+        return;
+      }
+      const result = data as {
+        sent?: number;
+        failed?: number;
+        reason?: string;
+        cleaned?: number;
+        errors?: Array<{ status?: number; body?: string }>;
+      };
+      const sent = result?.sent ?? 0;
+      const failed = result?.failed ?? 0;
+      const reason = result?.reason;
+      console.log("[push] test result", result);
       if (sent > 0) {
-        toast.success(`Đã gửi push tới ${sent} thiết bị (${failed} lỗi). Kiểm tra màn hình.`);
+        toast.success(
+          `Đã gửi push tới ${sent} thiết bị${failed ? ` (${failed} lỗi)` : ""}. Kiểm tra màn hình.`
+        );
       } else if (reason === "no_subscriptions") {
         toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này. Bấm 'Đăng ký lại' bên dưới.");
         setLastTestFailed(true);
       } else {
-        toast.error(`Push thất bại (sent=${sent}, failed=${failed}). Bấm "Đăng ký lại" bên dưới.`);
+        const firstErr = result?.errors?.[0];
+        const errMsg = firstErr
+          ? `status=${firstErr.status ?? "?"} ${firstErr.body?.slice(0, 80) ?? ""}`
+          : `sent=${sent}, failed=${failed}`;
+        toast.error(`Push thất bại (${errMsg}). Bấm "Đăng ký lại" bên dưới.`);
         setLastTestFailed(true);
       }
     } catch (e: any) {
-      console.error("[push] test failed", e);
+      console.error("[push] test threw", e);
       toast.error("Không gọi được send-notification: " + (e?.message || String(e)));
       setLastTestFailed(true);
     } finally {
