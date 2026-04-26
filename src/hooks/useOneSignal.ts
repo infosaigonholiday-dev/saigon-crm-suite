@@ -138,7 +138,8 @@ export function useOneSignal(): UseOneSignalReturn {
         } catch (e) {
           console.warn("[onesignal] requestPermission threw", e);
         }
-        const perm: NotificationPermission = Notification.permission;
+        // Đọc lại qua biến gián tiếp để TS không narrow về "default"
+        const perm = (window.Notification?.permission ?? "default") as NotificationPermission;
         setPermission(perm);
         if (perm !== "granted") return { ok: false, error: "denied" };
       }
