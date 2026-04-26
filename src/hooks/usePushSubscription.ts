@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ?? "";
+const SW_URL = "/sw.js";
 
 function keyFingerprint(key: string): string {
   if (!key) return "missing";
@@ -22,8 +23,10 @@ export type PushSubscribeError =
   | "denied"
   | "sw_unreachable"
   | "sw_register_failed"
+  | "sw_not_active"
   | "vapid_invalid"
   | "subscribe_failed"
+  | "subscribe_blocked"
   | "db_failed"
   | "error";
 
@@ -62,23 +65,70 @@ function isInIframe(): boolean {
   try {
     return typeof window !== "undefined" && window.top !== window.self;
   } catch {
-    return true; // cross-origin access throws → definitely in iframe
+    return true;
   }
+}
+
+/**
+ * Đăng ký SW (idempotent) và đảm bảo có một active worker trước khi subscribe.
+ * Trả về registration đã sẵn sàng hoặc throw lỗi rõ ràng.
+ */
+async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
+  // 1. Lấy registration hiện có (do main.tsx đã register sớm), nếu chưa có thì register.
+  let reg = await navigator.serviceWorker.getRegistration(SW_URL);
+  if (!reg) {
+    reg = await navigator.serviceWorker.register(SW_URL, { scope: "/" });
+  }
+
+  // 2. Nếu đã active, dùng luôn.
+  if (reg.active) return reg;
+
+  // 3. Chờ worker chuyển active (qua installing/waiting). Tối đa 8s.
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("SW activation timeout")), 8000);
+    const sw = reg!.installing || reg!.waiting;
+    if (!sw) {
+      // Fallback: dựa vào navigator.serviceWorker.ready
+      navigator.serviceWorker.ready
+        .then(() => {
+          clearTimeout(timeout);
+          resolve();
+        })
+        .catch((e) => {
+          clearTimeout(timeout);
+          reject(e);
+        });
+      return;
+    }
+    sw.addEventListener("statechange", () => {
+      if (sw.state === "activated") {
+        clearTimeout(timeout);
+        resolve();
+      } else if (sw.state === "redundant") {
+        clearTimeout(timeout);
+        reject(new Error("SW became redundant"));
+      }
+    });
+  });
+
+  // 4. Sau khi active, lấy lại registration để chắc chắn.
+  const ready = await navigator.serviceWorker.ready;
+  return ready;
 }
 
 type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
 type SubscribeOptions = { forceResubscribe?: boolean };
 
 export type PushStatusReason =
-  | "ready"                  // browser sub + DB row khớp VAPID
-  | "missing_vapid_env"      // VITE_VAPID_PUBLIC_KEY trống / sai
-  | "unsupported"            // trình duyệt không hỗ trợ
-  | "iframe_blocked"         // đang chạy trong iframe editor
-  | "permission_denied"      // user đã chặn quyền notify
-  | "permission_default"     // chưa hỏi quyền
-  | "no_browser_sub"         // chưa subscribe ở browser
-  | "vapid_mismatch"         // browser sub dùng VAPID cũ
-  | "db_row_missing"         // browser có sub nhưng DB không có
+  | "ready"
+  | "missing_vapid_env"
+  | "unsupported"
+  | "iframe_blocked"
+  | "permission_denied"
+  | "permission_default"
+  | "no_browser_sub"
+  | "vapid_mismatch"
+  | "db_row_missing"
   | "unknown";
 
 export function usePushSubscription() {
@@ -91,7 +141,7 @@ export function usePushSubscription() {
   const [hasBrowserSubscription, setHasBrowserSubscription] = useState(false);
   const [hasDbSubscription, setHasDbSubscription] = useState(false);
   const [statusReason, setStatusReason] = useState<PushStatusReason>("unknown");
-  const subscribeRef = useRef<(() => Promise<SubscribeResult>) | null>(null);
+  const subscribeRef = useRef<((opts?: SubscribeOptions) => Promise<SubscribeResult>) | null>(null);
 
   useEffect(() => {
     const supported =
@@ -108,6 +158,7 @@ export function usePushSubscription() {
       permission: supported ? Notification.permission : "n/a",
       vapidKeyLength: VAPID_PUBLIC_KEY.length,
       vapidFingerprint: keyFingerprint(VAPID_PUBLIC_KEY),
+      origin: typeof window !== "undefined" ? window.location.origin : "",
     });
   }, []);
 
@@ -129,7 +180,7 @@ export function usePushSubscription() {
 
     (async () => {
       try {
-        const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+        const reg = await navigator.serviceWorker.getRegistration(SW_URL);
         const sub = await reg?.pushManager.getSubscription();
         if (!sub) {
           setIsSubscribed(false);
@@ -148,7 +199,6 @@ export function usePushSubscription() {
 
         setHasBrowserSubscription(true);
 
-        // So sánh applicationServerKey hiện tại với VAPID_PUBLIC_KEY
         const currentKey = sub.options?.applicationServerKey as ArrayBuffer | null | undefined;
         const keyMatches = applicationServerKeyMatches(currentKey, VAPID_PUBLIC_KEY);
 
@@ -176,7 +226,6 @@ export function usePushSubscription() {
           return;
         }
 
-        // VAPID khớp → kiểm tra DB còn record không, nếu thiếu thì upsert lại
         let dbHasRow = false;
         try {
           const { data: existing } = await supabase
@@ -224,20 +273,26 @@ export function usePushSubscription() {
     })();
   }, [isSupported, user, inIframe]);
 
-  const subscribe = useCallback(async (options?: SubscribeOptions): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
-    console.log("[push] subscribe() called");
+  const subscribe = useCallback(async (options?: SubscribeOptions): Promise<SubscribeResult> => {
+    console.log("[push] subscribe() called", { forceResubscribe: !!options?.forceResubscribe });
     if (!isSupported) return { ok: false, error: "unsupported" };
     if (!user) return { ok: false, error: "error", detail: "no user" };
-    if (inIframe) {
+    if (isInIframe()) {
       console.warn("[push] blocked: running in iframe");
       return { ok: false, error: "iframe" };
     }
 
     setLoading(true);
     try {
-      // Step 1: verify /sw.js is reachable
+      // Step 1: VAPID key sanity check (base64url, 65 bytes raw → 87 chars)
+      if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.length < 80 || VAPID_PUBLIC_KEY.length > 90) {
+        console.error("[push] VAPID key suspicious length", VAPID_PUBLIC_KEY.length);
+        return { ok: false, error: "vapid_invalid", detail: `length=${VAPID_PUBLIC_KEY.length}` };
+      }
+
+      // Step 2: verify /sw.js is reachable
       try {
-        const head = await fetch("/sw.js", { method: "HEAD" });
+        const head = await fetch(SW_URL, { method: "HEAD", cache: "no-store" });
         console.log("[push] /sw.js HEAD", head.status, head.headers.get("content-type"));
         if (!head.ok) {
           return { ok: false, error: "sw_unreachable", detail: `HTTP ${head.status}` };
@@ -247,36 +302,34 @@ export function usePushSubscription() {
         return { ok: false, error: "sw_unreachable", detail: String(e) };
       }
 
-      // Step 2: VAPID key sanity check (base64url, 65 bytes raw → 87 chars)
-      if (VAPID_PUBLIC_KEY.length < 80 || VAPID_PUBLIC_KEY.length > 90) {
-        console.error("[push] VAPID key suspicious length", VAPID_PUBLIC_KEY.length);
-        return { ok: false, error: "vapid_invalid", detail: `length=${VAPID_PUBLIC_KEY.length}` };
+      // Step 3: request permission BEFORE touching pushManager
+      let perm: NotificationPermission = Notification.permission;
+      if (perm === "default") {
+        perm = await Notification.requestPermission();
+        setPermission(perm);
+        console.log("[push] permission result", perm);
+      } else {
+        setPermission(perm);
+        console.log("[push] permission already", perm);
       }
-
-      // Step 3: request permission
-      const perm = await Notification.requestPermission();
-      setPermission(perm);
-      console.log("[push] permission result", perm);
       if (perm !== "granted") {
         return { ok: false, error: "denied" };
       }
 
-      // Step 4: register/get SW
-      let reg: ServiceWorkerRegistration | undefined;
+      // Step 4: Get a fully-active SW registration
+      let reg: ServiceWorkerRegistration;
       try {
-        reg = await navigator.serviceWorker.getRegistration("/sw.js");
-        if (!reg) {
-          console.log("[push] registering /sw.js …");
-          reg = await navigator.serviceWorker.register("/sw.js");
-        }
-        await navigator.serviceWorker.ready;
-        console.log("[push] SW ready", reg.scope, reg.active?.state);
+        reg = await getReadyRegistration();
+        console.log("[push] SW ready", { scope: reg.scope, active: reg.active?.state });
       } catch (e) {
         console.error("[push] SW register failed", e);
         return { ok: false, error: "sw_register_failed", detail: String(e) };
       }
+      if (!reg.active) {
+        return { ok: false, error: "sw_not_active", detail: "no active worker after ready" };
+      }
 
-      // Step 5: subscribe
+      // Step 5: subscribe via pushManager
       let sub: PushSubscription | null = null;
       try {
         sub = await reg.pushManager.getSubscription();
@@ -291,7 +344,6 @@ export function usePushSubscription() {
             console.warn("[push] existing subscription will be recreated", {
               forceResubscribe: !!options?.forceResubscribe,
               keyMatches,
-              endpoint: sub.endpoint,
             });
             try {
               await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
@@ -307,7 +359,6 @@ export function usePushSubscription() {
             setIsSubscribed(false);
             setHasBrowserSubscription(false);
             setHasDbSubscription(false);
-            setStatusReason("vapid_mismatch");
           }
         }
         if (!sub) {
@@ -322,9 +373,24 @@ export function usePushSubscription() {
         } else {
           console.log("[push] reused existing subscription");
         }
-      } catch (e) {
+      } catch (e: any) {
+        const msg: string = e?.message || String(e);
         console.error("[push] pushManager.subscribe failed", e);
-        return { ok: false, error: "subscribe_failed", detail: (e as Error)?.message || String(e) };
+        // "permission denied" trả về dù Notification.permission=granted thường do:
+        //  - đang chạy trong iframe / WebView không cho push
+        //  - SW chưa active hoàn toàn
+        //  - browser đang ở chế độ riêng tư / blocked policy
+        if (/permission denied/i.test(msg)) {
+          return {
+            ok: false,
+            error: "subscribe_blocked",
+            detail:
+              "Trình duyệt từ chối đăng ký push dù đã cấp quyền. " +
+              "Hãy đảm bảo bạn đang mở app ở tab thật (không phải iframe/preview), " +
+              "thử tải lại trang, hoặc tắt extension chặn notification.",
+          };
+        }
+        return { ok: false, error: "subscribe_failed", detail: msg };
       }
 
       // Step 6: upsert to Supabase
@@ -368,9 +434,8 @@ export function usePushSubscription() {
     } finally {
       setLoading(false);
     }
-  }, [isSupported, user, inIframe]);
+  }, [isSupported, user]);
 
-  // Keep ref in sync so the auto re-subscribe effect can call latest subscribe
   useEffect(() => {
     subscribeRef.current = subscribe;
   }, [subscribe]);
@@ -379,7 +444,7 @@ export function usePushSubscription() {
     if (!isSupported || !user) return { ok: false };
     setLoading(true);
     try {
-      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      const reg = await navigator.serviceWorker.getRegistration(SW_URL);
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
         await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);

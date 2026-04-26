@@ -1,46 +1,54 @@
-# Nguyên nhân gốc rễ (đã xác định bằng log)
+## Vấn đề hiện tại
+Push hiện không còn lệch VAPID giữa client/server nữa. Vấn đề còn lại nằm ở bước **tạo browser subscription**: quyền thông báo đã là `granted`, nhưng `pushManager.subscribe()` vẫn trả về `Registration failed - permission denied`.
 
-Đối chiếu fingerprint trực tiếp:
+Từ code hiện tại và ảnh lỗi, đây là lỗi rất hay xảy ra khi rơi vào một trong các trạng thái sau:
+- subscribe đang chạy trong context bị browser chặn (iframe / preview / không phải top-level tab)
+- service worker registration chưa được dùng theo một luồng ổn định
+- app đang có 2 luồng SW/push UI khác nhau nên trải nghiệm recovery chưa nhất quán
 
-| Nơi | Public key fingerprint | Khớp? |
-|---|---|---|
-| Client (`.env` → `VITE_VAPID_PUBLIC_KEY`) | `BKSOWNaUPd…cE3U` (len=87) | ❌ |
-| Server (Supabase secret `VAPID_PUBLIC_KEY`, từ edge log) | `BHmaQ9wVam…RPgRhs` (len=87) | ❌ |
+## Kế hoạch triển khai
+1. **Chuẩn hóa luồng Service Worker + Push trong `usePushSubscription.ts`**
+   - Tạo một helper duy nhất để:
+     - đăng ký `/sw.js` với scope ổn định
+     - chờ registration active/ready thật sự
+     - luôn lấy cùng một registration để check, subscribe, unsubscribe
+   - Bỏ các nhánh dễ gây trạng thái mơ hồ khi vừa register vừa subscribe.
+   - Phân loại lỗi rõ hơn cho `NotAllowedError`/`permission denied` để biết là do iframe, browser block, hay registration chưa sẵn sàng.
 
-→ **HAI KHOÁ HOÀN TOÀN KHÁC NHAU.** Browser đăng ký bằng khoá A, server ký JWT bằng khoá B → push provider trả 403 `VapidPkHashMismatch` → vòng lặp xoá-tạo lại không bao giờ xong. Đây KHÔNG phải lỗi code, là lỗi cấu hình secret.
+2. **Loại bỏ race condition do đăng ký SW ở nhiều chỗ**
+   - Rà lại `src/main.tsx` và hook để chỉ còn **một chiến lược đăng ký** nhất quán.
+   - Nếu giữ đăng ký sớm ở `main.tsx`, hook sẽ chỉ tái sử dụng registration đó.
+   - Nếu chuyển toàn bộ vào hook, sẽ bỏ đăng ký trùng để tránh browser state khó đoán.
 
-# Giải pháp
+3. **Đồng bộ UI chẩn đoán push**
+   - Giữ `PushNotificationToggle` làm UI chuẩn vì đang có status/debug tốt hơn.
+   - Cập nhật `PushNotificationCard` hoặc thay bằng shared UI để không còn 2 hành vi khác nhau giữa trang Hồ sơ và Cài đặt.
+   - Hiển thị rõ khi nào phải mở app ở tab thật thay vì preview/login iframe.
 
-Tạo MỘT cặp VAPID mới hoàn toàn, ghi đè đồng thời cả 3 nơi để đảm bảo khớp 100%:
+4. **Kiểm tra lại server-side path chỉ sau khi client subscribe thành công**
+   - Xác minh `send-notification` vẫn dùng đúng fingerprint hiện tại.
+   - Nếu cần, redeploy lại function sau chỉnh sửa client để chắc log/runtime đồng bộ.
+   - Chỉ purge subscription thêm lần nữa nếu log cho thấy vẫn còn record stale mới.
 
-## Bước 1 — Sinh cặp VAPID mới
-Chạy script Deno trong sandbox để sinh cặp ECDSA P-256 mới (public + private), in ra dưới dạng base64url. Public key 65 bytes uncompressed (bắt đầu `0x04`), private key 32 bytes.
+5. **Test thực tế sau khi sửa**
+   - Mở app ở **tab thật / domain thật**, đăng nhập, vào `Cài đặt → Thông báo`.
+   - Bật push và xác nhận `push_subscriptions` có bản ghi mới.
+   - Bấm `Gửi thử push` và kiểm tra kết quả thực tế + edge function logs.
 
-## Bước 2 — Cập nhật 3 nơi cùng lúc
-1. **Client `.env`** → ghi `VITE_VAPID_PUBLIC_KEY="<NEW_PUBLIC>"` (ghi đè giá trị cũ `BKSOWNaU…`).
-2. **Supabase secret `VAPID_PUBLIC_KEY`** → cập nhật bằng `update_secret` thành `<NEW_PUBLIC>` (ghi đè `BHmaQ9wV…`).
-3. **Supabase secret `VAPID_PRIVATE_KEY`** → cập nhật bằng `update_secret` thành `<NEW_PRIVATE>` (cùng cặp).
+## File dự kiến cập nhật
+- `src/hooks/usePushSubscription.ts`
+- `src/main.tsx`
+- `src/components/PushNotificationToggle.tsx`
+- `src/components/PushNotificationCard.tsx`
+- Có thể kiểm tra lại `supabase/functions/send-notification/index.ts` nếu cần xác minh log/redeploy
 
-## Bước 3 — Wipe sạch subscription cũ
-Xoá toàn bộ rows trong `push_subscriptions` (qua migration DELETE) vì chúng đã đăng ký với khoá cũ và sẽ luôn lệch.
+## Chi tiết kỹ thuật
+- Hiện frontend đã đọc `VITE_VAPID_PUBLIC_KEY` từ env, nên trọng tâm không còn là key mismatch mà là lifecycle của subscription.
+- `Notification.permission = granted` nhưng `subscribe()` vẫn fail thường không phải lỗi DB; nó là lỗi browser/service worker context.
+- Ảnh lỗi không cho thấy lỗi insert DB; trạng thái hiện dừng trước bước upsert `push_subscriptions`.
+- Việc test trong preview/login iframe không đủ tin cậy cho Web Push; cần test ở top-level tab sau khi sửa.
 
-## Bước 4 — Re-deploy edge function
-Deploy lại `send-notification` để chắc chắn nó pick up secret mới.
-
-## Bước 5 — Verify
-- Gọi edge function và xem log: fingerprint `vapid_public=` PHẢI bắt đầu bằng cùng prefix với `.env` mới.
-- Anh mở app trong tab thật → Cài đặt → Thông báo → bấm "Đăng ký lại" (browser sẽ subscribe bằng khoá mới) → bấm "Gửi thử push" → notification HIỆN.
-
-# Files / actions
-
-- (script tạm) `/tmp/gen-vapid.ts` — sinh cặp VAPID
-- `update_secret` × 2 — `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
-- `.env` — đổi `VITE_VAPID_PUBLIC_KEY`
-- migration SQL — `DELETE FROM push_subscriptions;`
-- `deploy_edge_functions(["send-notification"])`
-- `curl_edge_functions` để verify fingerprint trong log mới
-
-# Cam kết
-Sau khi xong tôi sẽ đối chiếu fingerprint lần cuối và báo cáo: "client=Xxxx, server=Xxxx, KHỚP". Nếu vẫn lệch tôi nhận thua thật sự, nhưng với cách này thì không thể lệch được vì cả 3 nơi đều ghi cùng một giá trị trong cùng một lượt.
-
-Sau khi anh duyệt tôi triển khai ngay.
+<lov-actions>
+  <lov-open-history>View History</lov-open-history>
+  <lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
+</lov-actions>
