@@ -24,6 +24,18 @@ Deno.serve(async (req) => {
     const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
     const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
+    // DEBUG: in ra để xác nhận secret có được nạp đúng không
+    console.log(
+      "DEBUG_SECRETS",
+      JSON.stringify({
+        APP_ID_LENGTH: ONESIGNAL_APP_ID?.length ?? null,
+        APP_ID_START: ONESIGNAL_APP_ID?.substring(0, 8) ?? null,
+        KEY_LENGTH: ONESIGNAL_REST_API_KEY?.length ?? null,
+        KEY_START: ONESIGNAL_REST_API_KEY?.substring(0, 20) ?? null,
+        KEY_PREFIX_OS_V2: ONESIGNAL_REST_API_KEY?.startsWith("os_v2_") ?? null,
+      })
+    );
+
     if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
       return new Response(
         JSON.stringify({
