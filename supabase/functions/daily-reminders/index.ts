@@ -595,10 +595,10 @@ Deno.serve(async (req) => {
     }
 
     // ===== A3. Payment Overdue: bookings còn nợ + remaining_due_at < today =====
-    const { data: ketoanUsers } = await supabase
+    const { data: ketoanUsersA3 } = await supabase
       .from("profiles").select("id")
       .eq("role", "KETOAN").eq("is_active", true);
-    const ketoanIds = (ketoanUsers ?? []).map((u: any) => u.id);
+    const ketoanIds = (ketoanUsersA3 ?? []).map((u: any) => u.id);
 
     const { data: overdueBookings } = await supabase
       .from("bookings")
