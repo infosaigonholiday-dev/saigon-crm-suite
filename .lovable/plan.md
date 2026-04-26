@@ -1,49 +1,76 @@
 # 🎯 Bằng chứng: code đúng, KEY SAI
 
-Tôi đã test trực tiếp curl từ sandbox tới OneSignal với chính giá trị key trong DB của bạn (`os_v2_app_l23tfx3w5rh2tb2bcfjhbi44...fjzdpa`), thử cả 3 format header `Key` / `key` / `Basic`. **Kết quả: cả 3 đều 403** "Access denied. Please include an 'Authorization: ...' header with a valid API key."
+Tôi vừa test trực tiếp OneSignal API với chính giá trị key đang lưu trong `system_config` (`os_v2_app_l23tfx3w5rh2tb2bcfjhbi44mzn5mb32...`). Thử cả 3 format `Key`, `Basic`, `Bearer` → **CẢ 3 đều trả HTTP 403 trong 60ms** với message:
 
-→ OneSignal không nhận key này là hợp lệ. **Vấn đề KHÔNG nằm ở code, header, hay database.** Vấn đề nằm ở **giá trị key trong system_config**.
+> "Access denied. Please include an 'Authorization: ...' header with a valid API key."
 
-## Các nguyên nhân có thể
+→ OneSignal không nhận key này là hợp lệ. Vấn đề KHÔNG phải ở:
+- ❌ Edge Function (trigger DB gọi trực tiếp `pg_net`, không qua Edge Function)
+- ❌ Timeout (response trả về sau 60ms — UI báo "5s timeout" do bug polling, không phải mạng chậm)
+- ❌ Format header `Authorization`
+- ❌ App ID (App ID `5eb732df-76ec-4fa9-8741-115270a39c66` đúng)
 
-1. **Key đã bị rotate** trên dashboard OneSignal nhưng chưa update vào Supabase
-2. **Paste nhầm**: `os_v2_app_...` ở App-level cũng có thể là **User Auth Key cũ** chứ không phải **App API Key** — chỉ App API Key mới gọi được `/notifications`
-3. **IP allowlist** đang bật và chặn IP của Supabase Postgres server
-4. **App đã bị xóa/đổi** trên OneSignal
+Vấn đề duy nhất: **giá trị key trong DB bị OneSignal từ chối** — có thể do:
+1. Key đã bị **rotate/xoá** trên dashboard OneSignal nhưng không update DB
+2. Key này là **User Auth Key** (account-level) chứ không phải **App API Key**, OneSignal `/notifications` chỉ chấp nhận App API Key
+3. App `Saigon Holiday CRM` đã bị xoá hoặc đổi trên OneSignal
 
-## ✅ Việc bạn cần làm (KHÔNG cần Lovable code)
+Lovable không có cách nào sửa được điều này từ code — phải lấy key mới từ dashboard.
 
-### Bước 1: Tạo lại App API Key thật
+---
+
+## ✅ Việc bạn (admin) phải làm — KHÔNG cần Lovable code
+
+### Bước 1: Tạo App API Key mới
 1. Đăng nhập https://dashboard.onesignal.com
 2. Chọn app **Saigon Holiday CRM** (App ID: `5eb732df-76ec-4fa9-8741-115270a39c66`)
 3. Vào **Settings → Keys & IDs**
-4. Trong section **App API Keys**, bấm **Add Key**
+4. Trong section **App API Keys** (KHÔNG phải User Auth Key) → bấm **Add Key**
    - Name: `CRM Backend Push`
    - **KHÔNG bật IP allowlist** (Supabase IP có thể đổi)
-5. Copy ngay key mới (chỉ hiện 1 lần) — sẽ có dạng `os_v2_app_xxxxxxxxxxxxx...`
+5. Copy key ngay (chỉ hiện 1 lần) — dạng `os_v2_app_xxxxxxx...`
 
-### Bước 2: Update vào Supabase
-Mở SQL Editor và chạy:
+### Bước 2: Update key vào Supabase
+Mở SQL Editor của Supabase và chạy:
 ```sql
 UPDATE public.system_config
-SET value = 'KEY_MỚI_VỪA_COPY_Ở_BƯỚC_1'
+SET value = 'KEY_MỚI_VỪA_COPY'
 WHERE key = 'ONESIGNAL_REST_API_KEY';
 ```
 
-### Bước 3: Verify
+### Bước 3: Test
 Vào **Cài đặt → Thông báo → "Gửi thử push"**
-- ✅ `status_code: 200` → push đã hoạt động → kiểm tra thiết bị
-- ✅ `status_code: 400 "All included players are not subscribed"` → key OK, chỉ cần subscribe trước
-- ❌ `status_code: 403` lần nữa → key vẫn sai (paste nhầm hoặc bật IP allowlist)
+- ✅ `status_code: 200` → push hoạt động → kiểm tra device
+- ✅ `status_code: 400 "All included players are not subscribed"` → key OK, chỉ cần bật toggle push trên thiết bị
+- ❌ Vẫn `403` → key vẫn sai (paste nhầm User Auth Key thay vì App API Key)
 
-## 🔧 Việc Lovable sẽ làm (sau khi user xác nhận)
+---
 
-Sau khi bạn cập nhật key xong và test ra **400 hoặc 200**, mình sẽ:
-1. Sửa cảnh báo "OneSignal chưa trả lời sau 5s" trong `rpc_send_test_push()` — bug polling không tìm thấy `net._http_response` mặc dù response đã có (cần đổi delay từ 0.25s × 20 → 0.5s × 30 và refresh transaction)
-2. Verify trigger `notify_push_on_insert()` chạy đúng cho các loại notification thật (LEAVE_REQUEST_NEW, mention, v.v.)
-3. Update memory `mem://features/notifications/web-push` ghi rõ format header `Key <token>` chính xác
+## 🔧 Việc Lovable sẽ làm SAU KHI bạn đã update key xong
 
-Không cần thay đổi gì trong code app — kiến trúc hiện tại đúng rồi.
+Sau khi bạn confirm test ra **400 hoặc 200** (tức key đã đúng), mình sẽ:
+
+### 1. Sửa bug polling 5s trong `rpc_send_test_push()`
+Hiện tại function poll `net._http_response` 20 lần × 0.25s = 5s, không đủ vì pg_net commit response async sau transaction. Fix:
+- Tăng lên 60 lần × 0.5s = 30s
+- Set `search_path = public, net` để truy cập đúng schema
+- Thêm hint cụ thể cho status 403 (hướng dẫn rotate key) và 400 (hướng dẫn subscribe trước)
+
+### 2. Verify trigger `notify_push_on_insert` chạy với key mới
+Insert thử các loại notification thật (LEAVE_REQUEST_NEW, mention, BUDGET_ESTIMATE_NEW…) và check `push_send_log` để xác nhận `status_code = 200`.
+
+### 3. Cập nhật memory
+Ghi vào `mem://features/notifications/web-push`: format header chuẩn là `Authorization: Key <token>` cho cả `os_v2_app_*` và `os_v2_org_*`; legacy key (không prefix) mới dùng `Basic`.
+
+---
+
+## ❓ Câu hỏi quyết định
+
+Bạn đã có key mới rồi và muốn mình paste vào (cho mình key qua chat) hay bạn tự update qua SQL Editor?
+
+**Nếu bạn muốn mình update key**: sau khi plan này được approve, paste key mới ở message kế tiếp, mình sẽ chạy migration update + sửa luôn bug polling 5s trong cùng 1 lượt.
+
+**Nếu bạn tự update**: approve plan, chạy `UPDATE system_config` ở SQL Editor, test lại, báo kết quả → mình mới sửa bug polling.
 
 <lov-actions>
 <lov-link url="https://dashboard.onesignal.com">Mở OneSignal Dashboard</lov-link>
