@@ -1,14 +1,27 @@
-import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Bell, BellOff, ExternalLink, AlertTriangle, CheckCircle2, AlertOctagon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useOneSignal } from "@/hooks/useOneSignal";
 import { toast } from "sonner";
 
+const ERROR_HINTS: Record<string, string> = {
+  "App not configured for web push":
+    "OneSignal app chưa bật Web Push. Admin cần vào dashboard.onesignal.com → Settings → Web Configuration → bật Web Push và nhập Site URL = https://app.saigonholiday.vn",
+};
+
+function friendlyInitError(msg: string): string {
+  for (const key in ERROR_HINTS) {
+    if (msg.includes(key)) return ERROR_HINTS[key];
+  }
+  return msg;
+}
+
 export function PushNotificationToggle() {
   const {
     isSupported,
     isReady,
+    initError,
     configured,
     isSubscribed,
     permission,
@@ -24,6 +37,7 @@ export function PushNotificationToggle() {
       if (r.ok) toast.success("Đã bật thông báo trên thiết bị này");
       else if (r.error === "denied") toast.error("Bạn đã từ chối quyền thông báo.");
       else if (r.error === "iframe") toast.error("Hãy mở app trong tab thật để bật.");
+      else if (r.error === "init_failed") toast.error("OneSignal chưa được cấu hình đúng. Liên hệ admin.");
       else toast.error("Không thể bật thông báo. Tải lại trang rồi thử lại.");
     } else {
       const r = await unsubscribe();
@@ -69,12 +83,32 @@ export function PushNotificationToggle() {
     );
   }
 
+  // SDK init thực sự bị lỗi → hiển thị lỗi rõ ràng, KHÔNG cho bật toggle
+  if (initError) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4">
+        <div className="flex items-start gap-3">
+          <AlertOctagon className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium text-foreground">OneSignal Web Push chưa hoạt động</p>
+            <p className="text-xs text-foreground/90">{friendlyInitError(initError)}</p>
+            <p className="text-[11px] text-muted-foreground">
+              Lỗi gốc: <code>{initError}</code>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const status = isSubscribed
     ? { tone: "ok" as const, text: "Đã bật — thiết bị này sẽ nhận thông báo." }
     : permission === "denied"
     ? { tone: "err" as const, text: "Trình duyệt đã chặn. Mở 🔒 → Cho phép thông báo → tải lại trang." }
     : inIframe
     ? { tone: "warn" as const, text: "Đang chạy trong iframe — mở app trong tab thật để bật." }
+    : !isReady
+    ? { tone: "warn" as const, text: "Đang tải OneSignal SDK…" }
     : { tone: "warn" as const, text: "Chưa bật. Bật toggle để nhận thông báo." };
 
   const statusBorder =

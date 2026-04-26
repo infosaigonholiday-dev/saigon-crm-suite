@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell, AlertOctagon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,18 @@ import { toast } from "sonner";
  * Section "Thông báo" hiển thị trong trang Hồ sơ cá nhân (EmployeeDetail khi xem bản thân).
  */
 export function PushNotificationCard() {
-  const { isSupported, configured, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
-    useOneSignal();
+  const {
+    isSupported,
+    isReady,
+    initError,
+    configured,
+    isSubscribed,
+    permission,
+    loading,
+    inIframe,
+    subscribe,
+    unsubscribe,
+  } = useOneSignal();
 
   const handleToggle = async (checked: boolean) => {
     if (checked) {
@@ -19,6 +29,7 @@ export function PushNotificationCard() {
       if (r.ok) toast.success("Đã bật thông báo trên thiết bị này");
       else if (r.error === "denied") toast.error("Bạn đã từ chối quyền thông báo.");
       else if (r.error === "iframe") toast.error("Hãy mở app trong tab thật.");
+      else if (r.error === "init_failed") toast.error("OneSignal chưa hoạt động. Liên hệ admin.");
       else toast.error("Không thể bật thông báo.");
     } else {
       const r = await unsubscribe();
@@ -44,6 +55,14 @@ export function PushNotificationCard() {
           <p className="text-sm text-muted-foreground">
             Hệ thống thông báo đẩy chưa được cấu hình. Liên hệ admin.
           </p>
+        ) : initError ? (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+            <AlertOctagon className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-foreground">OneSignal Web Push chưa hoạt động</p>
+              <p className="text-[11px] text-muted-foreground">Liên hệ admin để cấu hình lại OneSignal dashboard.</p>
+            </div>
+          </div>
         ) : (
           <>
             <div className="flex items-start justify-between gap-4">
@@ -61,7 +80,7 @@ export function PushNotificationCard() {
                   id="profile-push-toggle"
                   checked={isSubscribed}
                   onCheckedChange={handleToggle}
-                  disabled={loading || permission === "denied" || inIframe}
+                  disabled={loading || !isReady || permission === "denied" || inIframe}
                 />
                 {isSubscribed ? (
                   <Badge variant="outline" className="bg-success/15 text-success border-success/30">

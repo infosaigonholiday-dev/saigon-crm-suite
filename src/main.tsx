@@ -5,14 +5,12 @@ import "./index.css";
 
 // 1) Cleanup service worker cũ thời VAPID (`/sw.js`) — nếu còn cài trên thiết bị
 //    user, chúng sẽ chiếm scope "/" và chặn OneSignal đăng ký SW của nó.
-//    Chạy 1 lần khi app load, không await để không chặn render.
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   navigator.serviceWorker
     .getRegistrations()
     .then(async (regs) => {
       for (const reg of regs) {
         const url = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || "";
-        // Chỉ unregister SW VAPID cũ (`/sw.js`). KHÔNG đụng vào OneSignalSDKWorker.js.
         if (url.endsWith("/sw.js")) {
           try {
             await reg.unregister();
@@ -26,28 +24,65 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
     .catch((e) => console.warn("[push] getRegistrations failed", e));
 }
 
-// 2) Khởi tạo OneSignal Web SDK v16. SDK tự đăng ký /OneSignalSDKWorker.js
-//    Khai báo explicit serviceWorkerPath để chắc chắn không chạy default khác.
-const ONESIGNAL_APP_ID = (import.meta.env.VITE_ONESIGNAL_APP_ID as string | undefined)?.trim();
-if (typeof window !== "undefined" && ONESIGNAL_APP_ID) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal) => {
+// 2) Khởi tạo OneSignal Web SDK v16 + lưu trạng thái init vào window để hook đọc.
+//    Tách "SDK loaded" và "SDK init success" — nhiều hệ thống nhầm 2 cái này.
+type InitState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; sdk: any }
+  | { status: "error"; message: string };
+
+function setInitState(state: InitState) {
+  if (typeof window === "undefined") return;
+  (window as any).__oneSignalInitState = state;
+  const listeners = ((window as any).__oneSignalInitListeners ?? []) as Array<(s: InitState) => void>;
+  for (const cb of listeners) {
     try {
-      await OneSignal.init({
-        appId: ONESIGNAL_APP_ID,
-        allowLocalhostAsSecureOrigin: true,
-        notifyButton: { enable: false },
-        autoResubscribe: true,
-        serviceWorkerPath: "/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/" },
-      });
-      console.log("[onesignal] initialized");
+      cb(state);
     } catch (e) {
-      console.error("[onesignal] init failed", e);
+      console.warn("[onesignal] listener error", e);
     }
-  });
-} else if (!ONESIGNAL_APP_ID) {
-  console.warn("[onesignal] VITE_ONESIGNAL_APP_ID is missing — push notifications disabled");
+  }
+}
+
+const ONESIGNAL_APP_ID = (import.meta.env.VITE_ONESIGNAL_APP_ID as string | undefined)?.trim();
+if (typeof window !== "undefined") {
+  if (!ONESIGNAL_APP_ID) {
+    setInitState({ status: "error", message: "VITE_ONESIGNAL_APP_ID is missing in .env" });
+    console.warn("[onesignal] VITE_ONESIGNAL_APP_ID is missing — push notifications disabled");
+  } else {
+    setInitState({ status: "loading" });
+    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+    (window as any).OneSignalDeferred.push(async (OneSignal: any) => {
+      try {
+        await OneSignal.init({
+          appId: ONESIGNAL_APP_ID,
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: { enable: false },
+          autoResubscribe: true,
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/" },
+        });
+        console.log("[onesignal] initialized");
+        setInitState({ status: "ready", sdk: OneSignal });
+      } catch (e: any) {
+        const msg = e?.message || String(e);
+        console.error("[onesignal] init failed:", msg);
+        setInitState({ status: "error", message: msg });
+      }
+    });
+
+    // Safety: nếu CDN script không load nổi sau 15s → đánh dấu lỗi
+    setTimeout(() => {
+      const cur = (window as any).__oneSignalInitState as InitState | undefined;
+      if (cur?.status === "loading") {
+        setInitState({
+          status: "error",
+          message: "OneSignal SDK không tải được sau 15 giây (có thể do mạng hoặc adblock)",
+        });
+      }
+    }, 15000);
+  }
 }
 
 createRoot(document.getElementById("root")!).render(
@@ -55,4 +90,3 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>
 );
-
