@@ -59,8 +59,8 @@ export function PushNotificationCard() {
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
             <AlertOctagon className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
             <div className="space-y-1">
-              <p className="text-xs font-medium text-foreground">OneSignal Web Push chưa hoạt động</p>
-              <p className="text-[11px] text-muted-foreground">Liên hệ admin để cấu hình lại OneSignal dashboard.</p>
+              <p className="text-xs font-medium text-foreground">Thông báo chưa hoạt động</p>
+              <p className="text-[11px] text-muted-foreground">Liên hệ admin để kiểm tra cấu hình OneSignal.</p>
             </div>
           </div>
         ) : (
