@@ -67,9 +67,26 @@ export function BudgetEstimatesTab() {
   // Form state
   const [formBookingId, setFormBookingId] = useState("");
   const [formAdvance, setFormAdvance] = useState(0);
+  const [formKtAssigned, setFormKtAssigned] = useState<string>("");
   const [formItems, setFormItems] = useState<EstimateItem[]>([
     { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 },
   ]);
+
+  // Danh sách Kế toán (để gán phụ trách dự toán này)
+  const { data: accountants = [] } = useQuery({
+    queryKey: ["accountants-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "KETOAN")
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: estimates = [], isLoading } = useQuery({
     queryKey: ["budget-estimates", statusFilter],
