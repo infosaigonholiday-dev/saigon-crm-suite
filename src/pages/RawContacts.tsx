@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
 import { ImportExcelDialog } from "@/components/raw-contacts/ImportExcelDialog";
+import { RawContactFormDialog } from "@/components/raw-contacts/RawContactFormDialog";
 
 type RawContact = {
   id: string;
@@ -540,64 +541,31 @@ export default function RawContacts() {
       </Tabs>
 
       {/* Add Dialog */}
-      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Thêm data mới</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Số điện thoại *</Label>
-              <Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="09xxxxxxxx" />
-              {checkingPhone && <p className="text-xs text-muted-foreground mt-1">Đang kiểm tra...</p>}
-              {phoneWarning && <p className="text-xs text-destructive mt-1">⚠️ {phoneWarning}</p>}
-            </div>
-            <div>
-              <Label>Người phụ trách</Label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Nguyễn Văn A" />
-            </div>
-            <div>
-              <Label>Công ty</Label>
-              <Input value={formCompany} onChange={(e) => setFormCompany(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Loại</Label>
-                <Select value={formType} onValueChange={setFormType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="personal">Cá nhân</SelectItem>
-                    <SelectItem value="b2b">Doanh nghiệp</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Nguồn</Label>
-                <Input value={formSource} onChange={(e) => setFormSource(e.target.value)} placeholder="Zalo, FB..." />
-              </div>
-            </div>
-            {formType === "b2b" && (
-              <div>
-                <Label>Quy mô nhân sự</Label>
-                <Input value={formCompanySize} onChange={(e) => setFormCompanySize(e.target.value)} placeholder="VD: 50-100 người" />
-              </div>
-            )}
-            <div>
-              <Label>Thời gian tổ chức dự kiến</Label>
-              <Input type="date" value={formPlannedEventDate} onChange={(e) => setFormPlannedEventDate(e.target.value)} />
-            </div>
-            <div>
-              <Label>Ghi chú</Label>
-              <Textarea value={formNote} onChange={(e) => setFormNote(e.target.value)} rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setAddOpen(false); resetForm(); }}>Hủy</Button>
-            <Button onClick={() => insertMutation.mutate()} disabled={!formPhone || insertMutation.isPending}>
-              {insertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Thêm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RawContactFormDialog
+        open={addOpen}
+        onOpenChange={(o) => { setAddOpen(o); if (!o) resetForm(); }}
+        phone={formPhone}
+        setPhone={setFormPhone}
+        name={formName}
+        setName={setFormName}
+        company={formCompany}
+        setCompany={setFormCompany}
+        type={formType}
+        setType={setFormType}
+        source={formSource}
+        setSource={setFormSource}
+        companySize={formCompanySize}
+        setCompanySize={setFormCompanySize}
+        plannedEventDate={formPlannedEventDate}
+        setPlannedEventDate={setFormPlannedEventDate}
+        note={formNote}
+        setNote={setFormNote}
+        checkingPhone={checkingPhone}
+        phoneWarning={phoneWarning}
+        isSubmitting={insertMutation.isPending}
+        onSubmit={() => insertMutation.mutate()}
+        onCancel={() => { setAddOpen(false); resetForm(); }}
+      />
 
       {/* Call Log Dialog */}
       <Dialog open={callOpen} onOpenChange={(o) => { setCallOpen(o); if (!o) { setCallTarget(null); setCallResult(""); setCallNote(""); } }}>
