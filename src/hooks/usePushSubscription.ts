@@ -39,6 +39,20 @@ function bufToBase64(buf: ArrayBuffer | null): string {
   return btoa(bin);
 }
 
+function applicationServerKeyMatches(
+  currentKey: ArrayBuffer | null | undefined,
+  vapidPublicKey: string
+): boolean {
+  if (!currentKey || !vapidPublicKey) return false;
+  const expectedBytes = urlBase64ToUint8Array(vapidPublicKey);
+  const currentBytes = new Uint8Array(currentKey);
+  if (currentBytes.byteLength !== expectedBytes.byteLength) return false;
+  for (let i = 0; i < currentBytes.length; i++) {
+    if (currentBytes[i] !== expectedBytes[i]) return false;
+  }
+  return true;
+}
+
 function isInIframe(): boolean {
   try {
     return typeof window !== "undefined" && window.top !== window.self;
@@ -48,6 +62,7 @@ function isInIframe(): boolean {
 }
 
 type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
+type SubscribeOptions = { forceResubscribe?: boolean };
 
 export type PushStatusReason =
   | "ready"                  // browser sub + DB row khớp VAPID
@@ -128,17 +143,8 @@ export function usePushSubscription() {
         setHasBrowserSubscription(true);
 
         // So sánh applicationServerKey hiện tại với VAPID_PUBLIC_KEY
-        const currentKey = sub.options?.applicationServerKey;
-        const expectedBytes = VAPID_PUBLIC_KEY ? urlBase64ToUint8Array(VAPID_PUBLIC_KEY) : null;
-        const keyMatches = (() => {
-          if (!currentKey || !expectedBytes) return false;
-          const currentBytes = new Uint8Array(currentKey as ArrayBuffer);
-          if (currentBytes.byteLength !== expectedBytes.byteLength) return false;
-          for (let i = 0; i < currentBytes.length; i++) {
-            if (currentBytes[i] !== expectedBytes[i]) return false;
-          }
-          return true;
-        })();
+        const currentKey = sub.options?.applicationServerKey as ArrayBuffer | null | undefined;
+        const keyMatches = applicationServerKeyMatches(currentKey, VAPID_PUBLIC_KEY);
 
         if (!keyMatches && VAPID_PUBLIC_KEY) {
           console.warn("[push] VAPID key changed — auto re-subscribing existing subscription");
@@ -212,7 +218,7 @@ export function usePushSubscription() {
     })();
   }, [isSupported, user, inIframe]);
 
-  const subscribe = useCallback(async (): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
+  const subscribe = useCallback(async (options?: SubscribeOptions): Promise<{ ok: boolean; error?: PushSubscribeError; detail?: string }> => {
     console.log("[push] subscribe() called");
     if (!isSupported) return { ok: false, error: "unsupported" };
     if (!user) return { ok: false, error: "error", detail: "no user" };
@@ -268,6 +274,36 @@ export function usePushSubscription() {
       let sub: PushSubscription | null = null;
       try {
         sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          const keyMatches = applicationServerKeyMatches(
+            sub.options?.applicationServerKey as ArrayBuffer | null | undefined,
+            VAPID_PUBLIC_KEY
+          );
+          const mustRecreate = !!options?.forceResubscribe || !keyMatches;
+
+          if (mustRecreate) {
+            console.warn("[push] existing subscription will be recreated", {
+              forceResubscribe: !!options?.forceResubscribe,
+              keyMatches,
+              endpoint: sub.endpoint,
+            });
+            try {
+              await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+            } catch (e) {
+              console.warn("[push] failed to delete old DB record before resubscribe", e);
+            }
+            try {
+              await sub.unsubscribe();
+            } catch (e) {
+              console.warn("[push] failed to unsubscribe old browser sub before resubscribe", e);
+            }
+            sub = null;
+            setIsSubscribed(false);
+            setHasBrowserSubscription(false);
+            setHasDbSubscription(false);
+            setStatusReason("vapid_mismatch");
+          }
+        }
         if (!sub) {
           const keyBytes = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
           const keyBuffer = new ArrayBuffer(keyBytes.byteLength);

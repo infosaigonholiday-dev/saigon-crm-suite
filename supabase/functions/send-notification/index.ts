@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
           if (r.status === 404 || r.status === 410) {
             staleIds.push(s.id);
             console.log(`[send-notification] stale removed: ${s.endpoint.slice(0, 60)}…`);
-          } else if (r.status === 400 && /vapid|VapidPkHashMismatch/i.test(r.body || "")) {
+          } else if ((r.status === 400 || r.status === 403) && /vapid|VapidPkHashMismatch/i.test(r.body || "")) {
             staleIds.push(s.id);
             console.warn(`[send-notification] VAPID mismatch — sub deleted, client will recreate.`);
           } else {
@@ -343,6 +343,7 @@ Deno.serve(async (req) => {
       sent,
       failed,
       cleaned: staleIds.length,
+      reason: sent === 0 && failed > 0 && staleIds.length > 0 ? "vapid_mismatch" : undefined,
       errors: failed > 0 ? errorDetails : undefined,
     });
   } catch (err: any) {
