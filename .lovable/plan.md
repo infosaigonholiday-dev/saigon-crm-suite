@@ -1,71 +1,47 @@
-## Tình trạng hiện tại
+## Mục tiêu
+Khôi phục lại nút “Gửi thử push” và làm rõ vì sao hiện tại người dùng thấy “không được”, thay vì ẩn nút theo trạng thái nội bộ khó hiểu.
 
-Push đang hỏng ở 2 lớp khác nhau:
+## Những gì đang xảy ra
+- `PushNotificationToggle` hiện chỉ hiển thị nút `Gửi thử push` khi `isSubscribed === true`.
+- `isSubscribed` được quyết định bởi `usePushSubscription()` sau khi kiểm tra Service Worker + subscription trình duyệt + bản ghi trong `push_subscriptions`.
+- Log Edge Function gần nhất cho thấy subscription cũ đã bị xóa vì `VAPID mismatch`, nên UI rất dễ rơi về trạng thái “không subscribed” và làm nút test biến mất.
+- Người dùng hiện đang ở `/login` trong preview, nên ngay cả khi preview mở được, cũng không thể xác nhận push flow cho user chưa đăng nhập.
 
-1. Edge Function `send-notification` hiện có lỗi build/type-check:
-   - `Cannot find module 'npm:web-push@3.6.7'`
-   - Nghĩa là bản code hiện tại không còn an toàn để deploy/test tiếp.
+## Kế hoạch sửa
+1. Cập nhật `PushNotificationToggle` để không ẩn hoàn toàn phần test push theo `isSubscribed` nữa.
+   - Luôn hiển thị khu vực chẩn đoán trạng thái.
+   - Nếu chưa subscribed: hiện nút/CTA rõ ràng như `Bật thông báo` hoặc `Đăng ký lại` thay vì biến mất.
+   - Nếu đang ở iframe: vẫn hiện lý do bị chặn + nút `Mở tab mới`.
 
-2. Dù trigger và luồng gọi function đã tồn tại, database hiện không còn subscription nào:
-   - `push_subscriptions` đang rỗng
-   - nên dù gọi `send-notification` cũng không có thiết bị nào để nhận push.
+2. Cập nhật `usePushSubscription` để trả thêm trạng thái chẩn đoán rõ ràng.
+   - Ví dụ: `hasBrowserSubscription`, `hasDbSubscription`, `statusReason`.
+   - Phân biệt các trường hợp:
+     - trình duyệt chưa cấp quyền
+     - có subscription trong browser nhưng mất row DB
+     - DB bị cleanup do VAPID mismatch
+     - đang chạy trong iframe
+     - thiếu `VITE_VAPID_PUBLIC_KEY`
 
-3. Logs gần nhất xác nhận lỗi trước đó là `VAPID mismatch`, và function đã xóa stale subscription thành công. Sau bước đó, thiết bị chưa đăng ký lại thành công nên hệ thống đang ở trạng thái “không còn subscriber”.
+3. Điều chỉnh logic UI thông báo lỗi/hướng dẫn.
+   - Khi chưa subscribed: hiện đúng nguyên nhân và action tương ứng.
+   - Khi test thất bại: giữ nút test hiển thị, không phụ thuộc vào toggle bị reset.
+   - Thêm copy tiếng Việt rõ ràng để người dùng biết cần làm gì tiếp theo.
 
-## Kế hoạch triển khai
-
-### 1. Sửa Edge Function `send-notification` để build ổn định
-- Thay import `web-push` hiện tại bằng cách tương thích với runtime Supabase Edge hiện tại.
-- Ưu tiên cách ít rủi ro nhất:
-  - thêm cấu hình Deno phù hợp cho function, hoặc
-  - chuyển sang import/package resolution mà Supabase Edge hỗ trợ ổn định.
-- Giữ nguyên logic auth hiện có (`jwt_user`, `service_role`, `x-internal-call`) và logic dọn stale subscription.
-
-### 2. Giữ lại trigger DB hiện tại nhưng rà lại phần logging lỗi
-- Không tạo thêm trigger mới nếu `trg_notifications_push` đã có.
-- Giữ `notify_push_on_insert()` là điểm gửi push cho mọi notification insert mới.
-- Chỉnh phần `EXCEPTION` để log vào `audit_logs` mà không nuốt lỗi hoàn toàn.
-- Rà lại migration gần nhất để tránh để lại các biến thể cũ của function gây khó debug.
-
-### 3. Siết lại frontend đăng ký push để user đăng ký lại được thật
-- Cập nhật `usePushSubscription.ts` để xử lý rõ hơn các trạng thái:
-  - env VAPID thiếu/sai
-  - subscription cũ bị xóa ở server
-  - browser còn subscription local nhưng DB đã mất
-- Đảm bảo `subscribe()` luôn upsert lại `push_subscriptions` kể cả sau khi server đã dọn bản ghi cũ.
-- Giữ nút “Đăng ký lại” trong Settings làm đường hồi phục thủ công.
-
-### 4. Hoàn thiện nút test push trong Settings
-- Giữ nút “Gửi thử push” hiện có.
-- Bổ sung xử lý thông báo lỗi rõ hơn cho 3 trường hợp:
-  - function lỗi
-  - chưa có subscription
-  - push provider từ chối
-- Nếu cần, hiển thị hướng dẫn ngắn ngay trong UI khi test trả về `no_subscriptions`.
-
-### 5. Xác minh end-to-end
-Sau khi sửa xong sẽ test theo thứ tự:
-1. Build/type-check Edge Function hết lỗi.
-2. Dùng nút “Gửi thử push” để xác nhận có tạo lại subscription và function trả `sent > 0`.
-3. Tạo mới một bản ghi `notifications` để xác nhận trigger DB gọi `send-notification`.
-4. Kiểm tra logs của `send-notification` để xác nhận không còn lỗi import/build và xem kết quả gửi thực tế.
+4. Kiểm tra lại đường đi hiện tại trong app.
+   - Xác nhận `PushNotificationToggle` đang được render ở cả `Settings > Thông báo` và cuối `SettingsAccountsTab`.
+   - Loại bỏ khả năng user vào nhầm chỗ nhưng tưởng tính năng bị mất.
 
 ## Kết quả mong đợi
-- `send-notification` build được và deploy ổn định.
-- Thiết bị có thể đăng ký lại subscription mới.
-- Nút test push gửi được thông báo thật.
-- Notification tạo từ database trigger có thể đi qua cùng một luồng push.
+- Nút test không còn “mất mẹ luôn” chỉ vì `isSubscribed` tụt về false.
+- UI luôn cho thấy trạng thái hiện tại của push và bước tiếp theo cần làm.
+- Sau khi user đăng nhập ở tab thật, có thể bật lại subscription và test lại dễ hơn.
 
 ## Chi tiết kỹ thuật
-- Files dự kiến chỉnh:
-  - `supabase/functions/send-notification/index.ts`
-  - có thể thêm cấu hình function-level như `supabase/functions/send-notification/deno.json` nếu cần cho import resolution
-  - `src/hooks/usePushSubscription.ts`
+- File dự kiến chỉnh:
   - `src/components/PushNotificationToggle.tsx`
-  - một migration mới để dọn logic `notify_push_on_insert()` nếu cần
-
-- Lưu ý quan trọng:
-  - Không đổi VAPID keys
-  - Không sửa `src/integrations/supabase/types.ts`
-  - Không dựa vào localStorage để kiểm tra trạng thái push
-  - Không tạo trigger trùng nếu trigger đã tồn tại
+  - `src/hooks/usePushSubscription.ts`
+- Hướng triển khai:
+  - đổi từ conditional render `isSubscribed && ...` sang render theo state machine nhẹ
+  - thêm reason enums / derived flags trong hook
+  - nếu thiếu env VAPID, ném lỗi rõ ràng hoặc surface thành trạng thái lỗi cố định ở UI
+- Không cần đổi DB cho bước này; đây là fix UX + chẩn đoán phía client để người dùng không bị mù trạng thái.

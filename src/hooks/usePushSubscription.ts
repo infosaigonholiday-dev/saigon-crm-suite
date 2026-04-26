@@ -49,6 +49,18 @@ function isInIframe(): boolean {
 
 type SubscribeResult = { ok: boolean; error?: PushSubscribeError; detail?: string };
 
+export type PushStatusReason =
+  | "ready"                  // browser sub + DB row khớp VAPID
+  | "missing_vapid_env"      // VITE_VAPID_PUBLIC_KEY trống / sai
+  | "unsupported"            // trình duyệt không hỗ trợ
+  | "iframe_blocked"         // đang chạy trong iframe editor
+  | "permission_denied"      // user đã chặn quyền notify
+  | "permission_default"     // chưa hỏi quyền
+  | "no_browser_sub"         // chưa subscribe ở browser
+  | "vapid_mismatch"         // browser sub dùng VAPID cũ
+  | "db_row_missing"         // browser có sub nhưng DB không có
+  | "unknown";
+
 export function usePushSubscription() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -56,6 +68,9 @@ export function usePushSubscription() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [inIframe, setInIframe] = useState(false);
+  const [hasBrowserSubscription, setHasBrowserSubscription] = useState(false);
+  const [hasDbSubscription, setHasDbSubscription] = useState(false);
+  const [statusReason, setStatusReason] = useState<PushStatusReason>("unknown");
   const subscribeRef = useRef<(() => Promise<SubscribeResult>) | null>(null);
 
   useEffect(() => {
