@@ -25,14 +25,16 @@ Deno.serve(async (req) => {
     const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
     // DEBUG: in ra để xác nhận secret có được nạp đúng không
+    const _key = ONESIGNAL_REST_API_KEY ?? "";
     console.log(
       "DEBUG_SECRETS",
       JSON.stringify({
-        APP_ID_LENGTH: ONESIGNAL_APP_ID?.length ?? null,
-        APP_ID_START: ONESIGNAL_APP_ID?.substring(0, 8) ?? null,
-        KEY_LENGTH: ONESIGNAL_REST_API_KEY?.length ?? null,
-        KEY_START: ONESIGNAL_REST_API_KEY?.substring(0, 20) ?? null,
-        KEY_PREFIX_OS_V2: ONESIGNAL_REST_API_KEY?.startsWith("os_v2_") ?? null,
+        APP_ID: ONESIGNAL_APP_ID,
+        KEY_LENGTH: _key.length || null,
+        KEY_FULL_HEAD_30: _key.substring(0, 30) || null,
+        KEY_FULL_TAIL_30: _key.substring(Math.max(0, _key.length - 30)) || null,
+        KEY_PREFIX_OS_V2: _key.startsWith("os_v2_"),
+        KEY_HAS_WHITESPACE: /\s/.test(_key),
       })
     );
 
@@ -95,6 +97,9 @@ Deno.serve(async (req) => {
     try {
       osJson = JSON.parse(osText);
     } catch { /* keep as text */ }
+
+    console.log("ONESIGNAL_RESPONSE", JSON.stringify({ status: osRes.status, body: osJson }));
+
 
     return new Response(
       JSON.stringify({
