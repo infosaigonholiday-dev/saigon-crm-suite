@@ -106,6 +106,9 @@ export function PushNotificationToggle() {
       } else if (reason === "no_subscriptions") {
         toast.error("Chưa có thiết bị nào đăng ký push cho tài khoản này. Bấm 'Đăng ký lại' bên dưới.");
         setLastTestFailed(true);
+      } else if (reason === "vapid_mismatch" || result?.errors?.some((err) => /vapid credentials|VapidPkHashMismatch/i.test(err.body || ""))) {
+        toast.error("Subscription cũ đang lệch khoá VAPID. Bấm 'Đăng ký lại' để tạo subscription mới rồi thử lại.");
+        setLastTestFailed(true);
       } else {
         const firstErr = result?.errors?.[0];
         const errMsg = firstErr
@@ -126,8 +129,7 @@ export function PushNotificationToggle() {
   const handleResubscribe = async () => {
     setResubscribing(true);
     try {
-      await unsubscribe();
-      const r = await subscribe();
+      const r = await subscribe({ forceResubscribe: true });
       if (r.ok) {
         toast.success("Đã đăng ký lại subscription mới. Bấm 'Gửi thử push' để test.");
         setLastTestFailed(false);
