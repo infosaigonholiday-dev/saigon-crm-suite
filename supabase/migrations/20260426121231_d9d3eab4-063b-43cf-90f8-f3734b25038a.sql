@@ -1,0 +1,37 @@
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check
+CHECK (type = ANY (ARRAY[
+  'birthday'::text,
+  'company_anniversary'::text,
+  'follow_up'::text,
+  'payment_due'::text,
+  'contract_expiry'::text,
+  'internal_note'::text,
+  'LEAD_FORGOTTEN'::text,
+  'FOLLOW_UP_OVERDUE'::text,
+  'TRAVEL_DATE_NEAR'::text,
+  'mention'::text,
+  'system'::text,
+  'reminder'::text,
+  'BOOKING_DEPARTURE_NEAR'::text,
+  'PAYMENT_DUE'::text,
+  'CONTRACT_APPROVAL_OVERDUE'::text,
+  'QUOTATION_NO_RESPONSE'::text,
+  'EMPLOYEE_BIRTHDAY'::text,
+  'EMPLOYEE_CONTRACT_EXPIRING'::text,
+  'ESCALATION_LV1'::text,
+  'ESCALATION_LV2'::text,
+  'ESCALATION_LV3'::text,
+  'LEAVE_REQUEST_NEW'::text,
+  'LEAVE_REQUEST_RESULT'::text,
+  'BUDGET_ESTIMATE_NEW'::text,
+  'BUDGET_ESTIMATE_RESULT'::text,
+  'BUDGET_SETTLEMENT_STATUS'::text,
+  'BUDGET_SETTLEMENT_CLOSED'::text,
+  'BUDGET_SETTLEMENT_REJECTED'::text,
+  'TRANSACTION_APPROVAL'::text,
+  'TRANSACTION_APPROVED'::text,
+  'TRANSACTION_REJECTED'::text,
+  'TEST_PUSH'::text
+]));
