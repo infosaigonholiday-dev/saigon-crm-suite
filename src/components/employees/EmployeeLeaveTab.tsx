@@ -41,7 +41,7 @@ export function EmployeeLeaveTab({ employeeId }: { employeeId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("*")
+        .select("id, leave_type, start_date, end_date, total_days, reason, status")
         .eq("employee_id", employeeId)
         .order("created_at", { ascending: false });
       if (error) throw error;

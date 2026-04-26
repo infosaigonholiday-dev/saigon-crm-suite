@@ -13,7 +13,7 @@ export function EmployeeSalaryTab({ employeeId }: { employeeId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_salaries")
-        .select("*")
+        .select("id, base_salary, meal_allowance, transport_allowance, phone_allowance, housing_allowance, other_allowance, effective_from, effective_to")
         .eq("employee_id", employeeId)
         .order("effective_from", { ascending: false });
       if (error) throw error;
@@ -26,7 +26,7 @@ export function EmployeeSalaryTab({ employeeId }: { employeeId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll")
-        .select("*")
+        .select("id, month, year, base_salary, total_allowance, ot_pay, bhxh_employee, bhyt_employee, bhtn_employee, pit_amount, net_salary, status")
         .eq("employee_id", employeeId)
         .order("year", { ascending: false })
         .order("month", { ascending: false })

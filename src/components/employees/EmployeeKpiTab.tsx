@@ -47,7 +47,7 @@ export function EmployeeKpiTab({ employeeId }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from("employee_kpis")
-        .select("*")
+        .select("id, kpi_name, period_type, period_value, period_year, target_value, actual_value, achievement_pct, unit, note, evaluated_at, evaluated_by")
         .eq("employee_id", employeeId)
         .eq("period_year", year)
         .order("period_value")

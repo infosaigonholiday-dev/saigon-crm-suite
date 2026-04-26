@@ -12,7 +12,7 @@ export function EmployeeInsuranceTab({ employeeId }: { employeeId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("insurance_records")
-        .select("*")
+        .select("id, status, bhxh_number, bhyt_number, bhtn_number, bhxh_enrolled_at, bhxh_employee_pct, bhxh_employer_pct, bhyt_employee_pct, bhyt_employer_pct, bhtn_employee_pct, bhtn_employer_pct, monthly_contribution_employee, monthly_contribution_employer")
         .eq("employee_id", employeeId)
         .order("created_at", { ascending: false })
         .limit(1)
