@@ -1,4 +1,4 @@
-import { BellRing, BellOff, Loader2 } from "lucide-react";
+import { BellRing, BellOff, Loader2, BellMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOneSignal } from "@/hooks/useOneSignal";
@@ -8,15 +8,34 @@ import { toast } from "sonner";
  * Icon button đặt cạnh NotificationBell trong header.
  * - Chưa bật → BellOff màu muted
  * - Đã bật → BellRing màu primary với chấm xanh
+ * - SDK lỗi → BellMinus màu destructive (hiển thị tooltip lỗi)
  * - Trình duyệt không hỗ trợ hoặc chưa cấu hình OneSignal → ẩn
  */
 export function PushToggleButton() {
-  const { isSupported, configured, isSubscribed, permission, loading, inIframe, subscribe, unsubscribe } =
-    useOneSignal();
+  const {
+    isSupported,
+    isReady,
+    initError,
+    configured,
+    isSubscribed,
+    permission,
+    loading,
+    inIframe,
+    subscribe,
+    unsubscribe,
+  } = useOneSignal();
 
   if (!isSupported || !configured) return null;
 
   const handleClick = async () => {
+    if (initError) {
+      toast.error("OneSignal Web Push chưa cấu hình xong. Vào Cài đặt → Thông báo để xem chi tiết.");
+      return;
+    }
+    if (!isReady && !loading) {
+      toast.message("Đang tải OneSignal SDK, đợi vài giây rồi thử lại.");
+      return;
+    }
     if (isSubscribed) {
       const r = await unsubscribe();
       if (r.ok) toast.success("Đã tắt thông báo trên thiết bị này");
@@ -35,12 +54,18 @@ export function PushToggleButton() {
       toast.success("Đã bật thông báo 🔔");
     } else if (r.error === "denied") {
       toast.error("Bạn đã từ chối quyền thông báo.");
+    } else if (r.error === "init_failed") {
+      toast.error("OneSignal chưa hoạt động. Vào Cài đặt → Thông báo để xem chi tiết.");
     } else {
       toast.error("Không thể bật thông báo. Hãy thử tải lại trang.");
     }
   };
 
-  const tooltipText = isSubscribed
+  const tooltipText = initError
+    ? "OneSignal lỗi cấu hình — bấm để xem"
+    : !isReady
+    ? "Đang tải OneSignal SDK…"
+    : isSubscribed
     ? "Đã bật thông báo — nhấn để tắt"
     : permission === "denied"
     ? "Trình duyệt đang chặn — mở 🔒 để cho phép"
@@ -58,7 +83,9 @@ export function PushToggleButton() {
             className="relative"
             aria-label={tooltipText}
           >
-            {loading ? (
+            {initError ? (
+              <BellMinus className="h-5 w-5 text-destructive" />
+            ) : loading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : isSubscribed ? (
               <>
