@@ -165,7 +165,8 @@ export function AppSidebar() {
     { title: dashboardLabel, url: "/", icon: LayoutDashboard },
   ];
 
-  const visibleCrm = filterItems(crmItems);
+  const visibleBusiness = filterItems(businessItems);
+  const visibleProduct = filterItems(productItems);
   const visibleHr = filterItems(hrItems);
   const visibleFinance = filterItems(financeItems);
   const visibleSop = filterItems(sopItems);
@@ -191,10 +192,19 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {renderItems(dashboardItem)}
-              {visibleCrm.length > 0 && renderItems(visibleCrm)}
+              {visibleBusiness.length > 0 && renderItems(visibleBusiness)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleProduct.length > 0 && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Sản phẩm</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{renderItems(visibleProduct)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {visibleHr.length > 0 && (
           <SidebarGroup>
