@@ -138,7 +138,7 @@ export function useOneSignal(): UseOneSignalReturn {
         } catch (e) {
           console.warn("[onesignal] requestPermission threw", e);
         }
-        const perm = Notification.permission;
+        const perm: NotificationPermission = Notification.permission;
         setPermission(perm);
         if (perm !== "granted") return { ok: false, error: "denied" };
       }
