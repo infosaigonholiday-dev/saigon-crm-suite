@@ -28,7 +28,7 @@ export default function AlertsCenter() {
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read")
         .eq("user_id", user!.id)
         .eq("is_read", false)
         .eq("priority", "high")
