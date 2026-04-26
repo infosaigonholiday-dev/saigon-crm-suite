@@ -1,88 +1,140 @@
-## Chẩn đoán chính xác
+## Mục tiêu
+Bỏ toàn bộ hệ thống Web Push tự build (VAPID + custom SW + bảng `push_subscriptions` + edge function `send-notification` aes128gcm), thay bằng **OneSignal Web SDK v16** + REST API. Đơn giản hơn, không tự sign JWT, không tự encrypt aes128gcm, OneSignal tự quản subscription cross-device.
 
-Logs `send-notification` cho thấy push request bị FCM trả về:
+## Kiến trúc mới
+
 ```
-status=403 body={"reason":"BadJwtToken"}
-```
-
-Đây **không phải** lỗi OS/browser block notification. Push thực sự được gửi đi tới Google FCM, nhưng **Google từ chối JWT VAPID** trước cả khi tới browser của user. Vì vậy notification không bao giờ được hiển thị.
-
-### Nguyên nhân khả dĩ nhất
-
-`VAPID_PUBLIC_KEY` và `VAPID_PRIVATE_KEY` user paste trong tin nhắn trước **không phải một cặp ECDSA P-256 match nhau**:
-
-- Public key: `BLj9izHrUUSv9YoWBxJZHZjjGdDjZE2wU617zed7rVD40fepnLiqPoYnoAOow_gc_4uyAI1jr5ocHVMXtceof7s` (65 bytes uncompressed point ✓)
-- Private key: `ux-5pf2I8cMFa2mJsIzmDgtq7mqlR4UTErgN0v7mNdw` (32 bytes scalar d ✓)
-
-Cả hai đều **đúng format**, nhưng nếu chúng được sinh ở 2 lần khác nhau (ví dụ user paste public của lần generate này nhưng private của lần generate khác) → JWT sẽ ký bằng private key A nhưng header `k=publicB` → FCM verify chữ ký fail → `BadJwtToken`.
-
-Đây là lý do tại sao:
-- Browser **subscribe thành công** (chỉ cần publicKey hợp lệ)
-- Push manager **chấp nhận subscription** 
-- Edge function **gửi request thành công** (sent=1)
-- Nhưng FCM **reject JWT** (failed=1)
-
-## Kế hoạch fix
-
-### Bước 1: Tự verify keypair trong edge function (read-only check)
-
-Thêm hàm `verifyVapidKeypair()` vào `send-notification/index.ts`:
-
-1. Import private key d (32 bytes) làm ECDSA P-256 key
-2. Derive public point bằng cách: dùng `crypto.subtle.exportKey('jwk', privateKey)` — Web Crypto API tự derive x,y khi import từ d (nếu d hợp lệ với cặp x,y đã cho)
-3. Cách đơn giản hơn: import private key kèm `VAPID_PUBLIC_KEY` x,y → nếu Web Crypto không reject thì keypair match. Nếu reject → keypair sai.
-4. Thực tế: cách chắc chắn nhất là **sign-then-verify**: tạo JWT mẫu → verify bằng public key → nếu fail → mismatch.
-
-Khi phát hiện mismatch, edge function trả về JSON error rõ ràng:
-```json
-{
-  "error": "vapid_keypair_mismatch",
-  "detail": "VAPID_PUBLIC_KEY và VAPID_PRIVATE_KEY không phải cặp khớp nhau. Cần generate lại cặp mới."
-}
+Trình duyệt (app.saigonholiday.vn)
+   │  OneSignal Web SDK v16 (CDN)
+   │   ├─ Tự đăng ký /OneSignalSDKWorker.js  (KHÔNG dùng /sw.js của ta nữa)
+   │   ├─ Yêu cầu permission notification
+   │   └─ Sau login: OneSignal.login(user.id)  → liên kết externalId = user.id
+   ▼
+OneSignal Cloud (lưu subscription, gửi push tới FCM/APNs/Mozilla)
+   ▲
+   │  REST API: POST /api/v1/notifications
+   │   Body: { app_id, include_aliases:{external_id:[user.id]}, target_channel:"push", headings, contents, url }
+   │   Header: Authorization: Basic <REST_API_KEY>
+   │
+DB Trigger `notify_push_on_insert`  (đổi target từ Edge Function → OneSignal trực tiếp qua pg_net)
+   ▲
+   │
+Postgres trigger trên bảng `notifications` (giữ nguyên logic tạo notification cho mention/lead/booking…)
 ```
 
-Frontend hiển thị toast tiếng Việt giải thích và hướng dẫn user.
+## Phase 1 — Setup phía OneSignal (user tự làm, tôi hướng dẫn)
 
-### Bước 2: Tạo edge function `vapid-generate` (one-shot utility)
+Tôi sẽ build code dùng placeholder. Sau khi merge xong, bạn làm tuần tự:
 
-Tạo function mới `supabase/functions/vapid-generate/index.ts`:
-- Chỉ ADMIN gọi được (verify JWT + check role)
-- Generate cặp ECDSA P-256 mới đúng chuẩn Web Push VAPID:
-  - Public key: 65 bytes uncompressed point (0x04 || x || y), encode base64url
-  - Private key: 32 bytes scalar d, encode base64url
-- **KHÔNG tự lưu vào secrets** (edge function không có quyền update secrets)
-- Trả về JSON cặp khoá để mình paste vào secrets thay user
+1. Vào https://onesignal.com → Sign up (miễn phí 10k subscribers).
+2. **New App/Website** → tên `Saigon Holiday CRM`.
+3. Chọn platform **Web** → **Typical Site**.
+4. Site Setup:
+   - Site Name: `Saigon Holiday CRM`
+   - Site URL: `https://app.saigonholiday.vn`
+   - **Auto Resubscribe**: ON
+   - Default Notification Icon: upload logo (tuỳ chọn)
+5. Copy **APP_ID** (UUID dạng `xxxxxxxx-xxxx-…`) và **REST API Key** (dạng `os_v2_…` dài).
+6. Quay lại chat — tôi sẽ gọi `add_secret` để bạn paste **ONESIGNAL_REST_API_KEY** an toàn, và bạn paste **APP_ID** vào file `.env` (vì SDK web cần ID public).
 
-### Bước 3: Generate cặp mới và update toàn bộ 3 nơi đồng thời
+## Phase 2 — Code changes (tôi làm sau khi bạn approve plan)
 
-Sau khi có cặp mới đúng từ vapid-generate:
-1. Update `VAPID_PUBLIC_KEY` trong Supabase secrets
-2. Update `VAPID_PRIVATE_KEY` trong Supabase secrets  
-3. Update `VITE_VAPID_PUBLIC_KEY` trong `.env` frontend
-4. `DELETE FROM push_subscriptions` (vì sub cũ ký bằng public key cũ)
-5. Redeploy `send-notification` để load secrets mới
+### 2.1. Frontend SDK
+- **`index.html`**: thêm `<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>` ngay trên `</body>` (CDN OneSignal v16 — version mới nhất, hỗ trợ alias/external_id chuẩn).
+- **`src/main.tsx`**:
+  - **Xoá** đoạn `navigator.serviceWorker.register("/sw.js")` — OneSignal tự đăng ký SW của họ.
+  - Thêm init OneSignal (chạy 1 lần khi app load):
+    ```ts
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OneSignal) => {
+      await OneSignal.init({
+        appId: import.meta.env.VITE_ONESIGNAL_APP_ID,
+        allowLocalhostAsSecureOrigin: true,
+        notifyButton: { enable: false },   // Tự build UI riêng, không dùng bell mặc định
+        serviceWorkerParam: { scope: "/" },
+      });
+    });
+    ```
 
-### Bước 4: Test end-to-end thực tế
+### 2.2. Hook mới `useOneSignal`
+Tạo `src/hooks/useOneSignal.ts` thay thế hoàn toàn `usePushSubscription`:
+- State: `isSupported`, `isSubscribed`, `permission`, `loading`, `inIframe`.
+- `subscribe()`: gọi `OneSignal.User.PushSubscription.optIn()` → SDK tự xin permission + đăng ký FCM endpoint.
+- `unsubscribe()`: `OneSignal.User.PushSubscription.optOut()`.
+- `bindUser(userId)`: gọi `OneSignal.login(userId)` để tag external_id.
+- Đăng ký listener `OneSignal.User.PushSubscription.addEventListener("change", …)` để cập nhật state realtime.
 
-Sau khi sync key:
-1. Mở app trong tab thật (không phải iframe) → reload để Vite pick up `.env` mới
-2. Vào Cài đặt → Thông báo → bật push (subscribe lại)
-3. Bấm "Gửi thử push"
-4. Check `edge_function_logs` → phải thấy `sent=1 failed=0`
-5. Notification phải xuất hiện trên màn hình
+### 2.3. Liên kết user sau login
+Trong `src/contexts/AuthContext.tsx`, sau khi có `user` thì gọi `OneSignal.login(user.id)`. Khi logout: `OneSignal.logout()`. (Edit nhỏ trong onAuthStateChange callback.)
 
-### Bước 5: Bonus — fix lỗi Safari `BadJwtToken` riêng
+### 2.4. UI
+- `src/components/PushNotificationToggle.tsx`, `PushNotificationCard.tsx`, `PushToggleButton.tsx`: rewrite gọn — chỉ giữ Switch + nhãn trạng thái, dùng `useOneSignal` thay vì `usePushSubscription`. Bỏ toàn bộ thông báo lỗi VAPID, "iframe", "sw_unreachable" (OneSignal tự xử lý). Giữ cảnh báo "đang ở iframe Lovable preview, mở tab thật để bật" vì giới hạn này vẫn còn.
+- `src/pages/Settings.tsx`, `src/pages/EmployeeDetail.tsx`, `src/components/AppLayout.tsx`, `src/components/settings/SettingsAccountsTab.tsx`: chỉ thay import, không đổi structure.
 
-Nếu sau khi fix keypair mà vẫn còn lỗi 403 cho riêng Safari endpoint (`web.push.apple.com`), Apple yêu cầu thêm **`exp` không quá 24h** và **`sub` phải là mailto:** hợp lệ — cả 2 điều này code hiện đã đáp ứng. Nếu vẫn fail, sẽ debug riêng sau.
+### 2.5. Xoá file cũ
+- `public/sw.js` — xoá.
+- `src/hooks/usePushSubscription.ts` — xoá.
+- `supabase/functions/send-notification/` — xoá thư mục + gọi `delete_edge_functions` để gỡ deploy.
+- `supabase/functions/vapid-generate/` — xoá + gỡ deploy.
+- Các secret VAPID (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) — sau khi xác nhận push OneSignal chạy, tôi sẽ hỏi trước khi delete (giữ vài ngày phòng rollback).
+
+### 2.6. Backend trigger
+Migration sửa function `notify_push_on_insert`:
+- Đổi `v_func_url` thành `https://onesignal.com/api/v1/notifications`.
+- Thay header `Authorization: Bearer <anon_key>` thành `Authorization: Basic <ONESIGNAL_REST_API_KEY>` — **vấn đề**: pg_net không truy cập secret. Phải lưu REST API key vào DB hoặc dùng cách khác.
+  - **Giải pháp**: tạo bảng nhỏ `system_config (key text PK, value text)` giữ `ONESIGNAL_APP_ID` + `ONESIGNAL_REST_API_KEY`, RLS chỉ cho service_role đọc. Trigger SECURITY DEFINER select từ đây để build header. Việc lưu API key vào DB là chấp nhận được vì DB có RLS ngăn user thường truy cập (giống cách `notify_push_on_insert` hiện tại đã hardcode anon key).
+- Body OneSignal:
+  ```json
+  {
+    "app_id": "<APP_ID>",
+    "include_aliases": { "external_id": ["<user_id>"] },
+    "target_channel": "push",
+    "headings": { "en": "<title>" },
+    "contents": { "en": "<message>" },
+    "web_url": "<full_url>",
+    "web_push_topic": "<tag>"
+  }
+  ```
+
+### 2.7. Bảng `push_subscriptions`
+Per yêu cầu: **giữ bảng**, chỉ ngừng dùng. Migration:
+- Drop trigger/RLS không cần nữa? Không — giữ nguyên, vô hại.
+- Thêm comment trên bảng: `COMMENT ON TABLE push_subscriptions IS 'DEPRECATED — replaced by OneSignal on 2026-04-26. Kept for backup.'`.
+
+## Phase 3 — Test & rollout
+
+1. Sau khi tôi triển khai code: bạn tạo OneSignal app, paste APP_ID vào `.env`, paste REST_API_KEY qua add_secret.
+2. Tôi insert APP_ID + REST_API_KEY vào bảng `system_config` qua insert tool.
+3. Mở `https://app.saigonholiday.vn` (tab thật, KHÔNG iframe Lovable).
+4. Vào **Cài đặt → Thông báo** → bật toggle → cho phép permission → kiểm tra OneSignal Dashboard > Audience > có 1 subscription với external_id = user.id.
+5. Test end-to-end: tạo đơn nghỉ phép → kiểm tra notification hiện trên cả desktop + điện thoại.
+6. Dashboard OneSignal > Delivery để xem trạng thái từng notification (rất chi tiết, không cần đoán như VAPID).
 
 ## Files sẽ thay đổi
 
-- `supabase/functions/send-notification/index.ts` — thêm verifyVapidKeypair() + log chi tiết hơn khi 403
-- `supabase/functions/vapid-generate/index.ts` — **NEW**, utility generate cặp khoá đúng chuẩn
-- `.env` — update `VITE_VAPID_PUBLIC_KEY` với public key mới
-- Supabase secrets — update `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`
-- Migration — `DELETE FROM push_subscriptions` lần cuối
+**Tạo mới:**
+- `src/hooks/useOneSignal.ts`
+- Migration: edit function `notify_push_on_insert` + tạo bảng `system_config`
+- `src/types/onesignal.d.ts` (declare `window.OneSignalDeferred`)
 
-## Tại sao cách này chắc chắn fix
+**Sửa:**
+- `index.html`, `src/main.tsx`, `src/contexts/AuthContext.tsx`
+- `src/components/PushNotificationToggle.tsx`, `PushNotificationCard.tsx`, `PushToggleButton.tsx`
+- `src/pages/Settings.tsx`, `src/pages/EmployeeDetail.tsx`
+- `.env` (thêm `VITE_ONESIGNAL_APP_ID=` placeholder)
 
-Cặp khoá generate trong edge function bằng `crypto.subtle.generateKey({name:'ECDH', namedCurve:'P-256'})` rồi export ra raw bytes là cách **chuẩn 100%** mà các thư viện như `web-push` (npm) cũng làm. Không có khả năng sai cặp vì cả 2 khoá ra cùng một lần generate. Sau khi paste cùng cặp này vào cả frontend env và backend secrets → JWT signature sẽ verify thành công bởi FCM/Apple Push.
+**Xoá:**
+- `public/sw.js`
+- `src/hooks/usePushSubscription.ts`
+- `supabase/functions/send-notification/`
+- `supabase/functions/vapid-generate/`
+- Cập nhật `supabase/config.toml` bỏ 2 function trên
+
+## Rủi ro & giảm thiểu
+
+- **iframe Lovable preview vẫn không nhận push** — đây là giới hạn browser, không liên quan OneSignal. UI sẽ ghi rõ "mở tab thật".
+- **Lưu REST API key trong DB** — chỉ service_role đọc được, RLS từ chối tất cả role khác. Đây là pattern chấp nhận được (tương tự key anon hardcode hiện tại).
+- **OneSignal Free tier giới hạn 10k web subscribers** — đủ dư cho team < 100 người.
+- **Mất 1 lần re-subscribe**: tất cả user phải bật lại toggle 1 lần trên mỗi thiết bị (subscription cũ trong `push_subscriptions` không còn dùng nữa).
+
+Sau khi bạn approve, tôi sẽ thực hiện toàn bộ Phase 2 trong 1 lượt code, rồi hỏi xin REST_API_KEY để hoàn tất Phase 3.
