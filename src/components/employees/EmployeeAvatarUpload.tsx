@@ -130,7 +130,7 @@ export function EmployeeAvatarUpload({ employeeId, currentUrl, fullName, onChang
             <X className="h-3.5 w-3.5 mr-1.5" /> Xóa ảnh
           </Button>
         )}
-        <p className="text-[11px] text-muted-foreground">JPG/PNG, tự động thu nhỏ 200×200</p>
+        <p className="text-[11px] text-muted-foreground">JPG/PNG/HEIC, tự động nén 128×128 WebP (~5KB)</p>
       </div>
     </div>
   );
