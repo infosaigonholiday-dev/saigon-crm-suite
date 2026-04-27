@@ -169,6 +169,10 @@ export default function Leads() {
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    const sevenDaysAgoMs = todayMs - 7 * 24 * 60 * 60 * 1000;
+
     return leads.filter((l: any) => {
       if (searchText) {
         const s = searchText.toLowerCase();
@@ -179,13 +183,30 @@ export default function Leads() {
       }
       if (filterTemp !== "all" && l.temperature !== filterTemp) return false;
       if (filterStaff !== "all" && l.assigned_to !== filterStaff) return false;
+
+      // URL-driven monitoring filters
+      if (urlFilter) {
+        const closed = ["WON", "LOST", "DORMANT", "NURTURE"].includes(l.status);
+        if (closed) return false;
+        const fuMs = l.follow_up_date ? new Date(l.follow_up_date).setHours(0, 0, 0, 0) : null;
+        if (urlFilter === "overdue") {
+          if (fuMs === null || fuMs >= todayMs) return false;
+        } else if (urlFilter === "today") {
+          if (fuMs !== todayMs) return false;
+        } else if (urlFilter === "no_schedule") {
+          if (fuMs !== null) return false;
+        } else if (urlFilter === "stale") {
+          const lcMs = l.last_contact_at ? new Date(l.last_contact_at).getTime() : null;
+          if (lcMs !== null && lcMs >= sevenDaysAgoMs) return false;
+        }
+      }
       return true;
     });
-  }, [leads, searchText, filterTemp, filterStaff]);
+  }, [leads, searchText, filterTemp, filterStaff, urlFilter]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, extra }: { id: string; status: string; extra?: Record<string, any> }) => {
-      const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", id);
+      const { error } = await supabase.from("leads").update({ status, ...extra } as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
@@ -205,20 +226,30 @@ export default function Leads() {
     onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
   });
 
+  const openStatusChangeDialog = useCallback((leadId: string, status: string, statusLabel: string, currentTemp: string | null) => {
+    setTransitionDialog({
+      open: true,
+      status,
+      statusLabel,
+      leadId,
+      isLost: status === "LOST",
+      currentTemp,
+    });
+  }, []);
+
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
 
   const handleDrop = useCallback(
     (col: typeof kanbanColumns[0]) => {
       if (!draggedId) return;
-      if (col.id === "LOST_GROUP") {
-        setTransitionDialog({ open: true, status: "LOST", leadId: draggedId });
-        setDraggedId(null);
-        return;
-      }
-      updateStatus.mutate({ id: draggedId, status: col.defaultStatus });
+      const lead = leads.find((l: any) => l.id === draggedId);
       setDraggedId(null);
+      if (!lead) return;
+      // Same group → no-op
+      if (col.statuses.includes(lead.status)) return;
+      openStatusChangeDialog(draggedId, col.defaultStatus, col.label, lead.temperature);
     },
-    [draggedId, updateStatus]
+    [draggedId, leads, openStatusChangeDialog]
   );
 
   const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
