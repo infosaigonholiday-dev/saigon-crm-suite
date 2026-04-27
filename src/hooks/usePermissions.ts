@@ -24,6 +24,8 @@ export const ALL_PERMISSION_KEYS = [
   "b2b_tours.view", "b2b_tours.logs",
   "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
   "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
+  "campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete",
+  "tasks.view", "tasks.create", "tasks.edit",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
@@ -52,6 +54,8 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   b2b_tours: { label: getModuleLabel("b2b_tours"), keys: ["b2b_tours.view", "b2b_tours.logs"] },
   candidates: { label: "Tuyển dụng", keys: ["candidates.view", "candidates.create", "candidates.edit", "candidates.delete"] },
   kpi_policies: { label: "Chính sách KPI", keys: ["kpi_policies.view", "kpi_policies.create", "kpi_policies.edit"] },
+  campaigns: { label: getModuleLabel("campaigns"), keys: ["campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete"] },
+  tasks: { label: getModuleLabel("tasks"), keys: ["tasks.view", "tasks.create", "tasks.edit"] },
 };
 
 // Scope rules
