@@ -1027,6 +1027,97 @@ export type Database = {
           },
         ]
       }
+      campaigns: {
+        Row: {
+          actual_cost: number | null
+          actual_value: number | null
+          budget: number | null
+          campaign_type: string
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string | null
+          priority: string | null
+          start_date: string | null
+          status: string | null
+          tags: string[] | null
+          target_unit: string | null
+          target_value: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_cost?: number | null
+          actual_value?: number | null
+          budget?: number | null
+          campaign_type: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          priority?: string | null
+          start_date?: string | null
+          status?: string | null
+          tags?: string[] | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_cost?: number | null
+          actual_value?: number | null
+          budget?: number | null
+          campaign_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          priority?: string | null
+          start_date?: string | null
+          status?: string | null
+          tags?: string[] | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           assigned_hr: string | null
@@ -2972,6 +3063,56 @@ export type Database = {
           },
         ]
       }
+      milestones: {
+        Row: {
+          campaign_id: string
+          completion_pct: number | null
+          created_at: string | null
+          deliverables: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          order_index: number | null
+          start_date: string | null
+          status: string | null
+        }
+        Insert: {
+          campaign_id: string
+          completion_pct?: number | null
+          created_at?: string | null
+          deliverables?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          start_date?: string | null
+          status?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          completion_pct?: number | null
+          created_at?: string | null
+          deliverables?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          start_date?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -4107,6 +4248,159 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      task_logs: {
+        Row: {
+          action: string
+          comment: string | null
+          created_at: string | null
+          hours_logged: number | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          comment?: string | null
+          created_at?: string | null
+          hours_logged?: number | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          comment?: string | null
+          created_at?: string | null
+          hours_logged?: number | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          actual_hours: number | null
+          assignee_id: string | null
+          campaign_id: string
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          entity_id: string | null
+          entity_type: string | null
+          estimated_hours: number | null
+          id: string
+          milestone_id: string | null
+          priority: string | null
+          reporter_id: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_hours?: number | null
+          assignee_id?: string | null
+          campaign_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          estimated_hours?: number | null
+          id?: string
+          milestone_id?: string | null
+          priority?: string | null
+          reporter_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_hours?: number | null
+          assignee_id?: string | null
+          campaign_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          estimated_hours?: number | null
+          id?: string
+          milestone_id?: string | null
+          priority?: string | null
+          reporter_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tax_records: {
         Row: {
