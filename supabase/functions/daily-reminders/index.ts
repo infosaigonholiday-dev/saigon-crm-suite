@@ -897,6 +897,48 @@ Deno.serve(async (req) => {
 
     // Web Push được trigger DB tự gửi qua OneSignal — không cần fire thủ công
 
+    // ============ TASK_OVERDUE ============
+    let tasksOverdue = 0;
+    try {
+      const { data: overdueTasks } = await supabase
+        .from("tasks")
+        .select("id, title, due_date, assignee_id, campaign_id, campaigns(name), assignee:employees!tasks_assignee_id_fkey(profile_id)")
+        .lt("due_date", todayStr)
+        .not("status", "in", "(done,cancelled)")
+        .not("assignee_id", "is", null);
+
+      for (const t of (overdueTasks ?? []) as any[]) {
+        const profileId = t.assignee?.profile_id;
+        if (!profileId) continue;
+        // dedupe 2 ngày
+        const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
+        const { count: dup } = await supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", profileId)
+          .eq("type", "TASK_OVERDUE")
+          .eq("entity_id", t.id)
+          .gte("created_at", twoDaysAgo);
+        if ((dup || 0) > 0) continue;
+
+        const daysLate = Math.floor((Date.now() - new Date(t.due_date).getTime()) / 86400000);
+        const { error: insErr } = await supabase.from("notifications").insert({
+          user_id: profileId,
+          type: "TASK_OVERDUE",
+          title: `⏰ Task quá hạn: ${t.title}`,
+          message: `Quá ${daysLate} ngày — Chiến dịch: ${t.campaigns?.name ?? "(không có)"}`,
+          entity_type: "task",
+          entity_id: t.id,
+          priority: "high",
+          is_read: false,
+        });
+        if (!insErr) tasksOverdue++;
+      }
+    } catch (e) {
+      console.error("TASK_OVERDUE block error:", e);
+    }
+
+
     return new Response(JSON.stringify({ sent, escalated, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
