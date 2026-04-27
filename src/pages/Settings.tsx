@@ -11,6 +11,7 @@ import { SettingsRolesTab } from "@/components/settings/SettingsRolesTab";
 import { SettingsPermissionsTab } from "@/components/settings/SettingsPermissionsTab";
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 import { SettingsExpenseCategoriesTab } from "@/components/settings/SettingsExpenseCategoriesTab";
+import { SettingsCompanyInfoTab } from "@/components/settings/SettingsCompanyInfoTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
@@ -61,11 +62,13 @@ export default function Settings() {
   const showPermissions = isAdmin || ["MANAGER", "GDKD"].includes(userRole || "");
   const showAuditLog = isAdmin;
   const showExpenseCategories = isAdmin;
+  const showCompanyInfo = isAdmin;
   const showNotifications = true;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
     showNotifications && { value: "notifications", label: "Thông báo" },
+    showCompanyInfo && { value: "company", label: "Thông tin công ty" },
     showDepartments && { value: "departments", label: "Phòng ban" },
     showLevels && { value: "levels", label: "Cấp bậc" },
     showRoles && { value: "roles", label: "Quyền hạn" },
@@ -106,6 +109,9 @@ export default function Settings() {
               <PushNotificationToggle />
             </div>
           </TabsContent>
+        )}
+        {showCompanyInfo && (
+          <TabsContent value="company" className="mt-4"><SettingsCompanyInfoTab /></TabsContent>
         )}
         {showDepartments && (
           <TabsContent value="departments" className="mt-4"><SettingsDepartmentsTab /></TabsContent>

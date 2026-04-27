@@ -3,8 +3,21 @@
  * In bằng window.print() — CSS @media print đảm bảo chỉ in nội dung.
  */
 
-const COMPANY_NAME = "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY";
-const COMPANY_ADDR = "TP. Hồ Chí Minh, Việt Nam";
+export interface PrintCompanyInfo {
+  name?: string;
+  address?: string;
+  taxCode?: string;
+  phone?: string;
+  logoUrl?: string;
+}
+
+const DEFAULT_COMPANY: Required<PrintCompanyInfo> = {
+  name: "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY",
+  address: "TP. Hồ Chí Minh, Việt Nam",
+  taxCode: "",
+  phone: "",
+  logoUrl: "",
+};
 
 const fmt = (v: number | null | undefined) =>
   v ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "0 ₫";
@@ -46,14 +59,19 @@ const printToolbar = `
   </div>
 `;
 
-const headerBlock = (title: string, code: string, createdAt?: string) => `
+const headerBlock = (title: string, code: string, createdAt?: string, co?: PrintCompanyInfo) => {
+  const c = { ...DEFAULT_COMPANY, ...(co || {}) };
+  const logoHtml = c.logoUrl ? `<img src="${c.logoUrl}" alt="logo" style="max-height:60px;margin-bottom:6px"/>` : "";
+  return `
   <div class="header">
-    <h2>${COMPANY_NAME}</h2>
-    <div class="meta">${COMPANY_ADDR}</div>
+    ${logoHtml}
+    <h2>${c.name}</h2>
+    <div class="meta">${c.address}${c.taxCode ? ` &nbsp;•&nbsp; MST: ${c.taxCode}` : ""}${c.phone ? ` &nbsp;•&nbsp; ☎ ${c.phone}` : ""}</div>
     <h1>${title}</h1>
     <div class="meta">Số: <strong>${code}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
   </div>
 `;
+};
 
 const signaturesBlock = `
   <div class="signatures">
@@ -83,7 +101,7 @@ interface EstimateData {
   }>;
 }
 
-export function buildEstimateHtml(d: EstimateData): string {
+export function buildEstimateHtml(d: EstimateData, co?: PrintCompanyInfo): string {
   const itemsHtml = d.items
     .map((it, idx) => {
       const total = (it.unit_price ?? 0) * (it.quantity ?? 0);
@@ -106,7 +124,7 @@ export function buildEstimateHtml(d: EstimateData): string {
 <head><meta charset="UTF-8"><title>Phiếu dự toán ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU DỰ TOÁN CHI PHÍ TOUR", d.code, d.created_at)}
+  ${headerBlock("PHIẾU DỰ TOÁN CHI PHÍ TOUR", d.code, d.created_at, co)}
   <div class="info-grid">
     <div><strong>Booking:</strong> ${d.booking_code ?? "—"}</div>
     <div><strong>Khách hàng:</strong> ${d.customer_name ?? "—"}</div>
@@ -160,7 +178,7 @@ interface SettlementData {
   }>;
 }
 
-export function buildSettlementHtml(d: SettlementData): string {
+export function buildSettlementHtml(d: SettlementData, co?: PrintCompanyInfo): string {
   const itemsHtml = d.items
     .map((it, idx) => {
       const variance = (it.actual_amount ?? 0) - (it.estimated_amount ?? 0);
@@ -180,7 +198,7 @@ export function buildSettlementHtml(d: SettlementData): string {
 <head><meta charset="UTF-8"><title>Phiếu quyết toán ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU QUYẾT TOÁN CHI PHÍ TOUR", d.code, d.created_at)}
+  ${headerBlock("PHIẾU QUYẾT TOÁN CHI PHÍ TOUR", d.code, d.created_at, co)}
   <div class="info-grid">
     <div><strong>Mã dự toán:</strong> ${d.estimate_code ?? "—"}</div>
     <div><strong>Booking:</strong> ${d.booking_code ?? "—"}</div>
@@ -219,13 +237,13 @@ interface AdvanceData {
   booking_code?: string;
 }
 
-export function buildAdvanceHtml(d: AdvanceData): string {
+export function buildAdvanceHtml(d: AdvanceData, co?: PrintCompanyInfo): string {
   return `<!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><title>Phiếu tạm ứng ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU TẠM ỨNG", d.code, d.created_at)}
+  ${headerBlock("PHIẾU TẠM ỨNG", d.code, d.created_at, co)}
   <div class="info-grid" style="font-size:14px">
     <div><strong>Người nhận:</strong> ${d.recipient}</div>
     <div><strong>Số tiền:</strong> <span style="font-size:16px;font-weight:700">${fmt(d.amount)}</span></div>
