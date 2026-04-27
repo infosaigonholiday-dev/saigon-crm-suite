@@ -326,6 +326,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_SALE_OUTBOUND: [
     "dashboard.view",
@@ -339,6 +341,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_SALE_MICE: [
     "dashboard.view",
@@ -352,6 +356,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_SALE_INBOUND: [
     "dashboard.view",
@@ -365,6 +371,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "payroll.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_DIEUHAN: [
     "dashboard.view",
@@ -375,6 +383,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_MKT: [
     "dashboard.view",
@@ -385,6 +395,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "payroll.view",
     "b2b_tours.view",
+    "campaigns.view",
+    "tasks.view", "tasks.edit",
   ],
   INTERN_HCNS: [
     "dashboard.view",
