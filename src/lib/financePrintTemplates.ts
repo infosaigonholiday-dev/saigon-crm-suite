@@ -3,8 +3,21 @@
  * In bằng window.print() — CSS @media print đảm bảo chỉ in nội dung.
  */
 
-const COMPANY_NAME = "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY";
-const COMPANY_ADDR = "TP. Hồ Chí Minh, Việt Nam";
+export interface PrintCompanyInfo {
+  name?: string;
+  address?: string;
+  taxCode?: string;
+  phone?: string;
+  logoUrl?: string;
+}
+
+const DEFAULT_COMPANY: Required<PrintCompanyInfo> = {
+  name: "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY",
+  address: "TP. Hồ Chí Minh, Việt Nam",
+  taxCode: "",
+  phone: "",
+  logoUrl: "",
+};
 
 const fmt = (v: number | null | undefined) =>
   v ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "0 ₫";
@@ -46,14 +59,19 @@ const printToolbar = `
   </div>
 `;
 
-const headerBlock = (title: string, code: string, createdAt?: string) => `
+const headerBlock = (title: string, code: string, createdAt?: string, co?: PrintCompanyInfo) => {
+  const c = { ...DEFAULT_COMPANY, ...(co || {}) };
+  const logoHtml = c.logoUrl ? `<img src="${c.logoUrl}" alt="logo" style="max-height:60px;margin-bottom:6px"/>` : "";
+  return `
   <div class="header">
-    <h2>${COMPANY_NAME}</h2>
-    <div class="meta">${COMPANY_ADDR}</div>
+    ${logoHtml}
+    <h2>${c.name}</h2>
+    <div class="meta">${c.address}${c.taxCode ? ` &nbsp;•&nbsp; MST: ${c.taxCode}` : ""}${c.phone ? ` &nbsp;•&nbsp; ☎ ${c.phone}` : ""}</div>
     <h1>${title}</h1>
     <div class="meta">Số: <strong>${code}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
   </div>
 `;
+};
 
 const signaturesBlock = `
   <div class="signatures">
