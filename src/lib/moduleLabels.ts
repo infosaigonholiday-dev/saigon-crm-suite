@@ -26,6 +26,8 @@ export const MODULE_LABELS: Record<string, string> = {
   finance: "Tài chính",
   workflow: "Quy trình",
   settings: "Cài đặt",
+  campaigns: "Chiến dịch",
+  tasks: "Công việc",
 };
 
 export const getModuleLabel = (key: string): string =>

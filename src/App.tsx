@@ -41,6 +41,8 @@ const B2BTours = lazy(() => import("./pages/B2BTours"));
 const AlertsCenter = lazy(() => import("./pages/AlertsCenter"));
 const BookingConfirmationPrint = lazy(() => import("./pages/BookingConfirmationPrint"));
 const Recruitment = lazy(() => import("./pages/Recruitment"));
+const CampaignList = lazy(() => import("./pages/CampaignList"));
+const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,6 +108,8 @@ function ProtectedRoutes() {
           <Route path="/tai-chinh" element={<ErrorBoundary><PermissionGuard anyOf={[["finance", "view"], ["finance", "submit"]]}><Finance /></PermissionGuard></ErrorBoundary>} />
           <Route path="/cai-dat" element={<ErrorBoundary><PermissionGuard module="settings" action="view"><Settings /></PermissionGuard></ErrorBoundary>} />
           <Route path="/quy-trinh" element={<ErrorBoundary><PermissionGuard module="workflow" action="view"><SOPLibrary /></PermissionGuard></ErrorBoundary>} />
+          <Route path="/chien-dich" element={<ErrorBoundary><PermissionGuard module="campaigns" action="view"><CampaignList /></PermissionGuard></ErrorBoundary>} />
+          <Route path="/chien-dich/:id" element={<ErrorBoundary><PermissionGuard module="campaigns" action="view"><CampaignDetail /></PermissionGuard></ErrorBoundary>} />
           <Route path="/canh-bao" element={<ErrorBoundary><AlertsCenter /></ErrorBoundary>} />
           <Route path="/huong-dan" element={<ErrorBoundary><UserGuide /></ErrorBoundary>} />
         </Route>
