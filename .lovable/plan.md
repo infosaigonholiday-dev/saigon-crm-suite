@@ -1,119 +1,55 @@
-## 🔴 Nguyên nhân thực sự
+# Kế hoạch fix bổ sung
 
-Sau khi audit toàn bộ:
+## 🎯 Ưu tiên 1 — TỐI ƯU ẢNH CHÂN DUNG (yêu cầu chính lần này)
 
-| Kiểm tra | Kết quả |
-|---|---|
-| `notifications` count | 71 records (bình thường) |
-| `push_send_log` count | 50 records (bình thường) |
-| Notif tạo hôm nay | 10 (bình thường) |
-| Index `idx_profiles_role`, `idx_profiles_role_active` | ✅ ĐÃ CÓ |
-| Index `idx_notif_dedup`, `idx_notif_unread_age` | ✅ ĐÃ CÓ |
-| Index `idx_push_send_log_notification` | ✅ ĐÃ CÓ |
-| 4 trigger mới (estimate/settlement/lead/employee) | OK, query có index |
+**Vấn đề:** Đang resize 200×200 JPEG q=0.85 (~15-25KB). Display max 64px → dư gấp 3 lần.
 
-**→ Indexes KHÔNG thiếu. 8 loại notification mới KHÔNG gây bùng nổ. Chẩn đoán "thiếu index" trong câu hỏi là sai hướng.**
+**Fix `EmployeeAvatarUpload.tsx`:**
+1. Resize **128×128** (cover được retina cho display 64px@2x)
+2. Quality JPEG xuống **0.78** (gần như không thấy khác biệt với chân dung nhỏ)
+3. Thử **WebP** trước (quality 0.75), fallback JPEG nếu browser không hỗ trợ → giảm 30-40% size
+4. Mục tiêu: **mỗi avatar < 8KB** (hiện 15-25KB)
+5. Thêm `loading="lazy"` cho `<AvatarImage>` trong `EmployeeAvatar.tsx` để không block initial render
+6. Thêm `decoding="async"` để decode ảnh không block main thread
 
-**Lỗi thật**: `rpc_send_test_push` chứa block:
+**Bonus:** Set `Cache-Control: public, max-age=31536000, immutable` khi upload (đang là 3600 = 1 giờ → đổi thành 1 năm vì path đã có timestamp cache-buster).
 
+## 🎯 Ưu tiên 2 — Hoàn thiện hiển thị avatar 24px trong LeaveManagement
+
+`EmployeeAvatar` đã được import nhưng chưa render trong table cell. Thêm `<EmployeeAvatar size={24}>` cạnh tên nhân viên trong bảng nghỉ phép + cột "Lịch LV" với tooltip (nếu chưa có).
+
+## 🎯 Ưu tiên 3 — DỌN DẸP DATABASE (B5)
+
+### a. Drop bảng `quotes` duplicate
 ```sql
-WHILE v_attempts < 60 LOOP   -- 60 vòng × 0.5s = 30 giây
-  SELECT ... FROM net._http_response WHERE id = v_log.request_id;
-  IF v_status_code IS NOT NULL THEN EXIT; END IF;
-  PERFORM pg_sleep(0.5);
-  v_attempts := v_attempts + 1;
-END LOOP;
+DROP TABLE IF EXISTS public.quotes CASCADE;
+```
+(Dùng `quotations` xuyên suốt code)
+
+### b. Thêm policy rõ ràng cho `push_send_log`
+RLS đã bật nhưng 0 policy → khóa hoàn toàn. Thêm:
+```sql
+CREATE POLICY "Service role only" ON public.push_send_log
+  FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Admin can read push log" ON public.push_send_log
+  FOR SELECT TO authenticated
+  USING (has_any_role(auth.uid(), ARRAY['ADMIN','SUPER_ADMIN']));
 ```
 
-Supabase PostgREST set `statement_timeout = 8s` cho role `authenticated`. Hàm này poll tối đa 30s → **luôn bị kill** với lỗi `canceling statement due to statement timeout` nếu OneSignal trả về chậm hơn 8s (gần như luôn xảy ra với pg_net async).
+## ❌ KHÔNG cần fix (đã có sẵn)
+- Avatar column, bucket, upload, hook useCompanyInfo, work_schedules table+RLS+UI, system_config policies, deposit constraint, special_notes/contracts schema → tất cả ✅
+- Sprint 8 không có data vi phạm deposit
+- Role count: 12 active / 22 hỗ trợ — không cần đổi knowledge
 
-## ✅ Cách fix (1 migration duy nhất)
+## 📝 Cần user điền tay (không thể tự fix)
+- `/cai-dat → Thông tin công ty`: điền `COMPANY_TAX_CODE`, `COMPANY_EMAIL`, upload `COMPANY_LOGO_URL`, hoàn thiện 2 dòng bank account number.
 
-Viết lại `rpc_send_test_push` để:
-1. INSERT notification → trigger `notify_push_on_insert` chạy → push_send_log tạo ngay (sync)
-2. Trả về **request_id + log info NGAY LẬP TỨC** (không poll). Tổng thời gian < 1s, không bao giờ timeout.
-3. Frontend sẽ tự poll bảng `push_send_log` qua một RPC nhẹ thứ 2 (`rpc_check_push_status(request_id bigint)`) — mỗi call chỉ 1 SELECT, < 100ms.
+---
 
-### Migration SQL
+**Phạm vi sửa code:**
+1. `src/components/employees/EmployeeAvatarUpload.tsx` — resize 128 + WebP + cache 1 năm
+2. `src/components/employees/EmployeeAvatar.tsx` — thêm `loading="lazy"` + `decoding="async"`
+3. `src/pages/LeaveManagement.tsx` — render avatar 24px + cột "Lịch LV" trong table cells (nếu chưa có)
+4. Migration SQL — DROP quotes + policy push_send_log
 
-```sql
--- 1) Rewrite RPC: bỏ vòng lặp pg_sleep, trả về ngay
-CREATE OR REPLACE FUNCTION public.rpc_send_test_push()
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, net AS $$
-DECLARE
-  v_user_id uuid := auth.uid();
-  v_notif_id uuid;
-  v_log record;
-BEGIN
-  IF v_user_id IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'not_authenticated');
-  END IF;
-
-  INSERT INTO notifications (user_id, type, title, message, entity_type, priority, is_read)
-  VALUES (v_user_id, 'TEST_PUSH', '🔔 Test push từ Saigon Holiday CRM',
-          'Nếu thấy thông báo này trên thiết bị (ngoài tab app), push đã hoạt động!',
-          'system', 'normal', false)
-  RETURNING id INTO v_notif_id;
-
-  SELECT * INTO v_log FROM push_send_log WHERE notification_id = v_notif_id LIMIT 1;
-
-  RETURN jsonb_build_object(
-    'ok', v_log.error IS NULL AND v_log.request_id IS NOT NULL,
-    'notification_id', v_notif_id,
-    'request_id', v_log.request_id,
-    'error', v_log.error,
-    'hint', 'Push đã được gửi async. Dùng rpc_check_push_status(request_id) để xem kết quả OneSignal sau 2-5s.'
-  );
-END $$;
-
--- 2) RPC mới để frontend poll trạng thái (cực nhẹ)
-CREATE OR REPLACE FUNCTION public.rpc_check_push_status(p_request_id bigint)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, net AS $$
-DECLARE
-  v_status int;
-  v_body text;
-BEGIN
-  SELECT status_code, content::text INTO v_status, v_body
-  FROM net._http_response WHERE id = p_request_id;
-
-  RETURN jsonb_build_object(
-    'ready', v_status IS NOT NULL,
-    'status_code', v_status,
-    'response', LEFT(COALESCE(v_body,''), 500),
-    'hint', CASE
-      WHEN v_status IS NULL THEN 'Chưa có response — chờ thêm 1-2s'
-      WHEN v_status = 403 THEN '⚠️ REST API Key SAI'
-      WHEN v_status = 400 AND v_body LIKE '%not subscribed%' THEN '✅ Key OK — tài khoản chưa subscribe push trên thiết bị nào'
-      WHEN v_status BETWEEN 200 AND 299 THEN '✅ OneSignal nhận push OK'
-      ELSE 'Lỗi: copy response gửi admin'
-    END
-  );
-END $$;
-
-GRANT EXECUTE ON FUNCTION public.rpc_send_test_push() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_check_push_status(bigint) TO authenticated;
-```
-
-### Cập nhật frontend `PushNotificationToggle.tsx`
-
-Trong `handleTestPush`:
-1. Gọi `rpc_send_test_push` → nhận `request_id` ngay (< 1s)
-2. Chạy loop client-side: mỗi 1.5s gọi `rpc_check_push_status(request_id)`, tối đa 10 lần (15s)
-3. Khi `ready=true` → hiển thị toast theo `status_code`
-4. Nếu hết 15s vẫn chưa ready → toast warning "OneSignal chưa phản hồi, kiểm tra Delivery log"
-
-## Phạm vi
-
-- **Migration 1 file**: rewrite `rpc_send_test_push` + thêm `rpc_check_push_status`
-- **Edit 1 file frontend**: `src/components/PushNotificationToggle.tsx` — phần `handleTestPush`
-- KHÔNG đụng vào trigger `notify_push_on_insert` (đã hoạt động đúng)
-- KHÔNG đụng vào 4 trigger thông báo mới (đã verified hoạt động qua push_send_log)
-- KHÔNG thêm index (đã đủ)
-
-## Verify sau khi xong
-
-1. Bấm "Gửi thử push" trên `/canh-bao` → KHÔNG còn statement timeout
-2. Toast hiện: "Đã gửi, đang chờ OneSignal..." → 2-5s sau cập nhật kết quả thật
-3. Nếu thiết bị đã subscribe → notification xuất hiện trên màn hình
+Sau khi user duyệt, tôi sẽ thực hiện và báo cáo file size mới.
