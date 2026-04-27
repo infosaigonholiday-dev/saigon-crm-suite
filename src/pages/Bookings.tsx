@@ -48,6 +48,17 @@ export default function Bookings() {
   const { getScope } = usePermissions();
   const { user, userRole } = useAuth();
 
+  // Helper: chuyển "DD/MM/YYYY" hoặc "D/M/YYYY" → "YYYY-MM-DD". Nếu đã ISO thì giữ nguyên.
+  function ddmmyyyyToISO(s?: string | null): string | null {
+    if (!s) return null;
+    const str = String(s).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+    const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (!m) return null;
+    const [, d, mo, y] = m;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
   // Đọc prefill_tour từ URL khi từ LKH Tour 2026 chuyển sang
   useEffect(() => {
     const tourCode = searchParams.get("prefill_tour");
@@ -59,7 +70,11 @@ export default function Bookings() {
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
-            setPrefillData(data);
+            setPrefillData({
+              ...data,
+              departure_date: ddmmyyyyToISO(data.departure_date as any),
+              return_date: ddmmyyyyToISO(data.return_date as any),
+            });
             setDialogOpen(true);
           }
           searchParams.delete("prefill_tour");
