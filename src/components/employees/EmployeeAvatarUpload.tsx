@@ -71,18 +71,24 @@ export function EmployeeAvatarUpload({ employeeId, currentUrl, fullName, onChang
     }
     setUploading(true);
     try {
-      const blob = await resizeImage(file, 200);
+      const { blob, ext, mime } = await resizeImage(file, 128);
       const folder = employeeId ?? `tmp-${Date.now()}`;
-      const path = `${folder}/avatar-${Date.now()}.jpg`;
+      const path = `${folder}/avatar-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("employee-avatars")
-        .upload(path, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+        .upload(path, blob, {
+          upsert: true,
+          contentType: mime,
+          // Path đã có timestamp → cache vĩnh viễn, không cần revalidate
+          cacheControl: "31536000",
+        });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("employee-avatars").getPublicUrl(path);
-      // Append cache-buster để hiện ngay
+      // Cache-buster nhẹ để UI hiện ngay sau khi đổi (không ảnh hưởng cache CDN do path mới)
       const url = `${pub.publicUrl}?t=${Date.now()}`;
       onChange(url);
-      toast.success("Tải ảnh thành công");
+      const sizeKb = (blob.size / 1024).toFixed(1);
+      toast.success(`Tải ảnh thành công (${sizeKb} KB, ${ext.toUpperCase()})`);
     } catch (err: any) {
       toast.error(err.message || "Lỗi tải ảnh");
     } finally {
