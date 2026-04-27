@@ -707,16 +707,20 @@ export default function RawContacts() {
       </Dialog>
 
       {/* Import Excel Dialog */}
-      <ImportExcelDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        userId={user?.id ?? ""}
-        departmentId={myProfile?.department_id ?? null}
-        onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
-          queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
-        }}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportExcelDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            userId={user?.id ?? ""}
+            departmentId={myProfile?.department_id ?? null}
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
+              queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+            }}
+          />
+        </Suspense>
+      )}
       <InternalNotesDialog
         open={!!notesOpenId}
         onOpenChange={(o) => !o && setNotesOpenId(null)}
