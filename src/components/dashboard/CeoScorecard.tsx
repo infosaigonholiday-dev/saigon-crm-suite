@@ -57,17 +57,15 @@ export function CeoScorecard({ departmentId }: Props) {
         0
       );
 
+      // Transactions trong hệ thống đều là chi phí; thu nằm ở payments
       const { data: txs } = await supabase
         .from("transactions")
-        .select("amount, type, approval_status, created_at")
+        .select("amount, approval_status, created_at")
         .gte("created_at", startOfMonth)
         .eq("approval_status", "APPROVED");
-      const outflow = (txs || [])
-        .filter((t: any) => (t.type || "").toUpperCase().includes("EXPENSE") || t.type === "OUT")
-        .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-      // Fallback: if no type matched, sum all approved
-      const outflowFinal = outflow > 0 ? outflow : (txs || []).reduce(
-        (s: number, t: any) => s + Number(t.amount || 0), 0
+      const outflow = (txs || []).reduce(
+        (s: number, t: any) => s + Number(t.amount || 0),
+        0
       );
 
       // Sale target (sum of targets in current month)
