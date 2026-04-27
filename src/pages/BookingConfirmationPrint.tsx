@@ -104,7 +104,29 @@ export default function BookingConfirmationPrint() {
     enabled: !!user,
   });
 
-  // Permission check
+  const { data: companyInfo } = useCompanyInfo();
+
+  const companyPayload = useMemo(() => {
+    if (!companyInfo) return null;
+    const b1 = parseBank(companyInfo.COMPANY_BANK_1);
+    const b2 = parseBank(companyInfo.COMPANY_BANK_2);
+    return {
+      COMPANY_NAME: companyInfo.COMPANY_NAME,
+      COMPANY_SHORT_NAME: companyInfo.COMPANY_SHORT_NAME,
+      COMPANY_TAGLINE: companyInfo.COMPANY_TAGLINE,
+      COMPANY_TAX_CODE: companyInfo.COMPANY_TAX_CODE,
+      COMPANY_LICENSE: companyInfo.COMPANY_LICENSE,
+      COMPANY_ADDRESS: companyInfo.COMPANY_ADDRESS,
+      COMPANY_ADDRESS2: companyInfo.COMPANY_ADDRESS2,
+      COMPANY_PHONE: companyInfo.COMPANY_PHONE,
+      COMPANY_EMAIL: companyInfo.COMPANY_EMAIL,
+      COMPANY_WEBSITE: companyInfo.COMPANY_WEBSITE,
+      COMPANY_LOGO_URL: companyInfo.COMPANY_LOGO_URL,
+      BANK1_NAME: b1.name, BANK1_HOLDER: b1.holder, BANK1_NUMBER: b1.number,
+      BANK2_NAME: b2.name, BANK2_HOLDER: b2.holder, BANK2_NUMBER: b2.number,
+    };
+  }, [companyInfo]);
+
   const canPrint = useMemo(
     () =>
       canPrintBookingConfirmation({
