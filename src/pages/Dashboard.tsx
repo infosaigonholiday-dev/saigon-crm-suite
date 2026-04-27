@@ -18,6 +18,10 @@ import { SalePerformanceTable } from "@/components/dashboard/SalePerformanceTabl
 import { PipelineFunnel } from "@/components/dashboard/PipelineFunnel";
 import { WeeklyTrendChart } from "@/components/dashboard/WeeklyTrendChart";
 import LeadMonitoringWidget from "@/components/dashboard/LeadMonitoringWidget";
+import { CeoScorecard } from "@/components/dashboard/CeoScorecard";
+import { CeoFunnelChart, CeoSaleRevenueChart, CeoLeadSourceChart } from "@/components/dashboard/CeoCharts";
+import { CeoFinanceAlerts } from "@/components/dashboard/CeoFinanceAlerts";
+import { CeoOperations } from "@/components/dashboard/CeoOperations";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -240,6 +244,9 @@ function BusinessDashboard() {
       {/* Lead monitoring (ADMIN/SUPER_ADMIN/GDKD/MANAGER) */}
       <LeadMonitoringWidget />
 
+      {/* === CEO / OPS / FINANCE DASHBOARD SECTIONS === */}
+      <CeoSections userRole={userRole} departmentId={activeDeptId} />
+
       {/* Sale Performance Table */}
       <SalePerformanceTable departmentId={activeDeptId} month={now} />
 
@@ -307,6 +314,57 @@ function BusinessDashboard() {
 
       {canViewRevenue && <CeoDashboardCharts />}
       {isCeo && <CeoCustomerOverview />}
+    </div>
+  );
+}
+
+function CeoSections({ userRole, departmentId }: { userRole: string | null; departmentId: string | null | undefined }) {
+  const role = userRole || "";
+  const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(role);
+  const isSalesMgmt = ["GDKD", "MANAGER"].includes(role);
+  const isFinance = role === "KETOAN";
+  const isOps = role === "DIEUHAN";
+
+  // Section visibility per spec
+  const showAll = isAdmin;
+  const showScorecard = showAll || isSalesMgmt || isFinance || isOps;
+  const showCharts = showAll || isSalesMgmt;
+  const showFinance = showAll || isFinance;
+  const showOps = showAll || isOps;
+
+  // Department filter: SalesMgmt/Ops always scoped to their dept; Admin uses passed dept; Finance: all
+  const scopedDeptId = isFinance ? null : departmentId ?? null;
+
+  if (!showScorecard) return null;
+
+  return (
+    <div className="space-y-6 pt-2">
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Tổng quan điều hành</h2>
+        <CeoScorecard departmentId={scopedDeptId} />
+      </div>
+
+      {showCharts && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <CeoFunnelChart departmentId={scopedDeptId} />
+          <CeoSaleRevenueChart departmentId={scopedDeptId} />
+          <CeoLeadSourceChart departmentId={scopedDeptId} />
+        </div>
+      )}
+
+      {showFinance && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Cảnh báo tài chính</h2>
+          <CeoFinanceAlerts />
+        </div>
+      )}
+
+      {showOps && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Vận hành</h2>
+          <CeoOperations />
+        </div>
+      )}
     </div>
   );
 }
