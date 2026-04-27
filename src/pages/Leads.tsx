@@ -106,9 +106,12 @@ export default function Leads() {
   const [convertLead, setConvertLead] = useState<any>(null);
   const [convertOpen, setConvertOpen] = useState(false);
 
-  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; leadId: string }>({
-    open: false, status: "", leadId: "",
+  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; statusLabel: string; leadId: string; isLost: boolean; currentTemp?: string | null }>({
+    open: false, status: "", statusLabel: "", leadId: "", isLost: false,
   });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlFilter = searchParams.get("filter"); // overdue | today | no_schedule | stale
 
   const [searchText, setSearchText] = useState("");
   const [filterTemp, setFilterTemp] = useState<string>("all");
