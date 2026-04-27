@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
+import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 
 const leaveTypes: Record<string, string> = {
   ANNUAL: "Phép năm", SICK: "Ốm đau", COMPENSATORY: "Phép bù",
@@ -47,10 +48,18 @@ function isManagerLevel(role: string | null | undefined, position: string | null
 }
 
 // Tính số ngày approved overlap với tháng hiện tại
-function daysInCurrentMonth(requests: any[], employeeId: string): number {
+function daysInCurrentMonth(requests: any[], employeeId: string, schedules?: any[]): number {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  // Tập day_of_week NV này KHÔNG làm việc (dùng để loại khỏi quota)
+  let offDays: Set<number> | null = null;
+  if (schedules && schedules.length > 0) {
+    const empSched = schedules.filter(s => s.employee_id === employeeId);
+    if (empSched.length > 0) {
+      offDays = new Set(empSched.filter(s => s.is_working === false).map(s => s.day_of_week));
+    }
+  }
   let total = 0;
   for (const r of requests) {
     if (r.employee_id !== employeeId) continue;
@@ -59,12 +68,29 @@ function daysInCurrentMonth(requests: any[], employeeId: string): number {
     const end = new Date(r.end_date);
     const overlapStart = start > monthStart ? start : monthStart;
     const overlapEnd = end < monthEnd ? end : monthEnd;
-    if (overlapEnd >= overlapStart) {
-      const diff = Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      total += diff;
+    if (overlapEnd < overlapStart) continue;
+    // Đếm từng ngày, bỏ qua ngày trùng off-schedule
+    const cur = new Date(overlapStart);
+    while (cur <= overlapEnd) {
+      if (!offDays || !offDays.has(cur.getDay())) total++;
+      cur.setDate(cur.getDate() + 1);
     }
   }
   return total;
+}
+
+function buildScheduleSummary(employeeId: string, schedules: any[]): { short: string; long: string } | null {
+  const empSched = schedules.filter(s => s.employee_id === employeeId);
+  if (empSched.length === 0) return null;
+  const SHORT = ["CN","T2","T3","T4","T5","T6","T7"];
+  const LONG = ["Chủ nhật","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"];
+  const working = empSched.filter(s => s.is_working).sort((a,b) => a.day_of_week - b.day_of_week);
+  if (working.length === 0) return { short: "Nghỉ", long: "Không có ngày làm việc" };
+  if (working.length === 6 && !working.find(w => w.day_of_week === 0)) return { short: "T2-T7", long: "Toàn thời gian (T2-T7)" };
+  return {
+    short: working.map(w => SHORT[w.day_of_week]).join("-"),
+    long: working.map(w => LONG[w.day_of_week]).join(", "),
+  };
 }
 
 function monthlyBadgeClass(used: number): string {
@@ -117,10 +143,22 @@ export default function LeaveManagement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("*, employees(full_name, employee_code, position, department_id, profile_id, departments(name), profile:profiles(role))")
+        .select("*, employees(full_name, employee_code, position, department_id, profile_id, avatar_url, employment_type, departments(name), profile:profiles(role))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Lịch làm việc tất cả NV (để tính quota chính xác cho intern)
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["work_schedules_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("work_schedules" as any)
+        .select("employee_id, day_of_week, is_working");
+      if (error) throw error;
+      return (data ?? []) as any[];
     },
   });
 

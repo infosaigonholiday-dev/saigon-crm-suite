@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { EmployeeAvatarUpload } from "./EmployeeAvatarUpload";
 
 interface Props {
   open: boolean;
@@ -112,6 +113,7 @@ const defaultForm = {
   hire_date: "", probation_end_date: "", contract_expiry: "",
   bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
   emergency_contact: "",
+  avatar_url: "",
   login_email: "", system_role: "SALE_DOMESTIC",
 };
 
@@ -162,6 +164,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           bank_account: data.bank_account ?? "", bank_name: data.bank_name ?? "",
           bank_branch: data.bank_branch ?? "", tax_code: data.tax_code ?? "",
           emergency_contact: data.emergency_contact ?? "",
+          avatar_url: (data as any).avatar_url ?? "",
           login_email: "", system_role: "SALE_DOMESTIC",
         });
       }
@@ -231,7 +234,8 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
         bank_branch: form.bank_branch || null,
         tax_code: form.tax_code || null,
         emergency_contact: form.emergency_contact || null,
-      };
+        avatar_url: form.avatar_url || null,
+      } as any;
 
       if (isEdit) {
         const { error } = await supabase.from("employees").update(payload).eq("id", employeeId!);
@@ -312,6 +316,15 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           </TabsList>
 
           <TabsContent value="personal" className="space-y-4 mt-4">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Ảnh chân dung</p>
+              <EmployeeAvatarUpload
+                employeeId={employeeId}
+                currentUrl={form.avatar_url}
+                fullName={form.full_name}
+                onChange={(url) => setForm(f => ({ ...f, avatar_url: url ?? "" }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Họ tên" required error={errors.full_name}>
                 <Input value={form.full_name} onChange={e => update("full_name", e.target.value)} />

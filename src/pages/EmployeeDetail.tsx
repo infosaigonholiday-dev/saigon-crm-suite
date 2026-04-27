@@ -20,6 +20,8 @@ import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab"
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
 import { EmployeeKpiTab } from "@/components/employees/EmployeeKpiTab";
+import { EmployeeWorkScheduleTab } from "@/components/employees/EmployeeWorkScheduleTab";
+import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { toast } from "sonner";
@@ -102,6 +104,7 @@ export default function EmployeeDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/nhan-su")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        <EmployeeAvatar url={(employee as any).avatar_url} name={employee.full_name} size={64} className="border-2 border-border shrink-0" />
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{employee.full_name}</h1>
@@ -150,6 +153,7 @@ export default function EmployeeDetail() {
           <TabsTrigger value="info">Thông tin</TabsTrigger>
           <TabsTrigger value="salary">Lương</TabsTrigger>
           <TabsTrigger value="leave">Nghỉ phép</TabsTrigger>
+          <TabsTrigger value="schedule">Lịch LV</TabsTrigger>
           <TabsTrigger value="overtime">Tăng ca</TabsTrigger>
           <TabsTrigger value="insurance">Bảo hiểm</TabsTrigger>
           <TabsTrigger value="kpi">KPI</TabsTrigger>
@@ -207,6 +211,10 @@ export default function EmployeeDetail() {
 
         <TabsContent value="leave" className="mt-4">
           <EmployeeLeaveTab employeeId={id!} />
+        </TabsContent>
+
+        <TabsContent value="schedule" className="mt-4">
+          <EmployeeWorkScheduleTab employeeId={id!} />
         </TabsContent>
 
         <TabsContent value="overtime" className="mt-4">
