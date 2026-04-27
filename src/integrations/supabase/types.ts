@@ -4356,6 +4356,7 @@ export type Database = {
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_booking_closed: { Args: { _booking_id: string }; Returns: boolean }
+      rpc_check_push_status: { Args: { p_request_id: number }; Returns: Json }
       rpc_dashboard_business: {
         Args: { p_dept_id?: string; p_scope: string; p_user_id: string }
         Returns: Json
