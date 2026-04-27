@@ -91,7 +91,7 @@ export default function LeadStatusChangeDialog({
       if (histErr) throw histErr;
 
       // 2. Update lead: status + temperature (+ lost_reason if applicable)
-      const updates: Record<string, any> = { status: targetStatus, temperature };
+      const updates: { status: string; temperature: string; lost_reason?: string } = { status: targetStatus, temperature };
       if (isLost && lostReason.trim()) updates.lost_reason = lostReason.trim();
       const { error: updErr } = await supabase.from("leads").update(updates).eq("id", leadId);
       if (updErr) throw updErr;
