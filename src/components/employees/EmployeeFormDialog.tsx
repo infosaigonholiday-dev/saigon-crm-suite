@@ -113,6 +113,7 @@ const defaultForm = {
   hire_date: "", probation_end_date: "", contract_expiry: "",
   bank_account: "", bank_name: "", bank_branch: "", tax_code: "",
   emergency_contact: "",
+  avatar_url: "",
   login_email: "", system_role: "SALE_DOMESTIC",
 };
 
