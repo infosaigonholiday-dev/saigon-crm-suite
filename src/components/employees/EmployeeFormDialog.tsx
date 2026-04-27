@@ -234,7 +234,8 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
         bank_branch: form.bank_branch || null,
         tax_code: form.tax_code || null,
         emergency_contact: form.emergency_contact || null,
-      };
+        avatar_url: form.avatar_url || null,
+      } as any;
 
       if (isEdit) {
         const { error } = await supabase.from("employees").update(payload).eq("id", employeeId!);
