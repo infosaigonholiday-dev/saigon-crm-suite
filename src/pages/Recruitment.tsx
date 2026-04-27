@@ -102,7 +102,7 @@ export default function Recruitment() {
         setOnboardDialog({ open: true, candidate: cand });
         return;
       }
-      updateStatus.mutate({ id: cand.id, status: col });
+      updateStatus.mutate({ id: cand.id, status: col, cand });
     },
     [draggedId, candidates, updateStatus]
   );
@@ -112,8 +112,9 @@ export default function Recruitment() {
       toast.error("Vui lòng nhập lý do từ chối");
       return;
     }
+    const cand = candidates.find((c: any) => c.id === rejectDialog.id);
     updateStatus.mutate(
-      { id: rejectDialog.id, status: "rejected", extra: { rejection_reason: rejectDialog.reason.trim() } },
+      { id: rejectDialog.id, status: "rejected", extra: { rejection_reason: rejectDialog.reason.trim() }, cand },
       { onSuccess: () => setRejectDialog({ open: false, id: "", reason: "" }) }
     );
   };
