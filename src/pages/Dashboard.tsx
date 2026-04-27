@@ -237,6 +237,9 @@ function BusinessDashboard() {
         </Card>
       )}
 
+      {/* Lead monitoring (ADMIN/SUPER_ADMIN/GDKD/MANAGER) */}
+      <LeadMonitoringWidget />
+
       {/* Sale Performance Table */}
       <SalePerformanceTable departmentId={activeDeptId} month={now} />
 
