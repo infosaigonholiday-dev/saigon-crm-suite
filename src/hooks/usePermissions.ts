@@ -22,6 +22,8 @@ export const ALL_PERMISSION_KEYS = [
   "settings.view", "settings.edit",
   "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
   "b2b_tours.view", "b2b_tours.logs",
+  "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
+  "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];

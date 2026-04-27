@@ -1008,6 +1008,94 @@ export type Database = {
           },
         ]
       }
+      candidates: {
+        Row: {
+          assigned_hr: string | null
+          created_at: string | null
+          created_by: string | null
+          cv_url: string | null
+          department_id: string | null
+          email: string | null
+          full_name: string
+          id: string
+          interview_date: string | null
+          interview_result: string | null
+          note: string | null
+          offer_salary: number | null
+          phone: string | null
+          position_applied: string | null
+          rejection_reason: string | null
+          salary_expectation: number | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_hr?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          cv_url?: string | null
+          department_id?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          interview_date?: string | null
+          interview_result?: string | null
+          note?: string | null
+          offer_salary?: number | null
+          phone?: string | null
+          position_applied?: string | null
+          rejection_reason?: string | null
+          salary_expectation?: number | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_hr?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          cv_url?: string | null
+          department_id?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          interview_date?: string | null
+          interview_result?: string | null
+          note?: string | null
+          offer_salary?: number | null
+          phone?: string | null
+          position_applied?: string | null
+          rejection_reason?: string | null
+          salary_expectation?: number | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_assigned_hr_fkey"
+            columns: ["assigned_hr"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_paths: {
         Row: {
           approved_by: string | null
@@ -2393,6 +2481,66 @@ export type Database = {
           },
         ]
       }
+      kpi_policies: {
+        Row: {
+          base_fixed_ratio: number | null
+          base_kpi_ratio: number | null
+          bonus_tiers: Json | null
+          calculation_type: string
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          id: string
+          kpi_penalty_rate: number | null
+          role: string
+          target_multiplier: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_fixed_ratio?: number | null
+          base_kpi_ratio?: number | null
+          bonus_tiers?: Json | null
+          calculation_type: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          kpi_penalty_rate?: number | null
+          role: string
+          target_multiplier?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_fixed_ratio?: number | null
+          base_kpi_ratio?: number | null
+          bonus_tiers?: Json | null
+          calculation_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          kpi_penalty_rate?: number | null
+          role?: string
+          target_multiplier?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_policies_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_care_history: {
         Row: {
           contact_method: string
@@ -2932,6 +3080,54 @@ export type Database = {
           },
         ]
       }
+      onboarding_checklist: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          is_completed: boolean | null
+          is_required: boolean | null
+          item_name: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          is_completed?: boolean | null
+          is_required?: boolean | null
+          item_name: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          is_completed?: boolean | null
+          is_required?: boolean | null
+          item_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_checklist_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_checklist_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       other_expenses: {
         Row: {
           amount: number
@@ -3115,7 +3311,12 @@ export type Database = {
       }
       payroll: {
         Row: {
+          actual_performance: number | null
+          actual_working_days: number | null
+          allowance_amount: number | null
           approved_by: string | null
+          base_fixed: number | null
+          base_kpi: number | null
           base_salary: number | null
           bhtn_employee: number | null
           bhtn_employer: number | null
@@ -3124,24 +3325,43 @@ export type Database = {
           bhyt_employee: number | null
           bhyt_employer: number | null
           bonus: number | null
+          bonus_amount: number | null
+          ceo_approved_at: string | null
+          ceo_approved_by: string | null
           commission: number | null
           deductions: number | null
           employee_id: string
           gross_salary: number | null
+          hr_reviewed_at: string | null
+          hr_reviewed_by: string | null
           id: string
+          kpi_achievement_pct: number | null
+          kpi_earned: number | null
+          kt_confirmed_at: string | null
+          kt_confirmed_by: string | null
           month: number
           net_salary: number | null
           notes: string | null
           ot_pay: number | null
+          overtime_amount: number | null
           paid_at: string | null
           pit_amount: number | null
+          standard_working_days: number | null
           status: string | null
+          target_kpi: number | null
           total_allowance: number | null
           total_employer_cost: number | null
+          unpaid_leave_days: number | null
+          unpaid_leave_deduction: number | null
           year: number
         }
         Insert: {
+          actual_performance?: number | null
+          actual_working_days?: number | null
+          allowance_amount?: number | null
           approved_by?: string | null
+          base_fixed?: number | null
+          base_kpi?: number | null
           base_salary?: number | null
           bhtn_employee?: number | null
           bhtn_employer?: number | null
@@ -3150,24 +3370,43 @@ export type Database = {
           bhyt_employee?: number | null
           bhyt_employer?: number | null
           bonus?: number | null
+          bonus_amount?: number | null
+          ceo_approved_at?: string | null
+          ceo_approved_by?: string | null
           commission?: number | null
           deductions?: number | null
           employee_id: string
           gross_salary?: number | null
+          hr_reviewed_at?: string | null
+          hr_reviewed_by?: string | null
           id?: string
+          kpi_achievement_pct?: number | null
+          kpi_earned?: number | null
+          kt_confirmed_at?: string | null
+          kt_confirmed_by?: string | null
           month: number
           net_salary?: number | null
           notes?: string | null
           ot_pay?: number | null
+          overtime_amount?: number | null
           paid_at?: string | null
           pit_amount?: number | null
+          standard_working_days?: number | null
           status?: string | null
+          target_kpi?: number | null
           total_allowance?: number | null
           total_employer_cost?: number | null
+          unpaid_leave_days?: number | null
+          unpaid_leave_deduction?: number | null
           year: number
         }
         Update: {
+          actual_performance?: number | null
+          actual_working_days?: number | null
+          allowance_amount?: number | null
           approved_by?: string | null
+          base_fixed?: number | null
+          base_kpi?: number | null
           base_salary?: number | null
           bhtn_employee?: number | null
           bhtn_employer?: number | null
@@ -3176,20 +3415,34 @@ export type Database = {
           bhyt_employee?: number | null
           bhyt_employer?: number | null
           bonus?: number | null
+          bonus_amount?: number | null
+          ceo_approved_at?: string | null
+          ceo_approved_by?: string | null
           commission?: number | null
           deductions?: number | null
           employee_id?: string
           gross_salary?: number | null
+          hr_reviewed_at?: string | null
+          hr_reviewed_by?: string | null
           id?: string
+          kpi_achievement_pct?: number | null
+          kpi_earned?: number | null
+          kt_confirmed_at?: string | null
+          kt_confirmed_by?: string | null
           month?: number
           net_salary?: number | null
           notes?: string | null
           ot_pay?: number | null
+          overtime_amount?: number | null
           paid_at?: string | null
           pit_amount?: number | null
+          standard_working_days?: number | null
           status?: string | null
+          target_kpi?: number | null
           total_allowance?: number | null
           total_employer_cost?: number | null
+          unpaid_leave_days?: number | null
+          unpaid_leave_deduction?: number | null
           year?: number
         }
         Relationships: [
@@ -3201,10 +3454,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payroll_ceo_approved_by_fkey"
+            columns: ["ceo_approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payroll_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_hr_reviewed_by_fkey"
+            columns: ["hr_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_kt_confirmed_by_fkey"
+            columns: ["kt_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
