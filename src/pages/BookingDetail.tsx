@@ -12,6 +12,8 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
 import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
+import BookingGuestsTab from "@/components/bookings/BookingGuestsTab";
+import BookingTourGuideSection from "@/components/bookings/BookingTourGuideSection";
 import { PrintConfirmationButton } from "@/components/bookings/PrintConfirmationButton";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
@@ -92,6 +94,19 @@ export default function BookingDetail() {
   const canDeleteNotes = hasPermission("bookings", "delete");
   const isLocked = status === "COMPLETED" || status === "CANCELLED";
 
+  // HDV assignment: chỉ DIEUHAN + ADMIN
+  const canAssignGuide =
+    !isLocked &&
+    ["ADMIN", "SUPER_ADMIN", "DIEUHAN"].includes(String(userRole ?? ""));
+
+  // Edit guests: SALE phụ trách + DIEUHAN + ADMIN
+  const isOwner = booking.sale_id && user?.id === booking.sale_id;
+  const canEditGuests =
+    !isLocked &&
+    (["ADMIN", "SUPER_ADMIN", "DIEUHAN", "GDKD", "MANAGER"].includes(String(userRole ?? "")) ||
+      isOwner);
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -153,6 +168,7 @@ export default function BookingDetail() {
           <TabsTrigger value="info">Thông tin</TabsTrigger>
           <TabsTrigger value="itinerary">Lịch trình</TabsTrigger>
           <TabsTrigger value="services">Dự toán chi</TabsTrigger>
+          <TabsTrigger value="guests">Danh sách khách</TabsTrigger>
           <TabsTrigger value="notes">
             Lưu ý
             {highNotes.length > 0 && (
@@ -166,7 +182,7 @@ export default function BookingDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="info" className="mt-4">
+        <TabsContent value="info" className="mt-4 space-y-4">
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
@@ -202,9 +218,27 @@ export default function BookingDetail() {
                   <p className="text-sm text-muted-foreground">Hạn thanh toán</p>
                   <p className="font-medium">{booking.remaining_due_at ?? "—"}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ngày khởi hành</p>
+                  <p className="font-medium">{(booking as any).departure_date ?? "—"}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          <BookingTourGuideSection
+            bookingId={booking.id}
+            customerName={customer?.full_name}
+            bookingCode={booking.code}
+            initial={{
+              tour_guide_id: (booking as any).tour_guide_id ?? null,
+              tour_guide_note: (booking as any).tour_guide_note ?? null,
+              departure_date: (booking as any).departure_date ?? null,
+              return_date: (booking as any).return_date ?? null,
+              pax_total: booking.pax_total ?? null,
+            }}
+            canAssign={canAssignGuide}
+          />
         </TabsContent>
 
         <TabsContent value="itinerary" className="mt-4">
@@ -215,6 +249,10 @@ export default function BookingDetail() {
           <BookingServicesTab bookingId={booking.id} readOnly={isLocked} />
         </TabsContent>
 
+        <TabsContent value="guests" className="mt-4">
+          <BookingGuestsTab bookingId={booking.id} paxTotal={booking.pax_total} canEdit={canEditGuests} />
+        </TabsContent>
+
         <TabsContent value="notes" className="mt-4">
           <BookingSpecialNotesTab bookingId={booking.id} canEdit={canEditNotes && !isLocked} canDelete={canDeleteNotes && !isLocked} />
         </TabsContent>
@@ -223,6 +261,7 @@ export default function BookingDetail() {
           <InternalNotes entityType="booking" entityId={booking.id} entityName={booking.code} />
         </TabsContent>
       </Tabs>
+
     </div>
   );
 }

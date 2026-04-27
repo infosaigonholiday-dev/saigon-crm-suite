@@ -764,7 +764,49 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ===== Deduplicate & Insert =====
+    // ===== B3. Tour chưa phân công HDV (departure_date trong 5 ngày tới) =====
+    const fiveDaysAhead = offsetDateStr(5);
+    const { data: noGuideBookings } = await supabase
+      .from("bookings")
+      .select("id, code, departure_date, pax_total, status")
+      .is("tour_guide_id", null)
+      .not("departure_date", "is", null)
+      .gte("departure_date", todayStr)
+      .lte("departure_date", fiveDaysAhead)
+      .not("status", "in", "(cancelled,CANCELLED)");
+
+    if (noGuideBookings && noGuideBookings.length && dieuhanIds.length) {
+      // Dedupe: bỏ qua nếu đã gửi TOUR_NO_GUIDE cho booking này trong 2 ngày qua
+      const twoDaysAgoIso = new Date(today.getTime() - 2 * 86400000).toISOString();
+      const bIds = noGuideBookings.map((b: any) => b.id);
+      const { data: recentNoGuide } = await supabase
+        .from("notifications")
+        .select("entity_id")
+        .eq("type", "TOUR_NO_GUIDE")
+        .gte("created_at", twoDaysAgoIso)
+        .in("entity_id", bIds);
+      const dedupeNoGuide = new Set((recentNoGuide || []).map((n: any) => n.entity_id));
+
+      for (const b of noGuideBookings as any[]) {
+        if (dedupeNoGuide.has(b.id)) continue;
+        const daysLeft = Math.max(
+          0,
+          Math.ceil((new Date(b.departure_date).getTime() - today.getTime()) / 86400000)
+        );
+        for (const dhId of dieuhanIds) {
+          notifications.push({
+            user_id: dhId,
+            type: "TOUR_NO_GUIDE",
+            title: `🎒 Tour chưa phân công HDV: ${b.code}`,
+            message: `Khởi hành ${b.departure_date} — còn ${daysLeft} ngày! ${b.pax_total ?? 0} khách.`,
+            entity_type: "booking",
+            entity_id: b.id,
+            priority: daysLeft <= 1 ? "critical" : "high",
+          });
+        }
+      }
+    }
+
     let sent = 0;
     for (const n of notifications) {
       const { count } = await supabase

@@ -32,24 +32,49 @@ export function OpsUpcomingTours() {
   const in7 = new Date(today.getTime() + 7 * 86400000).toISOString().split("T")[0];
 
   const { data, isLoading } = useQuery({
-    queryKey: ["ops-upcoming-tours", todayStr],
+    queryKey: ["ops-upcoming-tours-v2", todayStr],
     staleTime: STALE,
     queryFn: async () => {
-      const { data } = await supabase
+      // Ưu tiên departure_date; fallback cho booking chưa có departure_date dùng remaining_due_at
+      const { data: byDep } = await supabase
         .from("bookings")
-        .select("id, code, customer_id, remaining_due_at, pax_total, status, tour_name_manual")
+        .select("id, code, customer_id, departure_date, remaining_due_at, pax_total, status, tour_name_manual, tour_guide_id")
+        .gte("departure_date", todayStr)
+        .lte("departure_date", in7)
+        .neq("status", "cancelled")
+        .order("departure_date", { ascending: true })
+        .limit(10);
+
+      const { data: byDue } = await supabase
+        .from("bookings")
+        .select("id, code, customer_id, departure_date, remaining_due_at, pax_total, status, tour_name_manual, tour_guide_id")
+        .is("departure_date", null)
         .gte("remaining_due_at", todayStr)
         .lte("remaining_due_at", in7)
         .neq("status", "cancelled")
         .order("remaining_due_at", { ascending: true })
         .limit(5);
-      const ids = Array.from(new Set((data || []).map((r: any) => r.customer_id).filter(Boolean)));
+
+      const merged = [...(byDep || []), ...(byDue || [])].slice(0, 5);
+      const customerIds = Array.from(new Set(merged.map((r: any) => r.customer_id).filter(Boolean)));
+      const guideIds = Array.from(new Set(merged.map((r: any) => r.tour_guide_id).filter(Boolean)));
+
       const nameMap = new Map<string, string>();
-      if (ids.length) {
-        const { data: cs } = await supabase.from("customers").select("id, full_name").in("id", ids);
+      const guideMap = new Map<string, string>();
+      if (customerIds.length) {
+        const { data: cs } = await supabase.from("customers").select("id, full_name").in("id", customerIds);
         (cs || []).forEach((c: any) => nameMap.set(c.id, c.full_name));
       }
-      return (data || []).map((r: any) => ({ ...r, customer_name: nameMap.get(r.customer_id) || "—" }));
+      if (guideIds.length) {
+        const { data: gs } = await supabase.from("employees").select("id, full_name").in("id", guideIds);
+        (gs || []).forEach((g: any) => guideMap.set(g.id, g.full_name));
+      }
+      return merged.map((r: any) => ({
+        ...r,
+        customer_name: nameMap.get(r.customer_id) || "—",
+        guide_name: r.tour_guide_id ? guideMap.get(r.tour_guide_id) || "—" : null,
+        date_display: r.departure_date || r.remaining_due_at,
+      }));
     },
   });
 
@@ -74,11 +99,22 @@ export function OpsUpcomingTours() {
                 to={`/dat-tour/${r.id}`}
                 className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 text-sm"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium truncate">{r.code} – {r.customer_name}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {r.remaining_due_at} • {r.pax_total || 0} khách
+                    {r.date_display} • {r.pax_total || 0} khách
                   </p>
+                  <div className="mt-0.5">
+                    {r.guide_name ? (
+                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                        HDV: {r.guide_name}
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Chưa có HDV
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
               </Link>
@@ -89,6 +125,7 @@ export function OpsUpcomingTours() {
     </Card>
   );
 }
+
 
 export function OpsPendingContracts() {
   const { data, isLoading } = useQuery({
