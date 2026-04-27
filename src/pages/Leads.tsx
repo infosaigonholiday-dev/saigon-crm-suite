@@ -252,12 +252,35 @@ export default function Leads() {
     [draggedId, leads, openStatusChangeDialog]
   );
 
-  const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
-    const extra: Record<string, any> = {};
-    if (data.lost_reason) extra.lost_reason = data.lost_reason;
-    if (data.next_contact_date) extra.follow_up_date = data.next_contact_date;
-    updateStatus.mutate({ id: transitionDialog.leadId, status: transitionDialog.status, extra });
-  };
+  const handleStatusChangeSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-count"] });
+    queryClient.invalidateQueries({ queryKey: ["lead-monitoring"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-latest-action"] });
+  }, [queryClient]);
+
+  // Latest care action per lead (for "next action" badge on card)
+  const visibleLeadIds = filteredLeads.map((l: any) => l.id);
+  const { data: latestActionMap = {} } = useQuery({
+    queryKey: ["leads-latest-action", visibleLeadIds.sort().join(",")],
+    queryFn: async () => {
+      if (visibleLeadIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("lead_care_history")
+        .select("lead_id, next_action, next_contact_date, contacted_at")
+        .in("lead_id", visibleLeadIds)
+        .order("contacted_at", { ascending: false });
+      if (error) return {};
+      const map: Record<string, { next_action: string | null; next_contact_date: string | null }> = {};
+      for (const row of data || []) {
+        if (!map[row.lead_id]) {
+          map[row.lead_id] = { next_action: row.next_action, next_contact_date: row.next_contact_date };
+        }
+      }
+      return map;
+    },
+    enabled: visibleLeadIds.length > 0,
+  });
 
   const formatValue = (v: number | null) => {
     if (!v) return "";
