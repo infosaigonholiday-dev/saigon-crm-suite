@@ -185,6 +185,19 @@ export default function Recruitment() {
       setOnboardingPwd("sgh123456");
       toast.success("Đã onboard nhân viên thành công");
       queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      // Notify HR_MANAGER + HCNS
+      try {
+        await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
+          type: "CANDIDATE_STATUS",
+          title: `Onboard thành công: ${cand.full_name}`,
+          message: "Đã tạo tài khoản + checklist onboarding",
+          entity_type: "candidate",
+          entity_id: cand.id,
+          priority: "normal",
+        }, user?.id);
+      } catch (e) {
+        console.error("Notify onboard success failed:", e);
+      }
     } catch (e: any) {
       toast.error("Lỗi onboarding", { description: e.message });
     } finally {
