@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PushToggleButton } from "@/components/PushToggleButton";
+import OnboardingChecklistModal from "@/components/onboarding/OnboardingChecklistModal";
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
@@ -34,6 +35,7 @@ export function AppLayout() {
             <Outlet />
           </main>
         </div>
+        <OnboardingChecklistModal />
       </div>
     </SidebarProvider>
   );
