@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import CandidateFormDialog from "@/components/recruitment/CandidateFormDialog";
 import CandidateDetailDialog from "@/components/recruitment/CandidateDetailDialog";
+import { notifyUser, notifyUsersByRole } from "@/lib/notifyByRole";
 
 type CandidateStatus = "new" | "cv_screening" | "interview" | "offer" | "onboarded" | "rejected" | "withdrawn";
 
@@ -57,11 +58,30 @@ export default function Recruitment() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, extra }: { id: string; status: CandidateStatus; extra?: Record<string, any> }) => {
+    mutationFn: async ({ id, status, extra, cand }: { id: string; status: CandidateStatus; extra?: Record<string, any>; cand: any }) => {
       const { error } = await supabase.from("candidates").update({ status, ...extra }).eq("id", id);
       if (error) throw error;
+      return { id, status, cand };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["candidates"] }),
+    onSuccess: async ({ id, status, cand }) => {
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      // Notify assigned_hr on intermediate transitions only (skip rejected/onboarded/withdrawn — handled separately)
+      if (!["rejected", "onboarded", "withdrawn"].includes(status) && cand?.assigned_hr && cand.assigned_hr !== user?.id) {
+        const statusLabel = COLUMNS.find((c) => c.id === status)?.label ?? status;
+        try {
+          await notifyUser(cand.assigned_hr, {
+            type: "CANDIDATE_STATUS",
+            title: `${cand.full_name} chuyển sang ${statusLabel}`,
+            message: `Cập nhật bởi ${user?.email ?? "người dùng"}`,
+            entity_type: "candidate",
+            entity_id: id,
+            priority: "normal",
+          });
+        } catch (e) {
+          console.error("Notify candidate status failed:", e);
+        }
+      }
+    },
     onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
@@ -82,7 +102,7 @@ export default function Recruitment() {
         setOnboardDialog({ open: true, candidate: cand });
         return;
       }
-      updateStatus.mutate({ id: cand.id, status: col });
+      updateStatus.mutate({ id: cand.id, status: col, cand });
     },
     [draggedId, candidates, updateStatus]
   );
@@ -92,8 +112,9 @@ export default function Recruitment() {
       toast.error("Vui lòng nhập lý do từ chối");
       return;
     }
+    const cand = candidates.find((c: any) => c.id === rejectDialog.id);
     updateStatus.mutate(
-      { id: rejectDialog.id, status: "rejected", extra: { rejection_reason: rejectDialog.reason.trim() } },
+      { id: rejectDialog.id, status: "rejected", extra: { rejection_reason: rejectDialog.reason.trim() }, cand },
       { onSuccess: () => setRejectDialog({ open: false, id: "", reason: "" }) }
     );
   };
@@ -164,6 +185,19 @@ export default function Recruitment() {
       setOnboardingPwd("sgh123456");
       toast.success("Đã onboard nhân viên thành công");
       queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      // Notify HR_MANAGER + HCNS
+      try {
+        await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
+          type: "CANDIDATE_STATUS",
+          title: `Onboard thành công: ${cand.full_name}`,
+          message: "Đã tạo tài khoản + checklist onboarding",
+          entity_type: "candidate",
+          entity_id: cand.id,
+          priority: "normal",
+        }, user?.id);
+      } catch (e) {
+        console.error("Notify onboard success failed:", e);
+      }
     } catch (e: any) {
       toast.error("Lỗi onboarding", { description: e.message });
     } finally {

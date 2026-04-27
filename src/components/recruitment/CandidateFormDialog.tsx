@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { notifyUser } from "@/lib/notifyByRole";
 
 interface Props {
   open: boolean;
@@ -96,18 +97,35 @@ export default function CandidateFormDialog({ open, onOpenChange, candidate }: P
       if (isEdit) {
         const { error } = await supabase.from("candidates").update(payload).eq("id", candidate.id);
         if (error) throw error;
+        return { id: candidate.id, isNew: false } as const;
       } else {
         payload.assigned_hr = user?.id;
         payload.created_by = user?.id;
         payload.status = "new";
-        const { error } = await supabase.from("candidates").insert(payload);
+        const { data: inserted, error } = await supabase.from("candidates").insert(payload).select("id, full_name, position_applied, assigned_hr, departments(name)").single();
         if (error) throw error;
+        return { id: inserted.id, isNew: true, row: inserted } as const;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
       toast.success(isEdit ? "Đã cập nhật ứng viên" : "Đã thêm ứng viên");
       queryClient.invalidateQueries({ queryKey: ["candidates"] });
       onOpenChange(false);
+      // Notify assigned HR (only on create, and only if different from current user)
+      if (result.isNew && result.row?.assigned_hr && result.row.assigned_hr !== user?.id) {
+        try {
+          await notifyUser(result.row.assigned_hr, {
+            type: "CANDIDATE_NEW",
+            title: `Ứng viên mới: ${result.row.full_name}`,
+            message: `Vị trí: ${result.row.position_applied} — Phòng: ${(result.row as any).departments?.name ?? "—"}`,
+            entity_type: "candidate",
+            entity_id: result.id,
+            priority: "normal",
+          });
+        } catch (e) {
+          console.error("Notify candidate new failed:", e);
+        }
+      }
     },
     onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });

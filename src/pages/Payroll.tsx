@@ -13,6 +13,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMyDepartmentId, useMyEmployeeId } from "@/hooks/useScopedQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import InternalNotes from "@/components/shared/InternalNotes";
+import { notifyUsersByRole, notifyUser } from "@/lib/notifyByRole";
 
 const formatVND = (v: number | null | undefined) =>
   v != null && v !== 0 ? Number(v).toLocaleString("vi-VN") + "đ" : "—";
@@ -154,18 +155,32 @@ export default function Payroll() {
       if (insErr) throw insErr;
       return { inserted: toInsert.length, skipped: existingSet.size };
     },
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       toast.success(`Đã tạo ${r.inserted} bản ghi`, {
         description: r.skipped ? `Bỏ qua ${r.skipped} NV đã có dữ liệu` : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ["payroll_list_v2"] });
+      // Notify HR_MANAGER about drafts
+      if (r.inserted > 0) {
+        try {
+          await notifyUsersByRole(["HR_MANAGER"], {
+            type: "PAYROLL_DRAFT",
+            title: `Bảng lương tháng ${month}/${year} cần review`,
+            message: `${r.inserted} phiếu lương đã tạo, chờ HR duyệt`,
+            entity_type: "payroll",
+            priority: "high",
+          }, user?.id);
+        } catch (e) {
+          console.error("Notify HR_MANAGER failed:", e);
+        }
+      }
     },
     onError: (e: any) => toast.error("Lỗi tính lương", { description: e.message }),
   });
 
   // Approval mutations
   const approveMutation = useMutation({
-    mutationFn: async ({ id, nextStatus }: { id: string; nextStatus: PayrollStatus }) => {
+    mutationFn: async ({ id, nextStatus, row }: { id: string; nextStatus: PayrollStatus; row: any }) => {
       const patch: any = { status: nextStatus };
       if (nextStatus === "hr_reviewed") {
         patch.hr_reviewed_by = user?.id;
@@ -181,10 +196,52 @@ export default function Payroll() {
       }
       const { error } = await supabase.from("payroll").update(patch).eq("id", id);
       if (error) throw error;
+      return { id, nextStatus, row };
     },
-    onSuccess: () => {
+    onSuccess: async ({ id, nextStatus, row }) => {
       toast.success("Đã cập nhật trạng thái");
       queryClient.invalidateQueries({ queryKey: ["payroll_list_v2"] });
+      const empName = row?.employees?.full_name ?? "Nhân viên";
+      try {
+        if (nextStatus === "hr_reviewed") {
+          await notifyUsersByRole(["KETOAN"], {
+            type: "PAYROLL_REVIEW",
+            title: `Bảng lương T${row.month} chờ KT xác nhận`,
+            message: `${empName} — HR đã duyệt`,
+            entity_type: "payroll",
+            entity_id: id,
+            priority: "high",
+          }, user?.id);
+        } else if (nextStatus === "kt_confirmed") {
+          await notifyUsersByRole(["ADMIN", "SUPER_ADMIN"], {
+            type: "PAYROLL_CONFIRM",
+            title: `Bảng lương T${row.month} chờ CEO duyệt`,
+            message: `${empName} — KT đã xác nhận`,
+            entity_type: "payroll",
+            entity_id: id,
+            priority: "high",
+          }, user?.id);
+        } else if (nextStatus === "ceo_approved") {
+          // Notify owning employee (if linked to a profile)
+          const { data: emp } = await supabase
+            .from("employees")
+            .select("profile_id")
+            .eq("id", row.employee_id)
+            .maybeSingle();
+          if (emp?.profile_id) {
+            await notifyUser(emp.profile_id, {
+              type: "PAYROLL_READY",
+              title: `Phiếu lương T${row.month}/${row.year} đã sẵn sàng`,
+              message: "Phiếu lương của bạn đã được CEO duyệt. Xem chi tiết trong mục Bảng lương.",
+              entity_type: "payroll",
+              entity_id: id,
+              priority: "normal",
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Notify payroll status change failed:", e);
+      }
     },
     onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
@@ -192,16 +249,16 @@ export default function Payroll() {
   const renderActionButton = (p: any) => {
     const st = p.status as PayrollStatus;
     if ((isHR || isAdmin) && st === "draft") {
-      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "hr_reviewed" }); }}>Duyệt HR</Button>;
+      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "hr_reviewed", row: p }); }}>Duyệt HR</Button>;
     }
     if (isKT && st === "hr_reviewed") {
-      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "kt_confirmed" }); }}>Xác nhận KT</Button>;
+      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "kt_confirmed", row: p }); }}>Xác nhận KT</Button>;
     }
     if (isAdmin && st === "kt_confirmed") {
-      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "ceo_approved" }); }}>CEO Duyệt</Button>;
+      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "ceo_approved", row: p }); }}>CEO Duyệt</Button>;
     }
     if ((isHR || isAdmin) && st === "ceo_approved") {
-      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "paid" }); }}>Đã trả lương</Button>;
+      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "paid", row: p }); }}>Đã trả lương</Button>;
     }
     return null;
   };
