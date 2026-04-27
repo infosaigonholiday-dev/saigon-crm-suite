@@ -91,6 +91,21 @@ export default function BookingConfirmationPrint() {
     enabled: !!(booking as any)?.tour_package_id && !booking?.quote_id,
   });
 
+  // Lấy thông tin LKH B2B Tour qua tour_code lưu trong pax_details (booking từ trang LKH)
+  const b2bTourCode: string | null = ((booking as any)?.pax_details as any)?.tour_code || null;
+  const { data: b2bTour } = useQuery({
+    queryKey: ["print-b2b-tour", b2bTourCode],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("b2b_tours")
+        .select("tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes")
+        .eq("tour_code", b2bTourCode!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!b2bTourCode,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["print-my-profile", user?.id],
     queryFn: async () => {
@@ -195,6 +210,24 @@ export default function BookingConfirmationPrint() {
     // Mã tour: tour_package.code → pax_details.tour_code (LKH) → "—"
     const fallbackTourCode = (pd as any)?.tour_code || null;
 
+    // Build flight strings từ b2b_tours
+    const flightDep = b2bTour
+      ? [b2bTour.flight_dep_code, b2bTour.flight_dep_time].filter(Boolean).join(" • ")
+      : "";
+    const flightRet = b2bTour
+      ? [b2bTour.flight_ret_code, b2bTour.flight_ret_time].filter(Boolean).join(" • ")
+      : "";
+
+    // Highlights: parse từ notes (split nhiều ký tự)
+    let highlights: string[] = [];
+    if (b2bTour?.notes) {
+      highlights = String(b2bTour.notes)
+        .split(/[\n\r;•]+|(?:^|\s)-\s+/g)
+        .map((s) => s.trim().replace(/^[-•*]\s*/, ""))
+        .filter((s) => s.length > 0)
+        .slice(0, 8);
+    }
+
     return {
       booking_code: booking.code || "",
       grp_booking_code: booking.code || "",
@@ -220,12 +253,16 @@ export default function BookingConfirmationPrint() {
       tour_start: fmtDate(bkDep || quote?.valid_from),
       tour_end: fmtDate(bkRet || quote?.valid_until),
       tour_duration: dur,
+      flight_dep: flightDep,
+      flight_ret: flightRet,
+      visa_deadline: b2bTour?.visa_deadline || "",
+      ...(highlights.length > 0 ? { highlights_list: highlights } : {}),
       total: fmtVnd(booking.total_value as number),
       deposit: fmtVnd(booking.deposit_amount as number),
       remaining: fmtVnd(booking.remaining_amount as number),
       remaining_due: fmtDate(booking.remaining_due_at),
     };
-  }, [booking, quote, sale, directPackage]);
+  }, [booking, quote, sale, directPackage, b2bTour]);
 
   // Send to iframe
   const handleIframeLoad = () => {
