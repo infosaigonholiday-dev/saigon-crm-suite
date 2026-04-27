@@ -316,6 +316,15 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           </TabsList>
 
           <TabsContent value="personal" className="space-y-4 mt-4">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Ảnh chân dung</p>
+              <EmployeeAvatarUpload
+                employeeId={employeeId}
+                currentUrl={form.avatar_url}
+                fullName={form.full_name}
+                onChange={(url) => setForm(f => ({ ...f, avatar_url: url ?? "" }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Họ tên" required error={errors.full_name}>
                 <Input value={form.full_name} onChange={e => update("full_name", e.target.value)} />
