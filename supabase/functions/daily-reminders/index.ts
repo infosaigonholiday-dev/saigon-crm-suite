@@ -939,7 +939,7 @@ Deno.serve(async (req) => {
     }
 
 
-    return new Response(JSON.stringify({ sent, escalated, total_candidates: notifications.length }), {
+    return new Response(JSON.stringify({ sent, escalated, tasks_overdue: tasksOverdue, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
