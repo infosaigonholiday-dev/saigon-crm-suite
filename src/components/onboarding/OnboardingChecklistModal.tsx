@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMyEmployeeId } from "@/hooks/useScopedQuery";
+import { notifyUsersByRole } from "@/lib/notifyByRole";
 
 const CHECKLIST_COLS = "id, item_name, is_required, is_completed";
 
