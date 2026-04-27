@@ -167,9 +167,19 @@ export default function BookingConfirmationPrint() {
     if (inf != null && Number(inf) > 0) paxParts.push(`${inf} EB`);
     const cust_pax = paxParts.length ? paxParts.join(" + ") : `${booking.pax_total ?? 0} khách`;
 
-    const dur = tp.duration_days
-      ? `${tp.duration_days}N${tp.duration_nights ?? Math.max(0, tp.duration_days - 1)}Đ`
-      : "";
+    const bkDep = (booking as any).departure_date as string | null | undefined;
+    const bkRet = (booking as any).return_date as string | null | undefined;
+
+    // Tính duration: ưu tiên tour_packages, fallback từ chênh lệch ngày booking
+    let dur = "";
+    if (tp.duration_days) {
+      dur = `${tp.duration_days}N${tp.duration_nights ?? Math.max(0, tp.duration_days - 1)}Đ`;
+    } else if (bkDep && bkRet) {
+      const d1 = new Date(bkDep);
+      const d2 = new Date(bkRet);
+      const days = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
+      dur = `${days}N${Math.max(0, days - 1)}Đ`;
+    }
 
     const created = booking.created_at ? new Date(booking.created_at) : null;
     const holdDeadline = created
@@ -181,6 +191,9 @@ export default function BookingConfirmationPrint() {
           year: "numeric",
         })
       : "";
+
+    // Mã tour: tour_package.code → pax_details.tour_code (LKH) → "—"
+    const fallbackTourCode = (pd as any)?.tour_code || null;
 
     return {
       booking_code: booking.code || "",
@@ -203,9 +216,9 @@ export default function BookingConfirmationPrint() {
       tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
       tour_name_v: tp.name || manualName || "[Chưa có thông tin tour]",
       grp_tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
-      tour_code: tp.code || "—",
-      tour_start: fmtDate(quote?.valid_from),
-      tour_end: fmtDate(quote?.valid_until),
+      tour_code: tp.code || fallbackTourCode || "—",
+      tour_start: fmtDate(bkDep || quote?.valid_from),
+      tour_end: fmtDate(bkRet || quote?.valid_until),
       tour_duration: dur,
       total: fmtVnd(booking.total_value as number),
       deposit: fmtVnd(booking.deposit_amount as number),
