@@ -108,6 +108,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "b2b_tours.view", "b2b_tours.logs",
     "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
+    "campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete",
+    "tasks.view", "tasks.create", "tasks.edit",
   ],
   GDKD: [
     "dashboard.view",
