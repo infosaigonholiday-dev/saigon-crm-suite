@@ -17,6 +17,7 @@ import { CeoCustomerOverview } from "@/components/dashboard/CeoCustomerOverview"
 import { SalePerformanceTable } from "@/components/dashboard/SalePerformanceTable";
 import { PipelineFunnel } from "@/components/dashboard/PipelineFunnel";
 import { WeeklyTrendChart } from "@/components/dashboard/WeeklyTrendChart";
+import LeadMonitoringWidget from "@/components/dashboard/LeadMonitoringWidget";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
