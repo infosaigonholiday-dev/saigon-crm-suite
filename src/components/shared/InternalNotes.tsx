@@ -13,7 +13,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 
 export type EntityType =
   | "raw_contact" | "lead" | "customer" | "booking"
-  | "quotation" | "contract" | "payment" | "employee" | "finance";
+  | "quotation" | "contract" | "payment" | "employee" | "finance"
+  | "payroll" | "candidate";
 
 const entityRouteMap: Record<EntityType, (id: string) => string> = {
   raw_contact: () => "/kho-data",
@@ -25,6 +26,8 @@ const entityRouteMap: Record<EntityType, (id: string) => string> = {
   payment: () => "/thanh-toan",
   employee: (id) => `/nhan-su/${id}`,
   finance: () => "/tai-chinh",
+  payroll: () => "/bang-luong",
+  candidate: () => "/tuyen-dung",
 };
 
 interface Props {
