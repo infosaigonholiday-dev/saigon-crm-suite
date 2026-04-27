@@ -103,7 +103,28 @@ export default function OnboardingChecklistModal() {
 
         <div className="flex items-center justify-between gap-2">
           {(loadFailed || isError) && (
-            <Button variant="ghost" size="sm" onClick={() => { setDismissed(true); console.warn("[Onboarding] User dismissed after load failure"); }}>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              setDismissed(true);
+              console.warn("[Onboarding] User dismissed after load failure");
+              try {
+                // Lookup employee name for the message
+                const { data: emp } = await supabase
+                  .from("employees")
+                  .select("full_name")
+                  .eq("id", myEmployeeId!)
+                  .maybeSingle();
+                await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
+                  type: "ONBOARDING_PENDING",
+                  title: "⚠️ NV chưa hoàn thành onboarding",
+                  message: `${emp?.full_name ?? "Một nhân viên"} đã bỏ qua checklist onboarding`,
+                  entity_type: "employee",
+                  entity_id: myEmployeeId!,
+                  priority: "high",
+                });
+              } catch (e) {
+                console.error("Notify onboarding skip failed:", e);
+              }
+            }}>
               Bỏ qua tạm
             </Button>
           )}
