@@ -159,10 +159,12 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
     return a + c + i;
   }, [form.adults, form.children, form.infants]);
 
-  // Validation deposit > total
+  // Validation tài chính
   const total = Number(form.total_value || 0);
   const deposit = Number(form.deposit_amount || 0);
-  const depositOver = deposit > 0 && total > 0 && deposit > total;
+  const totalNegative = form.total_value !== "" && total < 0;
+  const depositNegative = form.deposit_amount !== "" && deposit < 0;
+  const depositOver = deposit > 0 && deposit > total;
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -171,7 +173,10 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
     if (form.tour_source === "quote" && !form.quote_id) e.quote_id = "Vui lòng chọn báo giá";
     if (form.tour_source === "package" && !form.tour_package_id) e.tour_package_id = "Vui lòng chọn gói tour";
     if (form.tour_source === "manual" && !form.tour_name_manual.trim()) e.tour_name_manual = "Bắt buộc";
-    if (depositOver) e.deposit_amount = "Tiền cọc không được vượt tổng giá trị";
+    if (paxTotal <= 0) e.pax = "Số khách phải lớn hơn 0";
+    if (totalNegative) e.total_value = "Tổng giá trị không được âm";
+    if (depositNegative) e.deposit_amount = "Tiền cọc không được âm";
+    if (depositOver) e.deposit_amount = "Đặt cọc không được lớn hơn tổng tiền";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -355,13 +360,21 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
                 <Input type="number" value={paxTotal} readOnly className="bg-muted font-semibold" />
               </div>
             </div>
+            {errors.pax && <p className="text-xs text-destructive">{errors.pax}</p>}
           </div>
 
           {/* Tài chính */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Tổng giá trị</Label>
-              <Input type="number" min="0" value={form.total_value} onChange={(e) => set("total_value", e.target.value)} />
+              <Input
+                type="number"
+                min="0"
+                value={form.total_value}
+                onChange={(e) => set("total_value", e.target.value)}
+                className={totalNegative ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              {errors.total_value && <p className="text-xs text-destructive">{errors.total_value}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Tiền cọc</Label>
@@ -370,14 +383,15 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
                 min="0"
                 value={form.deposit_amount}
                 onChange={(e) => set("deposit_amount", e.target.value)}
-                className={depositOver ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={(depositOver || depositNegative) ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {depositOver && (
-                <div className="flex items-start gap-2 rounded-md border border-orange-300 bg-orange-50 p-2 text-xs text-orange-900">
+                <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>Tiền cọc ({deposit.toLocaleString("vi-VN")}đ) đang lớn hơn tổng giá trị ({total.toLocaleString("vi-VN")}đ).</span>
+                  <span>Đặt cọc ({deposit.toLocaleString("vi-VN")}đ) không được lớn hơn tổng tiền ({total.toLocaleString("vi-VN")}đ).</span>
                 </div>
               )}
+              {!depositOver && errors.deposit_amount && <p className="text-xs text-destructive">{errors.deposit_amount}</p>}
             </div>
           </div>
 
@@ -395,7 +409,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
-          <Button onClick={handleSubmit} disabled={mutation.isPending || depositOver}>
+          <Button onClick={handleSubmit} disabled={mutation.isPending || depositOver || depositNegative || totalNegative || paxTotal <= 0}>
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Lưu
           </Button>
