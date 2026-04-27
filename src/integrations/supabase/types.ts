@@ -4577,6 +4577,18 @@ export type Database = {
       }
     }
     Functions: {
+      generate_monthly_cashflow: {
+        Args: { p_month: number; p_year: number }
+        Returns: undefined
+      }
+      generate_monthly_profit: {
+        Args: { p_month: number; p_year: number }
+        Returns: undefined
+      }
+      generate_monthly_revenue: {
+        Args: { p_month: number; p_year: number }
+        Returns: undefined
+      }
       get_default_permissions_for_role: {
         Args: { p_role: string }
         Returns: string[]
