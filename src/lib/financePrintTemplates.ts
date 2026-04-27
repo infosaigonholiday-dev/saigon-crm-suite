@@ -101,7 +101,7 @@ interface EstimateData {
   }>;
 }
 
-export function buildEstimateHtml(d: EstimateData): string {
+export function buildEstimateHtml(d: EstimateData, co?: PrintCompanyInfo): string {
   const itemsHtml = d.items
     .map((it, idx) => {
       const total = (it.unit_price ?? 0) * (it.quantity ?? 0);
@@ -124,7 +124,7 @@ export function buildEstimateHtml(d: EstimateData): string {
 <head><meta charset="UTF-8"><title>Phiếu dự toán ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU DỰ TOÁN CHI PHÍ TOUR", d.code, d.created_at)}
+  ${headerBlock("PHIẾU DỰ TOÁN CHI PHÍ TOUR", d.code, d.created_at, co)}
   <div class="info-grid">
     <div><strong>Booking:</strong> ${d.booking_code ?? "—"}</div>
     <div><strong>Khách hàng:</strong> ${d.customer_name ?? "—"}</div>
@@ -178,7 +178,7 @@ interface SettlementData {
   }>;
 }
 
-export function buildSettlementHtml(d: SettlementData): string {
+export function buildSettlementHtml(d: SettlementData, co?: PrintCompanyInfo): string {
   const itemsHtml = d.items
     .map((it, idx) => {
       const variance = (it.actual_amount ?? 0) - (it.estimated_amount ?? 0);
@@ -237,7 +237,7 @@ interface AdvanceData {
   booking_code?: string;
 }
 
-export function buildAdvanceHtml(d: AdvanceData): string {
+export function buildAdvanceHtml(d: AdvanceData, co?: PrintCompanyInfo): string {
   return `<!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><title>Phiếu tạm ứng ${d.code}</title><style>${baseStyles}</style></head>
