@@ -55,13 +55,13 @@ const kanbanColumns: { id: string; label: string; statuses: LeadStatus[]; color:
   { id: "LOST_GROUP", label: "Không thành công", statuses: ["LOST", "DORMANT", "NURTURE"], color: "bg-destructive/10", defaultStatus: "LOST" },
 ];
 
-const tempConfig: Record<string, { icon: string; className: string }> = {
-  hot: { icon: "🔥", className: "text-red-500" },
-  warm: { icon: "🟠", className: "text-orange-500" },
-  cold: { icon: "🔵", className: "text-blue-500" },
+const tempConfig: Record<string, { icon: string; label: string; badgeClass: string }> = {
+  hot: { icon: "🔥", label: "Nóng", badgeClass: "bg-red-500 text-white border-red-500" },
+  warm: { icon: "🌤️", label: "Ấm", badgeClass: "bg-orange-500 text-white border-orange-500" },
+  cold: { icon: "❄️", label: "Lạnh", badgeClass: "bg-blue-500 text-white border-blue-500" },
 };
 
-function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
+function getFollowUpStatus(date: string | null): "overdue" | "today" | "future" | null {
   if (!date) return null;
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -69,7 +69,20 @@ function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
   today.setHours(0, 0, 0, 0);
   if (d.getTime() < today.getTime()) return "overdue";
   if (d.getTime() === today.getTime()) return "today";
-  return null;
+  return "future";
+}
+
+function daysSince(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatLastContact(dateStr: string | null): { text: string; className: string } {
+  if (!dateStr) return { text: "Chưa tương tác", className: "text-amber-600 font-medium" };
+  const days = daysSince(dateStr) ?? 0;
+  if (days === 0) return { text: "Lần cuối: hôm nay", className: "text-muted-foreground" };
+  if (days > 7) return { text: `⚠️ ${days} ngày không liên hệ`, className: "text-destructive font-medium" };
+  return { text: `Lần cuối: ${days} ngày trước`, className: "text-muted-foreground" };
 }
 
 export default function Leads() {
