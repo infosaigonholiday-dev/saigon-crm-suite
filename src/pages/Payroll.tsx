@@ -94,10 +94,10 @@ export default function Payroll() {
       // Fetch active employees + their salaries
       const { data: emps, error: empErr } = await supabase
         .from("employees")
-        .select("id, full_name, department_id")
-        .eq("status", "active");
+        .select("id, full_name, department_id, status")
+        .in("status", ["ACTIVE", "PROBATION", "INTERN", "active", "probation", "intern"]);
       if (empErr) throw empErr;
-      if (!emps || emps.length === 0) throw new Error("Không có nhân viên active");
+      if (!emps || emps.length === 0) throw new Error("Không có nhân viên đang làm việc");
 
       const empIds = emps.map((e) => e.id);
 
