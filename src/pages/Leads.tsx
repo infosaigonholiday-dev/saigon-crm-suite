@@ -1,10 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
-import LostReasonDialog from "@/components/leads/LostReasonDialog";
+import LeadStatusChangeDialog from "@/components/leads/LeadStatusChangeDialog";
 import LeadTableView from "@/components/leads/LeadTableView";
 import ConvertToCustomerDialog from "@/components/leads/ConvertToCustomerDialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import {
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
   LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2, CalendarClock,
+  Bell, CalendarOff, Clock, X,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,13 +55,13 @@ const kanbanColumns: { id: string; label: string; statuses: LeadStatus[]; color:
   { id: "LOST_GROUP", label: "Không thành công", statuses: ["LOST", "DORMANT", "NURTURE"], color: "bg-destructive/10", defaultStatus: "LOST" },
 ];
 
-const tempConfig: Record<string, { icon: string; className: string }> = {
-  hot: { icon: "🔥", className: "text-red-500" },
-  warm: { icon: "🟠", className: "text-orange-500" },
-  cold: { icon: "🔵", className: "text-blue-500" },
+const tempConfig: Record<string, { icon: string; label: string; badgeClass: string }> = {
+  hot: { icon: "🔥", label: "Nóng", badgeClass: "bg-red-500 text-white border-red-500" },
+  warm: { icon: "🌤️", label: "Ấm", badgeClass: "bg-orange-500 text-white border-orange-500" },
+  cold: { icon: "❄️", label: "Lạnh", badgeClass: "bg-blue-500 text-white border-blue-500" },
 };
 
-function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
+function getFollowUpStatus(date: string | null): "overdue" | "today" | "future" | null {
   if (!date) return null;
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -68,7 +69,20 @@ function getFollowUpStatus(date: string | null): "overdue" | "today" | null {
   today.setHours(0, 0, 0, 0);
   if (d.getTime() < today.getTime()) return "overdue";
   if (d.getTime() === today.getTime()) return "today";
-  return null;
+  return "future";
+}
+
+function daysSince(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatLastContact(dateStr: string | null): { text: string; className: string } {
+  if (!dateStr) return { text: "Chưa tương tác", className: "text-amber-600 font-medium" };
+  const days = daysSince(dateStr) ?? 0;
+  if (days === 0) return { text: "Lần cuối: hôm nay", className: "text-muted-foreground" };
+  if (days > 7) return { text: `⚠️ ${days} ngày không liên hệ`, className: "text-destructive font-medium" };
+  return { text: `Lần cuối: ${days} ngày trước`, className: "text-muted-foreground" };
 }
 
 export default function Leads() {
@@ -92,9 +106,12 @@ export default function Leads() {
   const [convertLead, setConvertLead] = useState<any>(null);
   const [convertOpen, setConvertOpen] = useState(false);
 
-  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; leadId: string }>({
-    open: false, status: "", leadId: "",
+  const [transitionDialog, setTransitionDialog] = useState<{ open: boolean; status: string; statusLabel: string; leadId: string; isLost: boolean; currentTemp?: string | null }>({
+    open: false, status: "", statusLabel: "", leadId: "", isLost: false,
   });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlFilter = searchParams.get("filter"); // overdue | today | no_schedule | stale
 
   const [searchText, setSearchText] = useState("");
   const [filterTemp, setFilterTemp] = useState<string>("all");
@@ -152,6 +169,10 @@ export default function Leads() {
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    const sevenDaysAgoMs = todayMs - 7 * 24 * 60 * 60 * 1000;
+
     return leads.filter((l: any) => {
       if (searchText) {
         const s = searchText.toLowerCase();
@@ -162,13 +183,30 @@ export default function Leads() {
       }
       if (filterTemp !== "all" && l.temperature !== filterTemp) return false;
       if (filterStaff !== "all" && l.assigned_to !== filterStaff) return false;
+
+      // URL-driven monitoring filters
+      if (urlFilter) {
+        const closed = ["WON", "LOST", "DORMANT", "NURTURE"].includes(l.status);
+        if (closed) return false;
+        const fuMs = l.follow_up_date ? new Date(l.follow_up_date).setHours(0, 0, 0, 0) : null;
+        if (urlFilter === "overdue") {
+          if (fuMs === null || fuMs >= todayMs) return false;
+        } else if (urlFilter === "today") {
+          if (fuMs !== todayMs) return false;
+        } else if (urlFilter === "no_schedule") {
+          if (fuMs !== null) return false;
+        } else if (urlFilter === "stale") {
+          const lcMs = l.last_contact_at ? new Date(l.last_contact_at).getTime() : null;
+          if (lcMs !== null && lcMs >= sevenDaysAgoMs) return false;
+        }
+      }
       return true;
     });
-  }, [leads, searchText, filterTemp, filterStaff]);
+  }, [leads, searchText, filterTemp, filterStaff, urlFilter]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, extra }: { id: string; status: string; extra?: Record<string, any> }) => {
-      const { error } = await supabase.from("leads").update({ status, ...extra }).eq("id", id);
+      const { error } = await supabase.from("leads").update({ status, ...extra } as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
@@ -188,28 +226,61 @@ export default function Leads() {
     onError: (err: any) => toast.error("Lỗi xóa", { description: err.message }),
   });
 
+  const openStatusChangeDialog = useCallback((leadId: string, status: string, statusLabel: string, currentTemp: string | null) => {
+    setTransitionDialog({
+      open: true,
+      status,
+      statusLabel,
+      leadId,
+      isLost: status === "LOST",
+      currentTemp,
+    });
+  }, []);
+
   const handleDragStart = useCallback((id: string) => setDraggedId(id), []);
 
   const handleDrop = useCallback(
     (col: typeof kanbanColumns[0]) => {
       if (!draggedId) return;
-      if (col.id === "LOST_GROUP") {
-        setTransitionDialog({ open: true, status: "LOST", leadId: draggedId });
-        setDraggedId(null);
-        return;
-      }
-      updateStatus.mutate({ id: draggedId, status: col.defaultStatus });
+      const lead = leads.find((l: any) => l.id === draggedId);
       setDraggedId(null);
+      if (!lead) return;
+      // Same group → no-op
+      if (col.statuses.includes(lead.status)) return;
+      openStatusChangeDialog(draggedId, col.defaultStatus, col.label, lead.temperature);
     },
-    [draggedId, updateStatus]
+    [draggedId, leads, openStatusChangeDialog]
   );
 
-  const handleTransitionConfirm = (data: { lost_reason?: string; next_contact_date?: string }) => {
-    const extra: Record<string, any> = {};
-    if (data.lost_reason) extra.lost_reason = data.lost_reason;
-    if (data.next_contact_date) extra.follow_up_date = data.next_contact_date;
-    updateStatus.mutate({ id: transitionDialog.leadId, status: transitionDialog.status, extra });
-  };
+  const handleStatusChangeSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-count"] });
+    queryClient.invalidateQueries({ queryKey: ["lead-monitoring"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-latest-action"] });
+  }, [queryClient]);
+
+  // Latest care action per lead (for "next action" badge on card)
+  const visibleLeadIds = filteredLeads.map((l: any) => l.id);
+  const { data: latestActionMap = {} } = useQuery({
+    queryKey: ["leads-latest-action", visibleLeadIds.sort().join(",")],
+    queryFn: async () => {
+      if (visibleLeadIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("lead_care_history")
+        .select("lead_id, next_action, next_contact_date, contacted_at")
+        .in("lead_id", visibleLeadIds)
+        .order("contacted_at", { ascending: false });
+      if (error) return {};
+      const map: Record<string, { next_action: string | null; next_contact_date: string | null }> = {};
+      for (const row of data || []) {
+        if (!map[row.lead_id]) {
+          map[row.lead_id] = { next_action: row.next_action, next_contact_date: row.next_contact_date };
+        }
+      }
+      return map;
+    },
+    enabled: visibleLeadIds.length > 0,
+  });
 
   const formatValue = (v: number | null) => {
     if (!v) return "";
@@ -286,17 +357,48 @@ export default function Leads() {
 
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
-      <LostReasonDialog
+      <LeadStatusChangeDialog
         open={transitionDialog.open}
         onOpenChange={(o) => setTransitionDialog((p) => ({ ...p, open: o }))}
+        leadId={transitionDialog.leadId}
+        currentTemperature={transitionDialog.currentTemp}
         targetStatus={transitionDialog.status}
-        onConfirm={handleTransitionConfirm}
+        targetStatusLabel={transitionDialog.statusLabel}
+        isLost={transitionDialog.isLost}
+        onSuccess={() => {
+          handleStatusChangeSuccess();
+          if (transitionDialog.status === "WON") {
+            const wonLead = leads.find((l: any) => l.id === transitionDialog.leadId);
+            if (wonLead && !wonLead.converted_customer_id) {
+              if (window.confirm("Chuyển Lead này thành Khách hàng luôn không?")) {
+                setConvertLead(wonLead);
+                setConvertOpen(true);
+              }
+            }
+          }
+        }}
       />
       <ConvertToCustomerDialog
         open={convertOpen}
         onOpenChange={setConvertOpen}
         lead={convertLead}
       />
+
+      {/* Active URL filter banner */}
+      {urlFilter && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/30 rounded-md">
+          <span className="text-sm font-medium">
+            Đang lọc:{" "}
+            {urlFilter === "overdue" && "Quá hạn follow-up"}
+            {urlFilter === "today" && "Cần follow-up hôm nay"}
+            {urlFilter === "no_schedule" && "Không có lịch hẹn"}
+            {urlFilter === "stale" && ">7 ngày không tương tác"}
+          </span>
+          <Button variant="ghost" size="sm" className="ml-auto h-7" onClick={() => { searchParams.delete("filter"); setSearchParams(searchParams); }}>
+            <X className="h-3.5 w-3.5 mr-1" />Bỏ lọc
+          </Button>
+        </div>
+      )}
 
       {viewMode === "table" ? (
         <LeadTableView
@@ -367,29 +469,7 @@ export default function Leads() {
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (c.id === "LOST" || c.id === "NURTURE" || c.id === "DORMANT") {
-                                            setTransitionDialog({ open: true, status: c.id, leadId: lead.id });
-                                          } else if (c.id === "WON") {
-                                            updateStatus.mutate(
-                                              { id: lead.id, status: "WON" },
-                                              {
-                                                onSuccess: () => {
-                                                  toast.success("Đã chuyển sang Chốt tour");
-                                                  if (!lead.converted_customer_id) {
-                                                    if (window.confirm("Chuyển Lead này thành Khách hàng luôn không?")) {
-                                                      setConvertLead(lead);
-                                                      setConvertOpen(true);
-                                                    }
-                                                  }
-                                                },
-                                              }
-                                            );
-                                          } else {
-                                            updateStatus.mutate(
-                                              { id: lead.id, status: c.id },
-                                              { onSuccess: () => toast.success(`Đã chuyển sang ${c.label}`) }
-                                            );
-                                          }
+                                          openStatusChangeDialog(lead.id, c.id, c.label, lead.temperature);
                                         }}
                                       >
                                         {c.label}
@@ -415,11 +495,15 @@ export default function Leads() {
                             </div>
                             <div className="min-w-0 flex-1 space-y-1">
                               <div className="flex items-center gap-1 flex-wrap">
-                                {temp && <span className="text-xs">{temp.icon}</span>}
                                 <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
                                 {lead.company_name && (
                                   <Badge variant="outline" className="text-[9px] h-4 px-1 bg-purple-100 text-purple-700 border-purple-300">
                                     B2B
+                                  </Badge>
+                                )}
+                                {temp && (
+                                  <Badge className={`text-[9px] h-4 px-1 ${temp.badgeClass}`}>
+                                    {temp.icon} {temp.label}
                                   </Badge>
                                 )}
                               </div>
@@ -444,29 +528,52 @@ export default function Leads() {
                                 </div>
                               )}
 
-                              {lead.planned_travel_date && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                  <CalendarClock className="h-2.5 w-2.5 shrink-0" />
-                                  <span>Dự kiến đi: {new Date(lead.planned_travel_date).toLocaleDateString("vi-VN")}</span>
-                                </div>
-                              )}
-
                               {lead.phone && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                   <Phone className="h-2.5 w-2.5" />{lead.phone}
                                 </div>
                               )}
 
-                              {followUpStatus === "overdue" && (
-                                <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
-                                  <AlertTriangle className="h-2.5 w-2.5" />Quá hạn!
+                              {/* Hẹn tiếp theo + action */}
+                              {lead.follow_up_date && (() => {
+                                const action = latestActionMap[lead.id]?.next_action;
+                                const dateStr = new Date(lead.follow_up_date).toLocaleDateString("vi-VN");
+                                if (followUpStatus === "overdue") {
+                                  return (
+                                    <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
+                                      <AlertTriangle className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""} (quá hạn)
+                                    </div>
+                                  );
+                                }
+                                if (followUpStatus === "today") {
+                                  return (
+                                    <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
+                                      <Bell className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""} (hôm nay)
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <CalendarClock className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""}
+                                  </div>
+                                );
+                              })()}
+
+                              {!lead.follow_up_date && !["WON", "LOST", "DORMANT", "NURTURE"].includes(lead.status) && (
+                                <div className="flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                                  <CalendarOff className="h-2.5 w-2.5" />Chưa có lịch hẹn
                                 </div>
                               )}
-                              {followUpStatus === "today" && (
-                                <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
-                                  <AlertTriangle className="h-2.5 w-2.5" />Hôm nay!
-                                </div>
-                              )}
+
+                              {/* Last contact */}
+                              {(() => {
+                                const lc = formatLastContact(lead.last_contact_at);
+                                return (
+                                  <div className={`flex items-center gap-1 text-[10px] ${lc.className}`}>
+                                    <Clock className="h-2.5 w-2.5" />{lc.text}
+                                  </div>
+                                );
+                              })()}
 
                               <div className="flex items-center flex-wrap gap-1">
                                 {lead.assigned_profile_name && (

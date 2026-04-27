@@ -222,7 +222,60 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ===== 7. Sắp đến ngày đi tour (Lead) =====
+    // ===== 6b. Lead không có lịch hẹn (>2 ngày từ khi tạo) =====
+    const twoDaysAgo = new Date(today); twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const threeDaysAgoIso = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: noScheduleLeads } = await supabase
+      .from("leads")
+      .select("id, full_name, assigned_to, department_id, created_at")
+      .is("follow_up_date", null)
+      .not("status", "in", "(WON,LOST,DORMANT,NURTURE,NEW)")
+      .not("assigned_to", "is", null)
+      .lt("created_at", twoDaysAgo.toISOString());
+    if (noScheduleLeads && noScheduleLeads.length > 0) {
+      // Dedupe: skip leads with notification of same type within last 3 days
+      const leadIds = noScheduleLeads.map((l: any) => l.id);
+      const { data: recentNotifs } = await supabase
+        .from("notifications")
+        .select("entity_id")
+        .eq("type", "lead_no_schedule")
+        .gte("created_at", threeDaysAgoIso)
+        .in("entity_id", leadIds);
+      const dedupeSet = new Set((recentNotifs || []).map((n: any) => n.entity_id));
+
+      for (const l of noScheduleLeads) {
+        if (!l.assigned_to || dedupeSet.has(l.id)) continue;
+        const daysSince = Math.floor((today.getTime() - new Date(l.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        notifications.push({
+          user_id: l.assigned_to,
+          type: "lead_no_schedule",
+          title: `📅 Lead chưa có lịch hẹn: ${l.full_name}`,
+          message: `Đã ${daysSince} ngày chưa lên lịch follow-up. Hãy đặt lịch ngay!`,
+          entity_type: "lead",
+          entity_id: l.id,
+          priority: "high",
+        });
+        // Notify GDKD cùng phòng
+        if (l.department_id) {
+          const { data: gdkds } = await supabase
+            .from("profiles").select("id")
+            .eq("department_id", l.department_id)
+            .in("role", ["GDKD"])
+            .eq("is_active", true);
+          for (const g of gdkds || []) {
+            notifications.push({
+              user_id: g.id,
+              type: "lead_no_schedule",
+              title: `📅 Lead chưa có lịch hẹn`,
+              message: `"${l.full_name}" đã ${daysSince} ngày chưa lên lịch follow-up.`,
+              entity_type: "lead",
+              entity_id: l.id,
+              priority: "normal",
+            });
+          }
+        }
+      }
+    }
     const futureDateStr = offsetDateStr(60);
     const { data: travelLeads } = await supabase
       .from("leads")
