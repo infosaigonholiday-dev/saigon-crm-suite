@@ -94,6 +94,19 @@ export default function BookingDetail() {
   const canDeleteNotes = hasPermission("bookings", "delete");
   const isLocked = status === "COMPLETED" || status === "CANCELLED";
 
+  // HDV assignment: chỉ DIEUHAN + ADMIN
+  const canAssignGuide =
+    !isLocked &&
+    ["ADMIN", "SUPER_ADMIN", "DIEUHAN"].includes(String(userRole ?? ""));
+
+  // Edit guests: SALE phụ trách + DIEUHAN + ADMIN
+  const isOwner = booking.sale_id && user?.id === booking.sale_id;
+  const canEditGuests =
+    !isLocked &&
+    (["ADMIN", "SUPER_ADMIN", "DIEUHAN", "GDKD", "MANAGER"].includes(String(userRole ?? "")) ||
+      isOwner);
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
