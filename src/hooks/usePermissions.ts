@@ -219,11 +219,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view", "candidates.create", "candidates.edit",
     "kpi_policies.view",
   ],
+  SALE_DOMESTIC: [
     "dashboard.view",
-    "customers.view", "customers.create", "customers.edit",
-    "leads.view", "leads.create", "leads.edit",
-    "bookings.view", "bookings.create",
-    "quotations.view", "quotations.create", "quotations.edit",
     "contracts.view",
     "payments.view",
     "leave.view", "leave.create",
