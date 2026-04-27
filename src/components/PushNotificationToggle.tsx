@@ -51,30 +51,76 @@ export function PushNotificationToggle() {
   const handleTestPush = async () => {
     setTesting(true);
     try {
+      // Bước 1: queue push, trả về ngay (< 1s, không bao giờ timeout)
       const { data, error } = await supabase.rpc("rpc_send_test_push");
       if (error) {
         toast.error(`Lỗi RPC: ${error.message}`);
         return;
       }
-      const result = data as {
+      const queued = data as {
         ok?: boolean;
-        status_code?: number;
-        response?: string;
-        hint?: string;
+        request_id?: number;
+        notification_id?: string;
         stage?: string;
         error?: string;
+        hint?: string;
       } | null;
-      if (result?.ok) {
+
+      if (!queued?.ok || !queued?.request_id) {
+        toast.error(
+          `❌ Không queue được push: ${queued?.stage ?? queued?.error ?? "unknown"}`,
+          { description: queued?.hint, duration: 12000 }
+        );
+        console.error("[push test] queue failed:", queued);
+        return;
+      }
+
+      const requestId = queued.request_id;
+      toast.message("Đã gửi đến OneSignal, đang chờ phản hồi…", { duration: 4000 });
+
+      // Bước 2: poll status từ client (mỗi 1.5s, tối đa 12 lần = 18s)
+      let finalStatus: number | null = null;
+      let finalBody = "";
+      let finalHint = "";
+      for (let i = 0; i < 12; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const { data: poll, error: pollErr } = await supabase.rpc(
+          "rpc_check_push_status",
+          { p_request_id: requestId }
+        );
+        if (pollErr) continue;
+        const p = poll as {
+          ready?: boolean;
+          status_code?: number;
+          response?: string;
+          hint?: string;
+        } | null;
+        if (p?.ready && p.status_code != null) {
+          finalStatus = p.status_code;
+          finalBody = p.response ?? "";
+          finalHint = p.hint ?? "";
+          break;
+        }
+      }
+
+      if (finalStatus == null) {
+        toast.warning("OneSignal chưa phản hồi sau 18s — kiểm tra Delivery log trên dashboard", {
+          duration: 10000,
+        });
+        return;
+      }
+
+      if (finalStatus >= 200 && finalStatus < 300) {
         toast.success("✅ OneSignal nhận push OK — kiểm tra thông báo trên màn hình", {
-          description: result.hint,
+          description: finalHint,
           duration: 8000,
         });
       } else {
-        toast.error(
-          `❌ Push fail: ${result?.status_code ?? result?.stage ?? result?.error ?? "unknown"}`,
-          { description: result?.hint || result?.response, duration: 15000 }
-        );
-        console.error("[push test] full result:", result);
+        toast.error(`❌ Push fail: HTTP ${finalStatus}`, {
+          description: finalHint || finalBody,
+          duration: 15000,
+        });
+        console.error("[push test] response:", { status: finalStatus, body: finalBody });
       }
     } catch (e: any) {
       toast.error(`Lỗi: ${e?.message || String(e)}`);
