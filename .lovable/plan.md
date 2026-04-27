@@ -1,96 +1,81 @@
-# Fix 2 điểm nhỏ HCNS — Tách type notification + tạo data payroll test
+Mục tiêu: sửa đúng lỗi form Tạo booking hiện chưa tự điền đủ dữ liệu và chưa tự tính theo số lượng khách.
 
-## Hiện trạng (đã verify bằng grep)
+Kế hoạch triển khai
 
-| Type | File | Line | Trạng thái |
-|------|------|------|-----------|
-| `CANDIDATE_NEW` | `CandidateFormDialog.tsx` | 118 | ✅ Đã có (insert khi tạo UV mới) |
-| `CANDIDATE_STATUS` | `Recruitment.tsx` | 73 | ✅ Giữ nguyên (chuyển trạng thái Kanban) |
-| `CANDIDATE_STATUS` | `Recruitment.tsx` | 191 | ❌ Sai ngữ cảnh — đang dùng cho onboard |
+1. Sửa nguồn dữ liệu auto-fill cho form Booking
+- Luồng từ LKH Tour 2026 (`prefill_tour`) sẽ lấy đủ: `destination`, `departure_date`, `return_date`, `price_adl`, `price_chd`, `price_inf`.
+- Luồng từ Báo giá sẽ dùng đúng trường `quotations.total_amount` (hiện code đang đọc nhầm `total_value`, nên không tự điền tiền).
+- Khi chọn Báo giá, form sẽ tự điền thêm:
+  - tên tour
+  - ngày đi = `valid_from`
+  - ngày về = `valid_until`
+  - tổng tiền ban đầu = `total_amount`
+- Khi chọn Gói tour, form sẽ tự điền tên tour; nếu có dữ liệu giá nền (`base_price`) thì dùng làm giá người lớn mặc định.
 
-→ Chỉ cần **sửa 1 chỗ** ở `Recruitment.tsx` line 191.
+2. Thêm công thức tự tính khi nhập số lượng khách
+- Bổ sung state giá theo từng loại khách trong `BookingFormDialog`:
+  - người lớn
+  - trẻ em
+  - em bé
+- Tự tính live:
+  - `paxTotal = adults + children + infants`
+  - `total_value = adults*price_adl + children*price_chd + infants*price_inf`
+- Hiển thị rõ bảng giá và tổng tính tự động ngay trong form để người dùng thấy công thức đang chạy.
+- Giữ khả năng chỉnh tay nếu cần, nhưng mặc định phải tự nhảy đúng khi đổi số lượng.
 
-## Phần 1 — Đổi type cho onboard thành công
+3. Bổ sung các trường tự điền còn thiếu trong UI
+- Thêm/hiển thị rõ các trường:
+  - Tên tour hiển thị
+  - Ngày đi
+  - Ngày về
+  - Giá NL / TE / EB
+  - Tổng khách (auto)
+  - Tổng giá trị (auto)
+- Với nguồn manual, cho nhập tay ngày đi/ngày về.
+- Với nguồn B2B và Báo giá, các trường này được prefill sẵn nhưng vẫn cho phép sửa.
 
-**File:** `src/pages/Recruitment.tsx` (trong `performOnboarding`, sau khi onboard thành công)
+4. Lưu đúng dữ liệu vào bảng `bookings`
+- Khi submit, payload sẽ lưu cả:
+  - `departure_date`
+  - `return_date`
+  - `tour_name_manual`
+  - `pax_details`
+  - `pax_total`
+  - `total_value`
+- Hiện tại code chưa insert `departure_date`/`return_date`, nên sẽ bổ sung để trang chi tiết và phiếu xác nhận đọc được dữ liệu thật.
 
-Đổi:
-```ts
-await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
-  type: "CANDIDATE_STATUS",
-  title: `Onboard thành công: ${cand.full_name}`,
-  ...
-```
+5. Đồng bộ hiển thị sau khi tạo booking
+- Đảm bảo `BookingDetail` hiện đúng ngày đi/ngày về vừa lưu.
+- Đảm bảo `BookingConfirmationPrint` lấy được:
+  - tên tour
+  - ngày đi/ngày về
+  - số khách từ `pax_details`
+  - tổng tiền
+- Luồng từ B2B tour phải hết tình trạng tạo xong mà phiếu in báo `[Chưa có thông tin tour]` hoặc thiếu ngày.
 
-Thành:
-```ts
-await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
-  type: "ONBOARD_SUCCESS",
-  title: `Onboard thành công: ${cand.full_name}`,
-  message: "Đã tạo tài khoản + checklist onboarding",
-  ...
-```
+6. Verify sau fix
+- Test 3 luồng:
+  1. Tạo booking từ LKH Tour 2026
+  2. Tạo booking từ Báo giá
+  3. Tạo booking nhập tay
+- Xác nhận các điểm sau:
+  - nhập số lượng khách thì tổng tự nhảy
+  - ngày đi/ngày về tự điền đúng khi có nguồn dữ liệu
+  - tên tour tự điền đúng
+  - record mới trong `bookings` có đủ `departure_date`, `return_date`, `tour_name_manual`, `pax_details`, `total_value`
+  - trang chi tiết và phiếu xác nhận hiển thị đúng
 
-`CANDIDATE_NEW` (CandidateFormDialog.tsx:118) và `CANDIDATE_STATUS` (Recruitment.tsx:73) **giữ nguyên**.
+Vấn đề đã xác nhận
+- `BookingFormDialog` hiện chỉ auto tính `Tổng khách`, chưa có công thức tự tính `Tổng giá trị`.
+- Luồng Báo giá đang query sai trường: code đọc `total_value` nhưng bảng `quotations` thực tế có `total_amount`.
+- Form tạo booking hiện không insert `departure_date` và `return_date` dù cột DB đã tồn tại.
+- Luồng `prefill_tour` từ bảng `b2b_tours` mới lấy `departure_date` và `price_adl`, chưa lấy `return_date`, `price_chd`, `price_inf`.
+- Dữ liệu mẫu mới nhất trong DB cho thấy booking vừa tạo vẫn đang thiếu `departure_date` và `return_date`.
 
-## Phần 2 — Tạo data payroll T4/2026 test
-
-Logic "Tính lương tháng" hiện nằm hoàn toàn ở client (`Payroll.tsx` line 92-156), không có edge function `generate-payroll`. Để tạo data test mà không cần user click UI, sẽ chạy **SQL insert tương đương** từ migration:
-
-```sql
--- Insert payroll draft cho mọi NV active chưa có bản ghi T4/2026
-INSERT INTO payroll (
-  employee_id, month, year,
-  base_salary, base_fixed, base_kpi,
-  standard_working_days, actual_working_days,
-  allowance_amount, total_allowance, status
-)
-SELECT
-  e.id,
-  4, 2026,
-  COALESCE(s.base_salary, 0)                                       AS base_salary,
-  ROUND(COALESCE(s.base_salary, 0) * 0.8)                          AS base_fixed,
-  ROUND(COALESCE(s.base_salary, 0) * 0.2)                          AS base_kpi,
-  26, 26,
-  COALESCE(s.phone_allowance,0) + COALESCE(s.transport_allowance,0)
-    + COALESCE(s.meal_allowance,0) + COALESCE(s.housing_allowance,0)
-    + COALESCE(s.other_allowance,0)                                AS allowance_amount,
-  COALESCE(s.phone_allowance,0) + COALESCE(s.transport_allowance,0)
-    + COALESCE(s.meal_allowance,0) + COALESCE(s.housing_allowance,0)
-    + COALESCE(s.other_allowance,0)                                AS total_allowance,
-  'draft'
-FROM employees e
-LEFT JOIN LATERAL (
-  SELECT base_salary, phone_allowance, transport_allowance,
-         meal_allowance, housing_allowance, other_allowance
-  FROM employee_salaries
-  WHERE employee_id = e.id
-  ORDER BY effective_from DESC
-  LIMIT 1
-) s ON true
-WHERE e.status = 'active'
-  AND NOT EXISTS (
-    SELECT 1 FROM payroll p
-    WHERE p.employee_id = e.id AND p.month = 4 AND p.year = 2026
-  );
-```
-
-Logic này **giống 100%** với client-side mutation → user vẫn có thể bấm "Tính lương tháng" sau này, sẽ skip do `existingSet`.
-
-## Phần 3 — Báo cáo verify (sẽ chạy & paste output)
-
-Sau khi áp dụng:
-
-| # | Lệnh | Mong đợi |
-|---|------|----------|
-| 3a | `rg -n "CANDIDATE_NEW" src/` | ≥1 hit ở `CandidateFormDialog.tsx` |
-| 3b | `rg -n "ONBOARD_SUCCESS" src/` | ≥1 hit ở `Recruitment.tsx` |
-| 3c | `rg -n "CANDIDATE_STATUS" src/` | Vẫn còn ở `Recruitment.tsx:73` |
-| 3d | `SELECT count(*), status FROM payroll WHERE month=4 AND year=2026 GROUP BY status;` | X bản ghi `draft` (X = số NV active) |
-| 3e | `npm run build` | 0 errors |
-
-## Files thay đổi
-- ✏️ `src/pages/Recruitment.tsx` — đổi 1 dòng type
-- ➕ Migration mới — INSERT payroll T4/2026
-
-**Không** đụng `CandidateFormDialog.tsx` (đã đúng), không đụng `notifyByRole.ts`, không tạo edge function.
+Chi tiết kỹ thuật
+- File chính cần sửa:
+  - `src/components/bookings/BookingFormDialog.tsx`
+  - `src/pages/Bookings.tsx`
+  - có thể rà lại `src/pages/BookingConfirmationPrint.tsx` nếu cần đồng bộ fallback hiển thị
+- Không cần tạo bảng mới.
+- Không cần migration mới nếu chỉ sửa logic form và payload insert, vì cột `departure_date` và `return_date` đã có sẵn trong DB.

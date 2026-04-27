@@ -54,7 +54,7 @@ export default function Bookings() {
     if (tourCode) {
       supabase
         .from("b2b_tours")
-        .select("tour_code, destination, departure_date, price_adl")
+        .select("tour_code, destination, departure_date, return_date, price_adl, price_chd, price_inf")
         .eq("tour_code", tourCode)
         .maybeSingle()
         .then(({ data }) => {
