@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,12 +18,15 @@ import { ExpenseListTab } from "@/components/finance/ExpenseListTab";
 import { ExpenseSummaryTab } from "@/components/finance/ExpenseSummaryTab";
 import { BudgetEstimatesTab } from "@/components/finance/BudgetEstimatesTab";
 import { BudgetSettlementsTab } from "@/components/finance/BudgetSettlementsTab";
-import { RevenueReportTab } from "@/components/finance/RevenueReportTab";
-import { ProfitReportTab } from "@/components/finance/ProfitReportTab";
-import { CashflowReportTab } from "@/components/finance/CashflowReportTab";
-import { TaxReportTab } from "@/components/finance/TaxReportTab";
-import { DebtReportTab } from "@/components/finance/DebtReportTab";
-import { ImportExpensesDialog } from "@/components/finance/ImportExpensesDialog";
+// Lazy load report tabs (heavy charts)
+const RevenueReportTab = lazy(() => import("@/components/finance/RevenueReportTab").then(m => ({ default: m.RevenueReportTab })));
+const ProfitReportTab = lazy(() => import("@/components/finance/ProfitReportTab").then(m => ({ default: m.ProfitReportTab })));
+const CashflowReportTab = lazy(() => import("@/components/finance/CashflowReportTab").then(m => ({ default: m.CashflowReportTab })));
+const TaxReportTab = lazy(() => import("@/components/finance/TaxReportTab").then(m => ({ default: m.TaxReportTab })));
+const DebtReportTab = lazy(() => import("@/components/finance/DebtReportTab").then(m => ({ default: m.DebtReportTab })));
+const ImportExpensesDialog = lazy(() => import("@/components/finance/ImportExpensesDialog").then(m => ({ default: m.ImportExpensesDialog })));
+
+const TabFallback = () => <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
 const formatVND = (v: number | null) => {
   if (!v) return "0";
@@ -169,7 +172,11 @@ function SubmitterView() {
         </Button>
       </div>
       <TransactionListTab submitterOnly />
-      <ImportExpensesDialog open={importOpen} onOpenChange={setImportOpen} />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportExpensesDialog open={importOpen} onOpenChange={setImportOpen} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -196,7 +203,9 @@ function ManagerFinanceView() {
         <h1 className="text-2xl font-bold">Doanh thu</h1>
         <p className="text-sm text-muted-foreground">Báo cáo doanh thu phòng ban</p>
       </div>
-      <RevenueReportTab departmentFilter={profile?.department_id} />
+      <Suspense fallback={<TabFallback />}>
+        <RevenueReportTab departmentFilter={profile?.department_id} />
+      </Suspense>
     </div>
   );
 }
@@ -317,11 +326,11 @@ export default function Finance() {
         <TabsContent value="cashbook" className="mt-4"><TransactionListTab /></TabsContent>
         <TabsContent value="estimates" className="mt-4"><BudgetEstimatesTab /></TabsContent>
         <TabsContent value="settlements" className="mt-4"><BudgetSettlementsTab /></TabsContent>
-        <TabsContent value="revenue" className="mt-4"><RevenueReportTab /></TabsContent>
-        <TabsContent value="profit" className="mt-4"><ProfitReportTab /></TabsContent>
-        <TabsContent value="cashflow" className="mt-4"><CashflowReportTab /></TabsContent>
-        <TabsContent value="tax" className="mt-4"><TaxReportTab /></TabsContent>
-        <TabsContent value="debt" className="mt-4"><DebtReportTab /></TabsContent>
+        <TabsContent value="revenue" className="mt-4"><Suspense fallback={<TabFallback />}><RevenueReportTab /></Suspense></TabsContent>
+        <TabsContent value="profit" className="mt-4"><Suspense fallback={<TabFallback />}><ProfitReportTab /></Suspense></TabsContent>
+        <TabsContent value="cashflow" className="mt-4"><Suspense fallback={<TabFallback />}><CashflowReportTab /></Suspense></TabsContent>
+        <TabsContent value="tax" className="mt-4"><Suspense fallback={<TabFallback />}><TaxReportTab /></Suspense></TabsContent>
+        <TabsContent value="debt" className="mt-4"><Suspense fallback={<TabFallback />}><DebtReportTab /></Suspense></TabsContent>
         <TabsContent value="salary" className="mt-4"><SalaryCostTab /></TabsContent>
         <TabsContent value="office" className="mt-4">
           <ExpenseListTab title="Chi phí văn phòng" tableName="office_expenses" categories={OFFICE_CATEGORIES} queryKey="office-expenses" />

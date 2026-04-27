@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
-import { ImportExcelDialog } from "@/components/raw-contacts/ImportExcelDialog";
+const ImportExcelDialog = lazy(() => import("@/components/raw-contacts/ImportExcelDialog").then(m => ({ default: m.ImportExcelDialog })));
 import { RawContactFormDialog } from "@/components/raw-contacts/RawContactFormDialog";
 
 type RawContact = {
@@ -707,16 +707,20 @@ export default function RawContacts() {
       </Dialog>
 
       {/* Import Excel Dialog */}
-      <ImportExcelDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        userId={user?.id ?? ""}
-        departmentId={myProfile?.department_id ?? null}
-        onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
-          queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
-        }}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportExcelDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            userId={user?.id ?? ""}
+            departmentId={myProfile?.department_id ?? null}
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ["raw-contacts"] });
+              queryClient.invalidateQueries({ queryKey: ["raw-contacts-my"] });
+            }}
+          />
+        </Suspense>
+      )}
       <InternalNotesDialog
         open={!!notesOpenId}
         onOpenChange={(o) => !o && setNotesOpenId(null)}
