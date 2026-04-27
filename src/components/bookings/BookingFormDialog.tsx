@@ -78,7 +78,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
         ...p,
         code: p.code || `BK-${prefillData.tour_code}`,
         tour_source: "manual",
-        tour_name_manual: p.tour_name_manual || prefillData.destination || prefillData.tour_code,
+        tour_name_manual: p.tour_name_manual || (prefillData.destination ? `${prefillData.destination} (${prefillData.tour_code})` : prefillData.tour_code),
         departure_date: p.departure_date || prefillData.departure_date || "",
         return_date: p.return_date || prefillData.return_date || "",
         price_adl: p.price_adl || (prefillData.price_adl ? String(prefillData.price_adl) : ""),
