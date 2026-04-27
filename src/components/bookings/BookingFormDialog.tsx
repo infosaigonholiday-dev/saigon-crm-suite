@@ -159,10 +159,12 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
     return a + c + i;
   }, [form.adults, form.children, form.infants]);
 
-  // Validation deposit > total
+  // Validation tài chính
   const total = Number(form.total_value || 0);
   const deposit = Number(form.deposit_amount || 0);
-  const depositOver = deposit > 0 && total > 0 && deposit > total;
+  const totalNegative = form.total_value !== "" && total < 0;
+  const depositNegative = form.deposit_amount !== "" && deposit < 0;
+  const depositOver = deposit > 0 && deposit > total;
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -171,7 +173,10 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
     if (form.tour_source === "quote" && !form.quote_id) e.quote_id = "Vui lòng chọn báo giá";
     if (form.tour_source === "package" && !form.tour_package_id) e.tour_package_id = "Vui lòng chọn gói tour";
     if (form.tour_source === "manual" && !form.tour_name_manual.trim()) e.tour_name_manual = "Bắt buộc";
-    if (depositOver) e.deposit_amount = "Tiền cọc không được vượt tổng giá trị";
+    if (paxTotal <= 0) e.pax = "Số khách phải lớn hơn 0";
+    if (totalNegative) e.total_value = "Tổng giá trị không được âm";
+    if (depositNegative) e.deposit_amount = "Tiền cọc không được âm";
+    if (depositOver) e.deposit_amount = "Đặt cọc không được lớn hơn tổng tiền";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
