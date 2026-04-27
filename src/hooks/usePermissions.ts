@@ -105,10 +105,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
   ],
+  GDKD: [
     "dashboard.view",
-    "customers.view", "customers.create", "customers.edit",
-    "leads.view", "leads.create",
-    "bookings.view", "bookings.create", "bookings.edit", "bookings.approve",
     "quotations.view", "quotations.create", "quotations.edit",
     "tour_packages.view", "tour_packages.create",
     "itineraries.view", "itineraries.create",
@@ -199,6 +197,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "b2b_tours.view", "b2b_tours.logs",
     "kpi_policies.view",
   ],
+  MKT: [
     "dashboard.view",
     "leads.view", "leads.create", "leads.edit",
     "leave.view", "leave.create",
