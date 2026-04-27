@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
+import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 
 const leaveTypes: Record<string, string> = {
   ANNUAL: "Phép năm", SICK: "Ốm đau", COMPENSATORY: "Phép bù",
