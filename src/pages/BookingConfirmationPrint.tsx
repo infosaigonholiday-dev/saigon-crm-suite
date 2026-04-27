@@ -218,7 +218,7 @@ export default function BookingConfirmationPrint() {
   const handleIframeLoad = () => {
     if (!iframeRef.current?.contentWindow || !dataMap) return;
     iframeRef.current.contentWindow.postMessage(
-      { type: "fill", data: dataMap, printType },
+      { type: "fill", data: dataMap, printType, company: companyPayload },
       "*"
     );
     setIframeReady(true);
@@ -228,11 +228,11 @@ export default function BookingConfirmationPrint() {
   useEffect(() => {
     if (iframeReady && iframeRef.current?.contentWindow && dataMap) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "fill", data: dataMap, printType },
+        { type: "fill", data: dataMap, printType, company: companyPayload },
         "*"
       );
     }
-  }, [dataMap, iframeReady, printType]);
+  }, [dataMap, companyPayload, iframeReady, printType]);
 
   const doPrint = () => {
     iframeRef.current?.contentWindow?.focus();
