@@ -1,81 +1,48 @@
-Mục tiêu: sửa đúng lỗi form Tạo booking hiện chưa tự điền đủ dữ liệu và chưa tự tính theo số lượng khách.
+## Vấn đề
 
-Kế hoạch triển khai
+Khi bấm **Booking** trong trang LKH Tour 2026 → mở dialog đặt tour → phiếu xác nhận in ra **KHÔNG có** mã tour, ngày đi, ngày về, giá.
 
-1. Sửa nguồn dữ liệu auto-fill cho form Booking
-- Luồng từ LKH Tour 2026 (`prefill_tour`) sẽ lấy đủ: `destination`, `departure_date`, `return_date`, `price_adl`, `price_chd`, `price_inf`.
-- Luồng từ Báo giá sẽ dùng đúng trường `quotations.total_amount` (hiện code đang đọc nhầm `total_value`, nên không tự điền tiền).
-- Khi chọn Báo giá, form sẽ tự điền thêm:
-  - tên tour
-  - ngày đi = `valid_from`
-  - ngày về = `valid_until`
-  - tổng tiền ban đầu = `total_amount`
-- Khi chọn Gói tour, form sẽ tự điền tên tour; nếu có dữ liệu giá nền (`base_price`) thì dùng làm giá người lớn mặc định.
+## Nguyên nhân (đã verify)
 
-2. Thêm công thức tự tính khi nhập số lượng khách
-- Bổ sung state giá theo từng loại khách trong `BookingFormDialog`:
-  - người lớn
-  - trẻ em
-  - em bé
-- Tự tính live:
-  - `paxTotal = adults + children + infants`
-  - `total_value = adults*price_adl + children*price_chd + infants*price_inf`
-- Hiển thị rõ bảng giá và tổng tính tự động ngay trong form để người dùng thấy công thức đang chạy.
-- Giữ khả năng chỉnh tay nếu cần, nhưng mặc định phải tự nhảy đúng khi đổi số lượng.
+1. **Định dạng ngày không khớp**:
+   - `b2b_tours.departure_date` lưu kiểu **TEXT** dạng `"01/06/2026"` (DD/MM/YYYY).
+   - `bookings.departure_date` là kiểu **DATE** cần `YYYY-MM-DD`.
+   - `<input type="date">` cũng cần `YYYY-MM-DD`.
+   - → Prefill chuyển string `"01/06/2026"` vào input → input rỗng → user save → DB nhận chuỗi sai → null hoặc lỗi → phiếu in trống ngày.
 
-3. Bổ sung các trường tự điền còn thiếu trong UI
-- Thêm/hiển thị rõ các trường:
-  - Tên tour hiển thị
-  - Ngày đi
-  - Ngày về
-  - Giá NL / TE / EB
-  - Tổng khách (auto)
-  - Tổng giá trị (auto)
-- Với nguồn manual, cho nhập tay ngày đi/ngày về.
-- Với nguồn B2B và Báo giá, các trường này được prefill sẵn nhưng vẫn cho phép sửa.
+2. **Phiếu in (`BookingConfirmationPrint.tsx`) lấy ngày sai nguồn**:
+   - `tour_start` lấy từ `quote?.valid_from`, `tour_end` lấy từ `quote?.valid_until`.
+   - Booking từ LKH là `tour_source = "manual"` (không có quote) → 2 field này luôn rỗng.
+   - Phải fallback `booking.departure_date` / `booking.return_date`.
 
-4. Lưu đúng dữ liệu vào bảng `bookings`
-- Khi submit, payload sẽ lưu cả:
-  - `departure_date`
-  - `return_date`
-  - `tour_name_manual`
-  - `pax_details`
-  - `pax_total`
-  - `total_value`
-- Hiện tại code chưa insert `departure_date`/`return_date`, nên sẽ bổ sung để trang chi tiết và phiếu xác nhận đọc được dữ liệu thật.
+3. **Mã tour trên phiếu chỉ lấy `tp.code`** (tour package). Booking từ LKH không có package → hiển thị `"—"`. Cần lưu thêm mã tour LKH vào booking và fallback hiển thị.
 
-5. Đồng bộ hiển thị sau khi tạo booking
-- Đảm bảo `BookingDetail` hiện đúng ngày đi/ngày về vừa lưu.
-- Đảm bảo `BookingConfirmationPrint` lấy được:
-  - tên tour
-  - ngày đi/ngày về
-  - số khách từ `pax_details`
-  - tổng tiền
-- Luồng từ B2B tour phải hết tình trạng tạo xong mà phiếu in báo `[Chưa có thông tin tour]` hoặc thiếu ngày.
+## Fix
 
-6. Verify sau fix
-- Test 3 luồng:
-  1. Tạo booking từ LKH Tour 2026
-  2. Tạo booking từ Báo giá
-  3. Tạo booking nhập tay
-- Xác nhận các điểm sau:
-  - nhập số lượng khách thì tổng tự nhảy
-  - ngày đi/ngày về tự điền đúng khi có nguồn dữ liệu
-  - tên tour tự điền đúng
-  - record mới trong `bookings` có đủ `departure_date`, `return_date`, `tour_name_manual`, `pax_details`, `total_value`
-  - trang chi tiết và phiếu xác nhận hiển thị đúng
+### 1. `src/pages/Bookings.tsx` (đọc prefill)
+Thêm helper `ddmmyyyyToISO()` chuyển `"01/06/2026"` → `"2026-06-01"` trước khi truyền vào `prefillData`. Đồng thời truyền thêm `tour_code` để lưu vào `tour_name_manual` dạng `"HẢI NAM 5N (HAIN5N-260601-01)"` hoặc lưu riêng vào `pax_details.tour_code` để phiếu in lấy được.
 
-Vấn đề đã xác nhận
-- `BookingFormDialog` hiện chỉ auto tính `Tổng khách`, chưa có công thức tự tính `Tổng giá trị`.
-- Luồng Báo giá đang query sai trường: code đọc `total_value` nhưng bảng `quotations` thực tế có `total_amount`.
-- Form tạo booking hiện không insert `departure_date` và `return_date` dù cột DB đã tồn tại.
-- Luồng `prefill_tour` từ bảng `b2b_tours` mới lấy `departure_date` và `price_adl`, chưa lấy `return_date`, `price_chd`, `price_inf`.
-- Dữ liệu mẫu mới nhất trong DB cho thấy booking vừa tạo vẫn đang thiếu `departure_date` và `return_date`.
+### 2. `src/components/bookings/BookingFormDialog.tsx`
+- Đảm bảo prefill `departure_date` / `return_date` đã ở dạng ISO (do bước 1 đã chuyển).
+- Khi save mutation: lưu `pax_details` thêm trường `tour_code` (mã LKH gốc) để phiếu in dùng.
+- Tour name manual = `destination` + ` (` + `tour_code` + `)` để vừa hiện tên vừa hiện mã.
 
-Chi tiết kỹ thuật
-- File chính cần sửa:
-  - `src/components/bookings/BookingFormDialog.tsx`
-  - `src/pages/Bookings.tsx`
-  - có thể rà lại `src/pages/BookingConfirmationPrint.tsx` nếu cần đồng bộ fallback hiển thị
-- Không cần tạo bảng mới.
-- Không cần migration mới nếu chỉ sửa logic form và payload insert, vì cột `departure_date` và `return_date` đã có sẵn trong DB.
+### 3. `src/pages/BookingConfirmationPrint.tsx`
+Sửa mapping `dataMap`:
+- `tour_start`: ưu tiên `booking.departure_date`, fallback `quote?.valid_from`.
+- `tour_end`: ưu tiên `booking.return_date`, fallback `quote?.valid_until`.
+- `tour_code`: ưu tiên `tp.code`, fallback `(booking.pax_details as any)?.tour_code`, cuối cùng `"—"`.
+- `tour_duration`: nếu có `departure_date` + `return_date` → tính `N`/`Đ` từ chênh lệch ngày khi `tp.duration_days` rỗng.
+
+### 4. Verify
+- Build TS (`tsc --noEmit`) phải pass.
+- Mở lại flow: LKH → Booking → Save → In phiếu → check 4 field: Mã tour, Ngày đi, Ngày về, Giá.
+
+## Phạm vi
+
+3 file:
+- `src/pages/Bookings.tsx`
+- `src/components/bookings/BookingFormDialog.tsx`
+- `src/pages/BookingConfirmationPrint.tsx`
+
+Không cần migration DB.
