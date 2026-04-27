@@ -506,6 +506,7 @@ export type Database = {
           created_at: string | null
           customer_id: string | null
           department_id: string | null
+          departure_date: string | null
           deposit_amount: number | null
           deposit_due_at: string | null
           id: string
@@ -514,9 +515,12 @@ export type Database = {
           quote_id: string | null
           remaining_amount: number | null
           remaining_due_at: string | null
+          return_date: string | null
           sale_id: string | null
           status: string | null
           total_value: number | null
+          tour_guide_id: string | null
+          tour_guide_note: string | null
           tour_name_manual: string | null
           tour_package_id: string | null
         }
@@ -527,6 +531,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
+          departure_date?: string | null
           deposit_amount?: number | null
           deposit_due_at?: string | null
           id?: string
@@ -535,9 +540,12 @@ export type Database = {
           quote_id?: string | null
           remaining_amount?: number | null
           remaining_due_at?: string | null
+          return_date?: string | null
           sale_id?: string | null
           status?: string | null
           total_value?: number | null
+          tour_guide_id?: string | null
+          tour_guide_note?: string | null
           tour_name_manual?: string | null
           tour_package_id?: string | null
         }
@@ -548,6 +556,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           department_id?: string | null
+          departure_date?: string | null
           deposit_amount?: number | null
           deposit_due_at?: string | null
           id?: string
@@ -556,9 +565,12 @@ export type Database = {
           quote_id?: string | null
           remaining_amount?: number | null
           remaining_due_at?: string | null
+          return_date?: string | null
           sale_id?: string | null
           status?: string | null
           total_value?: number | null
+          tour_guide_id?: string | null
+          tour_guide_note?: string | null
           tour_name_manual?: string | null
           tour_package_id?: string | null
         }
@@ -582,6 +594,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_tour_guide_id_fkey"
+            columns: ["tour_guide_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -4139,6 +4158,65 @@ export type Database = {
           vat_payable?: number | null
         }
         Relationships: []
+      }
+      tour_guests: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          id_number: string | null
+          id_type: string | null
+          is_leader: boolean | null
+          phone: string | null
+          room_assignment: string | null
+          special_request: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          is_leader?: boolean | null
+          phone?: string | null
+          room_assignment?: string | null
+          special_request?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          is_leader?: boolean | null
+          phone?: string | null
+          room_assignment?: string | null
+          special_request?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_guests_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tour_itineraries: {
         Row: {
