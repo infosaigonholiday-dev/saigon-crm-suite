@@ -244,6 +244,9 @@ function BusinessDashboard() {
       {/* Lead monitoring (ADMIN/SUPER_ADMIN/GDKD/MANAGER) */}
       <LeadMonitoringWidget />
 
+      {/* === CEO / OPS / FINANCE DASHBOARD SECTIONS === */}
+      <CeoSections userRole={userRole} departmentId={activeDeptId} />
+
       {/* Sale Performance Table */}
       <SalePerformanceTable departmentId={activeDeptId} month={now} />
 
