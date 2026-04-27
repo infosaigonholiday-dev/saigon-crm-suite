@@ -157,7 +157,7 @@ export default function Employees() {
     queryFn: async () => {
       let query = supabase
         .from("employees")
-        .select("id, employee_code, full_name, phone, email, position, level, status, employment_type, gender, department_id, profile_id, departments(name), profiles:profile_id(role)", { count: "exact" })
+        .select("id, employee_code, full_name, phone, email, position, level, status, employment_type, gender, department_id, profile_id, avatar_url, departments(name), profiles:profile_id(role)", { count: "exact" })
         .is("deleted_at" as any, null)
         .order("created_at", { ascending: false });
 
