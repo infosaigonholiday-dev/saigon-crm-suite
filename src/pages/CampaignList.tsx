@@ -61,10 +61,10 @@ const emptyForm: CampaignFormState = {
 export default function CampaignList() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { has } = usePermissions();
+  const { hasPermission } = usePermissions();
   const qc = useQueryClient();
 
-  const canCreate = has("campaigns", "create");
+  const canCreate = hasPermission("campaigns", "create");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
