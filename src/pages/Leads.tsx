@@ -495,11 +495,15 @@ export default function Leads() {
                             </div>
                             <div className="min-w-0 flex-1 space-y-1">
                               <div className="flex items-center gap-1 flex-wrap">
-                                {temp && <span className="text-xs">{temp.icon}</span>}
                                 <p className="font-medium text-xs truncate flex-1">{lead.full_name}</p>
                                 {lead.company_name && (
                                   <Badge variant="outline" className="text-[9px] h-4 px-1 bg-purple-100 text-purple-700 border-purple-300">
                                     B2B
+                                  </Badge>
+                                )}
+                                {temp && (
+                                  <Badge className={`text-[9px] h-4 px-1 ${temp.badgeClass}`}>
+                                    {temp.icon} {temp.label}
                                   </Badge>
                                 )}
                               </div>
@@ -524,29 +528,52 @@ export default function Leads() {
                                 </div>
                               )}
 
-                              {lead.planned_travel_date && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                  <CalendarClock className="h-2.5 w-2.5 shrink-0" />
-                                  <span>Dự kiến đi: {new Date(lead.planned_travel_date).toLocaleDateString("vi-VN")}</span>
-                                </div>
-                              )}
-
                               {lead.phone && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                   <Phone className="h-2.5 w-2.5" />{lead.phone}
                                 </div>
                               )}
 
-                              {followUpStatus === "overdue" && (
-                                <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
-                                  <AlertTriangle className="h-2.5 w-2.5" />Quá hạn!
+                              {/* Hẹn tiếp theo + action */}
+                              {lead.follow_up_date && (() => {
+                                const action = latestActionMap[lead.id]?.next_action;
+                                const dateStr = new Date(lead.follow_up_date).toLocaleDateString("vi-VN");
+                                if (followUpStatus === "overdue") {
+                                  return (
+                                    <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
+                                      <AlertTriangle className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""} (quá hạn)
+                                    </div>
+                                  );
+                                }
+                                if (followUpStatus === "today") {
+                                  return (
+                                    <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
+                                      <Bell className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""} (hôm nay)
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <CalendarClock className="h-2.5 w-2.5" />Hẹn: {dateStr}{action ? ` — ${action}` : ""}
+                                  </div>
+                                );
+                              })()}
+
+                              {!lead.follow_up_date && !["WON", "LOST", "DORMANT", "NURTURE"].includes(lead.status) && (
+                                <div className="flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                                  <CalendarOff className="h-2.5 w-2.5" />Chưa có lịch hẹn
                                 </div>
                               )}
-                              {followUpStatus === "today" && (
-                                <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
-                                  <AlertTriangle className="h-2.5 w-2.5" />Hôm nay!
-                                </div>
-                              )}
+
+                              {/* Last contact */}
+                              {(() => {
+                                const lc = formatLastContact(lead.last_contact_at);
+                                return (
+                                  <div className={`flex items-center gap-1 text-[10px] ${lc.className}`}>
+                                    <Clock className="h-2.5 w-2.5" />{lc.text}
+                                  </div>
+                                );
+                              })()}
 
                               <div className="flex items-center flex-wrap gap-1">
                                 {lead.assigned_profile_name && (
