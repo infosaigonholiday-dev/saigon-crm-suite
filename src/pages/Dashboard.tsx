@@ -18,6 +18,10 @@ import { SalePerformanceTable } from "@/components/dashboard/SalePerformanceTabl
 import { PipelineFunnel } from "@/components/dashboard/PipelineFunnel";
 import { WeeklyTrendChart } from "@/components/dashboard/WeeklyTrendChart";
 import LeadMonitoringWidget from "@/components/dashboard/LeadMonitoringWidget";
+import { CeoScorecard } from "@/components/dashboard/CeoScorecard";
+import { CeoFunnelChart, CeoSaleRevenueChart, CeoLeadSourceChart } from "@/components/dashboard/CeoCharts";
+import { CeoFinanceAlerts } from "@/components/dashboard/CeoFinanceAlerts";
+import { CeoOperations } from "@/components/dashboard/CeoOperations";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
