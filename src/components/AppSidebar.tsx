@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -92,6 +92,7 @@ export function AppSidebar() {
 
   const hrItems: MenuItem[] = [
     { title: "Nhân sự", url: "/nhan-su", icon: UserCog, moduleKey: "staff" },
+    { title: "Tuyển dụng", url: "/tuyen-dung", icon: UserPlus, moduleKey: "candidates" },
     { title: "Nghỉ phép", url: "/nghi-phep", icon: CalendarOff, moduleKey: "leave" },
     { title: "Bảng lương", url: "/bang-luong", icon: Banknote, moduleKey: "payroll" },
   ];
