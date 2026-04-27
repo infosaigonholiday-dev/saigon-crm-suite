@@ -2690,6 +2690,9 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string | null
           employee_id: string
           end_date: string
@@ -2704,6 +2707,9 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string | null
           employee_id: string
           end_date: string
@@ -2718,6 +2724,9 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string | null
           employee_id?: string
           end_date?: string
@@ -2733,6 +2742,13 @@ export type Database = {
           {
             foreignKeyName: "leave_requests_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_cancelled_by_fkey"
+            columns: ["cancelled_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -4356,6 +4372,10 @@ export type Database = {
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_booking_closed: { Args: { _booking_id: string }; Returns: boolean }
+      rpc_cancel_leave_request: {
+        Args: { p_id: string; p_reason?: string }
+        Returns: Json
+      }
       rpc_check_push_status: { Args: { p_request_id: number }; Returns: Json }
       rpc_dashboard_business: {
         Args: { p_dept_id?: string; p_scope: string; p_user_id: string }
