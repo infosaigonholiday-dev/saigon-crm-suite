@@ -578,13 +578,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: false
-            referencedRelation: "quotes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bookings_sale_id_fkey"
             columns: ["sale_id"]
             isOneToOne: false
@@ -3449,100 +3442,6 @@ export type Database = {
             columns: ["tour_package_id"]
             isOneToOne: false
             referencedRelation: "tour_packages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quotes: {
-        Row: {
-          base_price: number | null
-          code: string
-          created_at: string | null
-          created_by: string | null
-          custom_tour_name: string | null
-          customer_id: string | null
-          departure_date_expected: string | null
-          discount_pct: number | null
-          extra_price: number | null
-          extra_services: Json | null
-          id: string
-          lead_id: string | null
-          pax_adult: number | null
-          pax_child: number | null
-          pax_infant: number | null
-          rejection_reason: string | null
-          response_at: string | null
-          sent_at: string | null
-          status: string | null
-          total_price: number | null
-          valid_until: string | null
-        }
-        Insert: {
-          base_price?: number | null
-          code: string
-          created_at?: string | null
-          created_by?: string | null
-          custom_tour_name?: string | null
-          customer_id?: string | null
-          departure_date_expected?: string | null
-          discount_pct?: number | null
-          extra_price?: number | null
-          extra_services?: Json | null
-          id?: string
-          lead_id?: string | null
-          pax_adult?: number | null
-          pax_child?: number | null
-          pax_infant?: number | null
-          rejection_reason?: string | null
-          response_at?: string | null
-          sent_at?: string | null
-          status?: string | null
-          total_price?: number | null
-          valid_until?: string | null
-        }
-        Update: {
-          base_price?: number | null
-          code?: string
-          created_at?: string | null
-          created_by?: string | null
-          custom_tour_name?: string | null
-          customer_id?: string | null
-          departure_date_expected?: string | null
-          discount_pct?: number | null
-          extra_price?: number | null
-          extra_services?: Json | null
-          id?: string
-          lead_id?: string | null
-          pax_adult?: number | null
-          pax_child?: number | null
-          pax_infant?: number | null
-          rejection_reason?: string | null
-          response_at?: string | null
-          sent_at?: string | null
-          status?: string | null
-          total_price?: number | null
-          valid_until?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quotes_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotes_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
