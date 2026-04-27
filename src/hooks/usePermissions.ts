@@ -50,6 +50,8 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   settings: { label: getModuleLabel("settings"), keys: ["settings.view", "settings.edit"] },
   raw_contacts: { label: getModuleLabel("raw_contacts"), keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
   b2b_tours: { label: getModuleLabel("b2b_tours"), keys: ["b2b_tours.view", "b2b_tours.logs"] },
+  candidates: { label: "Tuyển dụng", keys: ["candidates.view", "candidates.create", "candidates.edit", "candidates.delete"] },
+  kpi_policies: { label: "Chính sách KPI", keys: ["kpi_policies.view", "kpi_policies.create", "kpi_policies.edit"] },
 };
 
 // Scope rules
