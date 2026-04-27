@@ -234,6 +234,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
           price_adl: Number(form.price_adl || 0),
           price_chd: Number(form.price_chd || 0),
           price_inf: Number(form.price_inf || 0),
+          ...(prefillData?.tour_code ? { tour_code: prefillData.tour_code } : {}),
         },
         total_value: total,
         deposit_amount: deposit,
