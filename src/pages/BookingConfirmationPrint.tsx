@@ -91,6 +91,21 @@ export default function BookingConfirmationPrint() {
     enabled: !!(booking as any)?.tour_package_id && !booking?.quote_id,
   });
 
+  // Lấy thông tin LKH B2B Tour qua tour_code lưu trong pax_details (booking từ trang LKH)
+  const b2bTourCode: string | null = ((booking as any)?.pax_details as any)?.tour_code || null;
+  const { data: b2bTour } = useQuery({
+    queryKey: ["print-b2b-tour", b2bTourCode],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("b2b_tours")
+        .select("tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes")
+        .eq("tour_code", b2bTourCode!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!b2bTourCode,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["print-my-profile", user?.id],
     queryFn: async () => {
