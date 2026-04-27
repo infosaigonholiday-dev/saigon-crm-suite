@@ -58,11 +58,30 @@ export default function Recruitment() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, extra }: { id: string; status: CandidateStatus; extra?: Record<string, any> }) => {
+    mutationFn: async ({ id, status, extra, cand }: { id: string; status: CandidateStatus; extra?: Record<string, any>; cand: any }) => {
       const { error } = await supabase.from("candidates").update({ status, ...extra }).eq("id", id);
       if (error) throw error;
+      return { id, status, cand };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["candidates"] }),
+    onSuccess: async ({ id, status, cand }) => {
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      // Notify assigned_hr on intermediate transitions only (skip rejected/onboarded/withdrawn — handled separately)
+      if (!["rejected", "onboarded", "withdrawn"].includes(status) && cand?.assigned_hr && cand.assigned_hr !== user?.id) {
+        const statusLabel = COLUMNS.find((c) => c.id === status)?.label ?? status;
+        try {
+          await notifyUser(cand.assigned_hr, {
+            type: "CANDIDATE_STATUS",
+            title: `${cand.full_name} chuyển sang ${statusLabel}`,
+            message: `Cập nhật bởi ${user?.email ?? "người dùng"}`,
+            entity_type: "candidate",
+            entity_id: id,
+            priority: "normal",
+          });
+        } catch (e) {
+          console.error("Notify candidate status failed:", e);
+        }
+      }
+    },
     onError: (e: any) => toast.error("Lỗi", { description: e.message }),
   });
 
