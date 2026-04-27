@@ -118,10 +118,22 @@ export default function LeaveManagement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("*, employees(full_name, employee_code, position, department_id, profile_id, departments(name), profile:profiles(role))")
+        .select("*, employees(full_name, employee_code, position, department_id, profile_id, avatar_url, employment_type, departments(name), profile:profiles(role))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Lịch làm việc tất cả NV (để tính quota chính xác cho intern)
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["work_schedules_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("work_schedules" as any)
+        .select("employee_id, day_of_week, is_working");
+      if (error) throw error;
+      return (data ?? []) as any[];
     },
   });
 
