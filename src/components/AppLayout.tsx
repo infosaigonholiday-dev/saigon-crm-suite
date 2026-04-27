@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
@@ -11,6 +12,20 @@ import OnboardingChecklistModal from "@/components/onboarding/OnboardingChecklis
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const initials = user?.email?.substring(0, 2).toUpperCase() ?? "?";
+
+  // Prefetch các trang hay dùng nhất sau khi user login
+  useEffect(() => {
+    if (!user) return;
+    const idle = (cb: () => void) => {
+      if ("requestIdleCallback" in window) (window as any).requestIdleCallback(cb);
+      else setTimeout(cb, 1500);
+    };
+    idle(() => {
+      import("@/pages/Customers");
+      import("@/pages/Leads");
+      import("@/pages/Bookings");
+    });
+  }, [user]);
 
   return (
     <SidebarProvider>
