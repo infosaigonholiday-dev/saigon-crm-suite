@@ -1,10 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
 import LeadDetailDialog from "@/components/leads/LeadDetailDialog";
-import LostReasonDialog from "@/components/leads/LostReasonDialog";
+import LeadStatusChangeDialog from "@/components/leads/LeadStatusChangeDialog";
 import LeadTableView from "@/components/leads/LeadTableView";
 import ConvertToCustomerDialog from "@/components/leads/ConvertToCustomerDialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import {
 import {
   Plus, GripVertical, Phone, Loader2, MapPin, Users, AlertTriangle, UserPlus,
   LayoutGrid, List, Search, Building2, RefreshCw, MoreVertical, Trash2, CalendarClock,
+  Bell, CalendarOff, Clock, X,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
