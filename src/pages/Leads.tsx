@@ -469,29 +469,7 @@ export default function Leads() {
                                         key={c.id}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (c.id === "LOST" || c.id === "NURTURE" || c.id === "DORMANT") {
-                                            setTransitionDialog({ open: true, status: c.id, leadId: lead.id });
-                                          } else if (c.id === "WON") {
-                                            updateStatus.mutate(
-                                              { id: lead.id, status: "WON" },
-                                              {
-                                                onSuccess: () => {
-                                                  toast.success("Đã chuyển sang Chốt tour");
-                                                  if (!lead.converted_customer_id) {
-                                                    if (window.confirm("Chuyển Lead này thành Khách hàng luôn không?")) {
-                                                      setConvertLead(lead);
-                                                      setConvertOpen(true);
-                                                    }
-                                                  }
-                                                },
-                                              }
-                                            );
-                                          } else {
-                                            updateStatus.mutate(
-                                              { id: lead.id, status: c.id },
-                                              { onSuccess: () => toast.success(`Đã chuyển sang ${c.label}`) }
-                                            );
-                                          }
+                                          openStatusChangeDialog(lead.id, c.id, c.label, lead.temperature);
                                         }}
                                       >
                                         {c.label}
