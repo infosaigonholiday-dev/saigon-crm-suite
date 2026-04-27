@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Printer, ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { canPrintBookingConfirmation } from "@/lib/bookingPrintAccess";
+import { useCompanyInfo, parseBank } from "@/hooks/useCompanyInfo";
 
 const fmtVnd = (v: number | null | undefined) =>
   v && v > 0 ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "";
