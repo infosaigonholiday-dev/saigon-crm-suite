@@ -213,6 +213,10 @@ export default function EmployeeDetail() {
           <EmployeeLeaveTab employeeId={id!} />
         </TabsContent>
 
+        <TabsContent value="schedule" className="mt-4">
+          <EmployeeWorkScheduleTab employeeId={id!} />
+        </TabsContent>
+
         <TabsContent value="overtime" className="mt-4">
           <EmployeeOvertimeTab employeeId={id!} />
         </TabsContent>
