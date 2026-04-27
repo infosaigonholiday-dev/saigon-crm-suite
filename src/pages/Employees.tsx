@@ -320,11 +320,7 @@ export default function Employees() {
                         <TableCell className="font-mono text-xs">{e.employee_code}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2.5">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                                {getInitials(e.full_name)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <EmployeeAvatar url={(e as any).avatar_url} name={e.full_name} size={32} />
                             <div className="min-w-0">
                               <p className="font-medium truncate">{e.full_name}</p>
                               {lvlLabel && (
