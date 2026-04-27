@@ -87,8 +87,8 @@ export function CeoScorecard({ departmentId }: Props) {
         newBookings,
         newLeads: leads?.length || 0,
         inflow,
-        outflow: outflowFinal,
-        cashflow: inflow - outflowFinal,
+        outflow,
+        cashflow: inflow - outflow,
       };
     },
   });
