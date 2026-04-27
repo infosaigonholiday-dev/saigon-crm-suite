@@ -249,16 +249,16 @@ export default function Payroll() {
   const renderActionButton = (p: any) => {
     const st = p.status as PayrollStatus;
     if ((isHR || isAdmin) && st === "draft") {
-      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "hr_reviewed" }); }}>Duyệt HR</Button>;
+      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "hr_reviewed", row: p }); }}>Duyệt HR</Button>;
     }
     if (isKT && st === "hr_reviewed") {
-      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "kt_confirmed" }); }}>Xác nhận KT</Button>;
+      return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "kt_confirmed", row: p }); }}>Xác nhận KT</Button>;
     }
     if (isAdmin && st === "kt_confirmed") {
-      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "ceo_approved" }); }}>CEO Duyệt</Button>;
+      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "ceo_approved", row: p }); }}>CEO Duyệt</Button>;
     }
     if ((isHR || isAdmin) && st === "ceo_approved") {
-      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "paid" }); }}>Đã trả lương</Button>;
+      return <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); approveMutation.mutate({ id: p.id, nextStatus: "paid", row: p }); }}>Đã trả lương</Button>;
     }
     return null;
   };
