@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,9 +17,33 @@ function fmtMoney(n: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN").format(Number(n ?? 0));
 }
 
+// Map entity_type → route đích
+function getEntityLink(entityType: string | null, entityId: string | null): string | null {
+  if (!entityType) return null;
+  switch (entityType) {
+    case "booking": return entityId ? `/dat-tour/${entityId}` : "/dat-tour";
+    case "budget_estimate": return "/tai-chinh?tab=du-toan";
+    case "budget_settlement": return "/tai-chinh?tab=quyet-toan";
+    case "transaction": return "/tai-chinh?tab=kt-duyet";
+    case "finance": return "/tai-chinh";
+    case "contract": return "/hop-dong";
+    case "lead": return "/tiem-nang";
+    case "raw_contact": return "/kho-data";
+    case "employee":
+    case "employee_kpi":
+      return entityId ? `/nhan-su/${entityId}` : "/nhan-su";
+    case "leave_request": return "/nghi-phep";
+    case "payment": return "/thanh-toan";
+    case "customer": return entityId ? `/khach-hang/${entityId}` : "/khach-hang";
+    case "quotation": return "/bao-gia";
+    default: return null;
+  }
+}
+
 export default function AlertsCenter() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // ===== TAB 1: KHẨN CẤP =====
   const { data: urgentNotifs = [], isLoading: l1 } = useQuery({
@@ -38,6 +62,18 @@ export default function AlertsCenter() {
     },
     refetchInterval: 60000,
   });
+
+  const handleNotificationClick = async (n: any) => {
+    const link = getEntityLink(n.entity_type, n.entity_id);
+    // Mark as read
+    if (!n.is_read) {
+      await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+      queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
+    }
+    if (link) navigate(link);
+  };
 
   // ===== TAB 2: TÀI CHÍNH =====
   const { data: pendingTxns = [] } = useQuery({
@@ -167,20 +203,37 @@ export default function AlertsCenter() {
               Không có cảnh báo khẩn cấp nào.
             </CardContent></Card>
           ) : (
-            urgentNotifs.map((n: any) => (
-              <Card key={n.id} className="border-l-4 border-l-destructive">
-                <CardContent className="py-4 flex items-start gap-3">
-                  <ShieldAlert className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{n.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{n.message}</p>
-                    <p className="text-xs text-muted-foreground/70 mt-2">
-                      {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            urgentNotifs.map((n: any) => {
+              const link = getEntityLink(n.entity_type, n.entity_id);
+              const clickable = !!link;
+              return (
+                <Card
+                  key={n.id}
+                  className={`border-l-4 border-l-destructive ${clickable ? "cursor-pointer hover:bg-accent/50 transition-colors" : ""}`}
+                  onClick={clickable ? () => handleNotificationClick(n) : undefined}
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onKeyDown={clickable ? (e) => { if (e.key === "Enter") handleNotificationClick(n); } : undefined}
+                >
+                  <CardContent className="py-4 flex items-start gap-3">
+                    <ShieldAlert className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{n.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{n.message}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-2">
+                        {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
+                      </p>
+                    </div>
+                    {clickable && (
+                      <div className="flex items-center gap-1 text-xs text-primary shrink-0 mt-1">
+                        <span className="hidden sm:inline">Xem chi tiết</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </TabsContent>
 
@@ -201,7 +254,7 @@ export default function AlertsCenter() {
                           {fmtMoney(t.amount)} VNĐ · {t.approval_status === "PENDING_HR" ? "Chờ HR" : "Chờ Kế toán"}
                         </p>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => navigate("/tai-chinh")}><ArrowRight className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => navigate("/tai-chinh?tab=kt-duyet")}><ArrowRight className="h-4 w-4" /></Button>
                     </div>
                   ))}
                 </div>
@@ -224,7 +277,7 @@ export default function AlertsCenter() {
                           {fmtMoney(s.total_actual)} VNĐ · {s.status === "pending_accountant" ? "Chờ Kế toán" : "Chờ CEO"}
                         </p>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => navigate("/tai-chinh")}><ArrowRight className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => navigate("/tai-chinh?tab=quyet-toan")}><ArrowRight className="h-4 w-4" /></Button>
                     </div>
                   ))}
                 </div>
