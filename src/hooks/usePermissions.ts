@@ -22,6 +22,8 @@ export const ALL_PERMISSION_KEYS = [
   "settings.view", "settings.edit",
   "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
   "b2b_tours.view", "b2b_tours.logs",
+  "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
+  "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
@@ -48,6 +50,8 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   settings: { label: getModuleLabel("settings"), keys: ["settings.view", "settings.edit"] },
   raw_contacts: { label: getModuleLabel("raw_contacts"), keys: ["raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete"] },
   b2b_tours: { label: getModuleLabel("b2b_tours"), keys: ["b2b_tours.view", "b2b_tours.logs"] },
+  candidates: { label: "Tuyển dụng", keys: ["candidates.view", "candidates.create", "candidates.edit", "candidates.delete"] },
+  kpi_policies: { label: "Chính sách KPI", keys: ["kpi_policies.view", "kpi_policies.create", "kpi_policies.edit"] },
 };
 
 // Scope rules
@@ -75,6 +79,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "settings.view", "settings.edit",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
     "b2b_tours.view", "b2b_tours.logs",
+    "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
+    "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
   ],
   SUPER_ADMIN: [
     "dashboard.view",
@@ -96,12 +102,11 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "settings.view", "settings.edit",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit", "raw_contacts.delete",
     "b2b_tours.view", "b2b_tours.logs",
+    "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
+    "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
   ],
   GDKD: [
     "dashboard.view",
-    "customers.view", "customers.create", "customers.edit",
-    "leads.view", "leads.create",
-    "bookings.view", "bookings.create", "bookings.edit", "bookings.approve",
     "quotations.view", "quotations.create", "quotations.edit",
     "tour_packages.view", "tour_packages.create",
     "itineraries.view", "itineraries.create",
@@ -115,6 +120,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view", "b2b_tours.logs",
+    "candidates.view",
   ],
   MANAGER: [
     "dashboard.view",
@@ -134,6 +140,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "settings.view",
     "raw_contacts.view", "raw_contacts.create", "raw_contacts.edit",
     "b2b_tours.view", "b2b_tours.logs",
+    "candidates.view",
   ],
   DIEUHAN: [
     "dashboard.view",
@@ -155,6 +162,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "settings.view",
     "raw_contacts.view",
     "b2b_tours.view", "b2b_tours.logs",
+    "candidates.view",
   ],
   HR_MANAGER: [
     "dashboard.view",
@@ -168,6 +176,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "contracts.view", "contracts.create", "contracts.edit",
     "payments.view",
     "suppliers.view",
+    "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
+    "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
   ],
   KETOAN: [
     "dashboard.view",
@@ -185,6 +195,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "staff.view",
     "leave.view", "leave.create",
     "b2b_tours.view", "b2b_tours.logs",
+    "kpi_policies.view",
   ],
   MKT: [
     "dashboard.view",
@@ -205,13 +216,11 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "contracts.view", "contracts.create", "contracts.edit",
     "payments.view",
     "suppliers.view",
+    "candidates.view", "candidates.create", "candidates.edit",
+    "kpi_policies.view",
   ],
   SALE_DOMESTIC: [
     "dashboard.view",
-    "customers.view", "customers.create", "customers.edit",
-    "leads.view", "leads.create", "leads.edit",
-    "bookings.view", "bookings.create",
-    "quotations.view", "quotations.create", "quotations.edit",
     "contracts.view",
     "payments.view",
     "leave.view", "leave.create",
