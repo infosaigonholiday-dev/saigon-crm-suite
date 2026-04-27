@@ -291,9 +291,12 @@ export default function LeaveManagement() {
             return (
               <TableRow key={r.id} className={isCancelled ? "opacity-60" : ""}>
                 <TableCell>
-                  <div className={isCancelled ? "line-through" : ""}>
-                    <p className="font-medium text-sm">{emp?.full_name ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">{emp?.employee_code}</p>
+                  <div className={`flex items-center gap-2 ${isCancelled ? "line-through" : ""}`}>
+                    <EmployeeAvatar url={(emp as any)?.avatar_url} name={emp?.full_name} size={24} />
+                    <div>
+                      <p className="font-medium text-sm">{emp?.full_name ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground">{emp?.employee_code}</p>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-sm">{emp?.departments?.name ?? "—"}</TableCell>
