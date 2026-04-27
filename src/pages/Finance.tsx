@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -200,9 +201,18 @@ function ManagerFinanceView() {
   );
 }
 
+const VALID_FINANCE_TABS = [
+  "overview","hr-approval","approval","cashbook","estimates","settlements",
+  "revenue","profit","cashflow","tax","debt","salary","office","marketing","other","opex"
+];
+
 export default function Finance() {
   const { hasPermission, getScope } = usePermissions();
   const { userRole } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam && VALID_FINANCE_TABS.includes(tabParam) ? tabParam : "overview";
+
   const hasFinanceView = hasPermission("finance", "view");
   const hasFinanceSubmit = hasPermission("finance", "submit");
 
@@ -261,7 +271,7 @@ export default function Finance() {
         <p className="text-sm text-muted-foreground">Quản lý tài chính tổng hợp</p>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="w-full">
         <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           {(isHrManager || isCeoOrAcc) && (

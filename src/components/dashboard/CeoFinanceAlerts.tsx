@@ -55,7 +55,7 @@ export function FinanceOverdueAR() {
       <CardHeader className="pb-3 flex-row items-center justify-between">
         <CardTitle className="text-base">Công nợ quá hạn</CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <Link to="/tai-chinh">Xem <ArrowRight className="h-3 w-3" /></Link>
+          <Link to="/tai-chinh?tab=debt">Xem <ArrowRight className="h-3 w-3" /></Link>
         </Button>
       </CardHeader>
       <CardContent className="pt-0">
@@ -105,7 +105,7 @@ export function FinancePendingExpenses() {
       <CardHeader className="pb-3 flex-row items-center justify-between">
         <CardTitle className="text-base">Chi phí chờ duyệt</CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <Link to="/tai-chinh">Xem <ArrowRight className="h-3 w-3" /></Link>
+          <Link to="/tai-chinh?tab=approval">Xem <ArrowRight className="h-3 w-3" /></Link>
         </Button>
       </CardHeader>
       <CardContent className="pt-0">
@@ -118,7 +118,7 @@ export function FinancePendingExpenses() {
             {data.map((r: any) => (
               <Link
                 key={r.id}
-                to="/tai-chinh"
+                to="/tai-chinh?tab=approval"
                 className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 text-sm"
               >
                 <div className="min-w-0">
@@ -173,7 +173,7 @@ export function FinancePendingBudgets() {
       <CardHeader className="pb-3 flex-row items-center justify-between">
         <CardTitle className="text-base">Dự toán/Quyết toán chờ</CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <Link to="/tai-chinh">Xem <ArrowRight className="h-3 w-3" /></Link>
+          <Link to="/tai-chinh?tab=estimates">Xem <ArrowRight className="h-3 w-3" /></Link>
         </Button>
       </CardHeader>
       <CardContent className="pt-0">
@@ -186,7 +186,7 @@ export function FinancePendingBudgets() {
             {data.map((r) => (
               <Link
                 key={r.id}
-                to="/tai-chinh"
+                to={r.type === "QT" ? "/tai-chinh?tab=settlements" : "/tai-chinh?tab=estimates"}
                 className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 text-sm"
               >
                 <div className="min-w-0">
