@@ -2079,6 +2079,7 @@ export type Database = {
       employees: {
         Row: {
           address: string | null
+          avatar_url: string | null
           bank_account: string | null
           bank_branch: string | null
           bank_name: string | null
@@ -2109,6 +2110,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          avatar_url?: string | null
           bank_account?: string | null
           bank_branch?: string | null
           bank_name?: string | null
@@ -2139,6 +2141,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          avatar_url?: string | null
           bank_account?: string | null
           bank_branch?: string | null
           bank_name?: string | null
@@ -4338,6 +4341,50 @@ export type Database = {
           notes?: string | null
         }
         Relationships: []
+      }
+      work_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          employee_id: string
+          end_time: string | null
+          id: string
+          is_working: boolean
+          note: string | null
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          employee_id: string
+          end_time?: string | null
+          id?: string
+          is_working?: boolean
+          note?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          employee_id?: string
+          end_time?: string | null
+          id?: string
+          is_working?: boolean
+          note?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
