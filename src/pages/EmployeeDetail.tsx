@@ -104,6 +104,7 @@ export default function EmployeeDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/nhan-su")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        <EmployeeAvatar url={(employee as any).avatar_url} name={employee.full_name} size={64} className="border-2 border-border shrink-0" />
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{employee.full_name}</h1>
