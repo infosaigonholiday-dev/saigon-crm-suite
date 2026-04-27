@@ -13,6 +13,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMyDepartmentId, useMyEmployeeId } from "@/hooks/useScopedQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import InternalNotes from "@/components/shared/InternalNotes";
+import { notifyUsersByRole, notifyUser } from "@/lib/notifyByRole";
 
 const formatVND = (v: number | null | undefined) =>
   v != null && v !== 0 ? Number(v).toLocaleString("vi-VN") + "đ" : "—";
