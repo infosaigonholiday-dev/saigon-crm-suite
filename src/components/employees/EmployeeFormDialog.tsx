@@ -164,6 +164,7 @@ export function EmployeeFormDialog({ open, onOpenChange, onSuccess, employeeId }
           bank_account: data.bank_account ?? "", bank_name: data.bank_name ?? "",
           bank_branch: data.bank_branch ?? "", tax_code: data.tax_code ?? "",
           emergency_contact: data.emergency_contact ?? "",
+          avatar_url: (data as any).avatar_url ?? "",
           login_email: "", system_role: "SALE_DOMESTIC",
         });
       }
