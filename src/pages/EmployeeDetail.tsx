@@ -20,6 +20,8 @@ import { EmployeeOvertimeTab } from "@/components/employees/EmployeeOvertimeTab"
 import { EmployeeInsuranceTab } from "@/components/employees/EmployeeInsuranceTab";
 import { EmployeeRoleTab } from "@/components/employees/EmployeeRoleTab";
 import { EmployeeKpiTab } from "@/components/employees/EmployeeKpiTab";
+import { EmployeeWorkScheduleTab } from "@/components/employees/EmployeeWorkScheduleTab";
+import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { toast } from "sonner";
