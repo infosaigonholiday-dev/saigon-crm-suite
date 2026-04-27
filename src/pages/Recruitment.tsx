@@ -149,7 +149,7 @@ export default function Recruitment() {
           position: cand.position_applied,
           email: cand.email,
           phone: cand.phone,
-          status: "active",
+          status: "ACTIVE",
           hire_date: new Date().toISOString().slice(0, 10),
         } as any)
         .select("id")

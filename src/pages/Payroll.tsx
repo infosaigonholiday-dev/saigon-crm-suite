@@ -95,7 +95,7 @@ export default function Payroll() {
       const { data: emps, error: empErr } = await supabase
         .from("employees")
         .select("id, full_name, department_id, status")
-        .in("status", ["ACTIVE", "PROBATION", "INTERN", "active", "probation", "intern"]);
+        .in("status", ["ACTIVE", "PROBATION", "INTERN"]);
       if (empErr) throw empErr;
       if (!emps || emps.length === 0) throw new Error("Không có nhân viên đang làm việc");
 
