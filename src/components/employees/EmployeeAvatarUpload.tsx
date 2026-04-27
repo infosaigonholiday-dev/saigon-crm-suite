@@ -12,8 +12,9 @@ interface Props {
   onChange: (url: string | null) => void;
 }
 
-// Resize ảnh client-side về max 200x200 dùng canvas, trả về Blob jpeg
-async function resizeImage(file: File, max = 200): Promise<Blob> {
+// Resize ảnh client-side về 128x128 (đủ cho display 64px @2x retina), thử WebP trước, fallback JPEG.
+// Mục tiêu: file < 8KB để tải nhanh, không ảnh hưởng tốc độ load app.
+async function resizeImage(file: File, max = 128): Promise<{ blob: Blob; ext: "webp" | "jpg"; mime: string }> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -26,20 +27,31 @@ async function resizeImage(file: File, max = 200): Promise<Blob> {
     i.onerror = reject;
     i.src = dataUrl;
   });
-  let { width, height } = img;
-  if (width > height) {
-    if (width > max) { height = Math.round((height * max) / width); width = max; }
-  } else {
-    if (height > max) { width = Math.round((width * max) / height); height = max; }
-  }
+
+  // Crop vuông từ giữa (chân dung tròn nên vuông là tối ưu)
+  const srcSize = Math.min(img.width, img.height);
+  const sx = (img.width - srcSize) / 2;
+  const sy = (img.height - srcSize) / 2;
+
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = max;
+  canvas.height = max;
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, width, height);
-  return await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(b => b ? resolve(b) : reject(new Error("Không thể tạo ảnh")), "image/jpeg", 0.85);
-  });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, sx, sy, srcSize, srcSize, 0, 0, max, max);
+
+  // Thử WebP trước (nhỏ hơn JPEG ~30%)
+  const tryEncode = (mime: string, quality: number) =>
+    new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), mime, quality));
+
+  const webp = await tryEncode("image/webp", 0.78);
+  if (webp && webp.size > 0 && webp.type === "image/webp") {
+    return { blob: webp, ext: "webp", mime: "image/webp" };
+  }
+  const jpg = await tryEncode("image/jpeg", 0.78);
+  if (!jpg) throw new Error("Không thể tạo ảnh");
+  return { blob: jpg, ext: "jpg", mime: "image/jpeg" };
 }
 
 export function EmployeeAvatarUpload({ employeeId, currentUrl, fullName, onChange }: Props) {
