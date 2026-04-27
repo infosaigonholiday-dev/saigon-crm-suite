@@ -621,6 +621,56 @@ window.SGH_fillData = function(data) {
   });
 };
 
+// ── COMPANY INFO FILLER ────────────────────────────────────────
+window.SGH_setCompany = function(co) {
+  if (!co) return;
+  // Logo
+  if (co.COMPANY_LOGO_URL) SGH_setLogo(co.COMPANY_LOGO_URL);
+
+  // Name lines for the right-side GPLHQT box: split COMPANY_NAME into 2 lines
+  var fullName = co.COMPANY_NAME || '';
+  var line1 = '', line2 = fullName;
+  // Try to split "CÔNG TY TNHH DU LỊCH XYZ" → line1="CÔNG TY TNHH DU LỊCH", line2="XYZ"
+  var keywords = ['DU LỊCH', 'TRAVEL', 'TNHH'];
+  for (var i = 0; i < keywords.length; i++) {
+    var idx = fullName.toUpperCase().indexOf(keywords[i]);
+    if (idx >= 0) {
+      line1 = fullName.substring(0, idx + keywords[i].length).trim();
+      line2 = fullName.substring(idx + keywords[i].length).trim();
+      if (line1 && line2) break;
+    }
+  }
+  if (!line1) { line1 = fullName; line2 = ''; }
+
+  var derived = {
+    COMPANY_NAME: co.COMPANY_NAME || '',
+    COMPANY_NAME_LINE1: line1,
+    COMPANY_NAME_LINE2: line2,
+    COMPANY_SHORT_NAME: co.COMPANY_SHORT_NAME || '',
+    COMPANY_TAGLINE: co.COMPANY_TAGLINE || '',
+    COMPANY_TAGLINE_BARE: (co.COMPANY_TAGLINE || '').replace(/✦/g,'').trim().toUpperCase(),
+    COMPANY_TAX_CODE: co.COMPANY_TAX_CODE || '',
+    COMPANY_LICENSE: co.COMPANY_LICENSE || '',
+    COMPANY_ADDRESS: co.COMPANY_ADDRESS || '',
+    COMPANY_ADDRESS2: co.COMPANY_ADDRESS2 || '',
+    COMPANY_PHONE: co.COMPANY_PHONE || '',
+    COMPANY_WEBSITE: co.COMPANY_WEBSITE || '',
+    BANK1_NAME: co.BANK1_NAME || '',
+    BANK1_HOLDER: co.BANK1_HOLDER || '',
+    BANK1_NUMBER: co.BANK1_NUMBER || '',
+    BANK2_NAME: co.BANK2_NAME || '',
+    BANK2_HOLDER: co.BANK2_HOLDER || '',
+    BANK2_NUMBER: co.BANK2_NUMBER || ''
+  };
+
+  Object.keys(derived).forEach(function(k){
+    if (!derived[k]) return; // keep default if empty
+    document.querySelectorAll('[data-co="' + k + '"]').forEach(function(el){
+      el.textContent = derived[k];
+    });
+  });
+};
+
 // ── URL PARAM ──────────────────────────────────────────────────
 (function(){
   var p = new URLSearchParams(window.location.search);
@@ -635,8 +685,11 @@ window.addEventListener('message', function(ev){
   if (msg && msg.type === 'fill' && msg.data) {
     if (msg.printType === 'le' || msg.printType === 'doan') SGH_setType(msg.printType);
     SGH_fillData(msg.data);
+    if (msg.company) SGH_setCompany(msg.company);
     // Notify parent ready to print
     try { ev.source && ev.source.postMessage({ type: 'filled' }, '*'); } catch(e){}
+  } else if (msg && msg.type === 'company' && msg.data) {
+    SGH_setCompany(msg.data);
   } else if (msg && msg.type === 'print') {
     window.print();
   } else if (msg && msg.type === 'toggleEdit') {
