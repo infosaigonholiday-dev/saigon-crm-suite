@@ -188,7 +188,7 @@ export default function Recruitment() {
       // Notify HR_MANAGER + HCNS
       try {
         await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
-          type: "CANDIDATE_STATUS",
+          type: "ONBOARD_SUCCESS",
           title: `Onboard thành công: ${cand.full_name}`,
           message: "Đã tạo tài khoản + checklist onboarding",
           entity_type: "candidate",
