@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus, Target,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -101,6 +101,10 @@ export function AppSidebar() {
     { title: "Tài chính", url: "/tai-chinh", icon: BarChart3, moduleKey: "finance" },
   ];
 
+  const workItems: MenuItem[] = [
+    { title: "Chiến dịch", url: "/chien-dich", icon: Target, moduleKey: "campaigns" },
+  ];
+
   const sopItems: MenuItem[] = [
     { title: "Quy trình", url: "/quy-trinh", icon: BookOpen, moduleKey: "workflow" },
   ];
@@ -170,6 +174,7 @@ export function AppSidebar() {
   const visibleProduct = filterItems(productItems);
   const visibleHr = filterItems(hrItems);
   const visibleFinance = filterItems(financeItems);
+  const visibleWork = filterItems(workItems);
   const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
   const visibleGuide = guideItems;
@@ -212,6 +217,15 @@ export function AppSidebar() {
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Nhân sự</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>{renderItems(visibleHr)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleWork.length > 0 && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider">Quản lý công việc</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{renderItems(visibleWork)}</SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
