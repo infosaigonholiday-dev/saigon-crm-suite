@@ -12,6 +12,8 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import BookingItineraryTab from "@/components/bookings/BookingItineraryTab";
 import BookingServicesTab from "@/components/bookings/BookingServicesTab";
 import BookingSpecialNotesTab from "@/components/bookings/BookingSpecialNotesTab";
+import BookingGuestsTab from "@/components/bookings/BookingGuestsTab";
+import BookingTourGuideSection from "@/components/bookings/BookingTourGuideSection";
 import { PrintConfirmationButton } from "@/components/bookings/PrintConfirmationButton";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
