@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 export type EntityType =
   | "raw_contact" | "lead" | "customer" | "booking"
   | "quotation" | "contract" | "payment" | "employee" | "finance"
-  | "payroll" | "candidate";
+  | "payroll" | "candidate" | "campaign";
 
 const entityRouteMap: Record<EntityType, (id: string) => string> = {
   raw_contact: () => "/kho-data",
@@ -28,6 +28,7 @@ const entityRouteMap: Record<EntityType, (id: string) => string> = {
   finance: () => "/tai-chinh",
   payroll: () => "/bang-luong",
   candidate: () => "/tuyen-dung",
+  campaign: (id) => `/chien-dich/${id}`,
 };
 
 interface Props {
