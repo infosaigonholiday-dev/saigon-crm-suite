@@ -198,7 +198,7 @@ export function buildSettlementHtml(d: SettlementData, co?: PrintCompanyInfo): s
 <head><meta charset="UTF-8"><title>Phiếu quyết toán ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU QUYẾT TOÁN CHI PHÍ TOUR", d.code, d.created_at)}
+  ${headerBlock("PHIẾU QUYẾT TOÁN CHI PHÍ TOUR", d.code, d.created_at, co)}
   <div class="info-grid">
     <div><strong>Mã dự toán:</strong> ${d.estimate_code ?? "—"}</div>
     <div><strong>Booking:</strong> ${d.booking_code ?? "—"}</div>
@@ -243,7 +243,7 @@ export function buildAdvanceHtml(d: AdvanceData, co?: PrintCompanyInfo): string 
 <head><meta charset="UTF-8"><title>Phiếu tạm ứng ${d.code}</title><style>${baseStyles}</style></head>
 <body>
   ${printToolbar}
-  ${headerBlock("PHIẾU TẠM ỨNG", d.code, d.created_at)}
+  ${headerBlock("PHIẾU TẠM ỨNG", d.code, d.created_at, co)}
   <div class="info-grid" style="font-size:14px">
     <div><strong>Người nhận:</strong> ${d.recipient}</div>
     <div><strong>Số tiền:</strong> <span style="font-size:16px;font-weight:700">${fmt(d.amount)}</span></div>
