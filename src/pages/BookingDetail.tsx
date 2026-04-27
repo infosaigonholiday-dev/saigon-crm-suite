@@ -125,6 +125,18 @@ export default function BookingDetail() {
         </Alert>
       )}
 
+      {/* Cảnh báo deposit > total */}
+      {Number(booking.deposit_amount ?? 0) > Number(booking.total_value ?? 0) && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            ⚠️ Cảnh báo: Số tiền đặt cọc ({Number(booking.deposit_amount ?? 0).toLocaleString("vi-VN")}đ)
+            lớn hơn tổng tiền booking ({Number(booking.total_value ?? 0).toLocaleString("vi-VN")}đ).
+            Vui lòng kiểm tra lại.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* High priority notes banner */}
       {highNotes.length > 0 && (
         <Alert variant="destructive">
