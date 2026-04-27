@@ -357,17 +357,48 @@ export default function Leads() {
 
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <LeadDetailDialog open={detailOpen} onOpenChange={setDetailOpen} lead={selectedLead} />
-      <LostReasonDialog
+      <LeadStatusChangeDialog
         open={transitionDialog.open}
         onOpenChange={(o) => setTransitionDialog((p) => ({ ...p, open: o }))}
+        leadId={transitionDialog.leadId}
+        currentTemperature={transitionDialog.currentTemp}
         targetStatus={transitionDialog.status}
-        onConfirm={handleTransitionConfirm}
+        targetStatusLabel={transitionDialog.statusLabel}
+        isLost={transitionDialog.isLost}
+        onSuccess={() => {
+          handleStatusChangeSuccess();
+          if (transitionDialog.status === "WON") {
+            const wonLead = leads.find((l: any) => l.id === transitionDialog.leadId);
+            if (wonLead && !wonLead.converted_customer_id) {
+              if (window.confirm("Chuyển Lead này thành Khách hàng luôn không?")) {
+                setConvertLead(wonLead);
+                setConvertOpen(true);
+              }
+            }
+          }
+        }}
       />
       <ConvertToCustomerDialog
         open={convertOpen}
         onOpenChange={setConvertOpen}
         lead={convertLead}
       />
+
+      {/* Active URL filter banner */}
+      {urlFilter && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/30 rounded-md">
+          <span className="text-sm font-medium">
+            Đang lọc:{" "}
+            {urlFilter === "overdue" && "Quá hạn follow-up"}
+            {urlFilter === "today" && "Cần follow-up hôm nay"}
+            {urlFilter === "no_schedule" && "Không có lịch hẹn"}
+            {urlFilter === "stale" && ">7 ngày không tương tác"}
+          </span>
+          <Button variant="ghost" size="sm" className="ml-auto h-7" onClick={() => { searchParams.delete("filter"); setSearchParams(searchParams); }}>
+            <X className="h-3.5 w-3.5 mr-1" />Bỏ lọc
+          </Button>
+        </div>
+      )}
 
       {viewMode === "table" ? (
         <LeadTableView
