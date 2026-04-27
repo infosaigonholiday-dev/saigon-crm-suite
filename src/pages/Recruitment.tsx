@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import CandidateFormDialog from "@/components/recruitment/CandidateFormDialog";
 import CandidateDetailDialog from "@/components/recruitment/CandidateDetailDialog";
+import { notifyUser, notifyUsersByRole } from "@/lib/notifyByRole";
 
 type CandidateStatus = "new" | "cv_screening" | "interview" | "offer" | "onboarded" | "rejected" | "withdrawn";
 
