@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Upload, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { ExpenseFormDialog } from "./ExpenseFormDialog";
+import { ImportOfficeExpenseDialog } from "./ImportOfficeExpenseDialog";
+import { CopyFromLastMonthDialog } from "./CopyFromLastMonthDialog";
+import { RecurringExpensesSection } from "./RecurringExpensesSection";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
@@ -26,6 +29,8 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
   const currentYear = new Date().getFullYear();
@@ -69,13 +74,23 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
         </CardContent>
       </Card>
 
+      <RecurringExpensesSection tableName={tableName} categories={categories} queryKey={queryKey} />
+
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 gap-2 flex-wrap">
           <CardTitle className="text-base">{title}</CardTitle>
           {canEdit && (
-            <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Thêm
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)}>
+                <Copy className="h-4 w-4 mr-1" /> Copy tháng trước
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" /> Import Excel
+              </Button>
+              <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Thêm
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -125,6 +140,23 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         expense={editing}
+        tableName={tableName}
+        categories={categories}
+        queryKey={queryKey}
+      />
+
+      <ImportOfficeExpenseDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        tableName={tableName}
+        categories={categories}
+        queryKey={queryKey}
+        title={title}
+      />
+
+      <CopyFromLastMonthDialog
+        open={copyOpen}
+        onOpenChange={setCopyOpen}
         tableName={tableName}
         categories={categories}
         queryKey={queryKey}
