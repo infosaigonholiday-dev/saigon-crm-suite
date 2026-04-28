@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Upload, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { ExpenseFormDialog } from "./ExpenseFormDialog";
+import { ImportOfficeExpenseDialog } from "./ImportOfficeExpenseDialog";
+import { CopyFromLastMonthDialog } from "./CopyFromLastMonthDialog";
+import { RecurringExpensesSection } from "./RecurringExpensesSection";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
@@ -26,6 +29,8 @@ export function ExpenseListTab({ title, tableName, categories, queryKey }: Props
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
   const currentYear = new Date().getFullYear();
