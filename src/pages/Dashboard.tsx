@@ -24,6 +24,7 @@ import { CeoFinanceAlerts } from "@/components/dashboard/CeoFinanceAlerts";
 import { CeoOperations } from "@/components/dashboard/CeoOperations";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { SectionBoundary } from "@/components/SectionBoundary";
 
 function formatVND(value: number) {
   if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + " tỷ";
@@ -242,18 +243,28 @@ function BusinessDashboard() {
       )}
 
       {/* Lead monitoring (ADMIN/SUPER_ADMIN/GDKD/MANAGER) */}
-      <LeadMonitoringWidget />
+      <SectionBoundary name="Giám sát Lead">
+        <LeadMonitoringWidget />
+      </SectionBoundary>
 
       {/* === CEO / OPS / FINANCE DASHBOARD SECTIONS === */}
-      <CeoSections userRole={userRole} departmentId={activeDeptId} />
+      <SectionBoundary name="Tổng quan điều hành">
+        <CeoSections userRole={userRole} departmentId={activeDeptId} />
+      </SectionBoundary>
 
       {/* Sale Performance Table */}
-      <SalePerformanceTable departmentId={activeDeptId} month={now} />
+      <SectionBoundary name="Hiệu suất Sale">
+        <SalePerformanceTable departmentId={activeDeptId} month={now} />
+      </SectionBoundary>
 
       {/* Funnel + Trend side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PipelineFunnel departmentId={activeDeptId} />
-        <WeeklyTrendChart departmentId={activeDeptId} />
+        <SectionBoundary name="Pipeline Funnel">
+          <PipelineFunnel departmentId={activeDeptId} />
+        </SectionBoundary>
+        <SectionBoundary name="Xu hướng tuần">
+          <WeeklyTrendChart departmentId={activeDeptId} />
+        </SectionBoundary>
       </div>
 
       {/* Revenue chart + Deadlines */}
@@ -312,8 +323,16 @@ function BusinessDashboard() {
         </Card>
       </div>
 
-      {canViewRevenue && <CeoDashboardCharts />}
-      {isCeo && <CeoCustomerOverview />}
+      {canViewRevenue && (
+        <SectionBoundary name="Biểu đồ doanh thu">
+          <CeoDashboardCharts />
+        </SectionBoundary>
+      )}
+      {isCeo && (
+        <SectionBoundary name="Tổng quan khách hàng">
+          <CeoCustomerOverview />
+        </SectionBoundary>
+      )}
     </div>
   );
 }
