@@ -1,96 +1,46 @@
-# Fix 2 điểm nhỏ HCNS — Tách type notification + tạo data payroll test
+## Vấn đề
 
-## Hiện trạng (đã verify bằng grep)
+Phiếu xác nhận in từ Booking (tạo từ LKH) **không hiển thị**: Mã tour, Ngày đi, Ngày về, Lịch bay, Hạn visa, Điểm nổi bật — dù `b2b_tours` đã có đủ các trường.
 
-| Type | File | Line | Trạng thái |
-|------|------|------|-----------|
-| `CANDIDATE_NEW` | `CandidateFormDialog.tsx` | 118 | ✅ Đã có (insert khi tạo UV mới) |
-| `CANDIDATE_STATUS` | `Recruitment.tsx` | 73 | ✅ Giữ nguyên (chuyển trạng thái Kanban) |
-| `CANDIDATE_STATUS` | `Recruitment.tsx` | 191 | ❌ Sai ngữ cảnh — đang dùng cho onboard |
+## Nguyên nhân (đã verify)
 
-→ Chỉ cần **sửa 1 chỗ** ở `Recruitment.tsx` line 191.
+1. **Template HTML** (`public/print/booking-confirmation.html`): các ô Chuyến bay (ĐI/VỀ), Hạn visa, danh sách Điểm nổi bật chỉ là `contenteditable` với `data-ph` (placeholder), **KHÔNG có `data-field`** → filler `SGH_fillData` không bao giờ inject dữ liệu.
 
-## Phần 1 — Đổi type cho onboard thành công
+2. **`BookingConfirmationPrint.tsx`**: chưa query `b2b_tours` qua `pax_details.tour_code` để lấy lịch bay/visa/notes (highlights).
 
-**File:** `src/pages/Recruitment.tsx` (trong `performOnboarding`, sau khi onboard thành công)
+3. **Filler JS**: chưa hỗ trợ key dạng list (UL nhiều `<li>` cho highlights).
 
-Đổi:
-```ts
-await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
-  type: "CANDIDATE_STATUS",
-  title: `Onboard thành công: ${cand.full_name}`,
-  ...
-```
+## Schema sẵn có trong `b2b_tours`
 
-Thành:
-```ts
-await notifyUsersByRole(["HR_MANAGER", "HCNS"], {
-  type: "ONBOARD_SUCCESS",
-  title: `Onboard thành công: ${cand.full_name}`,
-  message: "Đã tạo tài khoản + checklist onboarding",
-  ...
-```
+`tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes, price_adl, price_chd, price_inf` (toàn bộ kiểu TEXT, ngày ở dạng `DD/MM/YYYY`).
 
-`CANDIDATE_NEW` (CandidateFormDialog.tsx:118) và `CANDIDATE_STATUS` (Recruitment.tsx:73) **giữ nguyên**.
+→ Không có cột `highlights` riêng → dùng `notes` (split theo xuống dòng / `;` / `•`).
 
-## Phần 2 — Tạo data payroll T4/2026 test
+## Fix
 
-Logic "Tính lương tháng" hiện nằm hoàn toàn ở client (`Payroll.tsx` line 92-156), không có edge function `generate-payroll`. Để tạo data test mà không cần user click UI, sẽ chạy **SQL insert tương đương** từ migration:
+### 1. `public/print/booking-confirmation.html`
+Thêm `data-field` vào các phần tử (cả 2 block: tour lẻ + tour đoàn):
+- Hạn visa → `data-field="visa_deadline"`
+- Flight ĐI → `data-field="flight_dep"`
+- Flight VỀ → `data-field="flight_ret"`
+- `<ul class="hl-list">` → `data-field="highlights_list"`
 
-```sql
--- Insert payroll draft cho mọi NV active chưa có bản ghi T4/2026
-INSERT INTO payroll (
-  employee_id, month, year,
-  base_salary, base_fixed, base_kpi,
-  standard_working_days, actual_working_days,
-  allowance_amount, total_allowance, status
-)
-SELECT
-  e.id,
-  4, 2026,
-  COALESCE(s.base_salary, 0)                                       AS base_salary,
-  ROUND(COALESCE(s.base_salary, 0) * 0.8)                          AS base_fixed,
-  ROUND(COALESCE(s.base_salary, 0) * 0.2)                          AS base_kpi,
-  26, 26,
-  COALESCE(s.phone_allowance,0) + COALESCE(s.transport_allowance,0)
-    + COALESCE(s.meal_allowance,0) + COALESCE(s.housing_allowance,0)
-    + COALESCE(s.other_allowance,0)                                AS allowance_amount,
-  COALESCE(s.phone_allowance,0) + COALESCE(s.transport_allowance,0)
-    + COALESCE(s.meal_allowance,0) + COALESCE(s.housing_allowance,0)
-    + COALESCE(s.other_allowance,0)                                AS total_allowance,
-  'draft'
-FROM employees e
-LEFT JOIN LATERAL (
-  SELECT base_salary, phone_allowance, transport_allowance,
-         meal_allowance, housing_allowance, other_allowance
-  FROM employee_salaries
-  WHERE employee_id = e.id
-  ORDER BY effective_from DESC
-  LIMIT 1
-) s ON true
-WHERE e.status = 'active'
-  AND NOT EXISTS (
-    SELECT 1 FROM payroll p
-    WHERE p.employee_id = e.id AND p.month = 4 AND p.year = 2026
-  );
-```
+Cập nhật `SGH_fillData(data)`:
+- Khi gặp key `highlights_list` (Array) → clear UL, render lại N `<li class="ef">` từ array.
+- Các key text khác giữ logic cũ.
 
-Logic này **giống 100%** với client-side mutation → user vẫn có thể bấm "Tính lương tháng" sau này, sẽ skip do `existingSet`.
+### 2. `src/pages/BookingConfirmationPrint.tsx`
+- Thêm query `b2b_tours` theo `pax_details.tour_code` (chỉ chạy khi có tour_code, dùng `useQuery` enabled).
+- Bổ sung field vào `dataMap`:
+  - `flight_dep`: `${flight_dep_code} • ${flight_dep_time}` (bỏ qua nếu null).
+  - `flight_ret`: `${flight_ret_code} • ${flight_ret_time}`.
+  - `visa_deadline`: lấy từ b2b_tours.
+  - `highlights_list`: parse `b2b_tours.notes` → split theo `\n`, `;`, `•`, `-` → trim, lọc rỗng, max 8 dòng. Nếu rỗng thì không gửi key (giữ placeholder).
 
-## Phần 3 — Báo cáo verify (sẽ chạy & paste output)
+### 3. Verify
+- TS build pass.
+- Mở booking từ LKH (Hải Nam 5N hoặc Lệ Giang 6N) → in phiếu → kiểm tra 4 vùng: Mã tour, Ngày đi/về, Lịch bay, Điểm nổi bật.
 
-Sau khi áp dụng:
+## Phạm vi
 
-| # | Lệnh | Mong đợi |
-|---|------|----------|
-| 3a | `rg -n "CANDIDATE_NEW" src/` | ≥1 hit ở `CandidateFormDialog.tsx` |
-| 3b | `rg -n "ONBOARD_SUCCESS" src/` | ≥1 hit ở `Recruitment.tsx` |
-| 3c | `rg -n "CANDIDATE_STATUS" src/` | Vẫn còn ở `Recruitment.tsx:73` |
-| 3d | `SELECT count(*), status FROM payroll WHERE month=4 AND year=2026 GROUP BY status;` | X bản ghi `draft` (X = số NV active) |
-| 3e | `npm run build` | 0 errors |
-
-## Files thay đổi
-- ✏️ `src/pages/Recruitment.tsx` — đổi 1 dòng type
-- ➕ Migration mới — INSERT payroll T4/2026
-
-**Không** đụng `CandidateFormDialog.tsx` (đã đúng), không đụng `notifyByRole.ts`, không tạo edge function.
+2 file: `public/print/booking-confirmation.html`, `src/pages/BookingConfirmationPrint.tsx`. Không cần migration DB.

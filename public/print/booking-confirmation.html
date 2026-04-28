@@ -324,7 +324,7 @@ body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::befo
         <div class="il"><span class="il-lbl">Ngày đi:</span><span class="il-val" data-field="tour_start"></span></div>
         <div class="il"><span class="il-lbl">Ngày về:</span><span class="il-val" data-field="tour_end"></span></div>
         <div class="il"><span class="il-lbl">Thời gian:</span><span class="il-val" data-field="tour_duration"></span></div>
-        <div class="il"><span class="il-lbl">⚠️ Hạn xin visa:</span><span class="il-val warn ef" contenteditable="true" data-ph="DD/MM/YYYY"></span></div>
+        <div class="il"><span class="il-lbl">⚠️ Hạn xin visa:</span><span class="il-val warn ef" contenteditable="true" data-ph="DD/MM/YYYY" data-field="visa_deadline"></span></div>
       </div>
     </div>
 
@@ -332,13 +332,13 @@ body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::befo
     <div class="cols2">
       <div class="icard">
         <div class="icard-title">✈️ Chuyến Bay</div>
-        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
-        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến" data-field="flight_dep"></span></div>
+        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến" data-field="flight_ret"></span></div>
         <div class="flight-note">📌 Lịch bay dự kiến, có thể thay đổi. SGH sẽ cập nhật kịp thời.</div>
       </div>
       <div class="icard gold">
         <div class="icard-title">⭐ Điểm Nổi Bật</div>
-        <ul class="hl-list">
+        <ul class="hl-list" data-field="highlights_list">
           <li class="ef" contenteditable="true" data-ph="Điểm tham quan 1"></li><li class="ef" contenteditable="true" data-ph="Điểm tham quan 2"></li><li class="ef" contenteditable="true" data-ph="Điểm tham quan 3"></li>
           <li class="ef" contenteditable="true" data-ph="Đặc sản / Ẩm thực"></li><li class="ef" contenteditable="true" data-ph="Bữa ăn đặc biệt"></li><li class="ef" contenteditable="true" data-ph="Trải nghiệm unique"></li>
           <li class="ef" contenteditable="true" data-ph="Khách sạn hạng X★"></li><li class="ef" contenteditable="true" data-ph="Điểm check-in nổi tiếng"></li>
@@ -446,8 +446,8 @@ body:not(.edit-mode) .ef:empty::before, body:not(.edit-mode) .ef-blk:empty::befo
     <div class="cols2">
       <div class="icard">
         <div class="icard-title">✈️ Lịch Bay Đoàn</div>
-        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
-        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến"></span></div>
+        <div class="flight-row"><span class="fdir">ĐI</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến" data-field="flight_dep"></span></div>
+        <div class="flight-row"><span class="fdir">VỀ</span><span class="ef ef-blk" contenteditable="true" data-ph="Số hiệu - Ngày - Giờ đi → Giờ đến  /  Điểm đi → Điểm đến" data-field="flight_ret"></span></div>
         <div class="il" style="margin-top:6px"><span class="il-lbl">Điểm tập kết:</span><span class="il-val"></span></div>
         <div class="il"><span class="il-lbl">Giờ tập kết:</span><span class="il-val warn"></span></div>
         <div class="flight-note">📌 Lịch bay dự kiến, có thể thay đổi. SGH sẽ cập nhật kịp thời đến Trưởng đoàn.</div>
@@ -615,6 +615,19 @@ window.SGH_setType = function(type) {
 window.SGH_fillData = function(data) {
   Object.keys(data).forEach(function(key) {
     if (key === 'logo_url') { SGH_setLogo(data[key]); return; }
+    if (key === 'highlights_list' && Array.isArray(data[key]) && data[key].length > 0) {
+      document.querySelectorAll('[data-field="highlights_list"]').forEach(function(ul){
+        ul.innerHTML = '';
+        data[key].forEach(function(item){
+          var li = document.createElement('li');
+          li.className = 'ef';
+          li.setAttribute('contenteditable','false');
+          li.textContent = String(item);
+          ul.appendChild(li);
+        });
+      });
+      return;
+    }
     document.querySelectorAll('[data-field="' + key + '"]').forEach(function(el){
       el.textContent = data[key] || '';
     });

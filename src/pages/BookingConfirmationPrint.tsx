@@ -91,6 +91,21 @@ export default function BookingConfirmationPrint() {
     enabled: !!(booking as any)?.tour_package_id && !booking?.quote_id,
   });
 
+  // Lấy thông tin LKH B2B Tour qua tour_code lưu trong pax_details (booking từ trang LKH)
+  const b2bTourCode: string | null = ((booking as any)?.pax_details as any)?.tour_code || null;
+  const { data: b2bTour } = useQuery({
+    queryKey: ["print-b2b-tour", b2bTourCode],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("b2b_tours")
+        .select("tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes")
+        .eq("tour_code", b2bTourCode!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!b2bTourCode,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["print-my-profile", user?.id],
     queryFn: async () => {
@@ -167,9 +182,19 @@ export default function BookingConfirmationPrint() {
     if (inf != null && Number(inf) > 0) paxParts.push(`${inf} EB`);
     const cust_pax = paxParts.length ? paxParts.join(" + ") : `${booking.pax_total ?? 0} khách`;
 
-    const dur = tp.duration_days
-      ? `${tp.duration_days}N${tp.duration_nights ?? Math.max(0, tp.duration_days - 1)}Đ`
-      : "";
+    const bkDep = (booking as any).departure_date as string | null | undefined;
+    const bkRet = (booking as any).return_date as string | null | undefined;
+
+    // Tính duration: ưu tiên tour_packages, fallback từ chênh lệch ngày booking
+    let dur = "";
+    if (tp.duration_days) {
+      dur = `${tp.duration_days}N${tp.duration_nights ?? Math.max(0, tp.duration_days - 1)}Đ`;
+    } else if (bkDep && bkRet) {
+      const d1 = new Date(bkDep);
+      const d2 = new Date(bkRet);
+      const days = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
+      dur = `${days}N${Math.max(0, days - 1)}Đ`;
+    }
 
     const created = booking.created_at ? new Date(booking.created_at) : null;
     const holdDeadline = created
@@ -181,6 +206,27 @@ export default function BookingConfirmationPrint() {
           year: "numeric",
         })
       : "";
+
+    // Mã tour: tour_package.code → pax_details.tour_code (LKH) → "—"
+    const fallbackTourCode = (pd as any)?.tour_code || null;
+
+    // Build flight strings từ b2b_tours
+    const flightDep = b2bTour
+      ? [b2bTour.flight_dep_code, b2bTour.flight_dep_time].filter(Boolean).join(" • ")
+      : "";
+    const flightRet = b2bTour
+      ? [b2bTour.flight_ret_code, b2bTour.flight_ret_time].filter(Boolean).join(" • ")
+      : "";
+
+    // Highlights: parse từ notes (split nhiều ký tự)
+    let highlights: string[] = [];
+    if (b2bTour?.notes) {
+      highlights = String(b2bTour.notes)
+        .split(/[\n\r;•]+|(?:^|\s)-\s+/g)
+        .map((s) => s.trim().replace(/^[-•*]\s*/, ""))
+        .filter((s) => s.length > 0)
+        .slice(0, 8);
+    }
 
     return {
       booking_code: booking.code || "",
@@ -203,16 +249,20 @@ export default function BookingConfirmationPrint() {
       tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
       tour_name_v: tp.name || manualName || "[Chưa có thông tin tour]",
       grp_tour_name: tp.name || manualName || "[Chưa có thông tin tour]",
-      tour_code: tp.code || "—",
-      tour_start: fmtDate(quote?.valid_from),
-      tour_end: fmtDate(quote?.valid_until),
+      tour_code: tp.code || fallbackTourCode || "—",
+      tour_start: fmtDate(bkDep || quote?.valid_from),
+      tour_end: fmtDate(bkRet || quote?.valid_until),
       tour_duration: dur,
+      flight_dep: flightDep,
+      flight_ret: flightRet,
+      visa_deadline: b2bTour?.visa_deadline || "",
+      ...(highlights.length > 0 ? { highlights_list: highlights } : {}),
       total: fmtVnd(booking.total_value as number),
       deposit: fmtVnd(booking.deposit_amount as number),
       remaining: fmtVnd(booking.remaining_amount as number),
       remaining_due: fmtDate(booking.remaining_due_at),
     };
-  }, [booking, quote, sale, directPackage]);
+  }, [booking, quote, sale, directPackage, b2bTour]);
 
   // Send to iframe
   const handleIframeLoad = () => {

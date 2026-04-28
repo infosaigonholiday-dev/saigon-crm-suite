@@ -49,6 +49,12 @@ const HEADER_MAP: Record<string, string> = {
   "quy mô": "company_size",
   "quy mo": "company_size",
   "company_size": "company_size",
+  "ngày đi": "planned_event_date",
+  "ngay di": "planned_event_date",
+  "ngày dự kiến": "planned_event_date",
+  "ngay du kien": "planned_event_date",
+  "ngày dự kiến đi": "planned_event_date",
+  "planned_event_date": "planned_event_date",
 };
 
 type ParsedRow = {
@@ -60,6 +66,7 @@ type ParsedRow = {
   source: string | null;
   note: string | null;
   company_size: string | null;
+  planned_event_date: string | null;
 };
 
 function normalizePhone(raw: string): string {
@@ -69,8 +76,31 @@ function normalizePhone(raw: string): string {
 function normalizeType(raw: string | null): string {
   if (!raw) return "personal";
   const lower = raw.toLowerCase().trim();
-  if (lower.includes("dn") || lower.includes("doanh") || lower.includes("business") || lower.includes("company") || lower === "b2b") return "business";
+  if (lower.includes("dn") || lower.includes("doanh") || lower.includes("business") || lower.includes("company") || lower === "b2b") return "b2b";
   return "personal";
+}
+
+function parseDate(raw: any): string | null {
+  if (raw == null || raw === "") return null;
+  // Excel serial number
+  if (typeof raw === "number" && raw > 25569) {
+    const ms = (raw - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  const s = String(raw).trim();
+  // DD/MM/YYYY hoặc DD-MM-YYYY
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+    const [y, mo, d] = s.split("-");
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return null;
 }
 
 export function ImportExcelDialog({ open, onOpenChange, userId, departmentId, onComplete }: Props) {
@@ -143,6 +173,7 @@ export function ImportExcelDialog({ open, onOpenChange, userId, departmentId, on
             source: mapped.source || null,
             note: mapped.note || null,
             company_size: mapped.company_size || null,
+            planned_event_date: parseDate(mapped.planned_event_date),
           });
         }
 
@@ -217,11 +248,13 @@ export function ImportExcelDialog({ open, onOpenChange, userId, departmentId, on
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Họ tên", "SĐT", "Email", "Công ty", "Loại (CN/DN)", "Nguồn", "Quy mô", "Ghi chú"],
-      ["Nguyễn Văn A", "0901234567", "a@gmail.com", "Công ty ABC", "DN", "Facebook", "50-100", "Khách tiềm năng"],
+      ["Họ tên", "SĐT", "Email", "Công ty", "Loại (CN/B2B)", "Nguồn", "Quy mô", "Ngày dự kiến đi (DD/MM/YYYY)", "Ghi chú"],
+      ["Nguyễn Văn A", "0901234567", "a@gmail.com", "", "CN", "Facebook", "", "15/06/2026", "Khách tiềm năng"],
+      ["Trần Thị B", "0912345678", "b@congty.com", "Công ty ABC", "B2B", "Zalo", "50-100", "20/07/2026", "Đoàn team building"],
+      ["Lê Văn C", "0987654321", "", "", "CN", "Website", "", "", "Chưa rõ ngày đi"],
     ]);
     ws["!cols"] = [
-      { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 30 },
+      { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 28 }, { wch: 30 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "KhoData");
@@ -288,7 +321,7 @@ export function ImportExcelDialog({ open, onOpenChange, userId, departmentId, on
                         <TableCell className="font-mono text-sm">{r.phone}</TableCell>
                         <TableCell>{r.email || "—"}</TableCell>
                         <TableCell>{r.company_name || "—"}</TableCell>
-                        <TableCell>{r.contact_type === "business" ? "DN" : "CN"}</TableCell>
+                        <TableCell>{r.contact_type === "b2b" ? "B2B" : "CN"}</TableCell>
                         <TableCell>{r.source || "—"}</TableCell>
                       </TableRow>
                     ))}
