@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -251,10 +251,21 @@ function RecurringFormDialog({ open, onOpenChange, editing, tableName, categorie
     notes: "",
   });
 
-  // sync khi mở
-  useState(() => {
-    if (editing) setForm({ ...editing, amount: String(editing.amount ?? "") });
-  });
+  useEffect(() => {
+    if (editing) {
+      setForm({ ...editing, amount: String(editing.amount ?? "") });
+    } else {
+      setForm({
+        category: categories[0]?.value || "",
+        description: "",
+        amount: "",
+        day_of_month: 1,
+        recurrence: "monthly",
+        is_active: true,
+        notes: "",
+      });
+    }
+  }, [editing, open]);
 
   // reset
   const reset = () => setForm({
