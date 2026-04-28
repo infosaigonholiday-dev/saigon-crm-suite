@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phòng Điều Hành — SGH CRM Training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="breadcrumb"><a href="index.html">← Trang chủ</a> <span>/ Phòng Điều Hành</span></div>
+<div class="hero" style="padding-top:20px">
+  <h1>🗺️ Hướng dẫn — Phòng Điều Hành</h1>
+  <p class="sub">Dành cho: Trưởng phòng Điều hành (DIEUHAN) + Thực tập sinh Điều hành</p>
+</div>
+
+<section>
+<h2>📋 Vai trò của bạn trên CRM</h2>
+<p>Phòng Điều hành là cầu nối giữa <strong>Sale (bán tour)</strong> và <strong>thực tế (tổ chức tour)</strong>. Công việc chính:</p>
+<ul>
+  <li>Quản lý <strong>sản phẩm tour</strong>: Gói tour, lịch trình, khách sạn</li>
+  <li>Quản lý <strong>nhà cung cấp</strong>: Xe, khách sạn, nhà hàng, HDV...</li>
+  <li>Phân công <strong>hướng dẫn viên</strong> cho từng booking</li>
+  <li>Theo dõi <strong>tour sắp khởi hành</strong></li>
+</ul>
+<div class="flow">
+  <span class="step-box">Quản lý sản phẩm</span><span class="arrow">→</span>
+  <span class="step-box">Quản lý NCC</span><span class="arrow">→</span>
+  <span class="step-box">Phân công HDV</span><span class="arrow">→</span>
+  <span class="step-box">Giám sát tour</span>
+</div>
+</section>
+
+<section>
+<h2>📦 Phần 1: Quản lý Sản phẩm Tour</h2>
+
+<h3>Gói tour là gì?</h3>
+<p>Gói tour là một <strong>sản phẩm du lịch hoàn chỉnh</strong> mà Sale dùng để chào khách. Ví dụ: "Tour Phú Quốc 3N2Đ – Resort 5 sao – Giá 8.500.000đ/người".</p>
+
+<h3>Bạn quản lý gì?</h3>
+<table>
+  <tr><th>Menu</th><th>Nội dung</th><th>Ví dụ</th></tr>
+  <tr><td><strong>Gói tour</strong></td><td>Tạo/sửa gói tour mẫu</td><td>"PQ 3N2Đ Premium", "Đà Nẵng 4N3Đ Family"</td></tr>
+  <tr><td><strong>Lịch trình</strong></td><td>Chi tiết từng ngày</td><td>Ngày 1: Sân bay → resort. Ngày 2: Vinpearl...</td></tr>
+  <tr><td><strong>Lưu trú</strong></td><td>Danh sách khách sạn/resort</td><td>Vinpearl PQ, InterCon Đà Nẵng...</td></tr>
+</table>
+
+<ol class="steps">
+  <li>Vào menu <strong>"Gói tour"</strong> → Bấm <strong>"Tạo gói tour"</strong></li>
+  <li>Nhập: Tên tour, Điểm đến, Số ngày, Giá, Mô tả</li>
+  <li>Gắn <strong>Lịch trình</strong> (chi tiết từng ngày) và <strong>Lưu trú</strong> (khách sạn)</li>
+  <li>Bấm "Lưu" → Sale có thể dùng gói tour này khi tạo Báo giá</li>
+</ol>
+</section>
+
+<section>
+<h2>🏢 Phần 2: Nhà cung cấp (NCC)</h2>
+
+<h3>NCC là gì?</h3>
+<p>Là các đối tác cung cấp dịch vụ cho tour: Xe, Khách sạn, Nhà hàng, HDV, Visa, Sự kiện...</p>
+
+<h3>Tại sao phải lưu NCC trên CRM?</h3>
+<div class="scenario">
+  <div class="title">🔴 Không dùng CRM</div>
+  <p>Mỗi lần tạo phiếu chi, bạn phải gõ lại tên, STK, ngân hàng của NCC → Mất thời gian, dễ sai</p>
+</div>
+<div class="scenario">
+  <div class="title" style="color:var(--green)">🟢 Dùng CRM</div>
+  <p>Gõ 2-3 chữ đầu tên NCC → Hệ thống <strong>tự gợi ý</strong>, điền đầy đủ STK, ngân hàng → Nhanh, chính xác</p>
+</div>
+
+<ol class="steps">
+  <li>Vào menu <strong>"Nhà cung cấp"</strong> → Bấm <strong>"Thêm NCC"</strong></li>
+  <li>Nhập: Tên, Loại (Xe/KS/NH/HDV...), SĐT, Email, Số tài khoản, Ngân hàng</li>
+  <li>Bấm "Lưu" → Từ giờ khi tạo Phiếu chi, gõ tên NCC sẽ tự điền</li>
+</ol>
+</section>
+
+<section>
+<h2>🎒 Phần 3: Phân công Hướng dẫn viên</h2>
+
+<p>Khi phòng Sale tạo Booking xong, bạn cần phân công HDV cho tour đó.</p>
+
+<ol class="steps">
+  <li>Vào menu <strong>"Đặt tour"</strong> → Tìm booking cần phân HDV</li>
+  <li>Bấm vào booking → Vào <strong>tab HDV</strong></li>
+  <li>Chọn HDV từ danh sách → Bấm "Lưu"</li>
+</ol>
+
+<div class="callout danger">
+  <strong>🚨 Cảnh báo tự động: Tour chưa phân HDV!</strong>
+  Nếu tour còn <strong>5 ngày khởi hành</strong> mà chưa phân HDV → Hệ thống gửi cảnh báo cho bạn: "🎒 Tour PQ-001 chưa phân công HDV — còn 5 ngày!" Bạn sẽ thấy trong menu Cảnh báo ⚠️.
+</div>
+</section>
+
+<section>
+<h2>✈️ Phần 4: Giám sát Tour sắp khởi hành</h2>
+<p>Hệ thống tự động gửi thông báo cho bạn khi:</p>
+<table>
+  <tr><th>Mốc</th><th>Thông báo</th></tr>
+  <tr><td>Tour còn <strong>7 ngày</strong></td><td>✈️ Tour PQ-001 khởi hành còn 7 ngày — Kiểm tra dịch vụ!</td></tr>
+  <tr><td>Tour còn <strong>3 ngày</strong></td><td>✈️ Tour PQ-001 khởi hành còn 3 ngày</td></tr>
+  <tr><td>Tour <strong>ngày mai</strong></td><td>🚨 Tour PQ-001 khởi hành NGÀY MAI!</td></tr>
+</table>
+</section>
+
+<section>
+<h2>💸 Phần 5: Tạo Phiếu Chi</h2>
+<p>Khi bạn cần chi tiền cho tour (đặt xe, đặt phòng, trả NCC...):</p>
+<div class="flow">
+  <span class="step-box">Bạn tạo phiếu chi</span><span class="arrow">→</span>
+  <span class="step-box">Kế toán duyệt</span><span class="arrow">→</span>
+  <span class="step-box">CEO chi tiền</span>
+</div>
+<div class="callout info">
+  <strong>💡 Lưu ý:</strong> Vì bạn là Trưởng phòng, phiếu chi bạn tạo sẽ <strong>bỏ qua bước "TP duyệt"</strong> và chuyển thẳng lên Kế toán. Nhưng phiếu chi của Thực tập sinh Điều hành sẽ phải qua bạn duyệt trước.
+</div>
+</section>
+
+<div class="footer">
+  <a href="index.html" style="color:var(--accent)">← Quay về trang chủ</a><br><br>
+  Saigon Holiday Travel © 2026
+</div>
+</div>
+</body>
+</html>

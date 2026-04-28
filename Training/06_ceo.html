@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ban Giám Đốc — SGH CRM Training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="breadcrumb"><a href="index.html">← Trang chủ</a> <span>/ Ban Giám Đốc</span></div>
+<div class="hero" style="padding-top:20px">
+  <h1>👔 Hướng dẫn — Ban Giám Đốc (CEO)</h1>
+  <p class="sub">Dành cho: ADMIN / SUPER_ADMIN — Người có quyền cao nhất</p>
+</div>
+
+<section>
+<h2>📋 Bạn thấy GÌ khi đăng nhập?</h2>
+<p>Khác với nhân viên thường, CEO nhìn thấy <strong>toàn bộ dữ liệu</strong> của công ty. Dashboard của bạn gồm 4 khối:</p>
+<div class="cards">
+  <div class="card" style="cursor:default">
+    <div class="icon">📊</div>
+    <h3>Scorecard tài chính</h3>
+    <p>Doanh thu, Chi phí, Lợi nhuận — So sánh tháng trước</p>
+  </div>
+  <div class="card" style="cursor:default">
+    <div class="icon">📈</div>
+    <h3>Biểu đồ doanh thu</h3>
+    <p>Xu hướng doanh thu theo tháng, theo phòng ban</p>
+  </div>
+  <div class="card" style="cursor:default">
+    <div class="icon">🚨</div>
+    <h3>Cảnh báo tài chính</h3>
+    <p>Dòng tiền âm, Công nợ quá hạn, Dự toán chờ duyệt</p>
+  </div>
+  <div class="card" style="cursor:default">
+    <div class="icon">🎯</div>
+    <h3>Giám sát Lead</h3>
+    <p>5 cards: Quá hạn, Hôm nay, Không lịch hẹn, >7 ngày, Tỷ lệ chuyển đổi</p>
+  </div>
+</div>
+</section>
+
+<section>
+<h2>✅ Phần 1: Duyệt — Bạn là bước cuối cùng</h2>
+<p>Mọi quyết định quan trọng đều phải qua bạn. Trên CRM, bạn duyệt 3 loại:</p>
+
+<h3>1. Phiếu Chi</h3>
+<div class="flow">
+  <span class="step-box">NV tạo</span><span class="arrow">→</span>
+  <span class="step-box">TP duyệt</span><span class="arrow">→</span>
+  <span class="step-box">KT duyệt</span><span class="arrow">→</span>
+  <span class="step-box" style="background:var(--orange)">🔔 Bạn duyệt cuối</span>
+</div>
+<p>Vào Tài chính → Xem phiếu "Chờ CEO duyệt" → Bấm <strong>"Duyệt"</strong> hoặc <strong>"Từ chối"</strong></p>
+
+<h3>2. Bảng lương</h3>
+<div class="flow">
+  <span class="step-box">HCNS tính</span><span class="arrow">→</span>
+  <span class="step-box">HR duyệt</span><span class="arrow">→</span>
+  <span class="step-box">KT xác nhận</span><span class="arrow">→</span>
+  <span class="step-box" style="background:var(--orange)">🔔 Bạn duyệt cuối</span>
+</div>
+<p>Vào Bảng lương → Bấm <strong>"CEO Duyệt"</strong> → Toàn bộ NV nhận thông báo "Phiếu lương đã sẵn sàng"</p>
+
+<h3>3. Dự toán / Quyết toán</h3>
+<p>Tương tự, duyệt cuối cho dự toán và quyết toán tour.</p>
+</section>
+
+<section>
+<h2>⚠️ Phần 2: Cảnh báo & Giám sát</h2>
+<p>Hệ thống tự động gửi cho bạn những cảnh báo quan trọng nhất:</p>
+<table>
+  <tr><th>Loại</th><th>Khi nào</th></tr>
+  <tr><td>🔴 Dòng tiền âm</td><td>Net cashflow tháng hiện tại < 0</td></tr>
+  <tr><td>🔴 Công nợ >30 ngày</td><td>Có KH nợ quá 30 ngày chưa trả</td></tr>
+  <tr><td>🟡 Dự toán chờ >72h</td><td>Dự toán chờ duyệt quá 3 ngày (escalate từ KT)</td></tr>
+  <tr><td>🟡 Lead bỏ quên >14 ngày</td><td>NV Sale không liên hệ Lead >14 ngày (escalate từ GDKD)</td></tr>
+  <tr><td>🔴 Tour ngày mai chưa phân HDV</td><td>Booking ngày mai mà chưa có HDV</td></tr>
+</table>
+
+<div class="callout tip">
+  <strong>💡 Widget Giám sát Lead trên Dashboard</strong>
+  5 ô vuông ở cuối Dashboard cho bạn cái nhìn tổng quan về pipeline bán hàng. Bấm vào từng ô → Lọc danh sách Lead tương ứng. Ví dụ: bấm "Quá hạn follow-up" → Thấy tất cả Lead mà Sale đang bỏ quên.
+</div>
+</section>
+
+<section>
+<h2>⚙️ Phần 3: Cài đặt hệ thống</h2>
+<p>Chỉ bạn (CEO/Admin) mới truy cập được menu <strong>"Cài đặt"</strong>:</p>
+<table>
+  <tr><th>Mục</th><th>Dùng để</th></tr>
+  <tr><td><strong>Phân quyền</strong></td><td>Bật/tắt quyền truy cập cho từng Role (ví dụ: cho Sale xem Tài chính hay không)</td></tr>
+  <tr><td><strong>Thông tin công ty</strong></td><td>Tên, địa chỉ, MST, logo — Hiện trên phiếu in</td></tr>
+  <tr><td><strong>Danh mục chi phí</strong></td><td>Tùy chỉnh nhóm thu/chi (Vận chuyển, Lưu trú, Ăn uống...)</td></tr>
+</table>
+</section>
+
+<div class="footer">
+  <a href="index.html" style="color:var(--accent)">← Quay về trang chủ</a><br><br>
+  Saigon Holiday Travel © 2026
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phòng HCNS — SGH CRM Training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="breadcrumb"><a href="index.html">← Trang chủ</a> <span>/ Phòng HCNS</span></div>
+<div class="hero" style="padding-top:20px">
+  <h1>👥 Hướng dẫn — Phòng HCNS</h1>
+  <p class="sub">Dành cho: HR Manager, HCNS, Thực tập sinh HCNS</p>
+</div>
+
+<section>
+<h2>📋 Vai trò của bạn — "Bà đỡ" của toàn công ty</h2>
+<p>HCNS là phòng ban <strong>quan trọng nhất khi triển khai CRM</strong> vì bạn chịu trách nhiệm:</p>
+<ul>
+  <li><strong>Tạo tài khoản</strong> cho toàn bộ nhân viên</li>
+  <li><strong>Cấp quyền</strong> cho từng phòng ban</li>
+  <li><strong>Tuyển dụng</strong> nhân sự mới</li>
+  <li><strong>Quản lý nghỉ phép</strong></li>
+  <li><strong>Tính lương</strong> hàng tháng</li>
+  <li><strong>Upload SOP/Quy trình</strong> cho các phòng</li>
+</ul>
+<div class="flow">
+  <span class="step-box">Tuyển dụng</span><span class="arrow">→</span>
+  <span class="step-box">Tạo tài khoản</span><span class="arrow">→</span>
+  <span class="step-box">Onboarding NDA</span><span class="arrow">→</span>
+  <span class="step-box">Quản lý NV</span><span class="arrow">→</span>
+  <span class="step-box">Nghỉ phép</span><span class="arrow">→</span>
+  <span class="step-box">Bảng lương</span>
+</div>
+</section>
+
+<section>
+<h2>👤 Phần 1: Tạo tài khoản nhân viên mới</h2>
+<p>Mỗi khi có nhân viên mới vào công ty, bạn cần tạo tài khoản cho họ:</p>
+<ol class="steps">
+  <li>Vào menu <strong>"Nhân sự"</strong> → Bấm <strong>"Thêm nhân viên"</strong></li>
+  <li>Điền thông tin: <strong>Họ tên, Email, SĐT, Phòng ban, Chức vụ, Cấp bậc</strong></li>
+  <li>Hệ thống tự động tạo tài khoản đăng nhập (email + mật khẩu mặc định)</li>
+  <li><strong>Copy mật khẩu mặc định</strong> → Gửi cho NV mới qua email/Zalo cá nhân</li>
+  <li>NV đăng nhập → Buộc đổi mật khẩu → Ký NDA → Bắt đầu sử dụng</li>
+</ol>
+
+<div class="callout warn">
+  <strong>⚠️ Gửi mật khẩu an toàn</strong>
+  Gửi mật khẩu qua kênh riêng tư (Zalo cá nhân, email cá nhân). KHÔNG gửi trong group chat công ty.
+</div>
+</section>
+
+<section>
+<h2>🎯 Phần 2: Tuyển dụng (Kanban)</h2>
+<h3>Giao diện tuyển dụng trông như thế nào?</h3>
+<p>Giống bảng Kanban Lead của Sale, nhưng dành cho <strong>quản lý ứng viên</strong>. Có <strong>7 cột</strong>:</p>
+
+<div class="kanban-demo" style="grid-template-columns:repeat(7,1fr)">
+  <div class="kanban-col"><div class="col-title" style="background:#475569;color:#fff;font-size:10px">Mới</div>
+    <div class="kanban-card"><div class="name">Ngọc Anh</div><div class="meta">MKT • CV đẹp</div></div>
+  </div>
+  <div class="kanban-col"><div class="col-title" style="background:#1e40af;color:#fff;font-size:10px">Lọc CV</div></div>
+  <div class="kanban-col"><div class="col-title" style="background:#7c3aed;color:#fff;font-size:10px">Phỏng vấn</div></div>
+  <div class="kanban-col"><div class="col-title" style="background:#0d9488;color:#fff;font-size:10px">Offer</div></div>
+  <div class="kanban-col"><div class="col-title" style="background:#15803d;color:#fff;font-size:10px">Nhận việc</div></div>
+  <div class="kanban-col"><div class="col-title" style="background:#991b1b;color:#fff;font-size:10px">Từ chối</div></div>
+  <div class="kanban-col"><div class="col-title" style="background:#78716c;color:#fff;font-size:10px">Rút lui</div></div>
+</div>
+
+<h3>Cách sử dụng</h3>
+<ol class="steps">
+  <li>Vào menu <strong>"Tuyển dụng"</strong> → Bấm <strong>"Thêm ứng viên"</strong></li>
+  <li>Nhập: Họ tên, SĐT, Email, Vị trí ứng tuyển, Phòng ban, Upload CV</li>
+  <li><strong>Kéo thả card</strong> qua từng giai đoạn: Mới → Lọc CV → Phỏng vấn → Offer</li>
+  <li>Kéo sang <strong>"Nhận việc"</strong> → Popup hỏi: <strong>"Tạo tài khoản nhân viên cho người này?"</strong></li>
+  <li>Bấm "Có" → Hệ thống tự động: Tạo NV + Tạo tài khoản đăng nhập + Tạo checklist NDA</li>
+</ol>
+
+<div class="callout tip">
+  <strong>💡 Auto-Onboarding cực tiện!</strong>
+  Khi bạn kéo ứng viên sang "Nhận việc", hệ thống làm tự động 3 việc: (1) Tạo hồ sơ nhân viên, (2) Tạo tài khoản đăng nhập, (3) Tạo checklist NDA. Bạn chỉ cần copy mật khẩu gửi cho NV mới.
+</div>
+</section>
+
+<section>
+<h2>📅 Phần 3: Quản lý Nghỉ phép</h2>
+<p>NV tạo đơn xin nghỉ trên CRM → Trưởng phòng duyệt → HR xác nhận.</p>
+<div class="flow">
+  <span class="step-box">NV gửi đơn</span><span class="arrow">→</span>
+  <span class="step-box">TP duyệt</span><span class="arrow">→</span>
+  <span class="step-box">HR xác nhận</span>
+</div>
+<p>Bạn (HCNS) thấy <strong>toàn bộ đơn nghỉ</strong> của tất cả phòng ban. Trưởng phòng chỉ thấy đơn nghỉ của phòng mình.</p>
+</section>
+
+<section>
+<h2>💰 Phần 4: Bảng lương — Luồng duyệt 4 bước</h2>
+<p>Đây là quy trình tính và duyệt lương hàng tháng, phải qua <strong>4 người</strong>:</p>
+
+<div class="flow">
+  <span class="step-box">① HCNS tính lương</span><span class="arrow">→</span>
+  <span class="step-box">② HR Manager duyệt</span><span class="arrow">→</span>
+  <span class="step-box">③ Kế toán xác nhận</span><span class="arrow">→</span>
+  <span class="step-box">④ CEO duyệt cuối</span>
+</div>
+
+<h3>Chi tiết từng bước</h3>
+<ol class="steps">
+  <li><strong>HCNS tạo bảng lương:</strong> Vào "Bảng lương" → Chọn tháng → Bấm <strong>"Tính lương tháng"</strong>. Hệ thống tạo bản nháp cho toàn bộ NV active.</li>
+  <li><strong>HR Manager review:</strong> Kiểm tra từng dòng lương → Bấm <strong>"Duyệt HR"</strong>. Hệ thống gửi thông báo cho Kế toán.</li>
+  <li><strong>Kế toán xác nhận:</strong> Kiểm tra số liệu → Bấm <strong>"Xác nhận KT"</strong>. Hệ thống gửi thông báo cho CEO.</li>
+  <li><strong>CEO duyệt cuối:</strong> CEO bấm <strong>"CEO Duyệt"</strong>. Hệ thống gửi thông báo cho <strong>TẤT CẢ nhân viên</strong>: "💰 Phiếu lương tháng X đã sẵn sàng xem".</li>
+</ol>
+
+<div class="callout info">
+  <strong>💡 NV chỉ thấy lương khi CEO duyệt</strong>
+  Trong quá trình tính (nháp → HR duyệt → KT xác nhận), nhân viên KHÔNG thấy phiếu lương. Chỉ khi CEO duyệt xong, nhân viên mới xem được phiếu lương cá nhân.
+</div>
+</section>
+
+<section>
+<h2>📄 Phần 5: Quy trình SOP</h2>
+<p>SOP (Standard Operating Procedure) là tài liệu quy trình chuẩn cho từng phòng ban.</p>
+<ol class="steps">
+  <li>Vào menu <strong>"Quy trình"</strong></li>
+  <li>Bấm <strong>"Thêm SOP"</strong> → Upload file PDF/DOCX hoặc dán link Google Drive</li>
+  <li>Chọn phòng ban áp dụng, đánh dấu <strong>"Bắt buộc đọc"</strong> nếu cần</li>
+  <li>Tab <strong>"Thống kê"</strong>: Xem ai chưa đọc SOP bắt buộc → Nhắc nhở</li>
+</ol>
+</section>
+
+<section>
+<h2>⚙️ Phần 6: Cài đặt phân quyền</h2>
+<p>Chỉ CEO/Admin mới có quyền vào Cài đặt. Tuy nhiên, HCNS cần hiểu để tư vấn cho CEO:</p>
+<table>
+  <tr><th>Quyền</th><th>Giải thích</th></tr>
+  <tr><td><strong>personal</strong></td><td>NV chỉ xem dữ liệu của mình (ví dụ: Lead mình phụ trách)</td></tr>
+  <tr><td><strong>department</strong></td><td>Trưởng phòng xem dữ liệu cả phòng</td></tr>
+  <tr><td><strong>all</strong></td><td>CEO/Admin xem toàn bộ</td></tr>
+</table>
+</section>
+
+<div class="footer">
+  <a href="index.html" style="color:var(--accent)">← Quay về trang chủ</a><br><br>
+  Saigon Holiday Travel © 2026
+</div>
+</div>
+</body>
+</html>

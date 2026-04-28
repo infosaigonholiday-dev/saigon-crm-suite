@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phòng Kinh Doanh — SGH CRM Training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="breadcrumb"><a href="index.html">← Trang chủ</a> <span>/ Phòng Kinh Doanh</span></div>
+
+<div class="hero" style="padding-top:20px">
+  <h1>💼 Hướng dẫn — Phòng Kinh Doanh</h1>
+  <p class="sub">Dành cho: Tất cả nhân viên Sale (Domestic, Outbound, Inbound, MICE)</p>
+</div>
+
+<!-- MỖI NGÀY -->
+<section>
+<h2>📋 Mỗi ngày bạn cần làm gì trên CRM?</h2>
+<table>
+  <tr><th>Thời điểm</th><th>Việc cần làm</th><th>Ở đâu</th></tr>
+  <tr><td><strong>Sáng (8h)</strong></td><td>Xem có Lead nào cần gọi hôm nay không</td><td>Menu "Tiềm năng" — xem badge đỏ</td></tr>
+  <tr><td><strong>Trong ngày</strong></td><td>Gọi khách → Ghi chú → Kéo card</td><td>Bảng Kanban trong "Tiềm năng"</td></tr>
+  <tr><td><strong>Khi khách chốt</strong></td><td>Chuyển Lead → Khách hàng → Tạo Booking</td><td>Tiềm năng → Khách hàng → Đặt tour</td></tr>
+  <tr><td><strong>Khi cần chi tiền</strong></td><td>Tạo phiếu chi</td><td>Menu "Tài chính"</td></tr>
+  <tr><td><strong>Cuối ngày</strong></td><td>Kiểm tra thông báo</td><td>Chuông 🔔 + Cảnh báo ⚠️</td></tr>
+  <tr><td><strong>Cuối tháng</strong></td><td>Xem phiếu lương</td><td>Menu "Bảng lương"</td></tr>
+</table>
+</section>
+
+<!-- LUỒNG TỔNG -->
+<section>
+<h2>🔄 Luồng làm việc tổng thể</h2>
+<p>Đây là toàn bộ hành trình từ khi bạn có data khách đến khi khách đi tour xong:</p>
+<div class="flow">
+  <span class="step-box">Kho Data</span><span class="arrow">→</span>
+  <span class="step-box">Lead (Tiềm năng)</span><span class="arrow">→</span>
+  <span class="step-box">Khách hàng</span><span class="arrow">→</span>
+  <span class="step-box">Báo giá</span><span class="arrow">→</span>
+  <span class="step-box">Đặt tour</span><span class="arrow">→</span>
+  <span class="step-box">Hợp đồng</span><span class="arrow">→</span>
+  <span class="step-box">Thanh toán</span>
+</div>
+<p>Bạn không cần phải qua tất cả các bước. Ví dụ: Khách gọi đến muốn đặt tour luôn → Bạn có thể tạo Khách hàng + Booking trực tiếp mà không cần qua Kho Data hay Lead.</p>
+</section>
+
+<!-- KHO DATA -->
+<section>
+<h2>📁 Phần 1: Kho Data</h2>
+
+<h3>Kho Data là gì?</h3>
+<p>Đây là nơi lưu <strong>tất cả số điện thoại, email</strong> bạn thu thập được nhưng <strong>chưa biết có mua tour không</strong>. Ví dụ:</p>
+<ul>
+  <li>Danh sách người để lại SĐT ở hội chợ du lịch</li>
+  <li>Data từ quảng cáo Facebook/Google</li>
+  <li>Danh sách mua từ đối tác B2B</li>
+</ul>
+
+<h3>Cách sử dụng</h3>
+<ol class="steps">
+  <li>Vào menu <strong>"Kho Data"</strong> trên sidebar</li>
+  <li>Bấm <strong>"Thêm"</strong> để nhập từng người, hoặc <strong>"Import Excel"</strong> để nhập hàng loạt</li>
+  <li>Khi thấy người nào có vẻ tiềm năng → Bấm <strong>"Chuyển thành Lead"</strong> trên dòng đó</li>
+</ol>
+
+<div class="callout info">
+  <strong>💡 Tại sao không nhập thẳng vào Lead?</strong>
+  Vì Kho Data giúp bạn <strong>lọc rác</strong> trước. Không phải data nào cũng là khách tiềm năng. Bạn lọc ở đây, chọn người thật sự quan tâm rồi mới chuyển.
+</div>
+</section>
+
+<!-- LEAD -->
+<section>
+<h2>🎯 Phần 2: Tiềm năng (Lead) — PHẦN QUAN TRỌNG NHẤT</h2>
+
+<h3>Lead là gì?</h3>
+<p>Lead là một <strong>người có khả năng sẽ mua tour</strong>. Họ có thể đã liên hệ với bạn, hoặc bạn chủ động gọi cho họ. Đây là nơi bạn dành <strong>80% thời gian</strong> trên CRM.</p>
+
+<h3>Bảng Kanban — Nhìn như thế nào?</h3>
+<p>Khi vào menu "Tiềm năng", bạn sẽ thấy một bảng chia thành <strong>5 cột</strong>. Mỗi cột đại diện cho một giai đoạn bán hàng:</p>
+
+<div class="kanban-demo">
+  <div class="kanban-col">
+    <div class="col-title" style="background:#475569;color:#fff">Mới</div>
+    <div class="kanban-card"><div class="name">Anh Minh</div><div class="meta">🔥 Nóng • 0909...</div></div>
+    <div class="kanban-card"><div class="name">Chị Hoa</div><div class="meta">🌤️ Ấm • 0938...</div></div>
+    <div class="kanban-card"><div class="name">Anh Tùng</div><div class="meta">❄️ Lạnh • 0912...</div></div>
+  </div>
+  <div class="kanban-col">
+    <div class="col-title" style="background:#166534;color:#fff">Quan tâm</div>
+    <div class="kanban-card" style="border-color:var(--green)"><div class="name">Chị Lan</div><div class="meta">🔥 Nóng • PQ 3N2Đ</div></div>
+  </div>
+  <div class="kanban-col">
+    <div class="col-title" style="background:#1e40af;color:#fff">Đang báo giá</div>
+    <div class="kanban-card" style="border-color:var(--accent)"><div class="name">Anh Phong</div><div class="meta">🌤️ Ấm • Đà Nẵng</div></div>
+  </div>
+  <div class="kanban-col">
+    <div class="col-title" style="background:#15803d;color:#fff">Thành công</div>
+    <div class="kanban-card" style="border-color:var(--green)"><div class="name">Chị Mai</div><div class="meta">✅ Đã chuyển KH</div></div>
+  </div>
+  <div class="kanban-col">
+    <div class="col-title" style="background:#991b1b;color:#fff">Không TC</div>
+    <div class="kanban-card" style="border-color:var(--red)"><div class="name">Anh Nam</div><div class="meta">❌ Giá cao</div></div>
+  </div>
+</div>
+
+<p><strong>Mỗi ô nhỏ (card) là 1 khách tiềm năng.</strong> Trên mỗi card bạn thấy: Tên, SĐT, icon nhiệt độ (🔥 Nóng / 🌤️ Ấm / ❄️ Lạnh), lịch hẹn follow-up, lần cuối liên hệ.</p>
+
+<h3>Cách tạo Lead mới</h3>
+<ol class="steps">
+  <li>Bấm nút <strong>"+ Thêm lead"</strong> ở góc phải trên cùng</li>
+  <li>Điền thông tin: <strong>Tên, SĐT, Email</strong></li>
+  <li>Chọn: <strong>Nguồn</strong> (Facebook / Zalo / Hotline / Giới thiệu...), <strong>Điểm đến</strong> quan tâm, <strong>Số khách</strong>, <strong>Ngân sách</strong></li>
+  <li>Chọn <strong>nhiệt độ</strong>: 🔥 Nóng (rất quan tâm) / 🌤️ Ấm (quan tâm vừa) / ❄️ Lạnh (chưa rõ)</li>
+  <li>Đặt <strong>ngày follow-up</strong> (ngày bạn sẽ gọi lại). Đây là bước <strong>quan trọng nhất</strong> — nếu bạn không đặt, hệ thống sẽ cảnh báo!</li>
+  <li>Bấm <strong>"Tạo"</strong> → Lead xuất hiện ở cột "Mới"</li>
+</ol>
+
+<h3>Cách kéo thả — Khi khách tiến triển</h3>
+
+<div class="scenario">
+  <div class="title">📞 Tình huống thực tế: Anh Minh quan tâm tour</div>
+  <div class="dialogue">"Anh Minh gọi tới: Anh quan tâm tour Phú Quốc 3 ngày 2 đêm, đi gia đình 4 người tháng 7. Gửi profile resort cho anh xem."</div>
+  <p><strong>Bạn cần làm gì trên CRM?</strong></p>
+  <p class="action">1. Tìm card "Anh Minh" trên bảng Kanban</p>
+  <p class="action">2. Dùng chuột <strong>kéo card</strong> từ cột "Mới" sang cột <strong>"Quan tâm"</strong></p>
+  <p class="action">3. Popup ghi chú hiện ra → Ghi: "Quan tâm tour PQ 3N2Đ, gia đình 4 người, T7/2026. Gửi profile resort."</p>
+  <p class="action">4. Chọn nhiệt độ: Ấm → <strong>Nóng</strong></p>
+  <p class="action">5. Bấm "Xác nhận" → Xong!</p>
+</div>
+
+<div class="callout tip">
+  <strong>💡 Mẹo: Menu 3 chấm (⋮)</strong>
+  Ngoài cách kéo thả, bạn có thể bấm vào <strong>icon 3 chấm (⋮)</strong> ở góc phải card → Chọn trạng thái chi tiết hơn (Đã liên hệ, Đã gửi profile, Đã báo giá, Đàm phán...). Phù hợp khi bạn muốn chuyển đúng trạng thái mà không cần kéo thả.
+</div>
+
+<h3>Khi khách CHỐT TOUR 🎉</h3>
+
+<div class="scenario">
+  <div class="title">🎉 Tình huống: Chị Lan chốt tour!</div>
+  <div class="dialogue">"Chị Lan gọi: OK em, chị lấy tour Phú Quốc giá 25 triệu/người, 3 người đi ngày 15/7 nha."</div>
+  <p class="action">1. Kéo card "Chị Lan" sang cột <strong>"Thành công"</strong></p>
+  <p class="action">2. Ghi chú: "Chốt PQ 3N2Đ, 25tr/người x 3 = 75tr. Đi 15/7."</p>
+  <p class="action">3. Hệ thống hỏi: <strong>"Chuyển Lead này thành Khách hàng luôn không?"</strong></p>
+  <p class="action">4. Bấm <strong>"Có"</strong> → Lead biến thành Khách hàng</p>
+  <p class="action">5. Tiếp theo: Vào "Đặt tour" tạo Booking cho Chị Lan</p>
+</div>
+
+<h3>Khi khách KHÔNG MUA 😔</h3>
+<ol class="steps">
+  <li>Kéo card sang cột <strong>"Không thành công"</strong></li>
+  <li>Popup hiện ra yêu cầu chọn <strong>lý do</strong>: Giá cao / Đã đặt nơi khác / Hoãn kế hoạch / Không liên lạc được / Khác</li>
+  <li>Ghi thêm chi tiết nếu cần → Bấm "Xác nhận"</li>
+</ol>
+<div class="callout warn">
+  <strong>⚠️ Lý do thất bại rất quan trọng!</strong>
+  Giúp công ty biết tại sao mất khách để cải thiện. Đừng bỏ qua bước này.
+</div>
+
+<h3>Hệ thống tự nhắc — Bạn KHÔNG CẦN NHỚ gọi ai</h3>
+<table>
+  <tr><th>Tình huống</th><th>Hệ thống làm gì</th></tr>
+  <tr><td>Hôm nay có Lead cần follow-up</td><td><strong>Badge đỏ</strong> trên menu "Tiềm năng" + Thông báo chuông</td></tr>
+  <tr><td>Bạn quên gọi 1 Lead >7 ngày</td><td>Gửi thông báo: "⚠️ Lead bị bỏ quên: Anh Minh — 8 ngày không liên hệ"</td></tr>
+  <tr><td>Bạn quên >14 ngày</td><td>Gửi thông báo cho <strong>cả Trưởng phòng</strong> để nhắc bạn</td></tr>
+  <tr><td>Lead mới tạo >2 ngày chưa đặt lịch hẹn</td><td>Gửi thông báo: "📅 Lead chưa có lịch hẹn"</td></tr>
+</table>
+</section>
+
+<!-- KHÁCH HÀNG -->
+<section>
+<h2>👤 Phần 3: Khách hàng</h2>
+
+<h3>Lead khác Khách hàng ở chỗ nào?</h3>
+<div class="scenario">
+  <p><strong>Lead</strong> = Người <strong>CÓ THỂ</strong> mua tour (đang chăm sóc, chưa chắc)</p>
+  <p><strong>Khách hàng</strong> = Người <strong>ĐÃ TỪNG</strong> mua tour hoặc đã chốt</p>
+</div>
+
+<h3>Cách xem chi tiết</h3>
+<ol class="steps">
+  <li>Vào menu <strong>"Khách hàng"</strong></li>
+  <li>Tìm hoặc bấm vào tên KH → Trang chi tiết hiện ra</li>
+  <li>Bạn sẽ thấy: Thông tin cá nhân, Lịch sử booking (tour đã đặt), Ghi chú nội bộ</li>
+</ol>
+
+<div class="callout info">
+  <strong>💡 Ghi chú nội bộ (@mention)</strong>
+  Trong trang chi tiết KH, bạn có thể ghi chú và <strong>tag đồng nghiệp bằng @tên</strong>. Ví dụ: "@Hương ơi chị Lan cần thêm 1 phòng, em confirm giúp nhé". Người được tag sẽ nhận thông báo ngay.
+</div>
+
+<h3>Sinh nhật Khách hàng — Cơ hội bán thêm!</h3>
+<p>Hệ thống tự động gửi thông báo <strong>trước 3 ngày</strong> khi KH có sinh nhật. Bạn gửi lời chúc + offer ưu đãi → Tỷ lệ chốt tour rất cao!</p>
+</section>
+
+<!-- BÁO GIÁ → BOOKING -->
+<section>
+<h2>📄 Phần 4: Báo giá → Đặt tour → Hợp đồng → Thanh toán</h2>
+
+<h3>4.1 Tạo Báo giá</h3>
+<ol class="steps">
+  <li>Vào <strong>"Báo giá"</strong> → Bấm <strong>"Tạo báo giá"</strong></li>
+  <li>Chọn khách hàng → Nhập chi tiết tour, giá, điều kiện</li>
+  <li>Gửi cho khách qua email hoặc Zalo</li>
+</ol>
+<div class="callout warn"><strong>⚠️ Nếu khách không phản hồi >5 ngày</strong> → Hệ thống tự gửi thông báo nhắc bạn follow-up.</div>
+
+<h3>4.2 Tạo Booking (Đặt tour)</h3>
+<p>Khi khách đồng ý giá:</p>
+<ol class="steps">
+  <li>Vào <strong>"Đặt tour"</strong> → <strong>"Tạo booking"</strong></li>
+  <li>Nhập: Khách hàng, Gói tour, Ngày đi, Số khách, Giá</li>
+  <li>Booking tự hiện cho phòng Điều hành phân công HDV</li>
+</ol>
+
+<h3>4.3 Hợp đồng + Thanh toán</h3>
+<p>Tạo hợp đồng từ booking → Theo dõi khách đã cọc chưa, còn nợ bao nhiêu. Hệ thống cảnh báo: Hạn cọc 3 ngày, Thanh toán quá hạn.</p>
+</section>
+
+<!-- PHIẾU CHI -->
+<section>
+<h2>💸 Phần 5: Khi bạn cần chi tiền</h2>
+
+<div class="scenario">
+  <div class="title">💰 Ví dụ: Chi 500.000đ tiền gửi xe</div>
+  <p class="action">1. Vào menu <strong>"Tài chính"</strong></p>
+  <p class="action">2. Bấm <strong>"Lập phiếu"</strong></p>
+  <p class="action">3. Chọn: Loại = Chi, Nhóm = Gửi xe, Số tiền = 500.000</p>
+  <p class="action">4. Nhập nội dung: "Tiền gửi xe tháng 4/2026"</p>
+  <p class="action">5. Bấm <strong>"Gửi duyệt"</strong></p>
+</div>
+
+<p><strong>Sau khi gửi duyệt, phiếu chi sẽ đi qua các bước:</strong></p>
+<div class="flow">
+  <span class="step-box">Bạn tạo</span><span class="arrow">→</span>
+  <span class="step-box">Trưởng phòng duyệt</span><span class="arrow">→</span>
+  <span class="step-box">Kế toán duyệt</span><span class="arrow">→</span>
+  <span class="step-box">CEO chi tiền</span>
+</div>
+<p>Bạn theo dõi trạng thái trên hệ thống. Nếu bị từ chối → Bạn thấy lý do và sửa lại.</p>
+</section>
+
+<!-- PHIẾU LƯƠNG -->
+<section>
+<h2>💰 Phần 6: Xem phiếu lương</h2>
+<ol class="steps">
+  <li>Vào menu <strong>"Bảng lương"</strong></li>
+  <li>Chọn tháng/năm</li>
+  <li>Bạn chỉ thấy phiếu lương <strong>của chính mình</strong> (không ai khác thấy)</li>
+  <li>Phiếu chỉ hiện khi CEO đã duyệt. Nếu chưa thấy = đang tính lương</li>
+</ol>
+<p>Chi tiết phiếu lương: Lương cứng | Lương KPI | Hoa hồng | OT | Phụ cấp | BHXH | Thuế | <strong>Thực nhận</strong></p>
+</section>
+
+<div class="footer">
+  <a href="index.html" style="color:var(--accent)">← Quay về trang chủ</a><br><br>
+  Saigon Holiday Travel © 2026
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phòng Kế Toán — SGH CRM Training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="breadcrumb"><a href="index.html">← Trang chủ</a> <span>/ Phòng Kế Toán</span></div>
+<div class="hero" style="padding-top:20px">
+  <h1>📊 Hướng dẫn — Phòng Kế Toán</h1>
+  <p class="sub">Dành cho: Kế toán (KETOAN) + Thực tập sinh Kế toán</p>
+</div>
+
+<section>
+<h2>📋 Vai trò của bạn trên CRM</h2>
+<p>Kế toán là người <strong>"gác cổng" tài chính</strong>. Trên CRM bạn chịu trách nhiệm:</p>
+<ul>
+  <li><strong>Nhập liệu</strong> các khoản thu, chi vào hệ thống</li>
+  <li><strong>Duyệt</strong> phiếu chi từ các phòng ban</li>
+  <li><strong>Xác nhận</strong> bảng lương trước khi trình CEO</li>
+  <li><strong>Duyệt</strong> dự toán và quyết toán tour</li>
+  <li><strong>Xem</strong> báo cáo tài chính (doanh thu, lợi nhuận, dòng tiền)</li>
+  <li><strong>Xuất</strong> dữ liệu ra Excel để lưu trữ hoặc gửi CEO</li>
+</ul>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN MỚI: NHẬP LIỆU THU CHI CHI TIẾT -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>📝 Phần 1: Nhập liệu Thu/Chi — Hướng dẫn chi tiết</h2>
+
+<h3>Tổng quan: Bạn nhập ở đâu?</h3>
+<p>Khi vào menu <strong>"Tài chính"</strong>, bạn sẽ thấy một <strong>dải tab phía trên</strong>. Mỗi tab là một chức năng:</p>
+
+<table>
+  <tr><th>Tab</th><th>Dùng để</th><th>Ai dùng</th></tr>
+  <tr><td><strong>Tổng quan</strong></td><td>Xem biểu đồ doanh thu, lợi nhuận tổng</td><td>KT, CEO</td></tr>
+  <tr><td><strong>HR duyệt CP</strong></td><td>HR Manager duyệt chi phí phòng HCNS</td><td>HR Manager</td></tr>
+  <tr><td><strong>KT duyệt CP</strong></td><td>Kế toán duyệt phiếu chi từ các phòng</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Sổ quỹ</strong></td><td>Xem + Nhập phiếu thu/chi (đây là nơi chính)</td><td>KT</td></tr>
+  <tr><td><strong>Dự toán</strong></td><td>Duyệt dự toán tour</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Quyết toán</strong></td><td>Duyệt quyết toán tour</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Doanh thu</strong></td><td>Báo cáo doanh thu theo tháng</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Lợi nhuận</strong></td><td>Doanh thu - Chi phí = Lợi nhuận</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Dòng tiền</strong></td><td>Tiền vào - Tiền ra (Net cashflow)</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Thuế</strong></td><td>Báo cáo thuế GTGT, TNCN</td><td>KT, CEO</td></tr>
+  <tr><td><strong>Công nợ</strong></td><td>Khách hàng còn nợ bao nhiêu</td><td>KT, CEO</td></tr>
+  <tr><td><strong>CP Lương</strong></td><td>Chi phí lương theo tháng</td><td>KT, CEO</td></tr>
+  <tr><td><strong>CP Văn phòng</strong></td><td>Nhập: Tiền nhà, Điện, Nước, Wifi, Xe...</td><td>KT</td></tr>
+  <tr><td><strong>CP Marketing</strong></td><td>Nhập: Quảng cáo, Nội dung, Hoa hồng OTA...</td><td>KT, MKT</td></tr>
+  <tr><td><strong>CP Khác</strong></td><td>Nhập: Pháp lý, Đào tạo, Phí NH, Giấy phép...</td><td>KT</td></tr>
+  <tr><td><strong>Tổng hợp OPEX</strong></td><td>Bảng tổng hợp tất cả chi phí vận hành</td><td>KT, CEO</td></tr>
+</table>
+
+<h3>1A. Nhập Phiếu Thu/Chi (Tab "Sổ quỹ")</h3>
+<p>Đây là nơi bạn nhập <strong>mọi khoản thu/chi</strong> hàng ngày:</p>
+
+<div class="scenario">
+  <div class="title">💰 Ví dụ 1: Nhập khoản THU — Khách thanh toán cọc 20 triệu</div>
+  <p class="action">1. Vào menu <strong>"Tài chính"</strong> → Bấm tab <strong>"Sổ quỹ"</strong></p>
+  <p class="action">2. Bấm nút <strong>"+ Lập phiếu"</strong></p>
+  <p class="action">3. Chọn loại: <strong>THU</strong></p>
+  <p class="action">4. Nhập nội dung: "Thu cọc tour PQ — KH Chị Lan"</p>
+  <p class="action">5. Số tiền: <strong>20.000.000</strong></p>
+  <p class="action">6. Chọn phương thức: Chuyển khoản / Tiền mặt</p>
+  <p class="action">7. Chọn Booking liên quan (nếu có)</p>
+  <p class="action">8. Bấm <strong>"Lưu"</strong></p>
+</div>
+
+<div class="scenario">
+  <div class="title">💸 Ví dụ 2: Nhập khoản CHI — Trả tiền xe cho NCC 5 triệu</div>
+  <p class="action">1. Bấm <strong>"+ Lập phiếu"</strong></p>
+  <p class="action">2. Chọn loại: <strong>CHI</strong></p>
+  <p class="action">3. Nhập nội dung: "Trả tiền xe tour ĐN — NCC Xe Xanh"</p>
+  <p class="action">4. Số tiền: <strong>5.000.000</strong></p>
+  <p class="action">5. Người nhận: Gõ <strong>"Xe Xanh"</strong> → Hệ thống tự gợi ý từ danh sách NCC đã lưu</p>
+  <p class="action">6. STK + Ngân hàng tự điền → Bạn chỉ cần kiểm tra</p>
+  <p class="action">7. Đính kèm chứng từ (ảnh hóa đơn, biên nhận) nếu có</p>
+  <p class="action">8. Bấm <strong>"Lưu"</strong> hoặc <strong>"Gửi duyệt"</strong></p>
+</div>
+
+<div class="callout info">
+  <strong>💡 Mã phiếu tự động</strong>
+  Hệ thống tự sinh mã phiếu: <strong>PT-20260428-001</strong> (Phiếu Thu) hoặc <strong>PC-20260428-002</strong> (Phiếu Chi). Bạn không cần đặt mã thủ công.
+</div>
+
+<h3>1B. Nhập Chi phí Văn phòng (Tab "CP Văn phòng")</h3>
+<p>Các khoản chi cố định hàng tháng: Tiền nhà, Điện, Nước, Wifi, Gửi xe, Văn phòng phẩm...</p>
+
+<div class="scenario">
+  <div class="title">🏢 Ví dụ: Nhập tiền điện tháng 4 = 3.200.000đ</div>
+  <p class="action">1. Bấm tab <strong>"CP Văn phòng"</strong></p>
+  <p class="action">2. Bấm <strong>"+ Thêm"</strong></p>
+  <p class="action">3. Chọn danh mục: <strong>Tiền điện</strong></p>
+  <p class="action">4. Tháng: <strong>4/2026</strong></p>
+  <p class="action">5. Số tiền: <strong>3.200.000</strong></p>
+  <p class="action">6. Ghi chú (tùy chọn): "Hóa đơn số 12345"</p>
+  <p class="action">7. Bấm <strong>"Lưu"</strong></p>
+</div>
+
+<p>Các danh mục có sẵn:</p>
+<table>
+  <tr><th>Mã</th><th>Tên</th><th>Ví dụ</th></tr>
+  <tr><td>RENT</td><td>Tiền nhà</td><td>Tiền thuê VP tháng 4: 15tr</td></tr>
+  <tr><td>ELECTRICITY</td><td>Tiền điện</td><td>Hóa đơn EVN: 3.2tr</td></tr>
+  <tr><td>WATER</td><td>Tiền nước</td><td>Hóa đơn nước: 500k</td></tr>
+  <tr><td>WIFI</td><td>Wifi/Internet</td><td>FPT/Viettel: 400k</td></tr>
+  <tr><td>PHONE</td><td>Cước ĐT</td><td>Cước ĐT công ty: 800k</td></tr>
+  <tr><td>PARKING</td><td>Gửi xe</td><td>Gửi xe NV: 1.2tr</td></tr>
+  <tr><td>SUPPLIES</td><td>VPP</td><td>Mua giấy, mực in: 600k</td></tr>
+  <tr><td>OTHER</td><td>Khác</td><td>Sửa chữa VP: 2tr</td></tr>
+</table>
+
+<h3>1C. Nhập Chi phí Marketing (Tab "CP Marketing")</h3>
+<p>Tương tự như VP, nhưng cho chi phí MKT:</p>
+<table>
+  <tr><th>Danh mục</th><th>Ví dụ</th></tr>
+  <tr><td>Quảng cáo (ADS)</td><td>Facebook Ads tháng 4: 8tr</td></tr>
+  <tr><td>Nội dung (CONTENT)</td><td>Thuê viết bài: 2tr</td></tr>
+  <tr><td>Hoa hồng OTA</td><td>Commission Klook/Traveloka: 5tr</td></tr>
+  <tr><td>Sự kiện (EVENT)</td><td>Booth hội chợ VITM: 10tr</td></tr>
+</table>
+
+<h3>1D. Import Excel hàng loạt</h3>
+<p>Nếu bạn có danh sách chi phí từ file Excel, bạn có thể import hàng loạt:</p>
+<ol class="steps">
+  <li>Ở tab "Sổ quỹ" hoặc "Nhập chi phí", bấm nút <strong>"Import Excel"</strong></li>
+  <li>Chọn file Excel (.xlsx) từ máy tính</li>
+  <li>Hệ thống đọc dữ liệu → Hiện preview</li>
+  <li>Kiểm tra → Bấm <strong>"Import"</strong></li>
+</ol>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN: DUYỆT PHIẾU CHI -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>✅ Phần 2: Duyệt Phiếu Chi từ các phòng</h2>
+<h3>Phiếu chi đến từ đâu?</h3>
+<p>Nhân viên các phòng tạo phiếu chi trên CRM → Trưởng phòng duyệt → <strong>Đến lượt bạn</strong>.</p>
+<div class="flow">
+  <span class="step-box">NV tạo</span><span class="arrow">→</span>
+  <span class="step-box">TP duyệt</span><span class="arrow">→</span>
+  <span class="step-box" style="background:var(--orange)">🔔 Bạn duyệt</span><span class="arrow">→</span>
+  <span class="step-box">CEO chi</span>
+</div>
+
+<h3>Cách duyệt</h3>
+<ol class="steps">
+  <li>Vào tab <strong>"KT duyệt CP"</strong> — Badge đỏ cho biết số phiếu đang chờ</li>
+  <li>Bấm vào phiếu → Kiểm tra: Số tiền, Nội dung, Người nhận, Chứng từ</li>
+  <li>Nếu OK → Bấm <strong>"Duyệt"</strong> → Phiếu chuyển lên CEO</li>
+  <li>Nếu sai → Bấm <strong>"Từ chối"</strong> + Ghi lý do → Phiếu trả về NV</li>
+</ol>
+
+<div class="callout warn">
+  <strong>⚠️ Phiếu chờ duyệt >48h → Hệ thống nhắc tự động!</strong>
+  Nếu >72h chưa duyệt → Hệ thống <strong>escalate lên CEO</strong> luôn. Vì vậy hãy kiểm tra tab duyệt <strong>ít nhất 1 lần/ngày</strong>.
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN: XÁC NHẬN LƯƠNG -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>💰 Phần 3: Xác nhận Bảng lương</h2>
+<p>Sau khi HR Manager duyệt bảng lương → Hệ thống gửi thông báo cho bạn:</p>
+<ol class="steps">
+  <li>Nhận thông báo: "Bảng lương tháng X chờ KT xác nhận"</li>
+  <li>Vào menu <strong>"Bảng lương"</strong></li>
+  <li>Kiểm tra: Tổng Gross, BHXH, Thuế TNCN, Net — so khớp với sổ tài chính</li>
+  <li>Bấm <strong>"Xác nhận KT"</strong> → Bảng lương chuyển lên CEO</li>
+</ol>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN: DỰ TOÁN / QUYẾT TOÁN -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>📄 Phần 4: Dự toán & Quyết toán Tour</h2>
+<h3>Dự toán là gì?</h3>
+<p>Trước khi tour đi, Sale/Điều hành tạo <strong>Dự toán chi phí</strong>: xe bao nhiêu, KS bao nhiêu, ăn uống bao nhiêu. Bạn duyệt để xác nhận ngân sách hợp lý.</p>
+<h3>Quyết toán là gì?</h3>
+<p>Sau tour kết thúc, Điều hành tạo <strong>Quyết toán thực tế</strong>. Bạn so sánh với Dự toán → Biết tour lãi hay lỗ.</p>
+
+<div class="callout info">
+  <strong>💡 Escalation tự động</strong>
+  Dự toán/Quyết toán chờ duyệt >48h → Nhắc KT. Quá 72h → Nhắc CEO trực tiếp.
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN: BÁO CÁO -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>📈 Phần 5: Báo cáo Tài chính</h2>
+<p>Các tab báo cáo giúp bạn và CEO nắm bức tranh tài chính:</p>
+<table>
+  <tr><th>Tab</th><th>Xem gì</th><th>Ví dụ</th></tr>
+  <tr><td><strong>Doanh thu</strong></td><td>Doanh thu theo tháng</td><td>T4: 500tr, T3: 420tr (+19%)</td></tr>
+  <tr><td><strong>Lợi nhuận</strong></td><td>DT - CP = Lợi nhuận ròng</td><td>T4: 500tr - 380tr = 120tr</td></tr>
+  <tr><td><strong>Dòng tiền</strong></td><td>Tiền vào - Tiền ra</td><td>T4: +85tr (dương = tốt)</td></tr>
+  <tr><td><strong>Thuế</strong></td><td>GTGT, TNCN theo tháng</td><td>TNCN T4: 12tr</td></tr>
+  <tr><td><strong>Công nợ</strong></td><td>KH còn nợ, quá hạn</td><td>Cty ABC nợ 50tr, quá hạn 35 ngày</td></tr>
+  <tr><td><strong>Tổng hợp OPEX</strong></td><td>Tất cả CP vận hành</td><td>VP: 22tr + MKT: 18tr + Khác: 5tr = 45tr</td></tr>
+</table>
+
+<div class="callout danger">
+  <strong>🚨 Cảnh báo tự động cho CEO</strong>
+  <p>• Dòng tiền tháng hiện tại <strong>âm</strong> → Gửi CEO ngay</p>
+  <p>• Công nợ KH >30 ngày chưa trả → Gửi CEO</p>
+  <p>Bạn không cần báo thủ công — hệ thống tự làm.</p>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PHẦN: XUẤT EXCEL -->
+<!-- ═══════════════════════════════════════════ -->
+<section>
+<h2>📥 Phần 6: Xuất dữ liệu ra Excel</h2>
+
+<div class="callout warn">
+  <strong>⚠️ Tính năng đang phát triển</strong>
+  Hiện tại, nút "Xuất Excel" đã có ở trang <strong>Nhân sự</strong> (xuất danh sách NV ra CSV). Tính năng xuất Excel cho Tài chính (Sổ quỹ, Báo cáo) đang được <strong>bổ sung trong phiên bản tiếp theo</strong>.
+</div>
+
+<p>Tạm thời, bạn có thể xuất dữ liệu bằng cách:</p>
+<ol class="steps">
+  <li>Mở tab báo cáo cần xuất (VD: Sổ quỹ)</li>
+  <li>Chọn khoảng thời gian → Dữ liệu hiện trên bảng</li>
+  <li>Dùng <strong>Ctrl+A</strong> (chọn tất cả bảng) → <strong>Ctrl+C</strong> → Paste vào Excel</li>
+  <li>Hoặc chờ bản cập nhật có nút "Xuất Excel" chính thức</li>
+</ol>
+</section>
+
+<div class="footer">
+  <a href="index.html" style="color:var(--accent)">← Quay về trang chủ</a><br><br>
+  Saigon Holiday Travel © 2026
+</div>
+</div>
+</body>
+</html>
