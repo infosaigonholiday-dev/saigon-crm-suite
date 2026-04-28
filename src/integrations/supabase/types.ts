@@ -3972,6 +3972,72 @@ export type Database = {
           },
         ]
       }
+      recurring_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          created_by: string | null
+          day_of_month: number | null
+          department_id: string | null
+          description: string
+          expense_table: string
+          id: string
+          is_active: boolean | null
+          last_generated_month: string | null
+          notes: string | null
+          recurrence: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          department_id?: string | null
+          description: string
+          expense_table?: string
+          id?: string
+          is_active?: boolean | null
+          last_generated_month?: string | null
+          notes?: string | null
+          recurrence?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          department_id?: string | null
+          description?: string
+          expense_table?: string
+          id?: string
+          is_active?: boolean | null
+          last_generated_month?: string | null
+          notes?: string | null
+          recurrence?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_records: {
         Row: {
           avg_deal_size: number | null
