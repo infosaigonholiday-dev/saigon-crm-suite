@@ -938,8 +938,82 @@ Deno.serve(async (req) => {
       console.error("TASK_OVERDUE block error:", e);
     }
 
+    // ===== RECURRING EXPENSES — chạy ngày 1 hàng tháng =====
+    let recurringGenerated = 0;
+    try {
+      const today = new Date();
+      const dayOfMonth = today.getDate();
+      if (dayOfMonth === 1) {
+        const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+        const { data: recItems } = await supabase
+          .from("recurring_expenses")
+          .select("*")
+          .eq("is_active", true)
+          .eq("recurrence", "monthly")
+          .or(`last_generated_month.is.null,last_generated_month.neq.${currentMonthKey}`);
 
-    return new Response(JSON.stringify({ sent, escalated, tasks_overdue: tasksOverdue, total_candidates: notifications.length }), {
+        // Group by expense_table
+        const byTable: Record<string, any[]> = {
+          office_expenses: [],
+          marketing_expenses: [],
+          other_expenses: [],
+        };
+        for (const it of (recItems ?? []) as any[]) {
+          const day = Math.min(it.day_of_month ?? 1, 28);
+          const date = new Date(today.getFullYear(), today.getMonth(), day);
+          const payload = {
+            category: it.category,
+            description: it.description,
+            amount: it.amount,
+            expense_date: date.toISOString().split("T")[0],
+            notes: `[Định kỳ tự động] ${it.notes ?? ""}`.trim(),
+            recorded_by: it.created_by,
+            department_id: it.department_id,
+          };
+          if (byTable[it.expense_table]) byTable[it.expense_table].push({ payload, id: it.id });
+        }
+
+        const generatedIds: string[] = [];
+        for (const [tbl, rows] of Object.entries(byTable)) {
+          if (rows.length === 0) continue;
+          const { error: insErr } = await supabase.from(tbl).insert(rows.map((r) => r.payload));
+          if (!insErr) {
+            recurringGenerated += rows.length;
+            generatedIds.push(...rows.map((r) => r.id));
+          } else {
+            console.error(`Recurring insert ${tbl} error:`, insErr);
+          }
+        }
+
+        if (generatedIds.length > 0) {
+          await supabase
+            .from("recurring_expenses")
+            .update({ last_generated_month: currentMonthKey })
+            .in("id", generatedIds);
+
+          // Notify KETOAN + ADMIN
+          const { data: targets } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("role", ["KETOAN", "ADMIN", "SUPER_ADMIN"])
+            .eq("is_active", true);
+
+          const notifs = (targets ?? []).map((t: any) => ({
+            user_id: t.id,
+            type: "recurring_expense_generated",
+            title: `🔁 Chi phí định kỳ tháng ${today.getMonth() + 1}`,
+            message: `Đã tự động tạo ${recurringGenerated} khoản chi phí định kỳ. Vui lòng kiểm tra.`,
+            priority: "normal",
+            is_read: false,
+          }));
+          if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+        }
+      }
+    } catch (e) {
+      console.error("RECURRING_EXPENSES block error:", e);
+    }
+
+    return new Response(JSON.stringify({ sent, escalated, tasks_overdue: tasksOverdue, recurring_generated: recurringGenerated, total_candidates: notifications.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
