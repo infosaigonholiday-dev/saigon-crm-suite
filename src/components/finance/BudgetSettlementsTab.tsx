@@ -62,6 +62,8 @@ export function BudgetSettlementsTab() {
   const isKetoan = userRole === "KETOAN" || userRole === "ADMIN";
   const isCeo = userRole === "ADMIN";
   const queryClient = useQueryClient();
+  const { data: companyInfo } = useCompanyInfo();
+  const printCo = toPrintCompanyInfo(companyInfo);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);

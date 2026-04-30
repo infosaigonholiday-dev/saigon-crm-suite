@@ -58,6 +58,8 @@ export function BudgetEstimatesTab() {
   const canCreate = hasPermission("finance", "edit");
   const canReview = hasPermission("finance", "edit");
   const queryClient = useQueryClient();
+  const { data: companyInfo } = useCompanyInfo();
+  const printCo = toPrintCompanyInfo(companyInfo);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
