@@ -24,13 +24,13 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Link đăng nhập Saigon Holiday</Preview>
+    <Preview>Link đăng nhập {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Link đăng nhập của bạn</Heading>
         <Text style={text}>
-          Nhấn nút bên dưới để đăng nhập vào Saigon Holiday. Link này sẽ hết hạn sau một thời gian ngắn.
+          Nhấn nút bên dưới để đăng nhập vào {siteName}. Link này sẽ hết hạn sau một thời gian ngắn.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Đăng nhập

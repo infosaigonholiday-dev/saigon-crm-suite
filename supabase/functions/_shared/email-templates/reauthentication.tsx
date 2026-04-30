@@ -19,10 +19,10 @@ interface ReauthenticationEmailProps {
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Mã xác thực Saigon Holiday</Preview>
+    <Preview>Mã xác thực {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Xác nhận danh tính</Heading>
         <Text style={text}>Sử dụng mã bên dưới để xác nhận danh tính của bạn:</Text>
         <Text style={codeStyle}>{token}</Text>

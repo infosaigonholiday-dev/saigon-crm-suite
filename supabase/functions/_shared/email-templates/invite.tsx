@@ -27,15 +27,15 @@ export const InviteEmail = ({
 }: InviteEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Bạn được mời tham gia Saigon Holiday</Preview>
+    <Preview>Bạn được mời tham gia {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Lời mời tham gia</Heading>
         <Text style={text}>
           Bạn được mời tham gia{' '}
           <Link href={siteUrl} style={link}>
-            <strong>Saigon Holiday</strong>
+            <strong>{siteName}</strong>
           </Link>
           . Nhấn nút bên dưới để chấp nhận lời mời và tạo tài khoản.
         </Text>

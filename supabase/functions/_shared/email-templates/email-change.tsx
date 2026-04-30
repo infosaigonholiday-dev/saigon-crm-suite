@@ -29,13 +29,13 @@ export const EmailChangeEmail = ({
 }: EmailChangeEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Xác nhận thay đổi email Saigon Holiday</Preview>
+    <Preview>Xác nhận thay đổi email {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Xác nhận thay đổi email</Heading>
         <Text style={text}>
-          Bạn đã yêu cầu thay đổi địa chỉ email tài khoản Saigon Holiday từ{' '}
+          Bạn đã yêu cầu thay đổi địa chỉ email tài khoản {siteName} từ{' '}
           <Link href={`mailto:${email}`} style={link}>
             {email}
           </Link>{' '}
