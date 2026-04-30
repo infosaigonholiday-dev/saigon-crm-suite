@@ -491,6 +491,13 @@ export function SettingsNotificationStatsTab() {
             </p>
           </CardContent>
         </Card>
+
+        <UserNotificationDetailDialog
+          open={!!dialogUser}
+          onOpenChange={(v) => { if (!v) setDialogUser(null); }}
+          user={dialogUser}
+          preset={dialogPreset}
+        />
       </div>
     </TooltipProvider>
   );
