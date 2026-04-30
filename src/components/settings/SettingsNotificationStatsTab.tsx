@@ -171,6 +171,18 @@ export function SettingsNotificationStatsTab() {
           </div>
         </CardHeader>
         <CardContent>
+          {(errByUserFull || (!loadingFull && byUserFull.length === 0 && sent7d > 0)) && (
+            <Alert variant="destructive" className="mb-3">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Không tổng hợp được thống kê theo nhân sự</AlertTitle>
+              <AlertDescription className="text-xs">
+                {errByUserFull
+                  ? <>RPC <code>rpc_notification_stats_by_user</code> trả lỗi: {(errByUserFull as any)?.message || String(errByUserFull)}. Mở Console để xem chi tiết.</>
+                  : <>Có {sent7d} thông báo đã gửi trong 7 ngày nhưng RPC trả về rỗng. Kiểm tra quyền (cần ADMIN/SUPER_ADMIN/HR_MANAGER/GDKD/MANAGER) hoặc join với <code>profiles</code>.</>}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
