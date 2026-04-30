@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus, Target,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus, Target, Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -120,6 +120,10 @@ export function AppSidebar() {
     { title: "Cảnh báo", url: "/canh-bao", icon: AlertTriangle, badge: alertCount > 0 ? alertCount : undefined },
   ];
 
+  const broadcastItems: MenuItem[] = [
+    { title: "Gửi thông báo", url: "/gui-thong-bao", icon: Megaphone, moduleKey: "notifications" },
+  ];
+
   const filterItems = (items: MenuItem[]) =>
     items.filter((item) => !item.moduleKey || visibleModules.includes(item.moduleKey));
 
@@ -176,6 +180,7 @@ export function AppSidebar() {
   const visibleWork = filterItems(workItems);
   const visibleSop = filterItems(sopItems);
   const visibleSettings = filterItems(settingsItems);
+  const visibleBroadcast = filterItems(broadcastItems);
   const visibleGuide = guideItems;
 
   return (
@@ -235,6 +240,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {renderItems(alertsItems)}
+                {visibleBroadcast.length > 0 && renderItems(visibleBroadcast)}
                 {renderItems(visibleFinance)}
                 {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}

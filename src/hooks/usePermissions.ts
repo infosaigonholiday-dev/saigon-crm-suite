@@ -26,6 +26,7 @@ export const ALL_PERMISSION_KEYS = [
   "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
   "campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete",
   "tasks.view", "tasks.create", "tasks.edit",
+  "notifications.broadcast",
 ] as const;
 
 export type PermissionKey = typeof ALL_PERMISSION_KEYS[number];
@@ -56,6 +57,7 @@ export const PERMISSION_GROUPS: Record<string, { label: string; keys: Permission
   kpi_policies: { label: "Chính sách KPI", keys: ["kpi_policies.view", "kpi_policies.create", "kpi_policies.edit"] },
   campaigns: { label: getModuleLabel("campaigns"), keys: ["campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete"] },
   tasks: { label: getModuleLabel("tasks"), keys: ["tasks.view", "tasks.create", "tasks.edit"] },
+  notifications: { label: "Thông báo", keys: ["notifications.broadcast"] },
 };
 
 // Scope rules
@@ -85,6 +87,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "b2b_tours.view", "b2b_tours.logs",
     "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
+    "notifications.broadcast",
   ],
   SUPER_ADMIN: [
     "dashboard.view",
@@ -110,6 +113,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
     "campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   GDKD: [
     "dashboard.view",
@@ -129,6 +133,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view",
     "campaigns.view", "campaigns.create", "campaigns.edit",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   MANAGER: [
     "dashboard.view",
@@ -151,6 +156,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view",
     "campaigns.view", "campaigns.create", "campaigns.edit",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   DIEUHAN: [
     "dashboard.view",
@@ -238,6 +244,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "kpi_policies.view",
     "campaigns.view",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   SALE_DOMESTIC: [
     "dashboard.view",
