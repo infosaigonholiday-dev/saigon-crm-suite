@@ -84,16 +84,43 @@ const printToolbar = `
 
 const headerBlock = (title: string, code: string, createdAt?: string, co?: PrintCompanyInfo) => {
   const c = { ...DEFAULT_COMPANY, ...(co || {}) };
-  const logoHtml = c.logoUrl ? `<img src="${c.logoUrl}" alt="logo" style="max-height:60px;margin-bottom:6px"/>` : "";
+  const logoHtml = c.logoUrl
+    ? `<img src="${escapeHtml(c.logoUrl)}" alt="logo" style="max-height:60px;margin-bottom:6px"/>`
+    : "";
+  const contactBits = [
+    c.address ? `📍 ${escapeHtml(c.address)}` : "",
+    c.phone ? `☎ ${escapeHtml(c.phone)}` : "",
+    c.email ? `📧 ${escapeHtml(c.email)}` : "",
+    c.website ? `🌐 ${escapeHtml(c.website)}` : "",
+    c.taxCode ? `MST: ${escapeHtml(c.taxCode)}` : "",
+  ].filter(Boolean).join(" &nbsp;•&nbsp; ");
   return `
   <div class="header">
     ${logoHtml}
-    <h2>${c.name}</h2>
-    <div class="meta">${c.address}${c.taxCode ? ` &nbsp;•&nbsp; MST: ${c.taxCode}` : ""}${c.phone ? ` &nbsp;•&nbsp; ☎ ${c.phone}` : ""}</div>
+    <h2>${escapeHtml(c.name)}</h2>
+    <div class="meta">${contactBits}</div>
+    ${c.tagline ? `<div class="meta" style="font-style:italic;color:#E8963A">${escapeHtml(c.tagline)}</div>` : ""}
     <h1>${title}</h1>
-    <div class="meta">Số: <strong>${code}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
+    <div class="meta">Số: <strong>${escapeHtml(code)}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
   </div>
 `;
+};
+
+const footerBlock = (co?: PrintCompanyInfo) => {
+  const c = { ...DEFAULT_COMPANY, ...(co || {}) };
+  const banks = (c.banks || []).filter((b) => b && (b.name || b.number));
+  const bankHtml = banks.length
+    ? `<div style="margin-top:20px;padding-top:10px;border-top:1px dashed #999;font-size:11px;color:#444">
+        <strong>Thông tin chuyển khoản:</strong>
+        ${banks.map((b) => `<div>🏦 ${escapeHtml(b.name || "")}${b.number ? ` — Số TK: <b>${escapeHtml(b.number)}</b>` : ""}${b.holder ? ` — CTK: ${escapeHtml(b.holder)}` : ""}</div>`).join("")}
+      </div>`
+    : "";
+  const footerLine = [c.name, c.phone ? `☎ ${c.phone}` : "", c.email ? `📧 ${c.email}` : "", c.website ? `🌐 ${c.website}` : ""]
+    .filter(Boolean).map(escapeHtml).join(" &nbsp;•&nbsp; ");
+  return `${bankHtml}
+  <div style="margin-top:14px;text-align:center;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px">
+    ${footerLine}
+  </div>`;
 };
 
 const signaturesBlock = `
