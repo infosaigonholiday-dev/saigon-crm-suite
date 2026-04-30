@@ -107,10 +107,11 @@ export default function Bookings() {
   }
 
   const { data: totalCount = 0 } = useQuery({
-    queryKey: ["bookings-count", scope, myDeptId],
+    queryKey: ["bookings-count", scope, myDeptId, typeFilter],
     queryFn: async () => {
       let q = supabase.from("bookings").select("*", { count: "exact", head: true });
       q = applyScopeFilter(q);
+      if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
       const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
@@ -119,19 +120,39 @@ export default function Bookings() {
   });
 
   const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["bookings", page, scope, myDeptId],
+    queryKey: ["bookings", page, scope, myDeptId, typeFilter],
     queryFn: async () => {
       let q = supabase
         .from("bookings")
-        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
+        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, booking_type, customers(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
+      if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data;
     },
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
+  });
+
+  // Map booking_id -> tour_file (id, code) cho các booking hiện có
+  const bookingIds = (bookings || []).map((b: any) => b.id);
+  const { data: tourFileMap = {} } = useQuery({
+    queryKey: ["bookings-tour-files-map", bookingIds],
+    enabled: bookingIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("tour_files")
+        .select("id, tour_file_code, booking_id")
+        .in("booking_id", bookingIds);
+      if (error) throw error;
+      const map: Record<string, { id: string; code: string }> = {};
+      (data || []).forEach((tf: any) => {
+        if (tf.booking_id) map[tf.booking_id] = { id: tf.id, code: tf.tour_file_code };
+      });
+      return map;
+    },
   });
 
   const { data: highNoteMap = {} } = useQuery({
