@@ -84,24 +84,27 @@ export default function AlertsCenter() {
     refetchInterval: 60000,
   });
 
-  // ===== TAB "TẤT CẢ" — pagination + filter loại =====
+  // ===== TAB "TẤT CẢ" — pagination + filter loại + filter action =====
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [actionFilter, setActionFilter] = useState<string>("all"); // all|unread|action_pending|overdue
   const [page, setPage] = useState(0);
 
   const { data: allNotifsResult, isLoading: lAll } = useQuery({
-    queryKey: ["alerts-all", user?.id, groupFilter, page],
+    queryKey: ["alerts-all", user?.id, groupFilter, actionFilter, page],
     enabled: !!user?.id,
     queryFn: async () => {
-      // Lấy nhiều rồi filter client (vì TYPE_GROUPS map ở client)
       let q = supabase
         .from("notifications")
-        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read", { count: "exact" })
+        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (groupFilter !== "all") {
         const types = Object.entries(TYPE_GROUPS).filter(([_, g]) => g === groupFilter).map(([t]) => t);
         if (types.length > 0) q = q.in("type", types);
       }
+      if (actionFilter === "unread") q = q.eq("is_read", false);
+      if (actionFilter === "action_pending") q = q.eq("action_required", true).in("action_status", ["pending","in_progress"]);
+      if (actionFilter === "overdue") q = q.eq("action_status", "overdue");
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       const { data, count } = await q.range(from, to);
