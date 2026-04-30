@@ -178,6 +178,19 @@ export function SettingsNotificationHistoryTab() {
                 <SelectItem value="read">Đã đọc</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v as ActionStatusFilter); setPage(0); }}>
+              <SelectTrigger className="w-44 h-8 text-sm">
+                <SelectValue placeholder="Trạng thái xử lý" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi xử lý</SelectItem>
+                <SelectItem value="pending">Chờ xử lý</SelectItem>
+                <SelectItem value="in_progress">Đang xử lý</SelectItem>
+                <SelectItem value="completed">Đã xử lý</SelectItem>
+                <SelectItem value="dismissed">Bỏ qua</SelectItem>
+                <SelectItem value="overdue">Quá hạn</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
               <SelectTrigger className="w-56 h-8 text-sm">
                 <SelectValue placeholder="Lọc theo loại" />
