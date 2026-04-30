@@ -95,7 +95,7 @@ export default function AlertsCenter() {
     queryFn: async () => {
       let q = supabase
         .from("notifications")
-        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
+        .select("id, type, title, message, entity_type, entity_id, related_entity_type, related_entity_id, action_url, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (groupFilter !== "all") {
