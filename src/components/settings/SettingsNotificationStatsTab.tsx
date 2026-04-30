@@ -8,33 +8,43 @@ import {
 import { Loader2, BellOff, AlertTriangle, Users } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function SettingsNotificationStatsTab() {
-  const { data: byUser = [], isLoading: loadingUsers } = useQuery({
+  const { data: byUser = [], isLoading: loadingUsers, error: errByUser } = useQuery({
     queryKey: ["notif-stats-by-user"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_unread_by_user");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_unread_by_user failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
   });
 
-  const { data: byUserFull = [], isLoading: loadingFull } = useQuery({
+  const { data: byUserFull = [], isLoading: loadingFull, error: errByUserFull } = useQuery({
     queryKey: ["notif-stats-by-user-full"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_stats_by_user");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_stats_by_user failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
   });
 
-  const { data: overdue = [], isLoading: loadingOverdue } = useQuery({
+  const { data: overdue = [], isLoading: loadingOverdue, error: errOverdue } = useQuery({
     queryKey: ["notif-stats-overdue"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_critical_overdue");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_critical_overdue failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
@@ -161,6 +171,18 @@ export function SettingsNotificationStatsTab() {
           </div>
         </CardHeader>
         <CardContent>
+          {(errByUserFull || (!loadingFull && byUserFull.length === 0 && sent7d > 0)) && (
+            <Alert variant="destructive" className="mb-3">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Không tổng hợp được thống kê theo nhân sự</AlertTitle>
+              <AlertDescription className="text-xs">
+                {errByUserFull
+                  ? <>RPC <code>rpc_notification_stats_by_user</code> trả lỗi: {(errByUserFull as any)?.message || String(errByUserFull)}. Mở Console để xem chi tiết.</>
+                  : <>Có {sent7d} thông báo đã gửi trong 7 ngày nhưng RPC trả về rỗng. Kiểm tra quyền (cần ADMIN/SUPER_ADMIN/HR_MANAGER/GDKD/MANAGER) hoặc join với <code>profiles</code>.</>}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
