@@ -16,6 +16,7 @@ import { Loader2, Plus, Eye, AlertTriangle, Printer, FileWarning } from "lucide-
 import { toast } from "sonner";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { buildSettlementHtml, openPrintWindow } from "@/lib/financePrintTemplates";
+import { useCompanyInfo, toPrintCompanyInfo } from "@/hooks/useCompanyInfo";
 import { FinanceFileUpload } from "./FinanceFileUpload";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
