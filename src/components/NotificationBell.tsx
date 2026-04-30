@@ -161,11 +161,19 @@ export function NotificationBell() {
     return buckets;
   }, [filtered]);
 
-  const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
-    await markNotificationRead(id);
+  const markAsRead = async (n: any) => {
+    await markNotificationRead(n.id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
     setOpen(false);
+    // Ưu tiên action_url do DB sinh (Prompt #5B)
+    if (n.action_url && typeof n.action_url === "string" && n.action_url.length > 1) {
+      navigate(n.action_url);
+      return;
+    }
+    // Fallback: legacy entity map
+    const entityType = n.related_entity_type ?? n.entity_type;
+    const entityId = n.related_entity_id ?? n.entity_id;
     if (entityType && entityId) {
       const builder = entityRouteMap[entityType];
       if (builder) { navigate(builder(entityId)); return; }
