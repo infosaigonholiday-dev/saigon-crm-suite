@@ -154,6 +154,7 @@ export function BudgetEstimatesTab() {
           vendor_id: i.vendor_id || null,
           payment_deadline: i.payment_deadline || null,
           sort_order: idx,
+          receipt_urls: i.receipt_urls || [],
         }));
 
       if (itemsToInsert.length > 0) {
