@@ -106,6 +106,13 @@ export function ApprovalTab({ stage = "accountant" }: Props) {
       const results = await Promise.all(updates);
       const err = results.find((r) => r.error);
       if (err?.error) throw err.error;
+      // Complete action notifications cho người duyệt hiện tại
+      if (user?.id && nextStatus === "APPROVED") {
+        const { completeActionsForEntity } = await import("@/lib/notificationActions");
+        for (const id of ids) {
+          await completeActionsForEntity(user.id, "transaction", id, ["TRANSACTION_APPROVAL"]);
+        }
+      }
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ["approval-hr"] });
