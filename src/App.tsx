@@ -43,6 +43,7 @@ const BookingConfirmationPrint = lazy(() => import("./pages/BookingConfirmationP
 const Recruitment = lazy(() => import("./pages/Recruitment"));
 const CampaignList = lazy(() => import("./pages/CampaignList"));
 const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
+const BroadcastNotification = lazy(() => import("./pages/BroadcastNotification"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,7 @@ function ProtectedRoutes() {
           <Route path="/chien-dich" element={<ErrorBoundary><PermissionGuard module="campaigns" action="view"><CampaignList /></PermissionGuard></ErrorBoundary>} />
           <Route path="/chien-dich/:id" element={<ErrorBoundary><PermissionGuard module="campaigns" action="view"><CampaignDetail /></PermissionGuard></ErrorBoundary>} />
           <Route path="/canh-bao" element={<ErrorBoundary><AlertsCenter /></ErrorBoundary>} />
+          <Route path="/gui-thong-bao" element={<ErrorBoundary><BroadcastNotification /></ErrorBoundary>} />
           <Route path="/huong-dan" element={<ErrorBoundary><UserGuide /></ErrorBoundary>} />
         </Route>
         <Route path="/dat-tour/:id/in-xac-nhan" element={
