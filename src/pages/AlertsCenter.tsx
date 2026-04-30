@@ -233,16 +233,25 @@ export default function AlertsCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="h-7 w-7 text-destructive" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Trung tâm Cảnh báo</h1>
-          <p className="text-sm text-muted-foreground">Tổng hợp các cảnh báo, nhắc hẹn và việc cần xử lý gấp</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="h-7 w-7 text-destructive" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Trung tâm Cảnh báo</h1>
+            <p className="text-sm text-muted-foreground">Tổng hợp các cảnh báo, nhắc hẹn và việc cần xử lý gấp</p>
+          </div>
         </div>
+        <Button variant="outline" size="sm" onClick={markAllReadMutation}>
+          <CheckCheck className="h-4 w-4 mr-2" /> Đánh dấu tất cả đã đọc
+        </Button>
       </div>
 
-      <Tabs defaultValue="urgent" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="all">
+            <Inbox className="h-4 w-4 mr-2" />
+            Tất cả {totalCount > 0 && <Badge variant="secondary" className="ml-2">{totalCount}</Badge>}
+          </TabsTrigger>
           <TabsTrigger value="urgent">
             <ShieldAlert className="h-4 w-4 mr-2" />
             Khẩn cấp {urgentCount > 0 && <Badge variant="destructive" className="ml-2">{urgentCount}</Badge>}
@@ -256,6 +265,70 @@ export default function AlertsCenter() {
             Vận hành {opsCount > 0 && <Badge variant="secondary" className="ml-2">{opsCount}</Badge>}
           </TabsTrigger>
         </TabsList>
+
+        {/* ===== TẤT CẢ ===== */}
+        <TabsContent value="all" className="mt-4 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Loại:</span>
+            <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(0); }}>
+              <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="lead">Lead / Tiềm năng</SelectItem>
+                <SelectItem value="booking">Booking / Tour</SelectItem>
+                <SelectItem value="finance">Tài chính</SelectItem>
+                <SelectItem value="hr">Nhân sự</SelectItem>
+                <SelectItem value="system">Hệ thống</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Trang {page + 1}/{totalPages} · {totalCount} thông báo
+            </span>
+          </div>
+
+          {lAll ? (
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>
+          ) : allNotifs.length === 0 ? (
+            <Card><CardContent className="py-10 text-center text-muted-foreground">
+              <Bell className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              Không có thông báo nào.
+            </CardContent></Card>
+          ) : (
+            <>
+              {allNotifs.map((n: any) => {
+                const link = getEntityLink(n.entity_type, n.entity_id);
+                const clickable = !!link;
+                return (
+                  <Card
+                    key={n.id}
+                    className={`${n.is_read ? "bg-card" : "bg-accent/30"} ${n.priority === "high" ? "border-l-4 border-l-destructive" : ""} ${clickable ? "cursor-pointer hover:bg-accent/60 transition-colors" : ""}`}
+                    onClick={clickable ? () => handleNotificationClick(n) : undefined}
+                    role={clickable ? "button" : undefined}
+                    tabIndex={clickable ? 0 : undefined}
+                  >
+                    <CardContent className="py-3 flex items-start gap-3">
+                      <Bell className={`h-4 w-4 mt-0.5 shrink-0 ${n.is_read ? "text-muted-foreground" : "text-primary"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${n.is_read ? "font-normal" : "font-semibold"}`}>{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words line-clamp-2">{n.message}</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-1">
+                          <Badge variant="outline" className="mr-2 text-[10px]">{getGroup(n.type)}</Badge>
+                          {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
+                        </p>
+                      </div>
+                      {clickable && <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-1" />}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Trước</Button>
+                <span className="text-sm text-muted-foreground">{page + 1} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Sau</Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
 
         {/* ===== KHẨN CẤP ===== */}
         <TabsContent value="urgent" className="mt-4 space-y-3">
