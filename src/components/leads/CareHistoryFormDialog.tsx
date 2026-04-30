@@ -68,6 +68,11 @@ export default function CareHistoryFormDialog({ open, onOpenChange, leadId, onSu
         next_contact_date: nextDate ? format(nextDate, "yyyy-MM-dd") : null,
       } as any);
       if (error) throw error;
+      // Sự kiện nghiệp vụ thật → complete các action thuộc lead
+      if (user?.id) {
+        const { completeActionsForEntity } = await import("@/lib/notificationActions");
+        await completeActionsForEntity(user.id, "lead", leadId, ["FOLLOW_UP_OVERDUE","LEAD_NEW_ASSIGNED","FOLLOW_UP","LEAD_FORGOTTEN"]);
+      }
     },
     onSuccess: () => {
       toast.success("Đã lưu lịch sử chăm sóc");
