@@ -12,10 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Eye, AlertTriangle, Printer } from "lucide-react";
+import { Loader2, Plus, Eye, AlertTriangle, Printer, FileWarning } from "lucide-react";
 import { toast } from "sonner";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { buildSettlementHtml, openPrintWindow } from "@/lib/financePrintTemplates";
+import { FinanceFileUpload } from "./FinanceFileUpload";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
