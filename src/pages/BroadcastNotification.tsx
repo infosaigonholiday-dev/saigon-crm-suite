@@ -264,17 +264,33 @@ export default function BroadcastNotification() {
                     <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="normal">Bình thường</SelectItem>
+                        <SelectItem value="low">Thấp</SelectItem>
+                        <SelectItem value="medium">Bình thường</SelectItem>
                         <SelectItem value="high">Cao</SelectItem>
-                        <SelectItem value="urgent">Khẩn</SelectItem>
+                        <SelectItem value="critical">Khẩn</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Đường dẫn khi click</Label>
-                    <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/" />
+                    <Label className="flex items-center gap-1">
+                      Đường dẫn điều hướng (URL khi user bấm vào thông báo)
+                      {(priority === "high" || priority === "critical") && <span className="text-destructive">*</span>}
+                    </Label>
+                    <Input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="/canh-bao"
+                      className={!urlValidation.ok ? "border-destructive" : ""}
+                    />
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  ℹ️ Hệ thống chỉ điều hướng khi user click. Trạng thái "đã xử lý" chỉ
+                  được set khi entity nghiệp vụ thật thay đổi — KHÔNG phải khi user mở link này.
+                </p>
+                {!urlValidation.ok && (
+                  <p className="text-xs text-destructive">{(urlValidation as any).error}</p>
+                )}
               </CardContent>
             </Card>
 
