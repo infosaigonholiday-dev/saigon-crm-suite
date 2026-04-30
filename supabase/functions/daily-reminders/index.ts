@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
           message: `Bao gồm: ${sample}. Mở Dashboard để xem chi tiết.`,
           entity_type: "dashboard",
           entity_id: saleId,
-          priority: info.hot > 0 ? "high" : "normal",
+          priority: info.hot > 0 ? "high" : "medium",
         });
       }
     }
