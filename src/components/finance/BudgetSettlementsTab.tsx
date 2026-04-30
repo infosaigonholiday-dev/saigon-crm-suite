@@ -178,7 +178,7 @@ export function BudgetSettlementsTab() {
           description: i.description || null,
           estimated_amount: i.estimated_amount,
           actual_amount: i.actual_amount,
-          receipt_url: i.receipt_url || null,
+          receipt_urls: i.receipt_urls || [],
           sort_order: idx,
         }));
 
