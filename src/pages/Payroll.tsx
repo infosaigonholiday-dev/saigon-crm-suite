@@ -235,7 +235,7 @@ export default function Payroll() {
               message: "Phiếu lương của bạn đã được CEO duyệt. Xem chi tiết trong mục Bảng lương.",
               entity_type: "payroll",
               entity_id: id,
-              priority: "normal",
+              priority: "medium",
             });
           }
         }

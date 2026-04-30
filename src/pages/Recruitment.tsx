@@ -75,7 +75,7 @@ export default function Recruitment() {
             message: `Cập nhật bởi ${user?.email ?? "người dùng"}`,
             entity_type: "candidate",
             entity_id: id,
-            priority: "normal",
+            priority: "medium",
           });
         } catch (e) {
           console.error("Notify candidate status failed:", e);
@@ -193,7 +193,7 @@ export default function Recruitment() {
           message: "Đã tạo tài khoản + checklist onboarding",
           entity_type: "candidate",
           entity_id: cand.id,
-          priority: "normal",
+          priority: "medium",
         }, user?.id);
       } catch (e) {
         console.error("Notify onboard success failed:", e);
