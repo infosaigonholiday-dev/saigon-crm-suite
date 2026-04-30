@@ -603,7 +603,42 @@ Deno.serve(async (req) => {
       await supabase.from("budget_settlements").update({ last_reminder_at: now.toISOString() }).eq("id", st.id);
     }
 
-    // Công nợ KH quá hạn > 30 ngày → ADMIN
+    // FIX 3: Chi phí HCNS chờ HR duyệt > 24h → escalate ADMIN
+    // Dedupe 1 ngày bằng cách check notification gần nhất cho cùng entity_id
+    const h24 = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
+    const { data: stuckHrTx } = await supabase
+      .from("transactions")
+      .select("id, description, amount, created_at, submitted_by")
+      .eq("approval_status", "PENDING_HR")
+      .lt("created_at", h24);
+    if (stuckHrTx?.length && adminUsers?.length) {
+      for (const tx of stuckHrTx) {
+        // Dedupe: skip nếu đã có notification EXPENSE_ESCALATION cho tx này trong 24h qua
+        const { data: prev } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("type", "EXPENSE_ESCALATION")
+          .eq("entity_id", tx.id)
+          .gte("created_at", h24)
+          .limit(1);
+        if (prev && prev.length > 0) continue;
+
+        const ageH = Math.floor((now.getTime() - new Date(tx.created_at).getTime()) / 3600000);
+        for (const u of adminUsers) {
+          notifications.push({
+            user_id: u.id,
+            type: "EXPENSE_ESCALATION",
+            title: `⚠️ Chi phí chờ HR duyệt > ${ageH}h`,
+            message: `${tx.description ?? "(không mô tả)"} — ${Number(tx.amount ?? 0).toLocaleString("vi-VN")} VNĐ`,
+            entity_type: "transaction",
+            entity_id: tx.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
+
     const d30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const { data: overdueAR } = await supabase
       .from("accounts_receivable")
