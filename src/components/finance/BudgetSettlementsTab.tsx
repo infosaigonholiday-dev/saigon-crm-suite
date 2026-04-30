@@ -108,19 +108,28 @@ export function BudgetSettlementsTab() {
   const loadEstimateItems = async (estimateId: string) => {
     const { data, error } = await supabase
       .from("budget_estimate_items")
-      .select("category, description, unit_price, quantity, sort_order")
+      .select("category, description, unit_price, quantity, sort_order, unit, days")
       .eq("estimate_id", estimateId)
       .order("sort_order");
     if (error) { toast.error(error.message); return; }
     setFormItems(
-      (data || []).map((item: any, idx: number) => ({
-        category: item.category,
-        description: item.description || "",
-        estimated_amount: (item.unit_price ?? 0) * (item.quantity ?? 1),
-        actual_amount: 0,
-        receipt_url: "",
-        sort_order: idx,
-      }))
+      (data || []).map((item: any, idx: number) => {
+        const days = item.days ?? 1;
+        const qty = item.quantity ?? 1;
+        const unitPrice = item.unit_price ?? 0;
+        return {
+          category: item.category,
+          description: item.description || "",
+          unit: item.unit ?? null,
+          quantity: qty,
+          days,
+          unit_price: unitPrice,
+          estimated_amount: unitPrice * qty * (days || 1),
+          actual_amount: 0,
+          receipt_urls: [],
+          sort_order: idx,
+        };
+      })
     );
   };
 
@@ -131,7 +140,7 @@ export function BudgetSettlementsTab() {
       if (!selectedSettlement) return [];
       const { data, error } = await supabase
         .from("settlement_items")
-        .select("id, category, description, estimated_amount, actual_amount, receipt_url, sort_order")
+        .select("id, category, description, estimated_amount, actual_amount, receipt_url, receipt_urls, sort_order")
         .eq("settlement_id", selectedSettlement.id)
         .order("sort_order");
       if (error) throw error;
