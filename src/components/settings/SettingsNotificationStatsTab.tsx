@@ -8,33 +8,43 @@ import {
 import { Loader2, BellOff, AlertTriangle, Users } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function SettingsNotificationStatsTab() {
-  const { data: byUser = [], isLoading: loadingUsers } = useQuery({
+  const { data: byUser = [], isLoading: loadingUsers, error: errByUser } = useQuery({
     queryKey: ["notif-stats-by-user"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_unread_by_user");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_unread_by_user failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
   });
 
-  const { data: byUserFull = [], isLoading: loadingFull } = useQuery({
+  const { data: byUserFull = [], isLoading: loadingFull, error: errByUserFull } = useQuery({
     queryKey: ["notif-stats-by-user-full"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_stats_by_user");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_stats_by_user failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
   });
 
-  const { data: overdue = [], isLoading: loadingOverdue } = useQuery({
+  const { data: overdue = [], isLoading: loadingOverdue, error: errOverdue } = useQuery({
     queryKey: ["notif-stats-overdue"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("rpc_notification_critical_overdue");
-      if (error) throw error;
+      if (error) {
+        console.error("[SettingsNotificationStatsTab] rpc_notification_critical_overdue failed:", error);
+        throw error;
+      }
       return (data as any[]) || [];
     },
     refetchInterval: 60000,
