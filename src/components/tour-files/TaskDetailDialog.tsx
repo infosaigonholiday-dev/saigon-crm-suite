@@ -59,8 +59,8 @@ export default function TaskDetailDialog({
       if (error) throw error;
 
       // when approving, mark related notifications completed
-      if (newStatus === "approved_done") {
-        await completeActionsForEntity("tour_task", taskId);
+      if (newStatus === "approved_done" && user?.id) {
+        await completeActionsForEntity(user.id, "tour_task", taskId);
       }
     },
     onSuccess: () => {
