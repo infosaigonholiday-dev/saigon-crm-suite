@@ -220,7 +220,14 @@ export default function BroadcastNotification() {
     );
   }
 
-  const canSubmit = title.trim().length > 0 && message.trim().length > 0 && recipientIds.length > 0 && !sendMutation.isPending;
+  const urlValidation = validateNotificationUrl({ action_url: url, action_required: false, priority });
+  const canSubmit = title.trim().length > 0 && message.trim().length > 0 && recipientIds.length > 0 && !sendMutation.isPending && urlValidation.ok;
+
+  const handleSend = () => {
+    const v = validateNotificationUrl({ action_url: url, action_required: false, priority });
+    if (!v.ok) { toast.error(v.error); return; }
+    sendMutation.mutate();
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4">
