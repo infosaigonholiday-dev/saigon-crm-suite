@@ -6,7 +6,7 @@ export type NotifyPayload = {
   message: string;
   entity_type?: string;
   entity_id?: string;
-  priority?: "low" | "normal" | "high";
+  priority?: "low" | "medium" | "high" | "critical";
 };
 
 /**
