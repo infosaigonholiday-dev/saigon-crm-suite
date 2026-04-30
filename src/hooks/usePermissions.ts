@@ -246,6 +246,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "tasks.view", "tasks.create", "tasks.edit",
     "notifications.broadcast",
   ],
+  SALE_DOMESTIC: [
     "dashboard.view",
     "contracts.view",
     "payments.view",
