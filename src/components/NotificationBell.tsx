@@ -230,7 +230,9 @@ export function NotificationBell() {
                       </div>
                       {grouped[bk].map((n: any) => {
                         const Icon = typeIcons[n.type] || FileText;
-                        const isHigh = n.priority === "high";
+                        const isHigh = n.priority === "high" || n.priority === "critical";
+                        const needsAction = n.action_required && ["pending","in_progress"].includes(n.action_status);
+                        const isOverdue = n.action_status === "overdue";
                         return (
                           <button
                             key={n.id}
@@ -243,9 +245,17 @@ export function NotificationBell() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium leading-tight">{n.title}</p>
                               <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{n.message}</p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: vi })}
-                              </p>
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <p className="text-xs text-muted-foreground/70">
+                                  {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: vi })}
+                                </p>
+                                {isOverdue && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground font-medium">Quá hạn</span>
+                                )}
+                                {needsAction && !isOverdue && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 font-medium">Cần xử lý</span>
+                                )}
+                              </div>
                             </div>
                             {!n.is_read && <span className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0" />}
                           </button>
