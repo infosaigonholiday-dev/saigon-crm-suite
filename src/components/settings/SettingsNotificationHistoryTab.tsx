@@ -11,9 +11,12 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, Send, RefreshCw, Bell, CheckCircle2, Circle } from "lucide-react";
+import { Loader2, Send, RefreshCw, Bell, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+
+const PAGE_SIZE = 50;
 
 const TYPE_LABELS: Record<string, string> = {
   TEST_PUSH: "🧪 Test Push",
@@ -44,29 +47,42 @@ const TYPE_LABELS: Record<string, string> = {
   MENTION: "💬 Được nhắc tên",
 };
 
+type ReadStatus = "all" | "unread" | "read";
+
 export function SettingsNotificationHistoryTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [readFilter, setReadFilter] = useState<ReadStatus>("all");
+  const [page, setPage] = useState(0);
   const [sending, setSending] = useState(false);
 
-  const { data: rows = [], isLoading, refetch } = useQuery({
-    queryKey: ["notification-history", typeFilter, search],
+  const { data: result, isLoading, refetch } = useQuery({
+    queryKey: ["notification-history", typeFilter, readFilter, search, page],
     queryFn: async () => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("notifications")
         .select(
-          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, profiles!notifications_user_id_fkey(full_name, email)"
+          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, profiles!notifications_user_id_fkey(full_name, email)",
+          { count: "exact" }
         )
         .order("created_at", { ascending: false })
-        .limit(50);
+        .range(from, to);
       if (typeFilter !== "all") q = q.eq("type", typeFilter);
+      if (readFilter === "unread") q = q.eq("is_read", false);
+      if (readFilter === "read") q = q.eq("is_read", true);
       if (search.trim()) q = q.or(`title.ilike.%${search}%,message.ilike.%${search}%`);
-      const { data, error } = await q;
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data || [];
+      return { rows: data || [], total: count ?? 0 };
     },
   });
+
+  const rows = result?.rows ?? [];
+  const total = result?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const distinctTypes = Array.from(new Set(rows.map((r: any) => r.type))).filter(Boolean) as string[];
 
@@ -98,6 +114,13 @@ export function SettingsNotificationHistoryTab() {
     }
   };
 
+  const isOverdue24h = (r: any) => {
+    if (r.is_read) return false;
+    if (!["high", "critical"].includes(r.priority)) return false;
+    const ageMs = Date.now() - new Date(r.created_at).getTime();
+    return ageMs > 24 * 60 * 60 * 1000;
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -106,7 +129,9 @@ export function SettingsNotificationHistoryTab() {
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
               <CardTitle className="text-base">Lịch sử thông báo</CardTitle>
-              <Badge variant="secondary" className="text-xs">50 gần nhất</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {total} kết quả
+              </Badge>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
@@ -129,10 +154,20 @@ export function SettingsNotificationHistoryTab() {
             <Input
               placeholder="Tìm theo tiêu đề hoặc nội dung..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="max-w-xs h-8 text-sm"
             />
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={readFilter} onValueChange={(v) => { setReadFilter(v as ReadStatus); setPage(0); }}>
+              <SelectTrigger className="w-40 h-8 text-sm">
+                <SelectValue placeholder="Trạng thái đọc" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="unread">Chưa đọc</SelectItem>
+                <SelectItem value="read">Đã đọc</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
               <SelectTrigger className="w-56 h-8 text-sm">
                 <SelectValue placeholder="Lọc theo loại" />
               </SelectTrigger>
@@ -153,32 +188,33 @@ export function SettingsNotificationHistoryTab() {
                 <TableRow>
                   <TableHead className="w-[160px]">Loại</TableHead>
                   <TableHead>Tiêu đề / Nội dung</TableHead>
-                  <TableHead className="w-[180px]">Người nhận</TableHead>
-                  <TableHead className="w-[140px]">Thời gian gửi</TableHead>
-                  <TableHead className="w-[110px]">Trạng thái</TableHead>
+                  <TableHead className="w-[160px]">Người nhận</TableHead>
+                  <TableHead className="w-[140px]">Tạo lúc</TableHead>
+                  <TableHead className="w-[160px]">Đã đọc lúc</TableHead>
+                  <TableHead className="w-[140px]">Trạng thái</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">
-                      Chưa có thông báo nào
+                    <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                      Không có thông báo nào khớp tiêu chí
                     </TableCell>
                   </TableRow>
                 )}
                 {rows.map((r: any) => {
                   const typeLabel = TYPE_LABELS[r.type] || r.type;
-                  const recipient =
-                    r.profiles?.full_name || r.profiles?.email || "—";
+                  const recipient = r.profiles?.full_name || r.profiles?.email || "—";
+                  const overdue = isOverdue24h(r);
                   return (
-                    <TableRow key={r.id}>
+                    <TableRow key={r.id} className={overdue ? "bg-destructive/5" : ""}>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           <Badge variant="outline" className="text-[10px] whitespace-nowrap">
@@ -201,21 +237,41 @@ export function SettingsNotificationHistoryTab() {
                       <TableCell className="text-xs whitespace-nowrap">
                         {format(new Date(r.created_at), "dd/MM/yyyy HH:mm")}
                       </TableCell>
-                      <TableCell>
-                        {r.is_read ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-blue-50 text-blue-700 border-blue-300"
-                          >
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Đã đọc
-                          </Badge>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.read_at ? (
+                          <span className="text-blue-700">
+                            {format(new Date(r.read_at), "dd/MM/yyyy HH:mm")}
+                          </span>
                         ) : (
-                          <Badge variant="secondary" className="text-[10px]">
-                            <Circle className="h-3 w-3 mr-1" />
-                            Chưa đọc
-                          </Badge>
+                          <span className="text-muted-foreground inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Chưa đọc {formatDistanceToNow(new Date(r.created_at), { locale: vi })}
+                          </span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1 items-start">
+                          {r.is_read ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-blue-50 text-blue-700 border-blue-300"
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Đã đọc
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">
+                              <Circle className="h-3 w-3 mr-1" />
+                              Chưa đọc
+                            </Badge>
+                          )}
+                          {overdue && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Quá 24h
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -224,9 +280,35 @@ export function SettingsNotificationHistoryTab() {
             </Table>
           </div>
 
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Trang {page + 1}/{totalPages} · {total} tổng
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Trước
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+
           <p className="text-[11px] text-muted-foreground">
             Chỉ <strong>Quản trị viên</strong> và <strong>Quản trị tối cao</strong> có thể xem trang này.
-            Dữ liệu được lọc tự động theo RLS — Sale/HR không nhìn thấy tab này.
+            Dữ liệu được lọc tự động theo RLS — Sale/HR chỉ thấy thông báo của chính mình.
+            <br />
+            <strong>Lưu ý:</strong> "Đã đọc" = đã xem thông báo, KHÔNG đồng nghĩa đã hoàn thành công việc.
           </p>
         </CardContent>
       </Card>
