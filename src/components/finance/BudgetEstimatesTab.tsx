@@ -540,7 +540,7 @@ export function BudgetEstimatesTab() {
                     supplier: it.vendors?.name,
                     payment_deadline: it.payment_deadline,
                   })),
-                });
+                }, printCo);
                 openPrintWindow(html);
               }}
             >
@@ -557,7 +557,7 @@ export function BudgetEstimatesTab() {
                     amount: selectedEstimate.advance_amount,
                     purpose: selectedEstimate.advance_purpose || "Tạm ứng tour",
                     booking_code: selectedEstimate.bookings?.code,
-                  });
+                  }, printCo);
                   openPrintWindow(html);
                 }}
               >
