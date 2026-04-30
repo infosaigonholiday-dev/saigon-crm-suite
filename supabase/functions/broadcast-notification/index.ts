@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       .single();
     if (bErr) return json({ ok: false, error: bErr.message }, 500);
 
-    // 2) Bulk insert notifications
+    // 2) Bulk insert notifications (URL điều hướng = url broadcast)
     const notifRows = allowedIds.map((uid) => ({
       user_id: uid,
       type: "BROADCAST",
@@ -145,6 +145,7 @@ Deno.serve(async (req) => {
       entity_type: "broadcast",
       entity_id: broadcastRow.id,
       priority,
+      action_url: url,
     }));
 
     const { error: nErr } = await admin.from("notifications").insert(notifRows);
