@@ -22,6 +22,7 @@ import { CeoScorecard } from "@/components/dashboard/CeoScorecard";
 import { CeoFunnelChart, CeoSaleRevenueChart, CeoLeadSourceChart } from "@/components/dashboard/CeoCharts";
 import { CeoFinanceAlerts } from "@/components/dashboard/CeoFinanceAlerts";
 import { CeoOperations } from "@/components/dashboard/CeoOperations";
+import TourOpsWidgets from "@/components/dashboard/TourOpsWidgets";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionBoundary } from "@/components/SectionBoundary";
