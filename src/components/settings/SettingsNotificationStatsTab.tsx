@@ -51,6 +51,13 @@ export function SettingsNotificationStatsTab() {
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const detailRef = useRef<HTMLDivElement>(null);
+  const [dialogUser, setDialogUser] = useState<{ id: string; name: string; email?: string; department?: string; role?: string } | null>(null);
+  const [dialogPreset, setDialogPreset] = useState<UserNotifPreset>({});
+
+  function openUserDialog(r: any, preset: UserNotifPreset = {}) {
+    setDialogUser({ id: r.user_id, name: r.full_name || r.email || "—", email: r.email, department: r.department, role: r.role });
+    setDialogPreset(preset);
+  }
 
   // Debounce search
   useEffect(() => {
