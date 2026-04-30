@@ -84,12 +84,55 @@ export default function AlertsCenter() {
     refetchInterval: 60000,
   });
 
+  // ===== TAB "TẤT CẢ" — pagination + filter loại =====
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [page, setPage] = useState(0);
+
+  const { data: allNotifsResult, isLoading: lAll } = useQuery({
+    queryKey: ["alerts-all", user?.id, groupFilter, page],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      // Lấy nhiều rồi filter client (vì TYPE_GROUPS map ở client)
+      let q = supabase
+        .from("notifications")
+        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read", { count: "exact" })
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (groupFilter !== "all") {
+        const types = Object.entries(TYPE_GROUPS).filter(([_, g]) => g === groupFilter).map(([t]) => t);
+        if (types.length > 0) q = q.in("type", types);
+      }
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, count } = await q.range(from, to);
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    refetchInterval: 60000,
+  });
+  const allNotifs = allNotifsResult?.rows ?? [];
+  const totalCount = allNotifsResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const markAllReadMutation = async () => {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", user!.id)
+      .eq("is_read", false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Đã đánh dấu tất cả đã đọc");
+    queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
+  };
+
   const handleNotificationClick = async (n: any) => {
     const link = getEntityLink(n.entity_type, n.entity_id);
-    // Mark as read
     if (!n.is_read) {
       await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
       queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
       queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     }
