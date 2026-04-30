@@ -382,6 +382,7 @@ export function BudgetEstimatesTab() {
                       <TableHead className="w-[140px]">NCC</TableHead>
                       <TableHead className="w-[130px]">Hạn TT</TableHead>
                       <TableHead className="w-[100px] text-right">Thành tiền</TableHead>
+                      <TableHead className="w-[180px]">Chứng từ</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
