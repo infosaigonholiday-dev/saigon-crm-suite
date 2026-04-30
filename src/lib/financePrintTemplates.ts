@@ -3,21 +3,44 @@
  * In bằng window.print() — CSS @media print đảm bảo chỉ in nội dung.
  */
 
-export interface PrintCompanyInfo {
+export interface PrintBank {
   name?: string;
-  address?: string;
-  taxCode?: string;
-  phone?: string;
-  logoUrl?: string;
+  holder?: string;
+  number?: string;
 }
 
-const DEFAULT_COMPANY: Required<PrintCompanyInfo> = {
+export interface PrintCompanyInfo {
+  name?: string;
+  shortName?: string;
+  tagline?: string;
+  address?: string;
+  address2?: string;
+  taxCode?: string;
+  license?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  banks?: PrintBank[];
+}
+
+const DEFAULT_COMPANY: Required<Omit<PrintCompanyInfo, "banks">> & { banks: PrintBank[] } = {
   name: "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY",
-  address: "TP. Hồ Chí Minh, Việt Nam",
+  shortName: "SAIGON HOLIDAY",
+  tagline: "",
+  address: "01 Hoa Cúc, P.07, Q.Phú Nhuận, TP.HCM",
+  address2: "",
   taxCode: "",
-  phone: "",
+  license: "",
+  phone: "0905 33 55 16",
+  email: "",
+  website: "www.saigonholiday.vn",
   logoUrl: "",
+  banks: [],
 };
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const fmt = (v: number | null | undefined) =>
   v ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "0 ₫";
