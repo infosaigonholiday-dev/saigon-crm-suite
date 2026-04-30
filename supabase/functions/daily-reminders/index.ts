@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "birthday",
+          type: "BIRTHDAY",
           title: `🎂 Sinh nhật KH: ${c.full_name}`,
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "birthday",
+          type: "BIRTHDAY",
           title: `🎂 Sinh nhật đầu mối: ${c.contact_person || "N/A"} (${c.company_name || "N/A"})`,
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "company_anniversary",
+          type: "COMPANY_ANNIVERSARY",
           title: `🏢 Kỷ niệm thành lập: ${c.company_name || "N/A"}`,
           message: `${years} năm (${daysLabel}). Gửi offer MICE?`,
           entity_type: "customer",
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         if (!l.assigned_to) continue;
         notifications.push({
           user_id: l.assigned_to,
-          type: "follow_up",
+          type: "FOLLOW_UP",
           title: `📞 Follow-up hôm nay: ${l.full_name}`,
           message: `Theo lịch follow-up đã đặt.`,
           entity_type: "lead",
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
         const daysSince = Math.floor((today.getTime() - new Date(l.created_at).getTime()) / (1000 * 60 * 60 * 24));
         notifications.push({
           user_id: l.assigned_to,
-          type: "lead_no_schedule",
+          type: "LEAD_NO_SCHEDULE",
           title: `📅 Lead chưa có lịch hẹn: ${l.full_name}`,
           message: `Đã ${daysSince} ngày chưa lên lịch follow-up. Hãy đặt lịch ngay!`,
           entity_type: "lead",
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
           for (const g of gdkds || []) {
             notifications.push({
               user_id: g.id,
-              type: "lead_no_schedule",
+              type: "LEAD_NO_SCHEDULE",
               title: `📅 Lead chưa có lịch hẹn`,
               message: `"${l.full_name}" đã ${daysSince} ngày chưa lên lịch follow-up.`,
               entity_type: "lead",
@@ -672,7 +672,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "payment_overdue",
+            type: "PAYMENT_OVERDUE",
             title,
             message,
             entity_type: "booking",
@@ -714,7 +714,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "contract_expiry",
+            type: "CONTRACT_EXPIRY",
             title,
             message,
             entity_type: "contract",
@@ -753,7 +753,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "tour_departure",
+            type: "TOUR_DEPARTURE",
             title,
             message,
             entity_type: "booking",
@@ -1000,7 +1000,7 @@ Deno.serve(async (req) => {
 
           const notifs = (targets ?? []).map((t: any) => ({
             user_id: t.id,
-            type: "recurring_expense_generated",
+            type: "RECURRING_EXPENSE_GENERATED",
             title: `🔁 Chi phí định kỳ tháng ${today.getMonth() + 1}`,
             message: `Đã tự động tạo ${recurringGenerated} khoản chi phí định kỳ. Vui lòng kiểm tra.`,
             priority: "normal",
