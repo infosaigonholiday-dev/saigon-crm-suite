@@ -434,7 +434,8 @@ export default function Leads() {
                 </div>
                 <div className="bg-muted/30 rounded-b-lg min-h-[350px] p-1.5 space-y-1.5">
                   {colLeads.map((lead: any) => {
-                    const temp = tempConfig[lead.temperature ?? "warm"];
+                    const computedTemp = computeTemperature(lead.last_contact_at, lead.temperature);
+                    const temp = tempConfig[computedTemp];
                     const followUpStatus = getFollowUpStatus(lead.follow_up_date);
                     const isConverted = !!lead.converted_customer_id;
                     const showConvert = col.id === "WON" && !isConverted;
