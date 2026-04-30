@@ -215,7 +215,8 @@ export function SettingsNotificationHistoryTab() {
                   <TableHead className="w-[160px]">Người nhận</TableHead>
                   <TableHead className="w-[140px]">Tạo lúc</TableHead>
                   <TableHead className="w-[160px]">Đã đọc lúc</TableHead>
-                  <TableHead className="w-[140px]">Trạng thái</TableHead>
+                  <TableHead className="w-[140px]">Đọc</TableHead>
+                  <TableHead className="w-[140px]">Xử lý</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
