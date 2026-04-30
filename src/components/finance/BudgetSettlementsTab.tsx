@@ -402,51 +402,112 @@ export function BudgetSettlementsTab() {
               </Select>
             </div>
 
-            {formItems.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">So sánh dự toán & thực chi</Label>
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Hạng mục</TableHead>
-                        <TableHead>Mô tả</TableHead>
-                        <TableHead className="text-right w-[130px]">Dự toán</TableHead>
-                        <TableHead className="w-[140px]">Thực chi</TableHead>
-                        <TableHead className="text-right w-[110px]">Chênh lệch</TableHead>
-                        <TableHead className="w-[200px]">Link chứng từ</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {formItems.map((item, idx) => {
-                        const variance = item.actual_amount - item.estimated_amount;
-                        const variancePct = item.estimated_amount > 0 ? (variance / item.estimated_amount) * 100 : 0;
-                        return (
-                          <TableRow key={idx}>
-                            <TableCell className="text-sm">{getCategoryLabel(item.category)}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{item.description || "—"}</TableCell>
-                            <TableCell className="text-right text-sm">{formatCurrency(item.estimated_amount)}</TableCell>
-                            <TableCell className="p-1">
-                              <Input className="h-8 text-xs" type="number" value={item.actual_amount} onChange={(e) => updateFormItem(idx, "actual_amount", Number(e.target.value))} />
-                            </TableCell>
-                            <TableCell className={`text-right text-sm font-medium ${Math.abs(variancePct) > 10 ? "text-destructive" : ""}`}>
-                              {formatCurrency(variance)} ({variancePct.toFixed(0)}%)
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Input className="h-8 text-xs" placeholder="URL chứng từ" value={item.receipt_url} onChange={(e) => updateFormItem(idx, "receipt_url", e.target.value)} />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+            {formItems.length > 0 && (() => {
+              const totalEst = formItems.reduce((s, i) => s + i.estimated_amount, 0);
+              const totalAct = formTotalActual;
+              const totalVar = totalAct - totalEst;
+              const totalPct = totalEst > 0 ? (totalVar / totalEst) * 100 : 0;
+              const missing = formItems.filter((it) => it.actual_amount > 0 && (it.receipt_urls || []).length === 0);
+              return (
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Bảng đối chiếu Dự toán — Thực chi</Label>
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>#</TableHead>
+                          <TableHead>Hạng mục</TableHead>
+                          <TableHead>Đơn vị</TableHead>
+                          <TableHead className="text-right w-[60px]">SL</TableHead>
+                          <TableHead className="text-right w-[60px]">Ngày</TableHead>
+                          <TableHead className="text-right w-[180px]">Dự toán (ĐG × SL × Ngày)</TableHead>
+                          <TableHead className="w-[140px]">Thực chi</TableHead>
+                          <TableHead className="text-right w-[140px]">Chênh lệch</TableHead>
+                          <TableHead className="w-[220px]">Chứng từ</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formItems.map((item, idx) => {
+                          const variance = item.actual_amount - item.estimated_amount;
+                          const variancePct = item.estimated_amount > 0 ? (variance / item.estimated_amount) * 100 : 0;
+                          const varColor =
+                            variance < 0 ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                            : variance > 0 ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                            : "text-muted-foreground";
+                          const days = item.days ?? 1;
+                          const qty = item.quantity ?? 1;
+                          const up = item.unit_price ?? 0;
+                          const needsReceipt = item.actual_amount > 0 && (item.receipt_urls || []).length === 0;
+                          return (
+                            <TableRow key={idx} className={needsReceipt ? "bg-red-50/40 dark:bg-red-950/20" : ""}>
+                              <TableCell className="text-xs">{idx + 1}</TableCell>
+                              <TableCell className="text-sm font-medium">
+                                {getCategoryLabel(item.category)}
+                                {item.description ? <div className="text-xs text-muted-foreground">{item.description}</div> : null}
+                              </TableCell>
+                              <TableCell className="text-xs">{item.unit || "—"}</TableCell>
+                              <TableCell className="text-right text-xs">{qty}</TableCell>
+                              <TableCell className="text-right text-xs">{days}</TableCell>
+                              <TableCell className="text-right text-xs">
+                                <div className="font-medium">{formatCurrency(item.estimated_amount)}</div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {new Intl.NumberFormat("vi-VN").format(up)} × {qty} × {days}
+                                </div>
+                              </TableCell>
+                              <TableCell className="p-1">
+                                <Input className="h-8 text-xs" type="number" value={item.actual_amount} onChange={(e) => updateFormItem(idx, "actual_amount", Number(e.target.value))} />
+                              </TableCell>
+                              <TableCell className={`text-right text-sm font-medium px-2 py-1 ${varColor}`}>
+                                {formatCurrency(variance)}
+                                <div className="text-[10px]">{variancePct.toFixed(0)}%</div>
+                              </TableCell>
+                              <TableCell className="p-1">
+                                <FinanceFileUpload
+                                  urls={item.receipt_urls || []}
+                                  onChange={(urls) => updateFormItem(idx, "receipt_urls", urls)}
+                                  folder={`new-settlement-${formEstimateId}`}
+                                  maxFiles={5}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Footer totals */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/40 rounded-md">
+                    <span className="text-sm">TỔNG DỰ TOÁN: <strong>{formatCurrency(totalEst)}</strong></span>
+                    <span className="text-sm">TỔNG THỰC CHI: <strong>{formatCurrency(totalAct)}</strong></span>
+                    <span className="text-sm flex items-center gap-2">
+                      TỔNG CHÊNH LỆCH: <strong>{formatCurrency(totalVar)}</strong>
+                      {totalEst > 0 && (
+                        totalVar > 0 ? (
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Vượt {totalPct.toFixed(1)}%</Badge>
+                        ) : totalVar < 0 ? (
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Tiết kiệm {Math.abs(totalPct).toFixed(1)}%</Badge>
+                        ) : (
+                          <Badge variant="outline">Khớp</Badge>
+                        )
+                      )}
+                    </span>
+                  </div>
+
+                  {missing.length > 0 && (
+                    <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                      <FileWarning className="h-4 w-4 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-medium">Hạng mục chưa có chứng từ:</div>
+                        <ul className="list-disc list-inside text-xs mt-1">
+                          {missing.map((m, i) => <li key={i}>{getCategoryLabel(m.category)} — {formatCurrency(m.actual_amount)}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between text-sm font-semibold">
-                  <span>Tổng dự toán: {formatCurrency(formItems.reduce((s, i) => s + i.estimated_amount, 0))}</span>
-                  <span>Tổng thực chi: {formatCurrency(formTotalActual)}</span>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Hủy</Button>
