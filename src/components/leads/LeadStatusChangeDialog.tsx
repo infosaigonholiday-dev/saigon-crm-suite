@@ -107,15 +107,18 @@ export default function LeadStatusChangeDialog({
       if (!user) throw new Error("Chưa đăng nhập");
 
       // 1. Insert care history (trigger update_lead_from_care will sync last_contact_at, contact_count, follow_up_date)
-      const { error: histErr } = await supabase.from("lead_care_history").insert({
+      const safeResult = (result && result.trim()) ? result : suggestResult(targetStatus) || "NO_ANSWER";
+      const payload = {
         lead_id: leadId,
         contacted_by: user.id,
         contact_method: contactMethod,
         note: note.trim(),
         next_action: nextAction,
         next_contact_date: nextDate ? format(nextDate, "yyyy-MM-dd") : null,
-        result,
-      });
+        result: safeResult,
+      };
+      console.log("[LeadStatusChangeDialog] insert lead_care_history payload:", payload);
+      const { error: histErr } = await supabase.from("lead_care_history").insert(payload);
       if (histErr) throw histErr;
 
       // 2. Update lead: status + temperature (+ lost_reason if applicable)
