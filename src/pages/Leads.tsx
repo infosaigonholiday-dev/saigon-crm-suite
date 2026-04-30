@@ -517,6 +517,11 @@ export default function Leads() {
                                     {temp.icon} {temp.label}
                                   </Badge>
                                 )}
+                                {(lead.contact_count ?? 0) > 0 && (
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 bg-purple-50 text-purple-700 border-purple-300">
+                                    🔁 {lead.contact_count} lần
+                                  </Badge>
+                                )}
                               </div>
 
                               {subStatusLabel && (
