@@ -5099,6 +5099,14 @@ export type Database = {
       rpc_dashboard_ceo: { Args: { p_dept_id?: string }; Returns: Json }
       rpc_dashboard_personal: { Args: { p_user_id: string }; Returns: Json }
       rpc_send_test_push: { Args: never; Returns: Json }
+      send_kpi_achievement_notification: {
+        Args: {
+          p_commission_pct: number
+          p_employee_name: string
+          p_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

@@ -12,6 +12,7 @@ import { SettingsPermissionsTab } from "@/components/settings/SettingsPermission
 import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 import { SettingsExpenseCategoriesTab } from "@/components/settings/SettingsExpenseCategoriesTab";
 import { SettingsCompanyInfoTab } from "@/components/settings/SettingsCompanyInfoTab";
+import { SettingsNotificationHistoryTab } from "@/components/settings/SettingsNotificationHistoryTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
@@ -64,6 +65,7 @@ export default function Settings() {
   const showExpenseCategories = isAdmin;
   const showCompanyInfo = isAdmin;
   const showNotifications = true;
+  const showNotificationHistory = isAdmin;
 
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
@@ -75,6 +77,7 @@ export default function Settings() {
     showPermissions && { value: "permissions", label: "Phân quyền" },
     showExpenseCategories && { value: "expense_categories", label: "DM Chi phí" },
     showAuditLog && { value: "audit", label: "Nhật ký thay đổi" },
+    showNotificationHistory && { value: "notif_history", label: "Lịch sử thông báo" },
   ].filter(Boolean) as { value: string; label: string }[];
 
   const defaultTab = tabs[0]?.value || "roles";
@@ -130,6 +133,9 @@ export default function Settings() {
         )}
         {showAuditLog && (
           <TabsContent value="audit" className="mt-4"><SettingsAuditLogTab /></TabsContent>
+        )}
+        {showNotificationHistory && (
+          <TabsContent value="notif_history" className="mt-4"><SettingsNotificationHistoryTab /></TabsContent>
         )}
       </Tabs>
     </div>
