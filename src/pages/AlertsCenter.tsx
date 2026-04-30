@@ -116,7 +116,7 @@ export default function AlertsCenter() {
   const markAllReadMutation = async () => {
     const { error } = await supabase
       .from("notifications")
-      .update({ is_read: true })
+      .update({ is_read: true, read_at: new Date().toISOString() })
       .eq("user_id", user!.id)
       .eq("is_read", false);
     if (error) { toast.error(error.message); return; }
@@ -130,7 +130,10 @@ export default function AlertsCenter() {
   const handleNotificationClick = async (n: any) => {
     const link = getEntityLink(n.entity_type, n.entity_id);
     if (!n.is_read) {
-      await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+      await supabase
+        .from("notifications")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("id", n.id);
       queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
       queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
