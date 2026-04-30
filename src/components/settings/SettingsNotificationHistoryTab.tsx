@@ -48,24 +48,34 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 type ReadStatus = "all" | "unread" | "read";
+type ActionStatusFilter = "all" | "pending" | "in_progress" | "completed" | "dismissed" | "overdue";
+
+const ACTION_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
+  pending: { label: "Chờ xử lý", cls: "bg-amber-50 text-amber-700 border-amber-300" },
+  in_progress: { label: "Đang xử lý", cls: "bg-blue-50 text-blue-700 border-blue-300" },
+  completed: { label: "Đã xử lý", cls: "bg-green-50 text-green-700 border-green-300" },
+  dismissed: { label: "Bỏ qua", cls: "bg-gray-50 text-gray-600 border-gray-300" },
+  overdue: { label: "Quá hạn", cls: "bg-red-50 text-red-700 border-red-300" },
+};
 
 export function SettingsNotificationHistoryTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [readFilter, setReadFilter] = useState<ReadStatus>("all");
+  const [actionFilter, setActionFilter] = useState<ActionStatusFilter>("all");
   const [page, setPage] = useState(0);
   const [sending, setSending] = useState(false);
 
   const { data: result, isLoading, refetch } = useQuery({
-    queryKey: ["notification-history", typeFilter, readFilter, search, page],
+    queryKey: ["notification-history", typeFilter, readFilter, actionFilter, search, page],
     queryFn: async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("notifications")
         .select(
-          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, profiles!notifications_user_id_fkey(full_name, email)",
+          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, action_required, action_status, action_due_at, action_completed_at, profiles!notifications_user_id_fkey(full_name, email)",
           { count: "exact" }
         )
         .order("created_at", { ascending: false })
@@ -73,6 +83,7 @@ export function SettingsNotificationHistoryTab() {
       if (typeFilter !== "all") q = q.eq("type", typeFilter);
       if (readFilter === "unread") q = q.eq("is_read", false);
       if (readFilter === "read") q = q.eq("is_read", true);
+      if (actionFilter !== "all") q = q.eq("action_required", true).eq("action_status", actionFilter);
       if (search.trim()) q = q.or(`title.ilike.%${search}%,message.ilike.%${search}%`);
       const { data, error, count } = await q;
       if (error) throw error;
@@ -167,6 +178,19 @@ export function SettingsNotificationHistoryTab() {
                 <SelectItem value="read">Đã đọc</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v as ActionStatusFilter); setPage(0); }}>
+              <SelectTrigger className="w-44 h-8 text-sm">
+                <SelectValue placeholder="Trạng thái xử lý" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi xử lý</SelectItem>
+                <SelectItem value="pending">Chờ xử lý</SelectItem>
+                <SelectItem value="in_progress">Đang xử lý</SelectItem>
+                <SelectItem value="completed">Đã xử lý</SelectItem>
+                <SelectItem value="dismissed">Bỏ qua</SelectItem>
+                <SelectItem value="overdue">Quá hạn</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
               <SelectTrigger className="w-56 h-8 text-sm">
                 <SelectValue placeholder="Lọc theo loại" />
@@ -191,20 +215,21 @@ export function SettingsNotificationHistoryTab() {
                   <TableHead className="w-[160px]">Người nhận</TableHead>
                   <TableHead className="w-[140px]">Tạo lúc</TableHead>
                   <TableHead className="w-[160px]">Đã đọc lúc</TableHead>
-                  <TableHead className="w-[140px]">Trạng thái</TableHead>
+                  <TableHead className="w-[140px]">Đọc</TableHead>
+                  <TableHead className="w-[140px]">Xử lý</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                       Không có thông báo nào khớp tiêu chí
                     </TableCell>
                   </TableRow>
@@ -272,6 +297,15 @@ export function SettingsNotificationHistoryTab() {
                             </Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {r.action_required ? (
+                          <Badge variant="outline" className={`text-[10px] ${ACTION_STATUS_LABELS[r.action_status]?.cls ?? ""}`}>
+                            {ACTION_STATUS_LABELS[r.action_status]?.label ?? r.action_status ?? "—"}
+                          </Badge>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">Không cần</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

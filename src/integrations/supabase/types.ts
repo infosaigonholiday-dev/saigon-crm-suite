@@ -3159,6 +3159,9 @@ export type Database = {
         Row: {
           action_completed_at: string | null
           action_completed_by: string | null
+          action_due_at: string | null
+          action_required: boolean
+          action_status: string | null
           created_at: string | null
           entity_id: string | null
           entity_type: string | null
@@ -3169,6 +3172,8 @@ export type Database = {
           message: string | null
           priority: string | null
           read_at: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
           title: string
           type: string
           user_id: string
@@ -3176,6 +3181,9 @@ export type Database = {
         Insert: {
           action_completed_at?: string | null
           action_completed_by?: string | null
+          action_due_at?: string | null
+          action_required?: boolean
+          action_status?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -3186,6 +3194,8 @@ export type Database = {
           message?: string | null
           priority?: string | null
           read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           title: string
           type: string
           user_id: string
@@ -3193,6 +3203,9 @@ export type Database = {
         Update: {
           action_completed_at?: string | null
           action_completed_by?: string | null
+          action_due_at?: string | null
+          action_required?: boolean
+          action_status?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -3203,6 +3216,8 @@ export type Database = {
           message?: string | null
           priority?: string | null
           read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           title?: string
           type?: string
           user_id?: string
@@ -5121,6 +5136,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      rpc_notification_overview: { Args: never; Returns: Json }
+      rpc_notification_set_action_status: {
+        Args: { p_id: string; p_note?: string; p_status: string }
+        Returns: Json
+      }
       rpc_notification_unread_by_user: {
         Args: never
         Returns: {
@@ -5133,6 +5153,7 @@ export type Database = {
         }[]
       }
       rpc_send_test_push: { Args: never; Returns: Json }
+      run_action_escalation: { Args: never; Returns: Json }
       send_kpi_achievement_notification: {
         Args: {
           p_commission_pct: number

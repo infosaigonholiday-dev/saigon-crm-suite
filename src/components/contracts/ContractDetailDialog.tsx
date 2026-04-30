@@ -78,6 +78,10 @@ export default function ContractDetailDialog({ contractId, open, onOpenChange }:
       if (newStatus === "SIGNED" || newStatus === "COMPLETED") updates.approved_by = user?.id;
       const { error } = await supabase.from("contracts").update(updates).eq("id", contractId!);
       if (error) throw error;
+      if (user?.id && contractId && ["SIGNED","COMPLETED","CANCELLED"].includes(newStatus)) {
+        const { completeActionsForEntity } = await import("@/lib/notificationActions");
+        await completeActionsForEntity(user.id, "contract", contractId, ["CONTRACT_APPROVAL","CONTRACT_APPROVAL_OVERDUE"]);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });

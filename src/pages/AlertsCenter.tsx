@@ -84,24 +84,27 @@ export default function AlertsCenter() {
     refetchInterval: 60000,
   });
 
-  // ===== TAB "TẤT CẢ" — pagination + filter loại =====
+  // ===== TAB "TẤT CẢ" — pagination + filter loại + filter action =====
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [actionFilter, setActionFilter] = useState<string>("all"); // all|unread|action_pending|overdue
   const [page, setPage] = useState(0);
 
   const { data: allNotifsResult, isLoading: lAll } = useQuery({
-    queryKey: ["alerts-all", user?.id, groupFilter, page],
+    queryKey: ["alerts-all", user?.id, groupFilter, actionFilter, page],
     enabled: !!user?.id,
     queryFn: async () => {
-      // Lấy nhiều rồi filter client (vì TYPE_GROUPS map ở client)
       let q = supabase
         .from("notifications")
-        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read", { count: "exact" })
+        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (groupFilter !== "all") {
         const types = Object.entries(TYPE_GROUPS).filter(([_, g]) => g === groupFilter).map(([t]) => t);
         if (types.length > 0) q = q.in("type", types);
       }
+      if (actionFilter === "unread") q = q.eq("is_read", false);
+      if (actionFilter === "action_pending") q = q.eq("action_required", true).in("action_status", ["pending","in_progress"]);
+      if (actionFilter === "overdue") q = q.eq("action_status", "overdue");
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       const { data, count } = await q.range(from, to);
@@ -274,7 +277,7 @@ export default function AlertsCenter() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Loại:</span>
             <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="lead">Lead / Tiềm năng</SelectItem>
@@ -282,6 +285,16 @@ export default function AlertsCenter() {
                 <SelectItem value="finance">Tài chính</SelectItem>
                 <SelectItem value="hr">Nhân sự</SelectItem>
                 <SelectItem value="system">Hệ thống</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground ml-2">Trạng thái:</span>
+            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(0); }}>
+              <SelectTrigger className="w-[160px] h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="unread">Chưa đọc</SelectItem>
+                <SelectItem value="action_pending">Cần xử lý</SelectItem>
+                <SelectItem value="overdue">Quá hạn</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground ml-auto">
@@ -301,6 +314,8 @@ export default function AlertsCenter() {
               {allNotifs.map((n: any) => {
                 const link = getEntityLink(n.entity_type, n.entity_id);
                 const clickable = !!link;
+                const needsAction = n.action_required && ["pending","in_progress"].includes(n.action_status);
+                const isOverdue = n.action_status === "overdue";
                 return (
                   <Card
                     key={n.id}
@@ -314,10 +329,12 @@ export default function AlertsCenter() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm ${n.is_read ? "font-normal" : "font-semibold"}`}>{n.title}</p>
                         <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words line-clamp-2">{n.message}</p>
-                        <p className="text-[11px] text-muted-foreground/70 mt-1">
-                          <Badge variant="outline" className="mr-2 text-[10px]">{getGroup(n.type)}</Badge>
-                          {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">{getGroup(n.type)}</Badge>
+                          <span className="text-[11px] text-muted-foreground/70">{format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}</span>
+                          {isOverdue && <Badge variant="destructive" className="text-[10px]">Quá hạn xử lý</Badge>}
+                          {needsAction && !isOverdue && <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500">Cần xử lý</Badge>}
+                        </div>
                       </div>
                       {clickable && <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-1" />}
                     </CardContent>

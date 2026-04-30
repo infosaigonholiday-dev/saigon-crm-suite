@@ -200,6 +200,10 @@ export default function LeaveManagement() {
       }
       const { error } = await supabase.from("leave_requests").update(payload).eq("id", id);
       if (error) throw error;
+      if (user?.id && (status === "APPROVED" || status === "REJECTED")) {
+        const { completeActionsForEntity } = await import("@/lib/notificationActions");
+        await completeActionsForEntity(user.id, "leave_request", id, ["LEAVE_REQUEST_NEW"]);
+      }
     },
     onSuccess: () => {
       toast.success("Cập nhật thành công");

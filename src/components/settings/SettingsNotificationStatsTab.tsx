@@ -30,49 +30,59 @@ export function SettingsNotificationStatsTab() {
     refetchInterval: 60000,
   });
 
-  const totalUnread = byUser.reduce((sum: number, r: any) => sum + Number(r.unread_total || 0), 0);
-  const totalHighCritical = byUser.reduce((sum: number, r: any) => sum + Number(r.unread_high_critical || 0), 0);
-  const usersWithUnread = byUser.length;
+  const { data: overview } = useQuery({
+    queryKey: ["notif-overview"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("rpc_notification_overview");
+      if (error) throw error;
+      return data as any;
+    },
+    refetchInterval: 60000,
+  });
+
+  const sent7d = Number(overview?.sent_7d ?? 0);
+  const totalUnread = Number(overview?.unread ?? byUser.reduce((s: number, r: any) => s + Number(r.unread_total || 0), 0));
+  const actionPending = Number(overview?.action_pending ?? 0);
+  const actionOverdue = Number(overview?.action_overdue ?? overdue.length);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tổng thông báo chưa đọc
-            </CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Đã gửi (7 ngày)</CardTitle>
+            <BellOff className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{sent7d}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Chưa đọc</CardTitle>
             <BellOff className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalUnread}</p>
-            <p className="text-xs text-muted-foreground mt-1">Toàn hệ thống</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Cao/Khẩn quá 24h
-            </CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Cần xử lý</CardTitle>
+            <Users className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-amber-700">{actionPending}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Action chưa hoàn tất</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Quá hạn xử lý</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-destructive">{overdue.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Tổng High/Critical chưa đọc: {totalHighCritical}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Nhân sự có chưa đọc
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{usersWithUnread}</p>
-            <p className="text-xs text-muted-foreground mt-1">Có ≥ 1 thông báo chưa đọc</p>
+            <p className="text-2xl font-bold text-destructive">{actionOverdue}</p>
           </CardContent>
         </Card>
       </div>

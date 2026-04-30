@@ -73,6 +73,12 @@ export default function PaymentFormDialog({ open, onOpenChange }: Props) {
         notes: form.notes || null,
       });
       if (error) throw error;
+      // Complete action notifications for this booking
+      const { data: u } = await supabase.auth.getUser();
+      if (u?.user?.id && form.booking_id) {
+        const { completeActionsForEntity } = await import("@/lib/notificationActions");
+        await completeActionsForEntity(u.user.id, "booking", form.booking_id, ["PAYMENT_DUE","PAYMENT_OVERDUE","AR_OVERDUE"]);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["payments"] });
