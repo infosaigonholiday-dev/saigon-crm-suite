@@ -480,6 +480,7 @@ export function BudgetEstimatesTab() {
                   <TableHead className="text-right">SL</TableHead>
                   <TableHead className="text-right">Thành tiền</TableHead>
                   <TableHead>Hạn TT</TableHead>
+                  <TableHead>Chứng từ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -492,6 +493,14 @@ export function BudgetEstimatesTab() {
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                     <TableCell>{item.payment_deadline || "—"}</TableCell>
+                    <TableCell>
+                      <FinanceFileUpload
+                        urls={item.receipt_urls || []}
+                        onChange={() => {}}
+                        folder={selectedEstimate?.id || "view"}
+                        disabled
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
