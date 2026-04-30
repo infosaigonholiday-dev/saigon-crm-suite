@@ -52,7 +52,7 @@ export function AppSidebar() {
     refetchInterval: 60000,
   });
 
-  // Cảnh báo khẩn cấp (priority='high' chưa đọc) cho badge "Cảnh báo"
+  // Badge "Cảnh báo" — tổng số notification chưa đọc của user
   const { data: alertCount = 0 } = useQuery({
     queryKey: ["alerts-badge", user?.id],
     queryFn: async () => {
@@ -60,8 +60,7 @@ export function AppSidebar() {
         .from("notifications")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user!.id)
-        .eq("is_read", false)
-        .eq("priority", "high");
+        .eq("is_read", false);
       return count ?? 0;
     },
     enabled: !!user?.id,
