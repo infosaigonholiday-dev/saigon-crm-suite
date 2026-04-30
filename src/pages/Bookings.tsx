@@ -190,6 +190,22 @@ export default function Bookings() {
       />
 
       <Card>
+        <CardContent className="p-3 flex flex-wrap gap-3 items-center">
+          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="Loại booking" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả loại</SelectItem>
+              <SelectItem value="retail">Khách lẻ</SelectItem>
+              <SelectItem value="group_tour">Tour đoàn</SelectItem>
+              <SelectItem value="mice">MICE</SelectItem>
+              <SelectItem value="school_group">Đoàn trường</SelectItem>
+              <SelectItem value="company_trip">Đoàn doanh nghiệp</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -199,6 +215,8 @@ export default function Bookings() {
                 <TableRow>
                   <TableHead>Mã</TableHead>
                   <TableHead>Khách hàng</TableHead>
+                  <TableHead>Loại</TableHead>
+                  <TableHead>Hồ sơ đoàn</TableHead>
                   <TableHead className="text-center">Số khách</TableHead>
                   <TableHead>Tổng tiền</TableHead>
                   <TableHead>Trạng thái</TableHead>
