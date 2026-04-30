@@ -5678,6 +5678,42 @@ export type Database = {
       }
       rpc_dashboard_ceo: { Args: { p_dept_id?: string }; Returns: Json }
       rpc_dashboard_personal: { Args: { p_user_id: string }; Returns: Json }
+      rpc_notification_audit_list: {
+        Args: {
+          p_action_status?: string
+          p_department?: string
+          p_range_days?: number
+          p_read_status?: string
+          p_search?: string
+          p_type?: string
+          p_types?: string[]
+          p_user_id?: string
+        }
+        Returns: {
+          action_completed_at: string
+          action_due_at: string
+          action_required: boolean
+          action_status: string
+          action_url: string
+          created_at: string
+          department: string
+          email: string
+          entity_id: string
+          entity_type: string
+          full_name: string
+          id: string
+          is_read: boolean
+          message: string
+          priority: string
+          read_at: string
+          related_entity_id: string
+          related_entity_type: string
+          role: string
+          title: string
+          type: string
+          user_id: string
+        }[]
+      }
       rpc_notification_complete_action: {
         Args: { p_notification_id: string }
         Returns: undefined
@@ -5710,6 +5746,7 @@ export type Database = {
           overdue_actions: number
           pending_actions: number
           read_count: number
+          role: string
           total_notifications: number
           unread_count: number
           unread_high_critical: number
