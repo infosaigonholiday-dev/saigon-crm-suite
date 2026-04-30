@@ -76,9 +76,30 @@ export default function PersonalDashboard() {
   const { data: followUpLeads = [] } = useQuery({
     queryKey: ["follow-up-leads", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("id, full_name, follow_up_date, temperature, destination, phone, assigned_to, status").eq("assigned_to", user!.id).not("follow_up_date", "is", null).lte("follow_up_date", todayStr).not("status", "in", "(WON,LOST,DORMANT)").order("follow_up_date");
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, last_contact_at, contact_count, destination, phone, assigned_to, status")
+        .eq("assigned_to", user!.id)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", todayStr)
+        .not("status", "in", "(WON,LOST,DORMANT)")
+        .order("follow_up_date");
       if (error) throw error;
-      return data || [];
+      // Tính nhiệt độ động + sort: Nóng trước, sau đó theo ngày hẹn
+      const tempOrder: Record<string, number> = { hot: 0, warm: 1, cold: 2 };
+      const computeTemp = (lastContactAt: string | null, manual: string | null) => {
+        if (!lastContactAt) return manual || "warm";
+        const days = Math.floor((Date.now() - new Date(lastContactAt).getTime()) / 86400000);
+        if (days < 3) return "hot";
+        if (days <= 7) return "warm";
+        return "cold";
+      };
+      return (data || []).map((l: any) => ({ ...l, _temp: computeTemp(l.last_contact_at, l.temperature) }))
+        .sort((a, b) => {
+          const tDiff = tempOrder[a._temp] - tempOrder[b._temp];
+          if (tDiff !== 0) return tDiff;
+          return (a.follow_up_date || "").localeCompare(b.follow_up_date || "");
+        });
     },
     enabled: !!user?.id,
   });
