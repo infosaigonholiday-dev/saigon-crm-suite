@@ -47,8 +47,42 @@ export default function TourFiles() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Pre-fetch tour_file_ids khi taskFilter cần lọc theo tasks
+  const { data: filteredIds } = useQuery({
+    queryKey: ["tour_files_taskfilter_ids", taskFilter],
+    enabled: taskFilter !== "all" && taskFilter !== "missing_doc",
+    queryFn: async () => {
+      let statuses: string[] = [];
+      if (taskFilter === "overdue") statuses = ["overdue"];
+      if (taskFilter === "pending_check") statuses = ["done_pending_check"];
+      if (taskFilter === "upcoming") {
+        // tour khởi hành ≤ 7 ngày + còn task chưa duyệt
+        const today = new Date(); const in7 = new Date(); in7.setDate(today.getDate() + 7);
+        const { data: tours } = await (supabase as any)
+          .from("tour_files")
+          .select("id, departure_date")
+          .gte("departure_date", today.toISOString().slice(0, 10))
+          .lte("departure_date", in7.toISOString().slice(0, 10));
+        const ids = (tours || []).map((x: any) => x.id);
+        if (!ids.length) return [];
+        const { data: tasks } = await (supabase as any)
+          .from("tour_tasks")
+          .select("tour_file_id")
+          .in("tour_file_id", ids)
+          .not("status", "in", "(approved_done,cancelled)");
+        return Array.from(new Set((tasks || []).map((t: any) => t.tour_file_id)));
+      }
+      const { data: tasks } = await (supabase as any)
+        .from("tour_tasks")
+        .select("tour_file_id")
+        .in("status", statuses);
+      return Array.from(new Set((tasks || []).map((t: any) => t.tour_file_id)));
+    },
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["tour_files", page, search, stageFilter, typeFilter],
+    queryKey: ["tour_files", page, search, stageFilter, typeFilter, taskFilter, filteredIds],
+    enabled: taskFilter === "all" || taskFilter === "missing_doc" || !!filteredIds,
     queryFn: async () => {
       let q = (supabase as any)
         .from("tour_files")
@@ -67,6 +101,11 @@ export default function TourFiles() {
       }
       if (stageFilter !== "all") q = q.eq("current_stage", stageFilter);
       if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
+      if (taskFilter !== "all" && taskFilter !== "missing_doc") {
+        const ids = filteredIds || [];
+        if (!ids.length) return { rows: [], total: 0 };
+        q = q.in("id", ids);
+      }
 
       const { data, count, error } = await q;
       if (error) throw error;
