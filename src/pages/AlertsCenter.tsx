@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,12 +7,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertTriangle, Bell, Wallet, Plane, FileSignature, CreditCard,
-  ArrowRight, Loader2, ShieldAlert, Calendar,
+  ArrowRight, Loader2, ShieldAlert, Calendar, CheckCheck, Inbox,
 } from "lucide-react";
 import { format, addDays, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
+import { toast } from "sonner";
+
+// Phân loại type → nhóm
+const TYPE_GROUPS: Record<string, string> = {
+  LEAD_ASSIGNED: "lead", LEAD_WON: "lead", LEAD_FORGOTTEN: "lead",
+  FOLLOW_UP: "lead", FOLLOW_UP_OVERDUE: "lead", NEW_ONLINE_LEAD: "lead",
+  ESCALATION_LV1: "lead", ESCALATION_LV2: "lead",
+  BOOKING_NEW: "booking", BOOKING_STATUS: "booking", TOUR_DEPARTURE: "booking",
+  QUOTATION_SENT: "booking", CONTRACT_EXPIRY: "booking",
+  PAYMENT_DUE: "finance", PAYMENT_OVERDUE: "finance", PAYMENT_RECEIVED: "finance",
+  CASHFLOW_NEGATIVE: "finance", BUDGET_ESTIMATE_PENDING: "finance",
+  BUDGET_ESTIMATE_SUBMITTED: "finance", BUDGET_ESTIMATE_REMIND: "finance",
+  BUDGET_ESTIMATE_OVERDUE: "finance", BUDGET_SETTLEMENT_PENDING: "finance",
+  SETTLEMENT_VARIANCE_HIGH: "finance", EXPENSE_ESCALATION: "finance",
+  LEAVE_REQUEST_NEW: "hr", LEAVE_REQUEST_RESULT: "hr", NEW_EMPLOYEE: "hr",
+  TEST_PUSH: "system", INTERNAL_NOTE: "system", ADMIN_BROADCAST: "system",
+};
+const getGroup = (t: string) => TYPE_GROUPS[t] ?? "system";
+const PAGE_SIZE = 20;
 
 function fmtMoney(n: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN").format(Number(n ?? 0));
@@ -22,9 +43,9 @@ function getEntityLink(entityType: string | null, entityId: string | null): stri
   if (!entityType) return null;
   switch (entityType) {
     case "booking": return entityId ? `/dat-tour/${entityId}` : "/dat-tour";
-    case "budget_estimate": return "/tai-chinh?tab=du-toan";
-    case "budget_settlement": return "/tai-chinh?tab=quyet-toan";
-    case "transaction": return "/tai-chinh?tab=kt-duyet";
+    case "budget_estimate": return "/tai-chinh?tab=estimates";
+    case "budget_settlement": return "/tai-chinh?tab=settlements";
+    case "transaction": return "/tai-chinh?tab=hr-approval";
     case "finance": return "/tai-chinh";
     case "contract": return "/hop-dong";
     case "lead": return "/tiem-nang";
