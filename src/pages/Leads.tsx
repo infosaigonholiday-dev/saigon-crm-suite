@@ -61,6 +61,16 @@ const tempConfig: Record<string, { icon: string; label: string; badgeClass: stri
   cold: { icon: "❄️", label: "Lạnh", badgeClass: "bg-blue-500 text-white border-blue-500" },
 };
 
+// Tính nhiệt độ động dựa vào last_contact_at theo spec:
+// 🔥 Nóng < 3 ngày, 🟡 Ấm 3-7 ngày, ❄️ Lạnh > 7 ngày
+function computeTemperature(lastContactAt: string | null, manualTemp: string | null): "hot" | "warm" | "cold" {
+  if (!lastContactAt) return (manualTemp as any) || "warm";
+  const days = Math.floor((Date.now() - new Date(lastContactAt).getTime()) / 86400000);
+  if (days < 3) return "hot";
+  if (days <= 7) return "warm";
+  return "cold";
+}
+
 function getFollowUpStatus(date: string | null): "overdue" | "today" | "future" | null {
   if (!date) return null;
   const d = new Date(date);
@@ -424,7 +434,8 @@ export default function Leads() {
                 </div>
                 <div className="bg-muted/30 rounded-b-lg min-h-[350px] p-1.5 space-y-1.5">
                   {colLeads.map((lead: any) => {
-                    const temp = tempConfig[lead.temperature ?? "warm"];
+                    const computedTemp = computeTemperature(lead.last_contact_at, lead.temperature);
+                    const temp = tempConfig[computedTemp];
                     const followUpStatus = getFollowUpStatus(lead.follow_up_date);
                     const isConverted = !!lead.converted_customer_id;
                     const showConvert = col.id === "WON" && !isConverted;
@@ -504,6 +515,11 @@ export default function Leads() {
                                 {temp && (
                                   <Badge className={`text-[9px] h-4 px-1 ${temp.badgeClass}`}>
                                     {temp.icon} {temp.label}
+                                  </Badge>
+                                )}
+                                {(lead.contact_count ?? 0) > 0 && (
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 bg-purple-50 text-purple-700 border-purple-300">
+                                    🔁 {lead.contact_count} lần
                                   </Badge>
                                 )}
                               </div>

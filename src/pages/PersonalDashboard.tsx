@@ -76,9 +76,30 @@ export default function PersonalDashboard() {
   const { data: followUpLeads = [] } = useQuery({
     queryKey: ["follow-up-leads", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("id, full_name, follow_up_date, temperature, destination, phone, assigned_to, status").eq("assigned_to", user!.id).not("follow_up_date", "is", null).lte("follow_up_date", todayStr).not("status", "in", "(WON,LOST,DORMANT)").order("follow_up_date");
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, full_name, follow_up_date, temperature, last_contact_at, contact_count, destination, phone, assigned_to, status")
+        .eq("assigned_to", user!.id)
+        .not("follow_up_date", "is", null)
+        .lte("follow_up_date", todayStr)
+        .not("status", "in", "(WON,LOST,DORMANT)")
+        .order("follow_up_date");
       if (error) throw error;
-      return data || [];
+      // Tính nhiệt độ động + sort: Nóng trước, sau đó theo ngày hẹn
+      const tempOrder: Record<string, number> = { hot: 0, warm: 1, cold: 2 };
+      const computeTemp = (lastContactAt: string | null, manual: string | null) => {
+        if (!lastContactAt) return manual || "warm";
+        const days = Math.floor((Date.now() - new Date(lastContactAt).getTime()) / 86400000);
+        if (days < 3) return "hot";
+        if (days <= 7) return "warm";
+        return "cold";
+      };
+      return (data || []).map((l: any) => ({ ...l, _temp: computeTemp(l.last_contact_at, l.temperature) }))
+        .sort((a, b) => {
+          const tDiff = tempOrder[a._temp] - tempOrder[b._temp];
+          if (tDiff !== 0) return tDiff;
+          return (a.follow_up_date || "").localeCompare(b.follow_up_date || "");
+        });
     },
     enabled: !!user?.id,
   });
@@ -234,24 +255,43 @@ export default function PersonalDashboard() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Circle className="h-4 w-4 text-orange-500" />
-              Nhắc hẹn hôm nay ({followUpLeads.length})
+              Việc cần làm hôm nay ({followUpLeads.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {followUpLeads.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Không có lead cần follow-up</p>
+              <p className="text-sm text-muted-foreground text-center py-4">🎉 Không có lead nào cần follow-up</p>
             ) : (
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {followUpLeads.map((lead) => {
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {followUpLeads.map((lead: any) => {
                   const diff = differenceInCalendarDays(new Date(lead.follow_up_date!), new Date());
+                  const tempIcon = lead._temp === "hot" ? "🔥" : lead._temp === "cold" ? "❄️" : "🟡";
+                  const overdue = diff < 0;
                   return (
-                    <div key={lead.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => navigate("/tiem-nang")}>
-                      <Circle className={`h-2.5 w-2.5 shrink-0 fill-current ${lead.temperature === "hot" ? "text-destructive" : lead.temperature === "cold" ? "text-blue-500" : "text-orange-500"}`} />
-                      <p className="text-sm truncate flex-1">{lead.full_name}</p>
-                      {diff < 0 ? (
-                        <Badge variant="destructive" className="text-[10px]">Quá {Math.abs(diff)}d</Badge>
+                    <div
+                      key={lead.id}
+                      className={`flex items-center gap-2 p-2 rounded-lg border ${overdue ? "border-destructive/40 bg-destructive/5" : "border-transparent hover:bg-muted/50"} cursor-pointer transition-colors`}
+                      onClick={() => navigate("/tiem-nang")}
+                    >
+                      <span className="text-base shrink-0" title={lead._temp}>{tempIcon}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{lead.full_name}</p>
+                        {lead.phone && <p className="text-[10px] text-muted-foreground truncate">{lead.phone}</p>}
+                      </div>
+                      {overdue ? (
+                        <Badge variant="destructive" className="text-[10px] shrink-0">Quá {Math.abs(diff)}d</Badge>
                       ) : (
-                        <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-[10px]">Hôm nay</Badge>
+                        <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-[10px] shrink-0">Hôm nay</Badge>
+                      )}
+                      {lead.phone && (
+                        <a
+                          href={`tel:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                          title="Gọi ngay"
+                        >
+                          <PhoneCall className="h-3.5 w-3.5" />
+                        </a>
                       )}
                     </div>
                   );

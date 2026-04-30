@@ -1,101 +1,103 @@
-## Tính năng: Gửi thông báo broadcast theo phân loại nhân viên
+# Plan: Hoàn thiện ACTION-ORIENTED CRM (5 mục)
 
-Cho phép người có quyền (ADMIN, GDKD, MANAGER, HCNS) soạn 1 thông báo và gửi đến nhiều nhân viên cùng lúc, lọc theo: **phòng ban**, **vai trò**, **loại nhân sự** (chính thức / thực tập), hoặc **chọn từng người**. Thông báo đến qua **chuông trong app + Web Push (OneSignal)**.
+## Tổng quan kiểm tra hiện trạng
 
----
+| # | Yêu cầu | Trạng thái hiện tại | Cần làm |
+|---|---------|---------------------|---------|
+| 1 | Badge nhiệt độ 🔥/🟡/❄️ trên Lead Card | Có badge nhưng dựa vào `lead.temperature` (thủ công), KHÔNG dựa vào `last_contact_date` như spec | **Sửa**: tính toán động từ `last_contact_at` |
+| 2 | Dialog ghi chú bắt buộc khi kéo Kanban | **Đã có** — `LeadStatusChangeDialog` mở khi drop, ghi chú min 10 ký tự đã enforce | Verify only |
+| 3 | Badge follow-up count + last contact | Card đã hiện "lần cuối X ngày trước" và "hẹn tiếp theo" nhưng **chưa hiện số lần follow-up** (`contact_count`) | **Thêm** badge số lần follow-up |
+| 4 | Widget "Việc cần làm hôm nay" trên dashboard Sale | Dashboard có "Nhắc hẹn hôm nay" nhưng **chưa sort theo nhiệt độ Nóng trước** và thiếu detail | **Nâng cấp** widget |
+| 5 | Edge Function `daily-reminders` gửi 8h sáng list lead cần chăm sóc | **Đã có** logic FOLLOW_UP cho `follow_up_date = today`, nhưng chưa có **digest gộp 1 thông báo/Sale** | **Bổ sung** digest notification |
 
-### 1. Trang mới: "Gửi thông báo" (`/gui-thong-bao`)
+## Các thay đổi cụ thể
 
-Hiển thị trong sidebar nhóm Admin, chỉ ai có quyền mới thấy.
+### 1. Logic Temperature động (`src/pages/Leads.tsx`)
 
-**Form gồm:**
-- **Tiêu đề** (bắt buộc, ≤120 ký tự)
-- **Nội dung** (bắt buộc, textarea ≤500 ký tự)
-- **Mức độ ưu tiên**: Bình thường / Cao / Khẩn (ảnh hưởng màu badge và push)
-- **Đường dẫn khi click** (tuỳ chọn, mặc định `/`)
-- **Đối tượng nhận** — 4 chế độ chọn (tabs):
-  1. **Tất cả nhân viên đang hoạt động**
-  2. **Theo loại nhân sự**: ☑ Chính thức (role không bắt đầu bằng `INTERN_`) ☑ Thực tập (role bắt đầu bằng `INTERN_`)
-  3. **Theo phòng ban**: multi-select 9 phòng ban
-  4. **Theo vai trò**: multi-select 22 roles (có nhóm "Chọn tất cả Sale", "Chọn tất cả Điều hành"...)
-  5. **Chọn từng người**: search + multi-select profiles
-
-- **Preview danh sách người nhận**: hiển thị `Sẽ gửi đến N người` + danh sách tên (collapse), refresh realtime khi đổi filter
-- Nút **Gửi ngay** (confirm dialog)
-
-### 2. Phân quyền
-
-Thêm permission key mới: `notifications.broadcast`
-- ADMIN: tất cả phòng ban, tất cả vai trò
-- GDKD: chỉ phòng Kinh doanh + Sale roles
-- MANAGER: chỉ phòng ban của mình
-- HCNS: tất cả nhân viên (vì là HR)
-- Các role khác: không thấy menu
-
-PermissionGuard chặn route, useModuleScope giới hạn danh sách người nhận hiển thị trong filter (không cho gửi vượt scope).
-
-### 3. Backend — Edge Function mới `broadcast-notification`
-
-Input:
+Thêm helper:
+```ts
+function computeTemperatureFromContact(lastContactAt: string | null, manualTemp: string | null) {
+  if (!lastContactAt) return manualTemp || "warm";
+  const days = Math.floor((Date.now() - new Date(lastContactAt).getTime()) / 86400000);
+  if (days < 3) return "hot";       // 🔥 < 3 ngày
+  if (days <= 7) return "warm";     // 🟡 3-7 ngày
+  return "cold";                    // ❄️ > 7 ngày
+}
 ```
-{ title, message, priority, url, target_user_ids: string[] }
+Áp dụng tại Kanban card (line 427) thay cho `lead.temperature ?? "warm"`. Giữ `lead.temperature` thủ công làm fallback nếu chưa có `last_contact_at`.
+
+### 2. Dialog ghi chú bắt buộc — VERIFY ONLY
+
+`LeadStatusChangeDialog.tsx`:
+- Line 138: `noteValid = note.trim().length >= 10` ✅
+- Line 142: `canSubmit` chặn submit nếu chưa đạt ✅
+- `handleDrop` (Leads.tsx line 250) mở dialog khi drop ✅
+
+→ Đã đúng spec. Chỉ cần xác nhận, không sửa.
+
+### 3. Badge số lần follow-up trên card
+
+Cột `contact_count` đã có trong query (line 146). Thêm badge nhỏ cạnh tên:
+```tsx
+{lead.contact_count > 0 && (
+  <Badge variant="outline" className="text-[9px] h-4 px-1">
+    🔁 {lead.contact_count}
+  </Badge>
+)}
 ```
-- Validate sender có quyền `notifications.broadcast` và mọi user_id trong `target_user_ids` nằm trong scope của sender (kiểm tra qua service_role)
-- Bulk insert vào bảng `notifications` (1 record mỗi user) → trigger có sẵn `trg_notifications_push` tự động gọi `send-notification` cho từng user
-- Trả về `{ ok, sent_count, failed_count }`
-- Log vào bảng `audit_logs` (action: `BROADCAST_NOTIFICATION`)
+Đặt cùng dòng với badge B2B/temperature (line 504).
 
-Lý do dùng edge function: bulk insert vài chục—vài trăm record cùng lúc, cần service_role để bypass RLS check sender, và để gom audit log.
+### 4. Widget "Việc cần làm hôm nay" (`PersonalDashboard.tsx`)
 
-### 4. Lịch sử broadcast
+Card hiện tại "Nhắc hẹn hôm nay" (line 233-263) → nâng cấp:
+- Đổi tiêu đề thành **"Việc cần làm hôm nay"**
+- Sort: `temperature='hot'` lên trước, sau đó theo `follow_up_date` ASC
+- Hiển thị thêm: số điện thoại + nút "Gọi ngay" (link `tel:`) + badge nhiệt độ
+- Bao gồm cả lead **quá hạn** (đã có `lte(today)`) → highlight đỏ
+- Click row → mở `/tiem-nang?leadId=<id>` thay vì chỉ navigate `/tiem-nang`
 
-Tab "Lịch sử gửi" cùng trang `/gui-thong-bao`:
-- Bảng: Ngày | Tiêu đề | Người gửi | Số người nhận | Đã đọc / Tổng | Hành động
-- Click → modal xem nội dung gốc + danh sách ai đã đọc / chưa đọc
-
-Lưu vào bảng mới `broadcast_messages` để truy vết:
+Sort logic:
+```ts
+const tempOrder = { hot: 0, warm: 1, cold: 2 };
+data.sort((a, b) => {
+  const tA = tempOrder[a.temperature ?? "warm"];
+  const tB = tempOrder[b.temperature ?? "warm"];
+  if (tA !== tB) return tA - tB;
+  return a.follow_up_date.localeCompare(b.follow_up_date);
+});
 ```
-id, title, message, priority, url, target_filter (jsonb), recipient_ids (uuid[]),
-sent_by, sent_at, sent_count
+
+### 5. Daily Reminders — Digest 8h sáng
+
+Hiện tại function gửi 1 notification cho **mỗi lead** → spam khi sale có nhiều lead.
+
+**Bổ sung** một loop mới sau loop FOLLOW_UP hiện tại (line 142-155):
+- Group `leads` theo `assigned_to`
+- Tạo 1 notification digest/sale với `type='DAILY_DIGEST'`:
+  - Title: `📋 Việc hôm nay: X lead cần chăm sóc`
+  - Message: `Bạn có X lead cần follow-up hôm nay. Mở app để xem chi tiết.`
+  - `entity_type='dashboard'`, `entity_id=user_id`
+  - Priority: `high` nếu có lead Nóng, `normal` ngược lại
+
+Giữ nguyên các notification chi tiết FOLLOW_UP để user có thể click vào từng lead trong bell.
+
+**Cron schedule**: kiểm tra `pg_cron` đã có job 8h sáng chưa (sẽ query trước khi sửa). Nếu chưa, thêm job:
+```sql
+SELECT cron.schedule('daily-reminders-8am', '0 1 * * *',  -- 1:00 UTC = 8:00 GMT+7
+  $$ SELECT net.http_post(url:='https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/daily-reminders', headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb) $$);
 ```
 
-### 5. Web Push
+## Files sẽ thay đổi
 
-Tận dụng pipeline có sẵn: `notifications` INSERT → `trg_notifications_push` → edge function `send-notification` → OneSignal → device.
-Không cần chỉnh `send-notification`. Chỉ thêm 1 type mới `BROADCAST` để bell trong app hiển thị icon riêng (📢).
+1. `src/pages/Leads.tsx` — temperature động + badge contact_count
+2. `src/pages/PersonalDashboard.tsx` — widget "Việc cần làm hôm nay"
+3. `supabase/functions/daily-reminders/index.ts` — thêm DAILY_DIGEST
+4. (Có thể) Insert cron job nếu chưa có
 
----
+## Test sau khi triển khai
 
-### Chi tiết kỹ thuật
-
-**Database migration:**
-- Tạo bảng `broadcast_messages` (RLS: ADMIN/GDKD/MANAGER/HCNS xem broadcast họ gửi; ADMIN xem tất cả)
-- Thêm `'BROADCAST'` vào enum/check constraint của `notifications.type` (nếu có) — *nếu là check constraint thì DROP constraint thay vì thêm value, theo policy dự án*
-- Thêm permission `notifications.broadcast` vào `DEFAULT_PERMISSIONS` cho ADMIN/GDKD/MANAGER/HCNS
-
-**Edge Function `broadcast-notification`:**
-- Verify JWT trong code, lấy sender role+department
-- Server-side scope check: re-query `profiles` với filter giống client, intersect với `target_user_ids`
-- Insert `broadcast_messages` (1 row) + `notifications` (N rows) trong 1 transaction (RPC function `broadcast_notification_insert`)
-
-**Frontend:**
-- File mới: `src/pages/BroadcastNotification.tsx`
-- File mới: `src/components/notifications/RecipientSelector.tsx` (4 tabs filter + preview)
-- Thêm route trong `App.tsx`
-- Thêm menu item trong `AppSidebar.tsx` nhóm "Quản trị"
-- Thêm `notifications.broadcast` vào `usePermissions.ts` + `PermissionEditDialog`
-
-**Test thực tế sau khi build:**
-1. Login ADMIN → mở `/gui-thong-bao` → chọn "Theo loại nhân sự" → tick cả Chính thức + TTS → preview hiện 28 người (theo số liệu DB: 1+2+1+2+1+1+1+10+4+1+3+2 = 29) → gửi → check bảng `notifications` có 29 row mới → check chuông trong app của 1 user khác có badge → check device đã subscribe push có nhận
-2. Login GDKD → chỉ chọn được Sale roles, không thấy phòng HCNS → bypass thử bằng devtools sửa target_user_ids → edge function reject 403
-3. Tab "Lịch sử" → thấy broadcast vừa gửi → click → danh sách 29 recipient + ai đã đọc
-
----
-
-### Câu hỏi xác nhận trước khi build
-
-1. **Phạm vi quyền gửi**: Chốt 4 role (ADMIN, GDKD, MANAGER, HCNS) như trên, hay muốn thêm/bớt?
-2. **Lưu lịch sử broadcast**: Có cần bảng `broadcast_messages` để CEO audit về sau, hay chỉ cần ghi `audit_logs` là đủ?
-3. **Giới hạn**: Có muốn rate-limit (vd: tối đa 5 broadcast/giờ/user) không?
-
-Trả lời 3 câu này (hoặc nói "OK hết, làm theo plan") để tôi triển khai.
+1. Mở `/tiem-nang` Kanban → thấy badge 🔥/🟡/❄️ tự đổi theo `last_contact_at`
+2. Kéo card sang cột khác → dialog bắt buộc nhập note ≥10 ký tự (đã có)
+3. Card hiện badge `🔁 N` với N = contact_count
+4. Mở dashboard cá nhân (role SALE) → widget "Việc cần làm hôm nay" sort Nóng trước, có nút Gọi
+5. Trigger thủ công edge function `daily-reminders` → kiểm tra bảng `notifications` có record `type='DAILY_DIGEST'`
