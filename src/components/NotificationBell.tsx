@@ -175,7 +175,7 @@ export function NotificationBell() {
 
   const markAllRead = async () => {
     if (!user?.id) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    await markAllNotificationsRead(user.id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user.id] });
   };
