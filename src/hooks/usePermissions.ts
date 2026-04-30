@@ -87,6 +87,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "b2b_tours.view", "b2b_tours.logs",
     "candidates.view", "candidates.create", "candidates.edit", "candidates.delete",
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
+    "notifications.broadcast",
   ],
   SUPER_ADMIN: [
     "dashboard.view",
@@ -112,6 +113,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "kpi_policies.view", "kpi_policies.create", "kpi_policies.edit",
     "campaigns.view", "campaigns.create", "campaigns.edit", "campaigns.delete",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   GDKD: [
     "dashboard.view",
@@ -131,6 +133,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view",
     "campaigns.view", "campaigns.create", "campaigns.edit",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   MANAGER: [
     "dashboard.view",
@@ -153,6 +156,7 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "candidates.view",
     "campaigns.view", "campaigns.create", "campaigns.edit",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
   DIEUHAN: [
     "dashboard.view",
@@ -240,8 +244,8 @@ const DEFAULT_PERMISSIONS: Record<string, PermissionKey[]> = {
     "kpi_policies.view",
     "campaigns.view",
     "tasks.view", "tasks.create", "tasks.edit",
+    "notifications.broadcast",
   ],
-  SALE_DOMESTIC: [
     "dashboard.view",
     "contracts.view",
     "payments.view",
