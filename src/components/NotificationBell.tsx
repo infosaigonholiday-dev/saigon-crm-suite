@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
 import { vi } from "date-fns/locale";
+import { markNotificationRead, markAllNotificationsRead } from "@/lib/markNotificationRead";
 
 const typeIcons: Record<string, typeof Cake> = {
   birthday: Cake,
