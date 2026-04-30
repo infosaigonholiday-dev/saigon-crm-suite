@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,12 +7,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertTriangle, Bell, Wallet, Plane, FileSignature, CreditCard,
-  ArrowRight, Loader2, ShieldAlert, Calendar,
+  ArrowRight, Loader2, ShieldAlert, Calendar, CheckCheck, Inbox,
 } from "lucide-react";
 import { format, addDays, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
+import { toast } from "sonner";
+
+// Phân loại type → nhóm
+const TYPE_GROUPS: Record<string, string> = {
+  LEAD_ASSIGNED: "lead", LEAD_WON: "lead", LEAD_FORGOTTEN: "lead",
+  FOLLOW_UP: "lead", FOLLOW_UP_OVERDUE: "lead", NEW_ONLINE_LEAD: "lead",
+  ESCALATION_LV1: "lead", ESCALATION_LV2: "lead",
+  BOOKING_NEW: "booking", BOOKING_STATUS: "booking", TOUR_DEPARTURE: "booking",
+  QUOTATION_SENT: "booking", CONTRACT_EXPIRY: "booking",
+  PAYMENT_DUE: "finance", PAYMENT_OVERDUE: "finance", PAYMENT_RECEIVED: "finance",
+  CASHFLOW_NEGATIVE: "finance", BUDGET_ESTIMATE_PENDING: "finance",
+  BUDGET_ESTIMATE_SUBMITTED: "finance", BUDGET_ESTIMATE_REMIND: "finance",
+  BUDGET_ESTIMATE_OVERDUE: "finance", BUDGET_SETTLEMENT_PENDING: "finance",
+  SETTLEMENT_VARIANCE_HIGH: "finance", EXPENSE_ESCALATION: "finance",
+  LEAVE_REQUEST_NEW: "hr", LEAVE_REQUEST_RESULT: "hr", NEW_EMPLOYEE: "hr",
+  TEST_PUSH: "system", INTERNAL_NOTE: "system", ADMIN_BROADCAST: "system",
+};
+const getGroup = (t: string) => TYPE_GROUPS[t] ?? "system";
+const PAGE_SIZE = 20;
 
 function fmtMoney(n: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN").format(Number(n ?? 0));
@@ -22,9 +43,9 @@ function getEntityLink(entityType: string | null, entityId: string | null): stri
   if (!entityType) return null;
   switch (entityType) {
     case "booking": return entityId ? `/dat-tour/${entityId}` : "/dat-tour";
-    case "budget_estimate": return "/tai-chinh?tab=du-toan";
-    case "budget_settlement": return "/tai-chinh?tab=quyet-toan";
-    case "transaction": return "/tai-chinh?tab=kt-duyet";
+    case "budget_estimate": return "/tai-chinh?tab=estimates";
+    case "budget_settlement": return "/tai-chinh?tab=settlements";
+    case "transaction": return "/tai-chinh?tab=hr-approval";
     case "finance": return "/tai-chinh";
     case "contract": return "/hop-dong";
     case "lead": return "/tiem-nang";
@@ -63,12 +84,55 @@ export default function AlertsCenter() {
     refetchInterval: 60000,
   });
 
+  // ===== TAB "TẤT CẢ" — pagination + filter loại =====
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [page, setPage] = useState(0);
+
+  const { data: allNotifsResult, isLoading: lAll } = useQuery({
+    queryKey: ["alerts-all", user?.id, groupFilter, page],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      // Lấy nhiều rồi filter client (vì TYPE_GROUPS map ở client)
+      let q = supabase
+        .from("notifications")
+        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read", { count: "exact" })
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (groupFilter !== "all") {
+        const types = Object.entries(TYPE_GROUPS).filter(([_, g]) => g === groupFilter).map(([t]) => t);
+        if (types.length > 0) q = q.in("type", types);
+      }
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, count } = await q.range(from, to);
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+    refetchInterval: 60000,
+  });
+  const allNotifs = allNotifsResult?.rows ?? [];
+  const totalCount = allNotifsResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const markAllReadMutation = async () => {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", user!.id)
+      .eq("is_read", false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Đã đánh dấu tất cả đã đọc");
+    queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
+  };
+
   const handleNotificationClick = async (n: any) => {
     const link = getEntityLink(n.entity_type, n.entity_id);
-    // Mark as read
     if (!n.is_read) {
       await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
       queryClient.invalidateQueries({ queryKey: ["alerts-urgent", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
       queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     }
@@ -169,16 +233,25 @@ export default function AlertsCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="h-7 w-7 text-destructive" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Trung tâm Cảnh báo</h1>
-          <p className="text-sm text-muted-foreground">Tổng hợp các cảnh báo, nhắc hẹn và việc cần xử lý gấp</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="h-7 w-7 text-destructive" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Trung tâm Cảnh báo</h1>
+            <p className="text-sm text-muted-foreground">Tổng hợp các cảnh báo, nhắc hẹn và việc cần xử lý gấp</p>
+          </div>
         </div>
+        <Button variant="outline" size="sm" onClick={markAllReadMutation}>
+          <CheckCheck className="h-4 w-4 mr-2" /> Đánh dấu tất cả đã đọc
+        </Button>
       </div>
 
-      <Tabs defaultValue="urgent" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="all">
+            <Inbox className="h-4 w-4 mr-2" />
+            Tất cả {totalCount > 0 && <Badge variant="secondary" className="ml-2">{totalCount}</Badge>}
+          </TabsTrigger>
           <TabsTrigger value="urgent">
             <ShieldAlert className="h-4 w-4 mr-2" />
             Khẩn cấp {urgentCount > 0 && <Badge variant="destructive" className="ml-2">{urgentCount}</Badge>}
@@ -192,6 +265,70 @@ export default function AlertsCenter() {
             Vận hành {opsCount > 0 && <Badge variant="secondary" className="ml-2">{opsCount}</Badge>}
           </TabsTrigger>
         </TabsList>
+
+        {/* ===== TẤT CẢ ===== */}
+        <TabsContent value="all" className="mt-4 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Loại:</span>
+            <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(0); }}>
+              <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="lead">Lead / Tiềm năng</SelectItem>
+                <SelectItem value="booking">Booking / Tour</SelectItem>
+                <SelectItem value="finance">Tài chính</SelectItem>
+                <SelectItem value="hr">Nhân sự</SelectItem>
+                <SelectItem value="system">Hệ thống</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">
+              Trang {page + 1}/{totalPages} · {totalCount} thông báo
+            </span>
+          </div>
+
+          {lAll ? (
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>
+          ) : allNotifs.length === 0 ? (
+            <Card><CardContent className="py-10 text-center text-muted-foreground">
+              <Bell className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              Không có thông báo nào.
+            </CardContent></Card>
+          ) : (
+            <>
+              {allNotifs.map((n: any) => {
+                const link = getEntityLink(n.entity_type, n.entity_id);
+                const clickable = !!link;
+                return (
+                  <Card
+                    key={n.id}
+                    className={`${n.is_read ? "bg-card" : "bg-accent/30"} ${n.priority === "high" ? "border-l-4 border-l-destructive" : ""} ${clickable ? "cursor-pointer hover:bg-accent/60 transition-colors" : ""}`}
+                    onClick={clickable ? () => handleNotificationClick(n) : undefined}
+                    role={clickable ? "button" : undefined}
+                    tabIndex={clickable ? 0 : undefined}
+                  >
+                    <CardContent className="py-3 flex items-start gap-3">
+                      <Bell className={`h-4 w-4 mt-0.5 shrink-0 ${n.is_read ? "text-muted-foreground" : "text-primary"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${n.is_read ? "font-normal" : "font-semibold"}`}>{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words line-clamp-2">{n.message}</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-1">
+                          <Badge variant="outline" className="mr-2 text-[10px]">{getGroup(n.type)}</Badge>
+                          {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
+                        </p>
+                      </div>
+                      {clickable && <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-1" />}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Trước</Button>
+                <span className="text-sm text-muted-foreground">{page + 1} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Sau</Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
 
         {/* ===== KHẨN CẤP ===== */}
         <TabsContent value="urgent" className="mt-4 space-y-3">
