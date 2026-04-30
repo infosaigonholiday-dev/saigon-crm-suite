@@ -244,7 +244,7 @@ export function NotificationBell() {
                         return (
                           <button
                             key={n.id}
-                            onClick={() => markAsRead(n.id, n.entity_id, n.entity_type)}
+                            onClick={() => markAsRead(n)}
                             className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-b last:border-b-0 ${
                               !n.is_read ? "bg-primary/5" : ""
                             }`}
