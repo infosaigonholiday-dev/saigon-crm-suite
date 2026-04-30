@@ -36,6 +36,7 @@ type TourSource = "quote" | "package" | "manual";
 const initial = {
   code: "",
   customer_id: "",
+  booking_type: "retail",
   tour_source: "manual" as TourSource,
   quote_id: "",
   tour_package_id: "",
@@ -243,6 +244,7 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
         departure_date: form.departure_date || null,
         return_date: form.return_date || null,
         status: "PENDING",
+        booking_type: form.booking_type || "retail",
         tour_name_manual: form.tour_name_manual.trim() || null,
       };
 
@@ -308,6 +310,26 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
               </Select>
               {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id}</p>}
             </div>
+          </div>
+
+          {/* Loại booking */}
+          <div className="space-y-1.5">
+            <Label>Loại booking <span className="text-destructive">*</span></Label>
+            <Select value={form.booking_type} onValueChange={(v) => set("booking_type", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="retail">Khách lẻ (cá nhân/gia đình)</SelectItem>
+                <SelectItem value="group_tour">Tour đoàn</SelectItem>
+                <SelectItem value="mice">MICE</SelectItem>
+                <SelectItem value="school_group">Đoàn trường</SelectItem>
+                <SelectItem value="company_trip">Đoàn doanh nghiệp</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.booking_type !== "retail" && (
+              <p className="text-xs text-muted-foreground">
+                Sau khi tạo, bạn có thể mở Hồ sơ vận hành đoàn từ trang chi tiết booking.
+              </p>
+            )}
           </div>
 
           {/* Nguồn tour */}

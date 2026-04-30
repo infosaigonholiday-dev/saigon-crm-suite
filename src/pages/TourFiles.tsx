@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +26,63 @@ const RISK_BADGE: Record<string, string> = {
 
 export default function TourFiles() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission("bookings", "create");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [taskFilter, setTaskFilter] = useState<"all" | "overdue" | "pending_check" | "upcoming" | "missing_doc">("all");
   const [openForm, setOpenForm] = useState(false);
 
+  // Đọc URL params (từ Dashboard widgets)
+  useEffect(() => {
+    if (searchParams.get("overdue") === "true") setTaskFilter("overdue");
+    else if (searchParams.get("pending_check") === "true") setTaskFilter("pending_check");
+    else if (searchParams.get("upcoming") === "true") setTaskFilter("upcoming");
+    else if (searchParams.get("missing_doc")) setTaskFilter("missing_doc");
+    const s = searchParams.get("stage");
+    if (s) setStageFilter(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pre-fetch tour_file_ids khi taskFilter cần lọc theo tasks
+  const { data: filteredIds } = useQuery({
+    queryKey: ["tour_files_taskfilter_ids", taskFilter],
+    enabled: taskFilter !== "all" && taskFilter !== "missing_doc",
+    queryFn: async () => {
+      let statuses: string[] = [];
+      if (taskFilter === "overdue") statuses = ["overdue"];
+      if (taskFilter === "pending_check") statuses = ["done_pending_check"];
+      if (taskFilter === "upcoming") {
+        // tour khởi hành ≤ 7 ngày + còn task chưa duyệt
+        const today = new Date(); const in7 = new Date(); in7.setDate(today.getDate() + 7);
+        const { data: tours } = await (supabase as any)
+          .from("tour_files")
+          .select("id, departure_date")
+          .gte("departure_date", today.toISOString().slice(0, 10))
+          .lte("departure_date", in7.toISOString().slice(0, 10));
+        const ids = (tours || []).map((x: any) => x.id);
+        if (!ids.length) return [];
+        const { data: tasks } = await (supabase as any)
+          .from("tour_tasks")
+          .select("tour_file_id")
+          .in("tour_file_id", ids)
+          .not("status", "in", "(approved_done,cancelled)");
+        return Array.from(new Set((tasks || []).map((t: any) => t.tour_file_id)));
+      }
+      const { data: tasks } = await (supabase as any)
+        .from("tour_tasks")
+        .select("tour_file_id")
+        .in("status", statuses);
+      return Array.from(new Set((tasks || []).map((t: any) => t.tour_file_id)));
+    },
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["tour_files", page, search, stageFilter, typeFilter],
+    queryKey: ["tour_files", page, search, stageFilter, typeFilter, taskFilter, filteredIds],
+    enabled: taskFilter === "all" || taskFilter === "missing_doc" || !!filteredIds,
     queryFn: async () => {
       let q = (supabase as any)
         .from("tour_files")
@@ -54,6 +101,11 @@ export default function TourFiles() {
       }
       if (stageFilter !== "all") q = q.eq("current_stage", stageFilter);
       if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
+      if (taskFilter !== "all" && taskFilter !== "missing_doc") {
+        const ids = filteredIds || [];
+        if (!ids.length) return { rows: [], total: 0 };
+        q = q.in("id", ids);
+      }
 
       const { data, count, error } = await q;
       if (error) throw error;
@@ -129,6 +181,18 @@ export default function TourFiles() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={taskFilter} onValueChange={(v) => { setTaskFilter(v as any); setPage(0); }}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Lọc theo task" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="overdue">Có task quá hạn</SelectItem>
+              <SelectItem value="pending_check">Có task chờ kiểm</SelectItem>
+              <SelectItem value="upcoming">Khởi hành ≤ 7 ngày còn task</SelectItem>
+            </SelectContent>
+          </Select>
+          {taskFilter !== "all" && (
+            <Button variant="ghost" size="sm" onClick={() => setTaskFilter("all")}>Xoá lọc</Button>
+          )}
         </CardContent>
       </Card>
 

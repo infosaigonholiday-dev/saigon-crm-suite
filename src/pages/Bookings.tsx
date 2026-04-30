@@ -12,12 +12,15 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, AlertCircle, AlertTriangle, Loader2, Printer } from "lucide-react";
+import { Plus, AlertCircle, AlertTriangle, Loader2, Printer, Briefcase } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 import { canPrintBookingConfirmation, DEPT_PRINT_ROLES } from "@/lib/bookingPrintAccess";
+import { BOOKING_TYPE_LABEL } from "@/lib/tourFileWorkflow";
+import TourFileFormDialog from "@/components/tour-files/TourFileFormDialog";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +46,8 @@ export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [prefillData, setPrefillData] = useState<any>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [tourFileFor, setTourFileFor] = useState<{ bookingId: string } | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
@@ -102,10 +107,11 @@ export default function Bookings() {
   }
 
   const { data: totalCount = 0 } = useQuery({
-    queryKey: ["bookings-count", scope, myDeptId],
+    queryKey: ["bookings-count", scope, myDeptId, typeFilter],
     queryFn: async () => {
       let q = supabase.from("bookings").select("*", { count: "exact", head: true });
       q = applyScopeFilter(q);
+      if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
       const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
@@ -114,19 +120,39 @@ export default function Bookings() {
   });
 
   const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["bookings", page, scope, myDeptId],
+    queryKey: ["bookings", page, scope, myDeptId, typeFilter],
     queryFn: async () => {
       let q = supabase
         .from("bookings")
-        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, customers(full_name)")
+        .select("id, code, customer_id, sale_id, department_id, pax_total, total_value, status, deposit_due_at, remaining_due_at, booking_type, customers(full_name)")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       q = applyScopeFilter(q);
+      if (typeFilter !== "all") q = q.eq("booking_type", typeFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data;
     },
     enabled: scope === "all" || scope === "personal" || (scope === "department" && !!myDeptId),
+  });
+
+  // Map booking_id -> tour_file (id, code) cho các booking hiện có
+  const bookingIds = (bookings || []).map((b: any) => b.id);
+  const { data: tourFileMap = {} } = useQuery({
+    queryKey: ["bookings-tour-files-map", bookingIds],
+    enabled: bookingIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("tour_files")
+        .select("id, tour_file_code, booking_id")
+        .in("booking_id", bookingIds);
+      if (error) throw error;
+      const map: Record<string, { id: string; code: string }> = {};
+      (data || []).forEach((tf: any) => {
+        if (tf.booking_id) map[tf.booking_id] = { id: tf.id, code: tf.tour_file_code };
+      });
+      return map;
+    },
   });
 
   const { data: highNoteMap = {} } = useQuery({
@@ -164,6 +190,22 @@ export default function Bookings() {
       />
 
       <Card>
+        <CardContent className="p-3 flex flex-wrap gap-3 items-center">
+          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="Loại booking" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả loại</SelectItem>
+              <SelectItem value="retail">Khách lẻ</SelectItem>
+              <SelectItem value="group_tour">Tour đoàn</SelectItem>
+              <SelectItem value="mice">MICE</SelectItem>
+              <SelectItem value="school_group">Đoàn trường</SelectItem>
+              <SelectItem value="company_trip">Đoàn doanh nghiệp</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -173,6 +215,8 @@ export default function Bookings() {
                 <TableRow>
                   <TableHead>Mã</TableHead>
                   <TableHead>Khách hàng</TableHead>
+                  <TableHead>Loại</TableHead>
+                  <TableHead>Hồ sơ đoàn</TableHead>
                   <TableHead className="text-center">Số khách</TableHead>
                   <TableHead>Tổng tiền</TableHead>
                   <TableHead>Trạng thái</TableHead>
@@ -194,6 +238,9 @@ export default function Bookings() {
                     myDeptId: effectiveMyDeptId,
                     booking: { sale_id: (b as any).sale_id, department_id: (b as any).department_id },
                   });
+                  const bType = (b as any).booking_type || "retail";
+                  const tf = (tourFileMap as Record<string, { id: string; code: string }>)[b.id];
+                  const isGroup = bType !== "retail";
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
                       <TableCell className="font-mono text-xs">
@@ -203,6 +250,38 @@ export default function Bookings() {
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{customerName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={isGroup ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground"}
+                        >
+                          {BOOKING_TYPE_LABEL[bType] || bType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {tf ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 font-mono text-xs text-blue-600 hover:text-blue-700"
+                            onClick={() => navigate(`/ho-so-doan/${tf.id}`)}
+                          >
+                            <Briefcase className="h-3.5 w-3.5 mr-1" />
+                            {tf.code}
+                          </Button>
+                        ) : isGroup ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setTourFileFor({ bookingId: b.id })}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Tạo hồ sơ
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">{b.pax_total ?? 0}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(b.total_value)}</TableCell>
                       <TableCell>
@@ -260,7 +339,7 @@ export default function Bookings() {
                   );
                 })}
                 {bookings.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -276,6 +355,18 @@ export default function Bookings() {
           </div>
         )}
       </Card>
+
+      {tourFileFor && (
+        <TourFileFormDialog
+          open={!!tourFileFor}
+          onOpenChange={(o) => !o && setTourFileFor(null)}
+          bookingId={tourFileFor.bookingId}
+          onCreated={(id) => {
+            setTourFileFor(null);
+            navigate(`/ho-so-doan/${id}`);
+          }}
+        />
+      )}
     </div>
   );
 }
