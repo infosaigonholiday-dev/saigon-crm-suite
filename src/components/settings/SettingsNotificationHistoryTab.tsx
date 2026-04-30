@@ -298,6 +298,15 @@ export function SettingsNotificationHistoryTab() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {r.action_required ? (
+                          <Badge variant="outline" className={`text-[10px] ${ACTION_STATUS_LABELS[r.action_status]?.cls ?? ""}`}>
+                            {ACTION_STATUS_LABELS[r.action_status]?.label ?? r.action_status ?? "—"}
+                          </Badge>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">Không cần</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
