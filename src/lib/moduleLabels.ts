@@ -28,6 +28,7 @@ export const MODULE_LABELS: Record<string, string> = {
   settings: "Cài đặt",
   campaigns: "Chiến dịch",
   tasks: "Công việc",
+  tour_files: "Hồ sơ đoàn",
 };
 
 export const getModuleLabel = (key: string): string =>
