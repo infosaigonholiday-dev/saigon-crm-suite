@@ -168,7 +168,7 @@ export default function BroadcastNotification() {
           title: title.trim(),
           message: message.trim(),
           priority,
-          url: url.trim() || "/",
+          url: url.trim() || "/canh-bao",
           target_user_ids: recipientIds,
           target_filter,
         },
