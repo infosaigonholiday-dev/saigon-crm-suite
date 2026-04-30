@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "birthday",
+          type: "BIRTHDAY",
           title: `🎂 Sinh nhật KH: ${c.full_name}`,
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "birthday",
+          type: "BIRTHDAY",
           title: `🎂 Sinh nhật đầu mối: ${c.contact_person || "N/A"} (${c.company_name || "N/A"})`,
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
         const daysLabel = dayIdx === 0 ? "hôm nay" : `${dayIdx} ngày nữa`;
         notifications.push({
           user_id: c.assigned_sale_id,
-          type: "company_anniversary",
+          type: "COMPANY_ANNIVERSARY",
           title: `🏢 Kỷ niệm thành lập: ${c.company_name || "N/A"}`,
           message: `${years} năm (${daysLabel}). Gửi offer MICE?`,
           entity_type: "customer",
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         if (!l.assigned_to) continue;
         notifications.push({
           user_id: l.assigned_to,
-          type: "follow_up",
+          type: "FOLLOW_UP",
           title: `📞 Follow-up hôm nay: ${l.full_name}`,
           message: `Theo lịch follow-up đã đặt.`,
           entity_type: "lead",
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
         const daysSince = Math.floor((today.getTime() - new Date(l.created_at).getTime()) / (1000 * 60 * 60 * 24));
         notifications.push({
           user_id: l.assigned_to,
-          type: "lead_no_schedule",
+          type: "LEAD_NO_SCHEDULE",
           title: `📅 Lead chưa có lịch hẹn: ${l.full_name}`,
           message: `Đã ${daysSince} ngày chưa lên lịch follow-up. Hãy đặt lịch ngay!`,
           entity_type: "lead",
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
           for (const g of gdkds || []) {
             notifications.push({
               user_id: g.id,
-              type: "lead_no_schedule",
+              type: "LEAD_NO_SCHEDULE",
               title: `📅 Lead chưa có lịch hẹn`,
               message: `"${l.full_name}" đã ${daysSince} ngày chưa lên lịch follow-up.`,
               entity_type: "lead",
@@ -603,7 +603,42 @@ Deno.serve(async (req) => {
       await supabase.from("budget_settlements").update({ last_reminder_at: now.toISOString() }).eq("id", st.id);
     }
 
-    // Công nợ KH quá hạn > 30 ngày → ADMIN
+    // FIX 3: Chi phí HCNS chờ HR duyệt > 24h → escalate ADMIN
+    // Dedupe 1 ngày bằng cách check notification gần nhất cho cùng entity_id
+    const h24 = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
+    const { data: stuckHrTx } = await supabase
+      .from("transactions")
+      .select("id, description, amount, created_at, submitted_by")
+      .eq("approval_status", "PENDING_HR")
+      .lt("created_at", h24);
+    if (stuckHrTx?.length && adminUsers?.length) {
+      for (const tx of stuckHrTx) {
+        // Dedupe: skip nếu đã có notification EXPENSE_ESCALATION cho tx này trong 24h qua
+        const { data: prev } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("type", "EXPENSE_ESCALATION")
+          .eq("entity_id", tx.id)
+          .gte("created_at", h24)
+          .limit(1);
+        if (prev && prev.length > 0) continue;
+
+        const ageH = Math.floor((now.getTime() - new Date(tx.created_at).getTime()) / 3600000);
+        for (const u of adminUsers) {
+          notifications.push({
+            user_id: u.id,
+            type: "EXPENSE_ESCALATION",
+            title: `⚠️ Chi phí chờ HR duyệt > ${ageH}h`,
+            message: `${tx.description ?? "(không mô tả)"} — ${Number(tx.amount ?? 0).toLocaleString("vi-VN")} VNĐ`,
+            entity_type: "transaction",
+            entity_id: tx.id,
+            priority: "high",
+          });
+        }
+      }
+    }
+
+
     const d30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const { data: overdueAR } = await supabase
       .from("accounts_receivable")
@@ -672,7 +707,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "payment_overdue",
+            type: "PAYMENT_OVERDUE",
             title,
             message,
             entity_type: "booking",
@@ -714,7 +749,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "contract_expiry",
+            type: "CONTRACT_EXPIRY",
             title,
             message,
             entity_type: "contract",
@@ -753,7 +788,7 @@ Deno.serve(async (req) => {
         for (const uid of recipients) {
           notifications.push({
             user_id: uid,
-            type: "tour_departure",
+            type: "TOUR_DEPARTURE",
             title,
             message,
             entity_type: "booking",
@@ -1000,7 +1035,7 @@ Deno.serve(async (req) => {
 
           const notifs = (targets ?? []).map((t: any) => ({
             user_id: t.id,
-            type: "recurring_expense_generated",
+            type: "RECURRING_EXPENSE_GENERATED",
             title: `🔁 Chi phí định kỳ tháng ${today.getMonth() + 1}`,
             message: `Đã tự động tạo ${recurringGenerated} khoản chi phí định kỳ. Vui lòng kiểm tra.`,
             priority: "normal",
