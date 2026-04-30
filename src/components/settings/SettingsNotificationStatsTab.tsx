@@ -151,6 +151,100 @@ export function SettingsNotificationStatsTab() {
         </CardContent>
       </Card>
 
+      {/* Section: Tình trạng đọc theo nhân sự (90 ngày) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Tình trạng đọc theo nhân sự</CardTitle>
+            <Badge variant="secondary" className="text-xs">90 ngày</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-md overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[160px]">Nhân sự</TableHead>
+                  <TableHead className="w-[200px]">Email</TableHead>
+                  <TableHead className="w-[90px] text-right">Tổng TB</TableHead>
+                  <TableHead className="w-[90px] text-right">Đã đọc</TableHead>
+                  <TableHead className="w-[90px] text-right">Chưa đọc</TableHead>
+                  <TableHead className="w-[120px] text-right">Khẩn chưa đọc</TableHead>
+                  <TableHead className="w-[140px] text-right">Action chưa xử lý</TableHead>
+                  <TableHead className="w-[100px] text-right">Quá hạn</TableHead>
+                  <TableHead className="w-[160px]">Lần đọc gần nhất</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loadingFull && (
+                  <TableRow><TableCell colSpan={9} className="text-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell></TableRow>
+                )}
+                {!loadingFull && byUserFull.length === 0 && (
+                  <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">
+                    Chưa có dữ liệu thông báo trong 90 ngày
+                  </TableCell></TableRow>
+                )}
+                {byUserFull.map((r: any) => (
+                  <TableRow key={r.user_id}>
+                    <TableCell className="text-sm font-medium">
+                      <div className="flex flex-col">
+                        <span>{r.full_name || "—"}</span>
+                        {r.department && <span className="text-[10px] text-muted-foreground">{r.department}</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">{r.email || "—"}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{r.total_notifications}</TableCell>
+                    <TableCell className="text-right font-mono text-sm text-blue-700">{r.read_count}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {Number(r.unread_count) > 0 ? (
+                        <span className="text-amber-700 font-semibold">{r.unread_count}</span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {Number(r.unread_high_critical) > 0 ? (
+                        <Badge variant="destructive" className="text-[10px]">{r.unread_high_critical}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {Number(r.pending_actions) > 0 ? (
+                        <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300">
+                          {r.pending_actions}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {Number(r.overdue_actions) > 0 ? (
+                        <Badge variant="destructive" className="text-[10px]">{r.overdue_actions}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.last_read_at
+                        ? formatDistanceToNow(new Date(r.last_read_at), { addSuffix: true, locale: vi })
+                        : <span className="text-destructive">Chưa từng đọc</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            <strong>Nguyên tắc:</strong> "Đã gửi" ≠ "Đã đọc" ≠ "Đã xử lý". Click thông báo chỉ đánh dấu đã đọc;
+            <code className="mx-1">action_status = completed</code> chỉ xảy ra khi nghiệp vụ thực tế hoàn tất.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
