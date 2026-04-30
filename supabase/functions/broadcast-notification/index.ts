@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const { data: senderProfile, error: pErr } = await admin
       .from("profiles")
-      .select("id, role, department, is_active, full_name")
+      .select("id, role, department_id, is_active, full_name")
       .eq("id", senderId)
       .maybeSingle();
     if (pErr || !senderProfile || !senderProfile.is_active) {
@@ -88,23 +88,20 @@ Deno.serve(async (req) => {
     // Server-side scope check: filter targetIds by sender scope
     let scopeQuery = admin
       .from("profiles")
-      .select("id, role, department")
+      .select("id, role, department_id")
       .in("id", targetIds)
       .eq("is_active", true);
 
-    // ADMIN & HCNS: gửi tất cả nhân viên
-    // GDKD: chỉ Sale roles
-    // MANAGER: chỉ cùng department
     if (senderProfile.role === "GDKD") {
       scopeQuery = scopeQuery.in("role", [
         "GDKD", "SALE_OUTBOUND", "SALE_DOMESTIC", "SALE_MICE",
         "INTERN_SALE_OUTBOUND", "INTERN_SALE_DOMESTIC", "INTERN_SALE_MICE",
       ]);
     } else if (senderProfile.role === "MANAGER") {
-      if (!senderProfile.department) {
+      if (!senderProfile.department_id) {
         return json({ ok: false, error: "Tài khoản MANAGER chưa gán phòng ban" }, 403);
       }
-      scopeQuery = scopeQuery.eq("department", senderProfile.department);
+      scopeQuery = scopeQuery.eq("department_id", senderProfile.department_id);
     }
     // ADMIN, HCNS: không filter thêm
 
