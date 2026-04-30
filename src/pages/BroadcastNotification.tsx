@@ -225,7 +225,7 @@ export default function BroadcastNotification() {
 
   const handleSend = () => {
     const v = validateNotificationUrl({ action_url: url, action_required: false, priority });
-    if (!v.ok) { toast.error(v.error); return; }
+    if (!v.ok) { toast.error((v as any).error); return; }
     sendMutation.mutate();
   };
 
