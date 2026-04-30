@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
 import { vi } from "date-fns/locale";
+import { markNotificationRead, markAllNotificationsRead } from "@/lib/markNotificationRead";
 
 const typeIcons: Record<string, typeof Cake> = {
   birthday: Cake,
@@ -161,7 +162,7 @@ export function NotificationBell() {
   }, [filtered]);
 
   const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    await markNotificationRead(id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
     setOpen(false);
@@ -174,7 +175,7 @@ export function NotificationBell() {
 
   const markAllRead = async () => {
     if (!user?.id) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    await markAllNotificationsRead(user.id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user.id] });
   };
