@@ -277,7 +277,7 @@ export default function AlertsCenter() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Loại:</span>
             <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="lead">Lead / Tiềm năng</SelectItem>
@@ -285,6 +285,16 @@ export default function AlertsCenter() {
                 <SelectItem value="finance">Tài chính</SelectItem>
                 <SelectItem value="hr">Nhân sự</SelectItem>
                 <SelectItem value="system">Hệ thống</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground ml-2">Trạng thái:</span>
+            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(0); }}>
+              <SelectTrigger className="w-[160px] h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="unread">Chưa đọc</SelectItem>
+                <SelectItem value="action_pending">Cần xử lý</SelectItem>
+                <SelectItem value="overdue">Quá hạn</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground ml-auto">
