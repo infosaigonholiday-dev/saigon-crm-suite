@@ -136,10 +136,11 @@ Deno.serve(async (req) => {
     // ===== 4. Lead follow-up today =====
     const { data: leads } = await supabase
       .from("leads")
-      .select("id, full_name, assigned_to, follow_up_date")
+      .select("id, full_name, assigned_to, follow_up_date, temperature, last_contact_at")
       .eq("follow_up_date", todayStr)
       .not("assigned_to", "is", null);
     if (leads) {
+      // 4a. Notification chi tiết per-lead (giữ nguyên để click xem từng lead)
       for (const l of leads) {
         if (!l.assigned_to) continue;
         notifications.push({
@@ -150,6 +151,36 @@ Deno.serve(async (req) => {
           entity_type: "lead",
           entity_id: l.id,
           priority: "high",
+        });
+      }
+
+      // 4b. Daily digest gộp 1 thông báo / Sale (8h sáng)
+      const bySale = new Map<string, { hot: number; total: number; names: string[] }>();
+      for (const l of leads) {
+        if (!l.assigned_to) continue;
+        // Tính nhiệt độ động theo last_contact_at
+        let temp: "hot" | "warm" | "cold" = (l.temperature as any) || "warm";
+        if (l.last_contact_at) {
+          const days = Math.floor((today.getTime() - new Date(l.last_contact_at).getTime()) / 86400000);
+          temp = days < 3 ? "hot" : days <= 7 ? "warm" : "cold";
+        }
+        const entry = bySale.get(l.assigned_to) || { hot: 0, total: 0, names: [] };
+        entry.total += 1;
+        if (temp === "hot") entry.hot += 1;
+        if (entry.names.length < 3) entry.names.push(l.full_name);
+        bySale.set(l.assigned_to, entry);
+      }
+      for (const [saleId, info] of bySale.entries()) {
+        const hotPart = info.hot > 0 ? ` (${info.hot} 🔥 nóng)` : "";
+        const sample = info.names.join(", ") + (info.total > info.names.length ? "..." : "");
+        notifications.push({
+          user_id: saleId,
+          type: "DAILY_DIGEST",
+          title: `📋 Việc hôm nay: ${info.total} lead cần chăm sóc${hotPart}`,
+          message: `Bao gồm: ${sample}. Mở Dashboard để xem chi tiết.`,
+          entity_type: "dashboard",
+          entity_id: saleId,
+          priority: info.hot > 0 ? "high" : "normal",
         });
       }
     }
