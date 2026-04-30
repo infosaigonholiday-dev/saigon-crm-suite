@@ -16,6 +16,7 @@ import { Loader2, Plus, Eye, Check, X, Banknote, Trash2, Printer } from "lucide-
 import { toast } from "sonner";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { buildEstimateHtml, buildAdvanceHtml, openPrintWindow } from "@/lib/financePrintTemplates";
+import { FinanceFileUpload } from "./FinanceFileUpload";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
 
@@ -47,6 +48,7 @@ interface EstimateItem {
   vendor_id?: string;
   payment_deadline?: string;
   sort_order: number;
+  receipt_urls?: string[];
 }
 
 export function BudgetEstimatesTab() {
@@ -69,8 +71,9 @@ export function BudgetEstimatesTab() {
   const [formAdvance, setFormAdvance] = useState(0);
   const [formKtAssigned, setFormKtAssigned] = useState<string>("");
   const [formItems, setFormItems] = useState<EstimateItem[]>([
-    { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 },
+    { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0, receipt_urls: [] },
   ]);
+  const [tempFolder] = useState(() => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   // Danh sách Kế toán (để gán phụ trách dự toán này)
   const { data: accountants = [] } = useQuery({
@@ -151,6 +154,7 @@ export function BudgetEstimatesTab() {
           vendor_id: i.vendor_id || null,
           payment_deadline: i.payment_deadline || null,
           sort_order: idx,
+          receipt_urls: i.receipt_urls || [],
         }));
 
       if (itemsToInsert.length > 0) {
@@ -210,11 +214,11 @@ export function BudgetEstimatesTab() {
   const resetForm = () => {
     setFormBookingId("");
     setFormAdvance(0);
-    setFormItems([{ category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 }]);
+    setFormItems([{ category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0, receipt_urls: [] }]);
   };
 
   const addItem = () => {
-    setFormItems([...formItems, { category: "KS", description: "", unit_price: 0, quantity: 1, sort_order: formItems.length }]);
+    setFormItems([...formItems, { category: "KS", description: "", unit_price: 0, quantity: 1, sort_order: formItems.length, receipt_urls: [] }]);
   };
 
   const removeItem = (idx: number) => {
@@ -378,6 +382,7 @@ export function BudgetEstimatesTab() {
                       <TableHead className="w-[140px]">NCC</TableHead>
                       <TableHead className="w-[130px]">Hạn TT</TableHead>
                       <TableHead className="w-[100px] text-right">Thành tiền</TableHead>
+                      <TableHead className="w-[180px]">Chứng từ</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -405,6 +410,14 @@ export function BudgetEstimatesTab() {
                         </TableCell>
                         <TableCell className="p-1"><Input className="h-8 text-xs" type="date" value={item.payment_deadline || ""} onChange={(e) => updateItem(idx, "payment_deadline", e.target.value)} /></TableCell>
                         <TableCell className="p-1 text-right text-xs font-medium">{formatCurrency(item.unit_price * item.quantity)}</TableCell>
+                        <TableCell className="p-1">
+                          <FinanceFileUpload
+                            urls={item.receipt_urls || []}
+                            onChange={(urls) => updateItem(idx, "receipt_urls", urls)}
+                            folder={tempFolder}
+                            maxFiles={5}
+                          />
+                        </TableCell>
                         <TableCell className="p-1">
                           {formItems.length > 1 && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
@@ -467,6 +480,7 @@ export function BudgetEstimatesTab() {
                   <TableHead className="text-right">SL</TableHead>
                   <TableHead className="text-right">Thành tiền</TableHead>
                   <TableHead>Hạn TT</TableHead>
+                  <TableHead>Chứng từ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -479,6 +493,14 @@ export function BudgetEstimatesTab() {
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                     <TableCell>{item.payment_deadline || "—"}</TableCell>
+                    <TableCell>
+                      <FinanceFileUpload
+                        urls={item.receipt_urls || []}
+                        onChange={() => {}}
+                        folder={selectedEstimate?.id || "view"}
+                        disabled
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

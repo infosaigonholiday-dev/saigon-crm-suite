@@ -620,6 +620,7 @@ export type Database = {
           id: string
           payment_deadline: string | null
           quantity: number | null
+          receipt_urls: string[]
           sort_order: number | null
           total: number | null
           unit_price: number | null
@@ -632,6 +633,7 @@ export type Database = {
           id?: string
           payment_deadline?: string | null
           quantity?: number | null
+          receipt_urls?: string[]
           sort_order?: number | null
           total?: number | null
           unit_price?: number | null
@@ -644,6 +646,7 @@ export type Database = {
           id?: string
           payment_deadline?: string | null
           quantity?: number | null
+          receipt_urls?: string[]
           sort_order?: number | null
           total?: number | null
           unit_price?: number | null
@@ -4222,6 +4225,7 @@ export type Database = {
           estimated_amount: number | null
           id: string
           receipt_url: string | null
+          receipt_urls: string[]
           settlement_id: string
           sort_order: number | null
           variance: number | null
@@ -4233,6 +4237,7 @@ export type Database = {
           estimated_amount?: number | null
           id?: string
           receipt_url?: string | null
+          receipt_urls?: string[]
           settlement_id: string
           sort_order?: number | null
           variance?: number | null
@@ -4244,6 +4249,7 @@ export type Database = {
           estimated_amount?: number | null
           id?: string
           receipt_url?: string | null
+          receipt_urls?: string[]
           settlement_id?: string
           sort_order?: number | null
           variance?: number | null
