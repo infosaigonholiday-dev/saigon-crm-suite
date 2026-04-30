@@ -411,6 +411,14 @@ export function BudgetEstimatesTab() {
                         <TableCell className="p-1"><Input className="h-8 text-xs" type="date" value={item.payment_deadline || ""} onChange={(e) => updateItem(idx, "payment_deadline", e.target.value)} /></TableCell>
                         <TableCell className="p-1 text-right text-xs font-medium">{formatCurrency(item.unit_price * item.quantity)}</TableCell>
                         <TableCell className="p-1">
+                          <FinanceFileUpload
+                            urls={item.receipt_urls || []}
+                            onChange={(urls) => updateItem(idx, "receipt_urls", urls)}
+                            folder={tempFolder}
+                            maxFiles={5}
+                          />
+                        </TableCell>
+                        <TableCell className="p-1">
                           {formItems.length > 1 && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
                               <Trash2 className="h-3 w-3 text-destructive" />
