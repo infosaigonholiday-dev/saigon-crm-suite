@@ -61,6 +61,16 @@ const tempConfig: Record<string, { icon: string; label: string; badgeClass: stri
   cold: { icon: "❄️", label: "Lạnh", badgeClass: "bg-blue-500 text-white border-blue-500" },
 };
 
+// Tính nhiệt độ động dựa vào last_contact_at theo spec:
+// 🔥 Nóng < 3 ngày, 🟡 Ấm 3-7 ngày, ❄️ Lạnh > 7 ngày
+function computeTemperature(lastContactAt: string | null, manualTemp: string | null): "hot" | "warm" | "cold" {
+  if (!lastContactAt) return (manualTemp as any) || "warm";
+  const days = Math.floor((Date.now() - new Date(lastContactAt).getTime()) / 86400000);
+  if (days < 3) return "hot";
+  if (days <= 7) return "warm";
+  return "cold";
+}
+
 function getFollowUpStatus(date: string | null): "overdue" | "today" | "future" | null {
   if (!date) return null;
   const d = new Date(date);
