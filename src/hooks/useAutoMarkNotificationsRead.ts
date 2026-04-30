@@ -17,7 +17,7 @@ export function useAutoMarkNotificationsRead(entityType: string, entityId?: stri
     (async () => {
       const { error } = await supabase
         .from("notifications")
-        .update({ is_read: true })
+        .update({ is_read: true, read_at: new Date().toISOString() })
         .match({ user_id: user.id, entity_type: entityType, entity_id: entityId, is_read: false });
       if (!cancelled && !error) {
         qc.invalidateQueries({ queryKey: ["notifications-unread", user.id] });
