@@ -139,6 +139,9 @@ export default function Settings() {
         {showNotificationHistory && (
           <TabsContent value="notif_history" className="mt-4"><SettingsNotificationHistoryTab /></TabsContent>
         )}
+        {showNotificationHistory && (
+          <TabsContent value="notif_stats" className="mt-4"><SettingsNotificationStatsTab /></TabsContent>
+        )}
       </Tabs>
     </div>
   );
