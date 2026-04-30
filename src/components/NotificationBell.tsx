@@ -161,7 +161,7 @@ export function NotificationBell() {
   }, [filtered]);
 
   const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    await markNotificationRead(id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
     setOpen(false);
