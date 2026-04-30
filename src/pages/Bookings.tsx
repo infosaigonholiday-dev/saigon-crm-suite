@@ -355,6 +355,18 @@ export default function Bookings() {
           </div>
         )}
       </Card>
+
+      {tourFileFor && (
+        <TourFileFormDialog
+          open={!!tourFileFor}
+          onOpenChange={(o) => !o && setTourFileFor(null)}
+          bookingId={tourFileFor.bookingId}
+          onCreated={(id) => {
+            setTourFileFor(null);
+            navigate(`/ho-so-doan/${id}`);
+          }}
+        />
+      )}
     </div>
   );
 }
