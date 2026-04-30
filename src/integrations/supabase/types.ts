@@ -500,6 +500,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          booking_type: string
           cancellation_fee: number | null
           cancelled_reason: string | null
           code: string
@@ -525,6 +526,7 @@ export type Database = {
           tour_package_id: string | null
         }
         Insert: {
+          booking_type?: string
           cancellation_fee?: number | null
           cancelled_reason?: string | null
           code: string
@@ -550,6 +552,7 @@ export type Database = {
           tour_package_id?: string | null
         }
         Update: {
+          booking_type?: string
           cancellation_fee?: number | null
           cancelled_reason?: string | null
           code?: string
@@ -4585,6 +4588,297 @@ export type Database = {
         }
         Relationships: []
       }
+      tour_documents: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          document_name: string | null
+          document_type: string
+          file_mime_type: string | null
+          file_url: string
+          id: string
+          is_current_version: boolean
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          source: string | null
+          status: string
+          tour_file_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+          version_no: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          document_name?: string | null
+          document_type: string
+          file_mime_type?: string | null
+          file_url: string
+          id?: string
+          is_current_version?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          source?: string | null
+          status?: string
+          tour_file_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version_no?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          document_name?: string | null
+          document_type?: string
+          file_mime_type?: string | null
+          file_url?: string
+          id?: string
+          is_current_version?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          source?: string | null
+          status?: string
+          tour_file_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_documents_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_documents_tour_file_id_fkey"
+            columns: ["tour_file_id"]
+            isOneToOne: false
+            referencedRelation: "tour_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_file_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_stage: string | null
+          id: string
+          reason: string | null
+          to_stage: string
+          tour_file_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: string | null
+          id?: string
+          reason?: string | null
+          to_stage: string
+          tour_file_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: string | null
+          id?: string
+          reason?: string | null
+          to_stage?: string
+          tour_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_file_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_file_status_history_tour_file_id_fkey"
+            columns: ["tour_file_id"]
+            isOneToOne: false
+            referencedRelation: "tour_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_files: {
+        Row: {
+          accountant_owner_id: string | null
+          booking_id: string | null
+          booking_type: string
+          created_at: string
+          created_by: string | null
+          current_stage: string
+          customer_id: string | null
+          department_id: string | null
+          departure_date: string | null
+          destination: string | null
+          duration_days: number | null
+          duration_nights: number | null
+          group_size_confirmed: number | null
+          group_size_estimated: number | null
+          id: string
+          lead_id: string | null
+          manager_owner_id: string | null
+          next_action_due_at: string | null
+          notes: string | null
+          operation_owner_id: string | null
+          return_date: string | null
+          risk_level: string
+          route: string | null
+          sale_owner_id: string | null
+          status: string
+          tour_file_code: string
+          tour_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accountant_owner_id?: string | null
+          booking_id?: string | null
+          booking_type: string
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string
+          customer_id?: string | null
+          department_id?: string | null
+          departure_date?: string | null
+          destination?: string | null
+          duration_days?: number | null
+          duration_nights?: number | null
+          group_size_confirmed?: number | null
+          group_size_estimated?: number | null
+          id?: string
+          lead_id?: string | null
+          manager_owner_id?: string | null
+          next_action_due_at?: string | null
+          notes?: string | null
+          operation_owner_id?: string | null
+          return_date?: string | null
+          risk_level?: string
+          route?: string | null
+          sale_owner_id?: string | null
+          status?: string
+          tour_file_code: string
+          tour_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accountant_owner_id?: string | null
+          booking_id?: string | null
+          booking_type?: string
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string
+          customer_id?: string | null
+          department_id?: string | null
+          departure_date?: string | null
+          destination?: string | null
+          duration_days?: number | null
+          duration_nights?: number | null
+          group_size_confirmed?: number | null
+          group_size_estimated?: number | null
+          id?: string
+          lead_id?: string | null
+          manager_owner_id?: string | null
+          next_action_due_at?: string | null
+          notes?: string | null
+          operation_owner_id?: string | null
+          return_date?: string | null
+          risk_level?: string
+          route?: string | null
+          sale_owner_id?: string | null
+          status?: string
+          tour_file_code?: string
+          tour_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_files_accountant_owner_id_fkey"
+            columns: ["accountant_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_manager_owner_id_fkey"
+            columns: ["manager_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_operation_owner_id_fkey"
+            columns: ["operation_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_sale_owner_id_fkey"
+            columns: ["sale_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_files_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_guests: {
         Row: {
           booking_id: string
@@ -4811,6 +5105,142 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_tasks: {
+        Row: {
+          assigned_by: string | null
+          checked_at: string | null
+          checked_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          department: string | null
+          description: string | null
+          due_at: string | null
+          escalated_at: string | null
+          evidence_required: boolean
+          evidence_type: string | null
+          evidence_url: string | null
+          id: string
+          owner_id: string
+          priority: string
+          read_at: string | null
+          reject_reason: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
+          started_at: string | null
+          status: string
+          task_code: string | null
+          title: string
+          tour_file_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          checked_at?: string | null
+          checked_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          due_at?: string | null
+          escalated_at?: string | null
+          evidence_required?: boolean
+          evidence_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          owner_id: string
+          priority?: string
+          read_at?: string | null
+          reject_reason?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          started_at?: string | null
+          status?: string
+          task_code?: string | null
+          title: string
+          tour_file_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          checked_at?: string | null
+          checked_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          due_at?: string | null
+          escalated_at?: string | null
+          evidence_required?: boolean
+          evidence_type?: string | null
+          evidence_url?: string | null
+          id?: string
+          owner_id?: string
+          priority?: string
+          read_at?: string | null
+          reject_reason?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          started_at?: string | null
+          status?: string
+          task_code?: string | null
+          title?: string
+          tour_file_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_tasks_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_tasks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_tasks_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_tasks_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_tasks_tour_file_id_fkey"
+            columns: ["tour_file_id"]
+            isOneToOne: false
+            referencedRelation: "tour_files"
             referencedColumns: ["id"]
           },
         ]
@@ -5081,6 +5511,11 @@ export type Database = {
       }
     }
     Functions: {
+      can_access_tour_file: {
+        Args: { _tour_file_id: string }
+        Returns: boolean
+      }
+      can_create_tour_file: { Args: never; Returns: boolean }
       generate_monthly_cashflow: {
         Args: { p_month: number; p_year: number }
         Returns: undefined
@@ -5108,6 +5543,7 @@ export type Database = {
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_booking_closed: { Args: { _booking_id: string }; Returns: boolean }
+      mark_tour_tasks_overdue: { Args: never; Returns: Json }
       rpc_cancel_leave_request: {
         Args: { p_id: string; p_reason?: string }
         Returns: Json
@@ -5153,6 +5589,16 @@ export type Database = {
         }[]
       }
       rpc_send_test_push: { Args: never; Returns: Json }
+      rpc_tour_dashboard_stats: { Args: never; Returns: Json }
+      rpc_tour_task_transition: {
+        Args: {
+          _evidence_url?: string
+          _new_status: string
+          _reject_reason?: string
+          _task_id: string
+        }
+        Returns: Json
+      }
       run_action_escalation: { Args: never; Returns: Json }
       send_kpi_achievement_notification: {
         Args: {

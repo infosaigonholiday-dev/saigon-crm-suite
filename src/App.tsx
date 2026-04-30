@@ -44,6 +44,8 @@ const Recruitment = lazy(() => import("./pages/Recruitment"));
 const CampaignList = lazy(() => import("./pages/CampaignList"));
 const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
 const BroadcastNotification = lazy(() => import("./pages/BroadcastNotification"));
+const TourFiles = lazy(() => import("./pages/TourFiles"));
+const TourFileDetail = lazy(() => import("./pages/TourFileDetail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +100,8 @@ function ProtectedRoutes() {
           <Route path="/luu-tru" element={<ErrorBoundary><PermissionGuard module="accommodations" action="view"><Accommodations /></PermissionGuard></ErrorBoundary>} />
           <Route path="/dat-tour" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><Bookings /></PermissionGuard></ErrorBoundary>} />
           <Route path="/dat-tour/:id" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><BookingDetail /></PermissionGuard></ErrorBoundary>} />
+          <Route path="/ho-so-doan" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><TourFiles /></PermissionGuard></ErrorBoundary>} />
+          <Route path="/ho-so-doan/:id" element={<ErrorBoundary><PermissionGuard module="bookings" action="view"><TourFileDetail /></PermissionGuard></ErrorBoundary>} />
           <Route path="/nha-cung-cap" element={<ErrorBoundary><PermissionGuard module="suppliers" action="view"><Vendors /></PermissionGuard></ErrorBoundary>} />
           <Route path="/hop-dong" element={<ErrorBoundary><PermissionGuard module="contracts" action="view"><Contracts /></PermissionGuard></ErrorBoundary>} />
           <Route path="/thanh-toan" element={<ErrorBoundary><PermissionGuard module="payments" action="view"><Payments /></PermissionGuard></ErrorBoundary>} />

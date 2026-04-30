@@ -76,6 +76,7 @@ export function AppSidebar() {
     { title: "Khách hàng", url: "/khach-hang", icon: Users, moduleKey: "customers" },
     { title: "Báo giá", url: "/bao-gia", icon: FileText, moduleKey: "quotations" },
     { title: "Đặt tour", url: "/dat-tour", icon: CalendarDays, moduleKey: "bookings" },
+    { title: "Hồ sơ đoàn / MICE", url: "/ho-so-doan", icon: Briefcase, moduleKey: "bookings" },
     { title: "Hợp đồng", url: "/hop-dong", icon: FileSignature, moduleKey: "contracts" },
     { title: "Thanh toán", url: "/thanh-toan", icon: DollarSign, moduleKey: "payments" },
   ];
