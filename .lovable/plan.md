@@ -1,105 +1,70 @@
-# Verification Report — Nền tảng HR/Settings/Quotes
+# Hoàn thiện cơ chế "Đã đọc" thông báo
 
-## 1. Ảnh chân dung nhân viên — DONE (data + feature)
+## 1. Hiện trạng đã xác minh
 
-**Storage:**
-- Bucket `employee-avatars` tồn tại, `public = true`.
-- RLS policies trên `storage.objects`:
-  - `employee_avatars_public_read` (SELECT)
-  - `employee_avatars_authenticated_insert / update / delete`
+Bảng `public.notifications` đã có đủ cột yêu cầu: `id, user_id, type, title, message, entity_type, entity_id, is_read (default false), created_at, read_at (nullable), priority, escalation_level, escalated_at`.
 
-**DB:**
-- Cột `employees.avatar_url text NULL` đã có.
-- Hiện tại: 30 employees, 0 có avatar_url → tính năng sẵn sàng nhưng chưa ai upload.
+**Vấn đề phát hiện**: Toàn bộ client code (`NotificationBell.tsx`, `AlertsCenter.tsx`, `useAutoMarkNotificationsRead.ts`) chỉ set `is_read = true` mà KHÔNG set `read_at`. Hiện đã có 2 dòng `is_read=true` nhưng `read_at IS NULL`. Cần bịt rò rỉ ở client + backfill dữ liệu cũ.
 
-**Code:**
-- `EmployeeAvatarUpload.tsx`: upload → resize 128×128 WebP (~5KB) → lưu `employee-avatars/{id|tmp-...}/avatar-{ts}.{ext}` → `getPublicUrl` + cache-buster `?t=` → `onChange(url)`.
-- `EmployeeFormDialog.tsx`: nhận URL vào `form.avatar_url`, lưu vào `employees.avatar_url` khi submit (line 237).
-- Hiển thị: `EmployeeAvatar.tsx` dùng `<AvatarImage>` + fallback initials qua `<AvatarFallback>` (2 ký tự đầu/đầu+cuối).
-- Sử dụng tại: `Employees.tsx` (table 32px), `EmployeeDetail.tsx` (header 64px), `LeaveManagement.tsx` (24px).
+Ngoài ra chưa có cột `action_completed_at` để phân biệt "đã đọc" vs "đã xử lý".
 
-**Kết luận:** Pipeline upload → preview → DB → hiển thị + fallback **đầy đủ và đúng**. → **DONE**
+## 2. Thay đổi Database (1 migration)
 
----
+- Thêm cột `action_completed_at timestamptz NULL` và `action_completed_by uuid NULL` vào `notifications`.
+- Tạo trigger `BEFORE UPDATE` tự set `read_at = now()` khi `is_read` chuyển từ `false → true` mà client quên gửi `read_at` (an toàn nhiều lớp).
+- Backfill: `UPDATE notifications SET read_at = COALESCE(read_at, created_at) WHERE is_read = true AND read_at IS NULL;`
+- Tạo 2 RPC SECURITY DEFINER cho dashboard admin (chỉ ADMIN/SUPER_ADMIN/HR_MANAGER được gọi, kiểm tra qua `has_role`):
+  - `rpc_notification_unread_by_user()` → trả về `user_id, full_name, department, unread_total, unread_high_critical, oldest_unread_at`.
+  - `rpc_notification_critical_overdue()` → các notification `priority IN ('high','critical')` chưa đọc > 24h, kèm tên người nhận.
+- Index hỗ trợ: `CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = false;`
+- KHÔNG động vào RLS hiện tại (mỗi user vẫn chỉ thấy notification của mình; admin xem qua RPC SECURITY DEFINER).
 
-## 2. Lịch làm việc (work_schedules) — DONE
+## 3. Sửa rule mark-read ở client
 
-**DB schema** (bảng `work_schedules`):
-```
-id uuid, employee_id uuid NOT NULL, day_of_week int NOT NULL,
-is_working bool NOT NULL, start_time time, end_time time, note text,
-created_at, updated_at
-```
-- FK `work_schedules_employee_id_fkey → employees(id)`.
-- Unique constraint `(employee_id, day_of_week)` (đang được dùng ở `upsert onConflict`).
+**Bỏ auto-mark khi mở dropdown** — hành vi hiện tại đã đúng (chỉ mark khi click row hoặc bấm "Đánh dấu tất cả"). Chuẩn hóa lại payload:
 
-**RLS:**
-- `work_schedules_read_authenticated` (SELECT — mọi authenticated user).
-- `work_schedules_hr_manage` (ALL — gated trong app cho ADMIN/HR_MANAGER/HCNS).
+- `NotificationBell.tsx` (2 chỗ update): đổi sang `.update({ is_read: true, read_at: new Date().toISOString() })`.
+- `AlertsCenter.tsx` (2 chỗ update): tương tự.
+- `useAutoMarkNotificationsRead.ts`: cùng cách. Hook này chỉ chạy khi user mở trang chi tiết entity → vẫn đúng tinh thần "chỉ mark khi xem chi tiết".
 
-**Code:**
-- `EmployeeWorkScheduleTab.tsx`: load 7 dòng theo `employee_id`, fill default nếu trống, upsert đúng `onConflict: "employee_id,day_of_week"`.
-- Reload: dữ liệu nạp lại đúng từ DB (React Query key `["work_schedules", employeeId]`).
-- `LeaveManagement.tsx` dùng `["work_schedules_all"]` để tính ngày nghỉ thực tế khi xét đơn → đã được invalidate sau khi save.
+Tạo helper `src/lib/markNotificationRead.ts` để 4 chỗ trên dùng chung, tránh lệch payload sau này.
 
-**Tác động khác:** Không có trigger ẩn lên `work_schedules`; chấm công (attendance) hiện chưa có module riêng nên không bị phá.
+## 4. Trang Lịch sử thông báo (`SettingsNotificationHistoryTab.tsx`)
 
-→ **DONE** (lưu đúng bảng, reload đúng, không phá HR/leave logic).
+- Thêm cột **"Đã đọc lúc"** hiển thị `read_at` (format `dd/MM/yyyy HH:mm`); nếu `is_read=false` hiển thị thời lượng chưa đọc bằng `formatDistanceToNow(created_at)` kèm icon đồng hồ.
+- Filter trạng thái: dropdown `Tất cả | Chưa đọc | Đã đọc` (đặt cạnh filter loại hiện có), áp `.eq('is_read', ...)` ở query.
+- Badge cảnh báo SLA: nếu `priority IN ('high','critical')` và `is_read=false` và `now - created_at > 24h` → badge đỏ "Quá 24h chưa đọc".
+- Mở rộng limit lên 100 và thêm phân trang đơn giản (Trước/Sau, 50/page) vì thêm filter sẽ cần xem nhiều hơn.
 
----
+## 5. Dashboard Admin — tab thống kê mới
 
-## 3. Company Settings — 13 keys
+Tạo `src/components/settings/SettingsNotificationStatsTab.tsx` đặt cạnh tab Lịch sử trong `Settings.tsx` (chỉ ADMIN/SUPER_ADMIN/HR_MANAGER thấy):
 
-DB hiện có đủ **13 key** đã có giá trị thật:
-| Key | Đã render UI/Print | Trạng thái |
-|---|---|---|
-| COMPANY_NAME | Print booking-confirmation (footer + GPLHQT box) | DONE feature |
-| COMPANY_SHORT_NAME | Print (header logo, footer) | DONE feature |
-| COMPANY_TAGLINE | Print (header + footer) | DONE feature |
-| COMPANY_TAX_CODE | Print (GPLHQT box: MST) | DONE feature |
-| COMPANY_LICENSE | Print (GPLHQT) | DONE feature |
-| COMPANY_ADDRESS | Print (header) | DONE feature |
-| COMPANY_ADDRESS2 | Print (header) | DONE feature |
-| COMPANY_PHONE | Print (header + footer) | DONE feature |
-| COMPANY_WEBSITE | Print (header + footer) | DONE feature |
-| COMPANY_LOGO_URL | Print (SGH_setLogo) | DONE feature |
-| COMPANY_BANK_1 | Print (parsed → BANK1_NAME/HOLDER/NUMBER, 2 chỗ) | DONE feature |
-| COMPANY_BANK_2 | Print (parsed → BANK2_NAME/HOLDER/NUMBER, 2 chỗ) | DONE feature |
-| COMPANY_EMAIL | Truyền vào payload nhưng template **không có slot** `data-co="COMPANY_EMAIL"` | **DONE data, CHƯA DONE feature** |
+- **Card 1 — Tổng quan**: tổng chưa đọc toàn hệ thống, tổng critical/high quá 24h, số nhân sự có ≥1 chưa đọc.
+- **Card 2 — Critical/High quá hạn 24h**: bảng từ `rpc_notification_critical_overdue` (người nhận, loại, tiêu đề, tạo lúc, số giờ trễ).
+- **Card 3 — Top 10 nhân sự nhiều chưa đọc nhất**: từ `rpc_notification_unread_by_user` order by `unread_total DESC`, kèm cột `unread_high_critical` và `oldest_unread_at`.
+- Nút "Tải lại" + auto refetch 60s.
 
-**Chưa dùng ở các nơi sau (cần cân nhắc bổ sung sau):**
-- Hợp đồng (`Contracts`) – chưa có template in.
-- Phiếu thu/chi (`Finance`) – `financePrintTemplates.ts` không reference COMPANY keys.
-- Email auth/transactional – đang hardcode tên trong templates `_shared/email-templates/*`.
+## 6. Tách rõ "đã đọc" vs "đã xử lý"
 
-**Hành động đề xuất (nhỏ, sẽ làm ngay khi user duyệt):**
-- Thêm 1 dòng `📧 <span data-co="COMPANY_EMAIL"></span>` vào header của `public/print/booking-confirmation.html` để dùng nốt key COMPANY_EMAIL.
-- (Tùy chọn) Thêm chèn `COMPANY_NAME / COMPANY_TAX_CODE / COMPANY_BANK_1` vào `financePrintTemplates.ts` cho phiếu thu/chi → để verify lần sau.
+- Document trong tooltip cột trạng thái: "Đã đọc = đã xem, KHÔNG đồng nghĩa đã xử lý".
+- Cột `action_completed_at` mới sẵn sàng cho các loại action-required (PAYMENT_DUE, FOLLOW_UP_OVERDUE, TRANSACTION_APPROVAL...). Lần này chỉ tạo cột + 1 RPC `rpc_notification_complete_action(notification_id)` để các module sau gọi khi user thật sự hoàn thành công việc. Không đổi UI module nghiệp vụ trong scope này (sẽ làm ở các task riêng khi cần).
 
----
+## 7. Bằng chứng nghiệm thu sẽ chạy sau khi implement
 
-## 4. Audit `quotes` vs `quotations` — KHÔNG CÓ DUPLICATE
+- `SELECT count(*) FILTER (WHERE is_read AND read_at IS NULL)` → phải = 0 sau backfill.
+- Click 1 notification trên bell → query lại row đó: `is_read=true`, `read_at` xấp xỉ `now()`.
+- Mở dropdown bell mà KHÔNG click → unread count không đổi.
+- Login bằng Sale → query `notifications` chỉ ra của chính mình (RLS đã có sẵn, chỉ verify lại).
+- Login Admin → tab thống kê hiển thị danh sách top unread.
 
-**Kết quả query `information_schema.tables`:**
-- Chỉ tồn tại **1 bảng**: `quotations` (0 rows hiện tại).
-- Không có bảng `quotes` trong schema `public`.
+## Files dự kiến chạm
 
-**Code reference:** Toàn bộ UI/API dùng `quotations` (page `Quotations.tsx`, `QuotationFormDialog.tsx`, permission `quotations.view/create/edit/delete`).
-
-→ **KHÔNG cần rename/backup.** Cảnh báo "duplicate" trước đây có thể do nhầm lẫn naming (singular `quote` xuất hiện trong UI text/label tiếng Việt "Báo giá") — nhưng ở DB chỉ có duy nhất 1 bảng đúng chuẩn.
-
----
-
-## Tổng kết
-
-| Mục | Trạng thái |
-|---|---|
-| 1. Ảnh chân dung | DONE production |
-| 2. work_schedules | DONE production |
-| 3. COMPANY_* keys | 12/13 DONE feature; COMPANY_EMAIL: DONE data, chưa render |
-| 4. quotes duplicate | Không tồn tại — bỏ qua |
-
-## Việc sẽ làm khi user duyệt plan này
-1. Thêm slot `data-co="COMPANY_EMAIL"` vào `public/print/booking-confirmation.html` (header + footer) để đóng nốt 13/13 keys.
-
-Không cần migration DB. Không có rủi ro phá tính năng khác.
+- Migration mới: cột + trigger + 2 RPC + backfill + index.
+- `src/lib/markNotificationRead.ts` (mới)
+- `src/components/NotificationBell.tsx`
+- `src/pages/AlertsCenter.tsx`
+- `src/hooks/useAutoMarkNotificationsRead.ts`
+- `src/components/settings/SettingsNotificationHistoryTab.tsx`
+- `src/components/settings/SettingsNotificationStatsTab.tsx` (mới)
+- `src/pages/Settings.tsx` (gắn tab mới)
