@@ -14,9 +14,10 @@ import {
 
 interface ReauthenticationEmailProps {
   token: string
+  siteName: string
 }
 
-export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
+export const ReauthenticationEmail = ({ token, siteName }: ReauthenticationEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
     <Preview>Mã xác thực {siteName}</Preview>
