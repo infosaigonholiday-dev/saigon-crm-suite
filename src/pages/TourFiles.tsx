@@ -181,6 +181,18 @@ export default function TourFiles() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={taskFilter} onValueChange={(v) => { setTaskFilter(v as any); setPage(0); }}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Lọc theo task" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="overdue">Có task quá hạn</SelectItem>
+              <SelectItem value="pending_check">Có task chờ kiểm</SelectItem>
+              <SelectItem value="upcoming">Khởi hành ≤ 7 ngày còn task</SelectItem>
+            </SelectContent>
+          </Select>
+          {taskFilter !== "all" && (
+            <Button variant="ghost" size="sm" onClick={() => setTaskFilter("all")}>Xoá lọc</Button>
+          )}
         </CardContent>
       </Card>
 
