@@ -156,6 +156,9 @@ export default function BroadcastNotification() {
 
   const sendMutation = useMutation({
     mutationFn: async () => {
+      if (recipientIds.length === 0) {
+        throw new Error("Vui lòng chọn ít nhất 1 người nhận");
+      }
       const target_filter = {
         mode,
         ...(mode === "type" && { official: includeOfficial, intern: includeIntern }),
@@ -173,12 +176,48 @@ export default function BroadcastNotification() {
           target_filter,
         },
       });
-      if (error) throw new Error(error.message);
+
+      // Lỗi non-2xx: đọc body chi tiết từ context
+      if (error) {
+        let serverBody: any = null;
+        try {
+          // FunctionsHttpError có context.json()
+          if ((error as any).context?.json) {
+            serverBody = await (error as any).context.json();
+          }
+        } catch { /* ignore */ }
+        const code = serverBody?.code || "UNKNOWN";
+        const msg = serverBody?.error || error.message || "Gửi thất bại";
+        const friendly =
+          code === "AUTH_MISSING" || code === "AUTH_INVALID"
+            ? "Phiên đăng nhập hết hạn, vui lòng đăng nhập lại."
+            : code === "FORBIDDEN_ROLE" || code === "PROFILE_INACTIVE" || code === "MANAGER_NO_DEPT"
+            ? msg
+            : code === "NO_RECIPIENTS" || code === "NO_ALLOWED_RECIPIENTS"
+            ? msg
+            : code === "URL_REQUIRED_FOR_HIGH_PRIORITY"
+            ? msg
+            : code === "NOTIFICATION_INSERT_FAILED" || code === "BROADCAST_INSERT_FAILED"
+            ? `Lỗi DB: ${msg}`
+            : code === "INTERNAL_ERROR"
+            ? `Lỗi máy chủ: ${msg}`
+            : msg;
+        const err = new Error(friendly);
+        (err as any).code = code;
+        throw err;
+      }
       if (!data?.ok) throw new Error(data?.error || "Gửi thất bại");
       return data;
     },
     onSuccess: (data: any) => {
-      toast.success(`Đã gửi thông báo đến ${data.sent_count} người`);
+      const summary = data.summary || `Đã gửi thông báo đến ${data.sent_count} người`;
+      if (data.push?.failed > 0) {
+        toast.warning(summary, { duration: 8000 });
+      } else if (data.push?.not_subscribed > 0 && data.push?.sent === 0) {
+        toast.info(summary, { duration: 6000 });
+      } else {
+        toast.success(summary);
+      }
       setTitle("");
       setMessage("");
       setPriority("medium");
@@ -188,7 +227,7 @@ export default function BroadcastNotification() {
       setSelectedUsers([]);
       qc.invalidateQueries({ queryKey: ["broadcast-history"] });
     },
-    onError: (e: any) => toast.error(e.message || "Gửi thất bại"),
+    onError: (e: any) => toast.error(e.message || "Gửi thất bại", { duration: 6000 }),
   });
 
   // History

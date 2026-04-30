@@ -3158,6 +3158,50 @@ export type Database = {
           },
         ]
       }
+      notification_delivery_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          notification_id: string | null
+          provider: string | null
+          provider_response: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          provider?: string | null
+          provider_response?: Json | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          provider?: string | null
+          provider_response?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           action_completed_at: string | null
