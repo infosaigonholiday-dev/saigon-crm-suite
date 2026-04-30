@@ -695,9 +695,21 @@ export function BudgetSettlementsTab() {
               <Printer className="h-4 w-4 mr-1" /> In phiếu QT
             </Button>
             {/* Operator: submit to accountant */}
-            {selectedSettlement?.status === "draft" && selectedSettlement?.created_by === user?.id && (
-              <Button onClick={() => submitMutation.mutate(selectedSettlement.id)}>Gửi KT duyệt</Button>
-            )}
+            {selectedSettlement?.status === "draft" && selectedSettlement?.created_by === user?.id && (() => {
+              const items = detailItems as any[];
+              const missingCount = items.filter((it) =>
+                Number(it.actual_amount || 0) > 0 && !((it.receipt_urls?.length || 0) > 0 || it.receipt_url)
+              ).length;
+              return (
+                <Button
+                  onClick={() => submitMutation.mutate(selectedSettlement.id)}
+                  disabled={missingCount > 0}
+                  title={missingCount > 0 ? `Còn ${missingCount} hạng mục thiếu chứng từ` : ""}
+                >
+                  Gửi KT duyệt {missingCount > 0 && `(thiếu ${missingCount} chứng từ)`}
+                </Button>
+              );
+            })()}
 
             {/* Accountant: approve or reject */}
             {selectedSettlement?.status === "pending_accountant" && isKetoan && (
