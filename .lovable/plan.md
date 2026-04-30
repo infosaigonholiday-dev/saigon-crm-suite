@@ -1,115 +1,66 @@
+# Drilldown chưa-đọc theo từng nhân sự
+
 ## Mục tiêu
+Admin/CEO click vào một nhân sự (hoặc số "Chưa đọc" / "Khẩn chưa đọc" / "Chưa từng đọc") trong bảng "Tình trạng đọc theo nhân sự" → mở **Modal chi tiết** với 2 tab:
+- **Tab 1 — Theo loại thông báo:** breakdown theo notification type (BROADCAST, FOLLOW_UP_OVERDUE, …)
+- **Tab 2 — Danh sách chi tiết:** từng notification cụ thể, có filter
 
-Tách trang **Settings → Thống kê thông báo** thành 3 section, có filter đầy đủ và bảng audit chi tiết từng notification. Admin/CEO biết được mỗi nhân sự đã đọc/xử lý thông báo nào.
+## Phạm vi thay đổi
 
----
+### 1. Database (1 migration)
+Tạo RPC mới `rpc_notification_stats_by_user_type` (`SECURITY DEFINER`, gated cho ADMIN/SUPER_ADMIN/HR_MANAGER/GDKD/MANAGER giống các RPC hiện có).
 
-## Section 1 — KPI tổng (clickable)
+Input:
+- `p_user_id uuid` (bắt buộc)
+- `p_days int default 90`
+- `p_read_status text default null` — `'read' | 'unread' | 'unread_high' | 'unread_24h'`
+- `p_action_status text default null` — `'pending' | 'in_progress' | 'overdue' | 'completed' | 'pending_or_in_progress' | 'read_unhandled'`
 
-Giữ 4 card hiện có (Đã gửi 7d / Chưa đọc / Cần xử lý / Quá hạn). Mỗi card gắn `onClick` set một preset filter cho Section 3:
+Output (1 row mỗi `notification.type`):
+- `notification_type`, `total_notifications`
+- `read_count`, `unread_count`, `unread_high_critical`
+- `pending_actions`, `overdue_actions`
+- `oldest_unread_at`, `last_read_at`
 
-| Card | Preset filter Section 3 |
-|---|---|
-| Đã gửi 7 ngày | range = 7d, reset filter khác |
-| Chưa đọc | read_status = `unread` |
-| Cần xử lý | action_status ∈ {`pending`, `in_progress`} |
-| Quá hạn xử lý | action_status = `overdue` |
+(Nhóm nghiệp vụ + label tiếng Việt sẽ map ở client bằng `notificationGroups.ts` để tránh duplicate logic.)
 
-Card được chọn highlight border `border-primary`. Auto scroll xuống Section 3.
+Sắp xếp `ORDER BY unread_high_critical DESC, unread_count DESC, total_notifications DESC`.
 
----
+### 2. Component mới `src/components/settings/UserNotificationDetailDialog.tsx`
+- Dialog full-width (`max-w-6xl`) với header hiển thị tên + email + phòng ban + role của nhân sự.
+- Filter bar trên cùng (áp dụng cho cả 2 tab):
+  - Khoảng thời gian: 7/30/90/Tất cả (mặc định 90)
+  - Loại thông báo, Nhóm nghiệp vụ
+  - Trạng thái đọc, Mức độ, Trạng thái xử lý
+- **Tab 1 "Theo loại thông báo":** 
+  - Bảng từ `rpc_notification_stats_by_user_type` với cột: Loại / Nhóm / Tổng / Đã đọc / Chưa đọc / Khẩn chưa đọc / Action chờ / Quá hạn / Cũ nhất chưa đọc / Lần đọc gần nhất
+  - Click 1 dòng → set filter `type` rồi switch sang Tab 2
+- **Tab 2 "Danh sách chi tiết":**
+  - Tái dùng `rpc_notification_audit_list` (đã có `p_user_id`) — KHÔNG tạo RPC mới.
+  - Render bảng từng notification: Loại / Nhóm / Tiêu đề / Nội dung rút gọn / Mức độ / Gửi lúc / Trạng thái đọc / Đọc lúc / Chưa đọc bao lâu / Action / Trạng thái xử lý / Related entity / nút "Mở".
+  - Pagination 50/trang client-side.
+  - Nút "Mở" → dùng `getNotificationActionUrl` (đã có ở `src/lib/notificationActions.ts`) để route vào entity.
 
-## Section 2 — Tình trạng đọc theo nhân sự
+### 3. Sửa `SettingsNotificationStatsTab.tsx`
+- Thay nút "Xem chi tiết" hiện tại bằng việc mở `UserNotificationDetailDialog`.
+- Biến các ô số trong bảng "Tình trạng đọc theo nhân sự" thành **clickable button**:
+  - **Tên nhân sự** → mở dialog (mặc định Tab 1, không filter)
+  - **Số "Chưa đọc"** > 0 → mở dialog Tab 1 với preset `readStatus='unread'`
+  - **Badge "Khẩn chưa đọc"** > 0 → mở dialog Tab 1 với preset `readStatus='unread_high'`
+  - **"Chưa từng đọc"** (last_read_at null) → mở dialog Tab 2 với preset `readStatus='unread'`
+  - **"Action chưa xử lý"** > 0 → mở dialog Tab 2 với preset `actionStatus='pending_or_in_progress'`
+  - **"Quá hạn"** > 0 → mở dialog Tab 2 với preset `actionStatus='overdue'`
+- Giữ nguyên Section 3 hiện tại (audit toàn hệ thống) — không xoá.
 
-Dùng RPC `rpc_notification_stats_by_user` (đã chạy được). Bổ sung cột **Email**, **Vai trò**, nút **"Xem chi tiết"**.
-
-Vì RPC hiện trả `full_name, email, department` chưa có `role`, sẽ cập nhật RPC join thêm `profiles.role`.
-
-Click "Xem chi tiết" → set `userFilter = user_id` cho Section 3 + scroll xuống.
-
----
-
-## Section 3 — Bảng audit chi tiết notification (mới)
-
-### Data source
-Query trực tiếp từ client:
-```ts
-supabase.from('notifications')
-  .select(`
-    id, user_id, type, title, message, priority,
-    created_at, is_read, read_at,
-    action_required, action_status, action_due_at, action_completed_at,
-    related_entity_type, related_entity_id, entity_type, entity_id, action_url,
-    profiles:user_id ( full_name, email, department, role )
-  `)
-  .order('created_at', { ascending: false })
-  .limit(500);
-```
-
-RLS hiện tại của `notifications` chỉ cho user đọc record của mình → cần **RPC mới** `rpc_notification_audit_list(p_range, p_user_id, p_department, p_type, p_group, p_read_status, p_action_status, p_search)` chạy `SECURITY DEFINER`, gate bằng `has_role(auth.uid(), 'ADMIN'/'SUPER_ADMIN'/'HR_MANAGER'/'GDKD'/'MANAGER')`. Trả về tối đa 500 dòng theo filter, kèm `full_name/email/department/role` từ `profiles`.
-
-### Filter bar (8 control)
-1. **Khoảng thời gian** (Select): 7/30/90/all
-2. **Nhân sự** (Combobox search): `Tất cả` + danh sách từ profiles active
-3. **Phòng ban** (Select): Tất cả / SALE / OPS / ACC / HR / MKT / MANAGEMENT
-4. **Loại thông báo** (Select): liệt kê 21 type có trong DB + `Tất cả`
-5. **Nhóm thông báo** (Select) — mapping client-side:
-   - `Lead/CRM`: FOLLOW_UP, FOLLOW_UP_OVERDUE, LEAD_FORGOTTEN, LEAD_NO_SCHEDULE, LEAD_ASSIGNED, LEAD_WON, NEW_ONLINE_LEAD, ESCALATION_LV1
-   - `Booking/Tour`: BOOKING_DEPARTURE_NEAR, TRAVEL_DATE_NEAR, TOUR_DEPARTURE
-   - `Tài chính`: PAYMENT_DUE, PAYMENT_OVERDUE, PAYMENT_RECEIVED, TRANSACTION_APPROVAL, TRANSACTION_APPROVED, TRANSACTION_REJECTED, BUDGET_ESTIMATE_PENDING, BUDGET_SETTLEMENT_PENDING, CASHFLOW_NEGATIVE
-   - `Nhân sự`: LEAVE_REQUEST_NEW, LEAVE_REQUEST_RESULT, BIRTHDAY, COMPANY_ANNIVERSARY, NEW_EMPLOYEE
-   - `Hợp đồng`: CONTRACT_APPROVAL_OVERDUE, CONTRACT_EXPIRY
-   - `Hệ thống/Broadcast`: BROADCAST, TEST_PUSH, WELCOME, DAILY_DIGEST, KPI_ACHIEVEMENT, INTERNAL_NOTE
-6. **Trạng thái đọc**: Tất cả / Đã đọc / Chưa đọc / Khẩn chưa đọc (priority ∈ high/critical & !is_read) / Chưa đọc >24h
-7. **Trạng thái xử lý**: Tất cả / Không cần xử lý (action_required=false) / Chờ xử lý / Đang xử lý / Quá hạn / Đã xử lý / **Đã đọc nhưng chưa xử lý** (is_read=true & action_required=true & action_status ∈ pending/in_progress/overdue)
-8. **Ô tìm kiếm** debounce 300ms: ILIKE trên `title`, `message`, `profiles.full_name`, `profiles.email`
-
-Có nút **"Xoá lọc"** reset toàn bộ + clear preset từ Section 1/2.
-
-### Cột bảng (16 cột — horizontal scroll)
-Người nhận | Email | Phòng ban | Vai trò | Loại | Nhóm | Tiêu đề | Nội dung (truncate 80 ký tự, tooltip full) | Mức độ (badge) | Gửi lúc | Trạng thái đọc | Đọc lúc | Chưa đọc bao lâu | Cần xử lý | Trạng thái xử lý | Xử lý lúc | Entity | Mở
-
-- "Mở" = button link tới `action_url` (nếu có) hoặc dùng `notificationActions.ts` với `related_entity_type/id`.
-- Pagination 50/page client-side (RPC trả tối đa 500 đã filter).
-
----
-
-## Quy tắc nghiệp vụ (giữ nguyên)
-- Click notification chỉ set `is_read=true, read_at=now()`. **Không** đổi `action_status`.
-- `action_status='completed'` chỉ khi nghiệp vụ thực sự hoàn tất qua flow tương ứng.
-- Đã có sẵn trong `markNotificationRead.ts` và `rpc_notification_complete_action` — không sửa.
-
----
-
-## Thay đổi kỹ thuật
-
-### Migration SQL
-1. **Update** `rpc_notification_stats_by_user`: bổ sung `role` (text) lấy từ `profiles.role`.
-2. **Create** `rpc_notification_audit_list(p_range_days int, p_user_id uuid, p_department text, p_type text, p_group text, p_read_status text, p_action_status text, p_search text)`:
-   - `SECURITY DEFINER`, `SET search_path = public`
-   - Gate: `has_role(auth.uid(),'ADMIN') OR ... 'SUPER_ADMIN' OR 'HR_MANAGER' OR 'GDKD' OR 'MANAGER'`; nếu không có quyền → `RAISE EXCEPTION`.
-   - SELECT từ `notifications n LEFT JOIN profiles p ON p.id = n.user_id`, áp filter động, `ORDER BY n.created_at DESC LIMIT 500`.
-   - GRANT EXECUTE TO authenticated.
-
-### File code
-- **Sửa** `src/components/settings/SettingsNotificationStatsTab.tsx`:
-  - Thêm state `filters` + `presetFromCard`.
-  - Card KPI thành button có active state.
-  - Bảng Section 2: thêm cột Email, Vai trò, nút "Xem chi tiết".
-  - Thêm Section 3 (filter bar + table + pagination) gọi `rpc_notification_audit_list`.
-  - Bỏ widget "Top nhân sự nhiều thông báo chưa đọc" (đã trùng Section 2) — gộp dữ liệu vào Section 2.
-  - Giữ widget "Cao/Khẩn chưa đọc quá 24h" như cảnh báo collapse mặc định.
-- **Tạo** `src/lib/notificationGroups.ts`: hằng số mapping type → group, label tiếng Việt cho type/group, danh sách phòng ban.
-
-### Test nghiệm thu (theo yêu cầu user)
-Sau khi triển khai sẽ chạy SQL `INSERT` 5 notification cho 2 user test, mở trang, chụp kết quả từng filter (FOLLOW_UP_OVERDUE / BROADCAST / "Đã đọc nhưng chưa xử lý" / "Khẩn chưa đọc") để xác nhận DoD.
-
----
+### 4. Test nghiệm thu (sẽ chạy sau khi build)
+- Chọn 1 nhân sự có `unread_count > 0` → click số chưa đọc → dialog mở Tab 1, hiển thị breakdown loại nào chưa đọc.
+- Click 1 dòng loại trong Tab 1 → tự nhảy Tab 2, lọc đúng `type`.
+- Filter `FOLLOW_UP_OVERDUE` ở Tab 2 chỉ hiện đúng loại đó.
+- Filter "Đã đọc nhưng chưa xử lý" chỉ hiện `is_read=true AND action_status IN ('pending','in_progress','overdue')`.
+- Click "Chưa từng đọc" của 1 nhân sự → Tab 2 chỉ hiển thị notification chưa đọc của họ.
 
 ## Definition of Done
-- 3 section riêng biệt, không còn mix vào widget khẩn cấp.
-- KPI card click filter được Section 3.
-- Section 2 có Email, Vai trò, "Xem chi tiết" → đẩy filter sang Section 3.
-- Section 3 có 8 filter + ô tìm kiếm + bảng 16 cột + pagination.
-- Khi KPI "Chưa đọc" > 0, bảng chi tiết với filter "Chưa đọc" không rỗng.
-- RLS giữ nguyên; admin truy cập qua RPC `SECURITY DEFINER`.
+- Bảng tổng hợp nhân sự có drilldown đầy đủ, mọi con số/trạng thái đều click được.
+- Dialog 2 tab hoạt động, filter đồng bộ.
+- Admin/CEO trả lời được câu hỏi: "Nhân sự X chưa đọc loại nào, thông báo cụ thể nào?"
+- Không tạo trùng RPC; tái dùng `rpc_notification_audit_list` cho Tab 2.
