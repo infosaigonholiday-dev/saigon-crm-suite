@@ -224,7 +224,15 @@ export function SettingsNotificationStatsTab() {
                   )}
                   {byUserFull.map((r: any) => (
                     <TableRow key={r.user_id}>
-                      <TableCell className="text-sm font-medium">{r.full_name || "—"}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <button
+                          type="button"
+                          className="text-left hover:text-primary hover:underline"
+                          onClick={() => openUserDialog(r)}
+                        >
+                          {r.full_name || "—"}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">{r.email || "—"}</TableCell>
                       <TableCell className="text-xs">{r.department || "—"}</TableCell>
                       <TableCell className="text-xs">{r.role || "—"}</TableCell>
@@ -232,31 +240,37 @@ export function SettingsNotificationStatsTab() {
                       <TableCell className="text-right font-mono text-sm text-blue-700">{r.read_count}</TableCell>
                       <TableCell className="text-right font-mono text-sm">
                         {Number(r.unread_count) > 0
-                          ? <span className="text-amber-700 font-semibold">{r.unread_count}</span>
+                          ? <button type="button" className="text-amber-700 font-semibold hover:underline" onClick={() => openUserDialog(r, { readStatus: "unread", defaultTab: "by_type" })}>{r.unread_count}</button>
                           : <span className="text-muted-foreground">0</span>}
                       </TableCell>
                       <TableCell className="text-right">
                         {Number(r.unread_high_critical) > 0
-                          ? <Badge variant="destructive" className="text-[10px]">{r.unread_high_critical}</Badge>
+                          ? <button type="button" onClick={() => openUserDialog(r, { readStatus: "unread_high", defaultTab: "by_type" })}>
+                              <Badge variant="destructive" className="text-[10px] cursor-pointer hover:opacity-80">{r.unread_high_critical}</Badge>
+                            </button>
                           : <span className="text-xs text-muted-foreground">0</span>}
                       </TableCell>
                       <TableCell className="text-right">
                         {Number(r.pending_actions) > 0
-                          ? <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300">{r.pending_actions}</Badge>
+                          ? <button type="button" onClick={() => openUserDialog(r, { actionStatus: "pending_or_in_progress", defaultTab: "list" })}>
+                              <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 cursor-pointer hover:bg-amber-100">{r.pending_actions}</Badge>
+                            </button>
                           : <span className="text-xs text-muted-foreground">0</span>}
                       </TableCell>
                       <TableCell className="text-right">
                         {Number(r.overdue_actions) > 0
-                          ? <Badge variant="destructive" className="text-[10px]">{r.overdue_actions}</Badge>
+                          ? <button type="button" onClick={() => openUserDialog(r, { actionStatus: "overdue", defaultTab: "list" })}>
+                              <Badge variant="destructive" className="text-[10px] cursor-pointer hover:opacity-80">{r.overdue_actions}</Badge>
+                            </button>
                           : <span className="text-xs text-muted-foreground">0</span>}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {r.last_read_at
                           ? formatDistanceToNow(new Date(r.last_read_at), { addSuffix: true, locale: vi })
-                          : <span className="text-destructive">Chưa từng đọc</span>}
+                          : <button type="button" className="text-destructive hover:underline" onClick={() => openUserDialog(r, { readStatus: "unread", defaultTab: "list" })}>Chưa từng đọc</button>}
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => viewUser(r.user_id)}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openUserDialog(r)}>
                           <Eye className="h-3 w-3 mr-1" /> Xem chi tiết
                         </Button>
                       </TableCell>
