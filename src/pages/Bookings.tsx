@@ -12,12 +12,15 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, AlertCircle, AlertTriangle, Loader2, Printer } from "lucide-react";
+import { Plus, AlertCircle, AlertTriangle, Loader2, Printer, Briefcase } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyDepartmentId } from "@/hooks/useScopedQuery";
 import { canPrintBookingConfirmation, DEPT_PRINT_ROLES } from "@/lib/bookingPrintAccess";
+import { BOOKING_TYPE_LABEL } from "@/lib/tourFileWorkflow";
+import TourFileFormDialog from "@/components/tour-files/TourFileFormDialog";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +46,8 @@ export default function Bookings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [prefillData, setPrefillData] = useState<any>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [tourFileFor, setTourFileFor] = useState<{ bookingId: string } | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { getScope } = usePermissions();
