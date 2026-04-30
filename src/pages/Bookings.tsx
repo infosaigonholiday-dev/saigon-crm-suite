@@ -238,6 +238,9 @@ export default function Bookings() {
                     myDeptId: effectiveMyDeptId,
                     booking: { sale_id: (b as any).sale_id, department_id: (b as any).department_id },
                   });
+                  const bType = (b as any).booking_type || "retail";
+                  const tf = (tourFileMap as Record<string, { id: string; code: string }>)[b.id];
+                  const isGroup = bType !== "retail";
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dat-tour/${b.id}`)}>
                       <TableCell className="font-mono text-xs">
@@ -247,6 +250,38 @@ export default function Bookings() {
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{customerName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={isGroup ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground"}
+                        >
+                          {BOOKING_TYPE_LABEL[bType] || bType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {tf ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 font-mono text-xs text-blue-600 hover:text-blue-700"
+                            onClick={() => navigate(`/ho-so-doan/${tf.id}`)}
+                          >
+                            <Briefcase className="h-3.5 w-3.5 mr-1" />
+                            {tf.code}
+                          </Button>
+                        ) : isGroup ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setTourFileFor({ bookingId: b.id })}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Tạo hồ sơ
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">{b.pax_total ?? 0}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(b.total_value)}</TableCell>
                       <TableCell>
@@ -304,7 +339,7 @@ export default function Bookings() {
                   );
                 })}
                 {bookings.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Không có dữ liệu</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
