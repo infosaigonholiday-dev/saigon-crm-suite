@@ -21,6 +21,7 @@ import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
 import { Link } from "react-router-dom";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 function fmt(n: number | null) {
   if (!n) return "0";
@@ -73,9 +74,9 @@ export default function CustomerDetail() {
         .from("customers")
         .select("*, lead_sources(name)")
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      return data; // null nếu không tìm thấy hoặc bị RLS chặn
     },
     enabled: !!id,
   });
@@ -146,8 +147,10 @@ export default function CustomerDetail() {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
+  // TC12: data===null = RLS chặn hoặc đã xoá → hiển thị forbidden (an toàn, không lộ existence).
+  // (Customers không có cột status/deleted_at nên không có nhánh "cancelled".)
   if (!customer) {
-    return <div className="text-center py-20 text-muted-foreground">Không tìm thấy khách hàng</div>;
+    return <EntityNotAccessible kind="Khách hàng" backTo="/khach-hang" mode="forbidden" />;
   }
 
   const tier = customer.tier ?? "Mới";

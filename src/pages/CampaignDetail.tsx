@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import InternalNotes from "@/components/shared/InternalNotes";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 const STATUS_OPTIONS = [
   { value: "draft", label: "Nháp", color: "bg-slate-500" },
@@ -154,7 +155,10 @@ export default function CampaignDetail() {
   }, [tasks, milestones]);
 
   if (isLoading) return <div className="p-6">Đang tải...</div>;
-  if (!campaign) return <div className="p-6">Không tìm thấy chiến dịch</div>;
+  // TC12: forbidden / không tồn tại
+  if (!campaign) return <EntityNotAccessible kind="Chiến dịch" backTo="/chien-dich" mode="forbidden" />;
+  // TC13: chiến dịch đã huỷ
+  if (campaign.status === "cancelled") return <EntityNotAccessible kind="Chiến dịch" backTo="/chien-dich" mode="cancelled" />;
 
   const status = STATUS_OPTIONS.find(s => s.value === campaign.status);
   const priority = PRIORITY_OPTIONS.find(p => p.value === campaign.priority);

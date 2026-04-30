@@ -29,6 +29,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { PushNotificationCard } from "@/components/PushNotificationCard";
 import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -64,9 +65,9 @@ export default function EmployeeDetail() {
         .from("employees")
         .select("*, departments(name, code)")
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      return data; // null nếu không tìm thấy hoặc bị RLS chặn
     },
   });
 

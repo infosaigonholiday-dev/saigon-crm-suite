@@ -11,6 +11,7 @@ import TourFileOverviewTab from "@/components/tour-files/TourFileOverviewTab";
 import TourFileTasksTab from "@/components/tour-files/TourFileTasksTab";
 import TourFileDocumentsTab from "@/components/tour-files/TourFileDocumentsTab";
 import TourFileHistoryTab from "@/components/tour-files/TourFileHistoryTab";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 export default function TourFileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,14 +30,17 @@ export default function TourFileDetail() {
           manager_owner:manager_owner_id ( id, full_name )
         `)
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      return data; // null nếu không tìm thấy hoặc bị RLS chặn
     },
   });
 
   if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;
-  if (!tf) return <div className="p-12 text-center text-muted-foreground">Không tìm thấy hồ sơ.</div>;
+  // TC12: forbidden / không tồn tại
+  if (!tf) return <EntityNotAccessible kind="Hồ sơ đoàn" backTo="/ho-so-doan" mode="forbidden" />;
+  // TC13: hồ sơ đã huỷ
+  if (tf.status === "cancelled") return <EntityNotAccessible kind="Hồ sơ đoàn" backTo="/ho-so-doan" mode="cancelled" />;
 
   return (
     <div className="space-y-4">
