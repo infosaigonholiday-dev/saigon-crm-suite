@@ -199,6 +199,7 @@ export function buildEstimateHtml(d: EstimateData, co?: PrintCompanyInfo): strin
     ${d.advance_purpose ? `<div class="row"><span>Mục đích tạm ứng:</span><span>${d.advance_purpose}</span></div>` : ""}
     <div class="row grand"><span>Tổng dự toán:</span><span>${fmt(d.total_estimated ?? totalCalc)}</span></div>
   </div>
+  ${footerBlock(co)}
   ${signaturesBlock}
 </body></html>`;
 }
@@ -274,6 +275,7 @@ export function buildSettlementHtml(d: SettlementData, co?: PrintCompanyInfo): s
     ${(d.additional_amount ?? 0) > 0 ? `<div class="row"><span>Chi bù (Cty chi thêm):</span><span>${fmt(d.additional_amount)} — ${d.topup_status ?? ""}</span></div>` : ""}
     <div class="row grand"><span>Số tiền cần thanh toán:</span><span>${fmt((d.additional_amount ?? 0) - (d.refund_amount ?? 0))}</span></div>
   </div>
+  ${footerBlock(co)}
   ${signaturesBlock}
 </body></html>`;
 }
