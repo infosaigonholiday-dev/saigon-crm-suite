@@ -555,41 +555,96 @@ export function BudgetSettlementsTab() {
             </div>
           </div>
 
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hạng mục</TableHead>
-                  <TableHead>Mô tả</TableHead>
-                  <TableHead className="text-right">Dự toán</TableHead>
-                  <TableHead className="text-right">Thực chi</TableHead>
-                  <TableHead className="text-right">Chênh lệch</TableHead>
-                  <TableHead>Chứng từ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detailItems.map((item: any) => {
-                  const variancePct = item.estimated_amount > 0 ? ((item.variance ?? 0) / item.estimated_amount) * 100 : 0;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="text-sm font-medium">{getCategoryLabel(item.category)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{item.description || "—"}</TableCell>
-                      <TableCell className="text-right text-sm">{formatCurrency(item.estimated_amount ?? 0)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{formatCurrency(item.actual_amount ?? 0)}</TableCell>
-                      <TableCell className={`text-right text-sm font-medium ${Math.abs(variancePct) > 10 ? "text-destructive" : ""}`}>
-                        {formatCurrency(item.variance ?? 0)} ({variancePct.toFixed(0)}%)
-                      </TableCell>
-                      <TableCell>
-                        {item.receipt_url ? (
-                          <a href={item.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Xem</a>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          {(() => {
+            const allItems = detailItems as any[];
+            const totalEst = allItems.reduce((s, it) => s + Number(it.estimated_amount || 0), 0);
+            const totalAct = allItems.reduce((s, it) => s + Number(it.actual_amount || 0), 0);
+            const totalVar = totalAct - totalEst;
+            const totalPct = totalEst > 0 ? (totalVar / totalEst) * 100 : 0;
+            const missing = allItems.filter((it) => Number(it.actual_amount || 0) > 0 && !((it.receipt_urls?.length || 0) > 0 || it.receipt_url));
+            return (
+              <>
+                <div className="border rounded-md overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Hạng mục</TableHead>
+                        <TableHead className="text-right">Dự toán</TableHead>
+                        <TableHead className="text-right">Thực chi</TableHead>
+                        <TableHead className="text-right">Chênh lệch</TableHead>
+                        <TableHead>Chứng từ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allItems.map((item: any, idx: number) => {
+                        const variance = Number(item.actual_amount || 0) - Number(item.estimated_amount || 0);
+                        const variancePct = item.estimated_amount > 0 ? (variance / item.estimated_amount) * 100 : 0;
+                        const varColor =
+                          variance < 0 ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                          : variance > 0 ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                          : "text-muted-foreground";
+                        const urls: string[] = item.receipt_urls && item.receipt_urls.length > 0
+                          ? item.receipt_urls
+                          : (item.receipt_url ? [item.receipt_url] : []);
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-xs">{idx + 1}</TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {getCategoryLabel(item.category)}
+                              {item.description ? <div className="text-xs text-muted-foreground">{item.description}</div> : null}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">{formatCurrency(item.estimated_amount ?? 0)}</TableCell>
+                            <TableCell className="text-right text-sm font-medium">{formatCurrency(item.actual_amount ?? 0)}</TableCell>
+                            <TableCell className={`text-right text-sm font-medium px-2 py-1 ${varColor}`}>
+                              {formatCurrency(variance)}
+                              <div className="text-[10px]">{variancePct.toFixed(0)}%</div>
+                            </TableCell>
+                            <TableCell>
+                              {urls.length > 0 ? (
+                                <FinanceFileUpload urls={urls} onChange={() => {}} folder={selectedSettlement?.id || "view"} disabled />
+                              ) : <span className="text-xs text-muted-foreground">—</span>}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/40 rounded-md">
+                  <span className="text-sm">TỔNG DỰ TOÁN: <strong>{formatCurrency(totalEst)}</strong></span>
+                  <span className="text-sm">TỔNG THỰC CHI: <strong>{formatCurrency(totalAct)}</strong></span>
+                  <span className="text-sm flex items-center gap-2">
+                    TỔNG CHÊNH LỆCH: <strong>{formatCurrency(totalVar)}</strong>
+                    {totalEst > 0 && (
+                      totalVar > 0 ? (
+                        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Vượt {totalPct.toFixed(1)}%</Badge>
+                      ) : totalVar < 0 ? (
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Tiết kiệm {Math.abs(totalPct).toFixed(1)}%</Badge>
+                      ) : (
+                        <Badge variant="outline">Khớp</Badge>
+                      )
+                    )}
+                  </span>
+                </div>
+
+                {missing.length > 0 && selectedSettlement?.status !== "closed" && (
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                    <FileWarning className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-medium">Hạng mục chưa có chứng từ đính kèm:</div>
+                      <ul className="list-disc list-inside text-xs mt-1">
+                        {missing.map((m: any, i: number) => (
+                          <li key={i}>{getCategoryLabel(m.category)} — {formatCurrency(m.actual_amount)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {selectedSettlement?.accountant_note && (
             <div className="text-sm"><span className="font-medium">Ghi chú KT:</span> {selectedSettlement.accountant_note}</div>
