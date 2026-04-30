@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
           entity_id: c.id,
-          priority: "normal",
+          priority: "medium",
         });
       }
     }
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
           message: `Sinh nhật ${daysLabel}. Gửi lời chúc!`,
           entity_type: "customer",
           entity_id: c.id,
-          priority: "normal",
+          priority: "medium",
         });
       }
     }
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
           message: `${years} năm (${daysLabel}). Gửi offer MICE?`,
           entity_type: "customer",
           entity_id: c.id,
-          priority: "normal",
+          priority: "medium",
         });
       }
     }
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
               message: `"${l.full_name}" đã ${daysSince} ngày chưa lên lịch follow-up.`,
               entity_type: "lead",
               entity_id: l.id,
-              priority: "normal",
+              priority: "medium",
             });
           }
         }
@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
           message: `Lead "${l.full_name}" dự kiến đi tour ngày ${l.planned_travel_date} (còn ${daysLeft} ngày).`,
           entity_type: "lead",
           entity_id: l.id,
-          priority: "normal",
+          priority: "medium",
         });
       }
     }
@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
               message: `HĐ ${c.code} ở trạng thái DRAFT đã ${days} ngày. Cần xử lý!`,
               entity_type: "contract",
               entity_id: c.id,
-              priority: "normal",
+              priority: "medium",
             });
           }
         }
@@ -480,7 +480,7 @@ Deno.serve(async (req) => {
           message: `Báo giá ${q.code} đã gửi ${days} ngày. Hãy follow-up!`,
           entity_type: "quotation",
           entity_id: q.id,
-          priority: "normal",
+          priority: "medium",
         });
       }
     }
@@ -513,7 +513,7 @@ Deno.serve(async (req) => {
                 message: `${emp.full_name} sinh nhật hôm nay. Gửi lời chúc!`,
                 entity_type: "employee",
                 entity_id: emp.id,
-                priority: "normal",
+                priority: "medium",
               });
             }
           }
@@ -1069,7 +1069,7 @@ Deno.serve(async (req) => {
             type: "RECURRING_EXPENSE_GENERATED",
             title: `🔁 Chi phí định kỳ tháng ${today.getMonth() + 1}`,
             message: `Đã tự động tạo ${recurringGenerated} khoản chi phí định kỳ. Vui lòng kiểm tra.`,
-            priority: "normal",
+            priority: "medium",
             is_read: false,
           }));
           if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
