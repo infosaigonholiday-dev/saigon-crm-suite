@@ -71,8 +71,9 @@ export function BudgetEstimatesTab() {
   const [formAdvance, setFormAdvance] = useState(0);
   const [formKtAssigned, setFormKtAssigned] = useState<string>("");
   const [formItems, setFormItems] = useState<EstimateItem[]>([
-    { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 },
+    { category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0, receipt_urls: [] },
   ]);
+  const [tempFolder] = useState(() => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   // Danh sách Kế toán (để gán phụ trách dự toán này)
   const { data: accountants = [] } = useQuery({
