@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, Send, Megaphone, History, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { validateNotificationUrl, isValidActionUrl } from "@/lib/actionUrl";
+import { Lock } from "lucide-react";
 
 type TargetMode = "all" | "type" | "department" | "role" | "users";
 
