@@ -16,6 +16,7 @@ import { Loader2, Plus, Eye, Check, X, Banknote, Trash2, Printer } from "lucide-
 import { toast } from "sonner";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { buildEstimateHtml, buildAdvanceHtml, openPrintWindow } from "@/lib/financePrintTemplates";
+import { useCompanyInfo, toPrintCompanyInfo } from "@/hooks/useCompanyInfo";
 import { FinanceFileUpload } from "./FinanceFileUpload";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
@@ -57,6 +58,8 @@ export function BudgetEstimatesTab() {
   const canCreate = hasPermission("finance", "edit");
   const canReview = hasPermission("finance", "edit");
   const queryClient = useQueryClient();
+  const { data: companyInfo } = useCompanyInfo();
+  const printCo = toPrintCompanyInfo(companyInfo);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -537,7 +540,7 @@ export function BudgetEstimatesTab() {
                     supplier: it.vendors?.name,
                     payment_deadline: it.payment_deadline,
                   })),
-                });
+                }, printCo);
                 openPrintWindow(html);
               }}
             >
@@ -554,7 +557,7 @@ export function BudgetEstimatesTab() {
                     amount: selectedEstimate.advance_amount,
                     purpose: selectedEstimate.advance_purpose || "Tạm ứng tour",
                     booking_code: selectedEstimate.bookings?.code,
-                  });
+                  }, printCo);
                   openPrintWindow(html);
                 }}
               >

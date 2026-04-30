@@ -68,3 +68,24 @@ export function parseBank(raw: string | null | undefined) {
   const [name = "", holder = "", number = ""] = raw.split("|");
   return { name: name.trim(), holder: holder.trim(), number: number.trim() };
 }
+
+/** Map CompanyInfo → PrintCompanyInfo cho financePrintTemplates */
+export function toPrintCompanyInfo(info: CompanyInfo | undefined) {
+  const c = info || COMPANY_INFO_DEFAULTS;
+  return {
+    name: c.COMPANY_NAME,
+    shortName: c.COMPANY_SHORT_NAME,
+    tagline: c.COMPANY_TAGLINE,
+    address: c.COMPANY_ADDRESS,
+    address2: c.COMPANY_ADDRESS2,
+    taxCode: c.COMPANY_TAX_CODE,
+    license: c.COMPANY_LICENSE,
+    phone: c.COMPANY_PHONE,
+    email: c.COMPANY_EMAIL,
+    website: c.COMPANY_WEBSITE,
+    logoUrl: c.COMPANY_LOGO_URL,
+    banks: [parseBank(c.COMPANY_BANK_1), parseBank(c.COMPANY_BANK_2)].filter(
+      (b) => b.name || b.number
+    ),
+  };
+}

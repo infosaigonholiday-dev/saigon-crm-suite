@@ -3,21 +3,44 @@
  * In bằng window.print() — CSS @media print đảm bảo chỉ in nội dung.
  */
 
-export interface PrintCompanyInfo {
+export interface PrintBank {
   name?: string;
-  address?: string;
-  taxCode?: string;
-  phone?: string;
-  logoUrl?: string;
+  holder?: string;
+  number?: string;
 }
 
-const DEFAULT_COMPANY: Required<PrintCompanyInfo> = {
+export interface PrintCompanyInfo {
+  name?: string;
+  shortName?: string;
+  tagline?: string;
+  address?: string;
+  address2?: string;
+  taxCode?: string;
+  license?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  banks?: PrintBank[];
+}
+
+const DEFAULT_COMPANY: Required<Omit<PrintCompanyInfo, "banks">> & { banks: PrintBank[] } = {
   name: "CÔNG TY TNHH DU LỊCH SAIGON HOLIDAY",
-  address: "TP. Hồ Chí Minh, Việt Nam",
+  shortName: "SAIGON HOLIDAY",
+  tagline: "",
+  address: "01 Hoa Cúc, P.07, Q.Phú Nhuận, TP.HCM",
+  address2: "",
   taxCode: "",
-  phone: "",
+  license: "",
+  phone: "0905 33 55 16",
+  email: "",
+  website: "www.saigonholiday.vn",
   logoUrl: "",
+  banks: [],
 };
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const fmt = (v: number | null | undefined) =>
   v ? new Intl.NumberFormat("vi-VN").format(v) + " ₫" : "0 ₫";
@@ -61,16 +84,43 @@ const printToolbar = `
 
 const headerBlock = (title: string, code: string, createdAt?: string, co?: PrintCompanyInfo) => {
   const c = { ...DEFAULT_COMPANY, ...(co || {}) };
-  const logoHtml = c.logoUrl ? `<img src="${c.logoUrl}" alt="logo" style="max-height:60px;margin-bottom:6px"/>` : "";
+  const logoHtml = c.logoUrl
+    ? `<img src="${escapeHtml(c.logoUrl)}" alt="logo" style="max-height:60px;margin-bottom:6px"/>`
+    : "";
+  const contactBits = [
+    c.address ? `📍 ${escapeHtml(c.address)}` : "",
+    c.phone ? `☎ ${escapeHtml(c.phone)}` : "",
+    c.email ? `📧 ${escapeHtml(c.email)}` : "",
+    c.website ? `🌐 ${escapeHtml(c.website)}` : "",
+    c.taxCode ? `MST: ${escapeHtml(c.taxCode)}` : "",
+  ].filter(Boolean).join(" &nbsp;•&nbsp; ");
   return `
   <div class="header">
     ${logoHtml}
-    <h2>${c.name}</h2>
-    <div class="meta">${c.address}${c.taxCode ? ` &nbsp;•&nbsp; MST: ${c.taxCode}` : ""}${c.phone ? ` &nbsp;•&nbsp; ☎ ${c.phone}` : ""}</div>
+    <h2>${escapeHtml(c.name)}</h2>
+    <div class="meta">${contactBits}</div>
+    ${c.tagline ? `<div class="meta" style="font-style:italic;color:#E8963A">${escapeHtml(c.tagline)}</div>` : ""}
     <h1>${title}</h1>
-    <div class="meta">Số: <strong>${code}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
+    <div class="meta">Số: <strong>${escapeHtml(code)}</strong> &nbsp; • &nbsp; Ngày lập: <strong>${fmtDate(createdAt)}</strong></div>
   </div>
 `;
+};
+
+const footerBlock = (co?: PrintCompanyInfo) => {
+  const c = { ...DEFAULT_COMPANY, ...(co || {}) };
+  const banks = (c.banks || []).filter((b) => b && (b.name || b.number));
+  const bankHtml = banks.length
+    ? `<div style="margin-top:20px;padding-top:10px;border-top:1px dashed #999;font-size:11px;color:#444">
+        <strong>Thông tin chuyển khoản:</strong>
+        ${banks.map((b) => `<div>🏦 ${escapeHtml(b.name || "")}${b.number ? ` — Số TK: <b>${escapeHtml(b.number)}</b>` : ""}${b.holder ? ` — CTK: ${escapeHtml(b.holder)}` : ""}</div>`).join("")}
+      </div>`
+    : "";
+  const footerLine = [c.name, c.phone ? `☎ ${c.phone}` : "", c.email ? `📧 ${c.email}` : "", c.website ? `🌐 ${c.website}` : ""]
+    .filter(Boolean).map(escapeHtml).join(" &nbsp;•&nbsp; ");
+  return `${bankHtml}
+  <div style="margin-top:14px;text-align:center;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px">
+    ${footerLine}
+  </div>`;
 };
 
 const signaturesBlock = `
@@ -149,6 +199,7 @@ export function buildEstimateHtml(d: EstimateData, co?: PrintCompanyInfo): strin
     ${d.advance_purpose ? `<div class="row"><span>Mục đích tạm ứng:</span><span>${d.advance_purpose}</span></div>` : ""}
     <div class="row grand"><span>Tổng dự toán:</span><span>${fmt(d.total_estimated ?? totalCalc)}</span></div>
   </div>
+  ${footerBlock(co)}
   ${signaturesBlock}
 </body></html>`;
 }
@@ -224,6 +275,7 @@ export function buildSettlementHtml(d: SettlementData, co?: PrintCompanyInfo): s
     ${(d.additional_amount ?? 0) > 0 ? `<div class="row"><span>Chi bù (Cty chi thêm):</span><span>${fmt(d.additional_amount)} — ${d.topup_status ?? ""}</span></div>` : ""}
     <div class="row grand"><span>Số tiền cần thanh toán:</span><span>${fmt((d.additional_amount ?? 0) - (d.refund_amount ?? 0))}</span></div>
   </div>
+  ${footerBlock(co)}
   ${signaturesBlock}
 </body></html>`;
 }
@@ -255,6 +307,7 @@ export function buildAdvanceHtml(d: AdvanceData, co?: PrintCompanyInfo): string 
   <p style="font-size:12px;color:#555;margin-top:16px;font-style:italic">
     Người nhận có trách nhiệm hoàn ứng và quyết toán đầy đủ chứng từ sau khi hoàn thành công việc.
   </p>
+  ${footerBlock(co)}
   <div class="signatures">
     <div class="box"><div class="label">Người nhận tạm ứng</div><div class="meta">(Ký, ghi rõ họ tên)</div></div>
     <div class="box"><div class="label">Kế toán</div><div class="meta">(Ký, ghi rõ họ tên)</div></div>

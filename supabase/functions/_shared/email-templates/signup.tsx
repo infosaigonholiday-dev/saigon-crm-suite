@@ -29,15 +29,15 @@ export const SignupEmail = ({
 }: SignupEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Xác nhận email cho Saigon Holiday</Preview>
+    <Preview>Xác nhận email cho {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Xác nhận email của bạn</Heading>
         <Text style={text}>
           Cảm ơn bạn đã đăng ký tài khoản tại{' '}
           <Link href={siteUrl} style={link}>
-            <strong>Saigon Holiday</strong>
+            <strong>{siteName}</strong>
           </Link>
           !
         </Text>

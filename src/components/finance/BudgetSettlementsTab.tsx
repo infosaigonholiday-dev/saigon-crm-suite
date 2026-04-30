@@ -16,6 +16,7 @@ import { Loader2, Plus, Eye, AlertTriangle, Printer, FileWarning } from "lucide-
 import { toast } from "sonner";
 import InternalNotes from "@/components/shared/InternalNotes";
 import { buildSettlementHtml, openPrintWindow } from "@/lib/financePrintTemplates";
+import { useCompanyInfo, toPrintCompanyInfo } from "@/hooks/useCompanyInfo";
 import { FinanceFileUpload } from "./FinanceFileUpload";
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("vi-VN").format(v) + "đ";
@@ -61,6 +62,8 @@ export function BudgetSettlementsTab() {
   const isKetoan = userRole === "KETOAN" || userRole === "ADMIN";
   const isCeo = userRole === "ADMIN";
   const queryClient = useQueryClient();
+  const { data: companyInfo } = useCompanyInfo();
+  const printCo = toPrintCompanyInfo(companyInfo);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -688,7 +691,7 @@ export function BudgetSettlementsTab() {
                     actual_amount: it.actual_amount,
                     receipt_url: it.receipt_url,
                   })),
-                });
+                }, printCo);
                 openPrintWindow(html);
               }}
             >

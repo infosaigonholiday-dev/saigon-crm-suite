@@ -24,13 +24,13 @@ export const RecoveryEmail = ({
 }: RecoveryEmailProps) => (
   <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Đặt lại mật khẩu tài khoản Saigon Holiday</Preview>
+    <Preview>Đặt lại mật khẩu tài khoản {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>SAIGON HOLIDAY</Text>
+        <Text style={brand}>{siteName.toUpperCase()}</Text>
         <Heading style={h1}>Đặt lại mật khẩu</Heading>
         <Text style={text}>
-          Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản Saigon Holiday của bạn. Nhấn nút bên dưới để chọn mật khẩu mới.
+          Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản {siteName} của bạn. Nhấn nút bên dưới để chọn mật khẩu mới.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Đặt lại mật khẩu
