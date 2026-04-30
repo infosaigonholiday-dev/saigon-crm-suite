@@ -247,20 +247,20 @@ export default function AlertsCenter() {
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">
+        <TabsList data-testid="alerts-tabs" className="grid w-full grid-cols-4">
+          <TabsTrigger value="all" data-testid="tab-all">
             <Inbox className="h-4 w-4 mr-2" />
             Tất cả {totalCount > 0 && <Badge variant="secondary" className="ml-2">{totalCount}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="urgent">
+          <TabsTrigger value="urgent" data-testid="tab-urgent">
             <ShieldAlert className="h-4 w-4 mr-2" />
             Khẩn cấp {urgentCount > 0 && <Badge variant="destructive" className="ml-2">{urgentCount}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="finance">
+          <TabsTrigger value="finance" data-testid="tab-finance">
             <Wallet className="h-4 w-4 mr-2" />
             Tài chính {financeCount > 0 && <Badge variant="secondary" className="ml-2">{financeCount}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="ops">
+          <TabsTrigger value="ops" data-testid="tab-ops">
             <Plane className="h-4 w-4 mr-2" />
             Vận hành {opsCount > 0 && <Badge variant="secondary" className="ml-2">{opsCount}</Badge>}
           </TabsTrigger>
