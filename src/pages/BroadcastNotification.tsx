@@ -181,8 +181,8 @@ export default function BroadcastNotification() {
       toast.success(`Đã gửi thông báo đến ${data.sent_count} người`);
       setTitle("");
       setMessage("");
-      setPriority("normal");
-      setUrl("/");
+      setPriority("medium");
+      setUrl("/canh-bao");
       setSelectedDepts([]);
       setSelectedRoles([]);
       setSelectedUsers([]);
