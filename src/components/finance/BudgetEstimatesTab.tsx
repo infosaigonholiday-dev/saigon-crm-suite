@@ -48,6 +48,7 @@ interface EstimateItem {
   vendor_id?: string;
   payment_deadline?: string;
   sort_order: number;
+  receipt_urls?: string[];
 }
 
 export function BudgetEstimatesTab() {
