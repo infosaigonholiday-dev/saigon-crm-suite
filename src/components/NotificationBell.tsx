@@ -118,7 +118,7 @@ export function NotificationBell() {
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
-        .select("id, user_id, type, title, message, entity_type, entity_id, is_read, priority, created_at, action_required, action_status, action_due_at")
+        .select("id, user_id, type, title, message, entity_type, entity_id, related_entity_type, related_entity_id, action_url, is_read, priority, created_at, action_required, action_status, action_due_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
