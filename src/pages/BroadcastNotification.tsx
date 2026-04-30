@@ -429,7 +429,7 @@ export default function BroadcastNotification() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => sendMutation.mutate()}>Gửi ngay</AlertDialogAction>
+                  <AlertDialogAction onClick={handleSend}>Gửi ngay</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
