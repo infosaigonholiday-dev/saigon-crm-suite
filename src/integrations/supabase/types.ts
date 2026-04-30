@@ -5753,6 +5753,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      rpc_notification_stats_by_user_type: {
+        Args: {
+          p_action_status?: string
+          p_days?: number
+          p_read_status?: string
+          p_user_id: string
+        }
+        Returns: {
+          last_read_at: string
+          notification_type: string
+          oldest_unread_at: string
+          overdue_actions: number
+          pending_actions: number
+          read_count: number
+          total_notifications: number
+          unread_count: number
+          unread_high_critical: number
+        }[]
+      }
       rpc_notification_unread_by_user: {
         Args: never
         Returns: {
