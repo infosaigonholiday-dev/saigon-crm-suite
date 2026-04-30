@@ -134,8 +134,9 @@ export default function LeadStatusChangeDialog({
 
   const noteValid = note.trim().length >= 10;
   const dateValid = !!nextDate;
+  const resultValid = !!result;
   const lostValid = !isLost || lostReason.trim().length > 0;
-  const canSubmit = noteValid && dateValid && lostValid && !submit.isPending;
+  const canSubmit = noteValid && dateValid && resultValid && lostValid && !submit.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
