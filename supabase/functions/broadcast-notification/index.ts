@@ -16,7 +16,7 @@ const ALLOWED_SENDER_ROLES = ["ADMIN", "GDKD", "MANAGER", "HCNS"];
 interface BroadcastPayload {
   title: string;
   message: string;
-  priority?: "normal" | "high" | "urgent";
+  priority?: "low" | "medium" | "high" | "critical";
   url?: string;
   target_user_ids: string[];
   target_filter?: Record<string, unknown>;
