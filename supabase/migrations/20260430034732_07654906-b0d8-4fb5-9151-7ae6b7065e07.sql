@@ -1,0 +1,1 @@
+UPDATE public.notifications SET type = UPPER(type) WHERE type <> UPPER(type);
