@@ -79,6 +79,7 @@ export default function Settings() {
     showExpenseCategories && { value: "expense_categories", label: "DM Chi phí" },
     showAuditLog && { value: "audit", label: "Nhật ký thay đổi" },
     showNotificationHistory && { value: "notif_history", label: "Lịch sử thông báo" },
+    showNotificationHistory && { value: "notif_stats", label: "Thống kê thông báo" },
   ].filter(Boolean) as { value: string; label: string }[];
 
   const defaultTab = tabs[0]?.value || "roles";
