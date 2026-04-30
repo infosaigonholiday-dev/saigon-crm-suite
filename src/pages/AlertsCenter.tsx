@@ -314,6 +314,8 @@ export default function AlertsCenter() {
               {allNotifs.map((n: any) => {
                 const link = getEntityLink(n.entity_type, n.entity_id);
                 const clickable = !!link;
+                const needsAction = n.action_required && ["pending","in_progress"].includes(n.action_status);
+                const isOverdue = n.action_status === "overdue";
                 return (
                   <Card
                     key={n.id}
@@ -327,10 +329,12 @@ export default function AlertsCenter() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm ${n.is_read ? "font-normal" : "font-semibold"}`}>{n.title}</p>
                         <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words line-clamp-2">{n.message}</p>
-                        <p className="text-[11px] text-muted-foreground/70 mt-1">
-                          <Badge variant="outline" className="mr-2 text-[10px]">{getGroup(n.type)}</Badge>
-                          {format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">{getGroup(n.type)}</Badge>
+                          <span className="text-[11px] text-muted-foreground/70">{format(new Date(n.created_at), "HH:mm, dd/MM/yyyy", { locale: vi })}</span>
+                          {isOverdue && <Badge variant="destructive" className="text-[10px]">Quá hạn xử lý</Badge>}
+                          {needsAction && !isOverdue && <Badge className="text-[10px] bg-amber-500 hover:bg-amber-500">Cần xử lý</Badge>}
+                        </div>
                       </div>
                       {clickable && <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-1" />}
                     </CardContent>
