@@ -1,70 +1,106 @@
-# Hoàn thiện cơ chế "Đã đọc" thông báo
+# Tách "Đã gửi ≠ Đã đọc ≠ Đã xử lý" cho notifications
 
-## 1. Hiện trạng đã xác minh
+## Mục tiêu
+- `is_read` / `read_at`: chỉ đại diện việc user đã **xem** thông báo trong app.
+- `action_status` + `action_completed_at` / `action_completed_by`: chỉ đại diện việc công việc nghiệp vụ đã **xử lý xong**.
+- Click notification ⇒ chỉ set đọc, KHÔNG set completed. Completed chỉ set khi user thật sự thao tác nghiệp vụ.
 
-Bảng `public.notifications` đã có đủ cột yêu cầu: `id, user_id, type, title, message, entity_type, entity_id, is_read (default false), created_at, read_at (nullable), priority, escalation_level, escalated_at`.
+## 1. Database migration
 
-**Vấn đề phát hiện**: Toàn bộ client code (`NotificationBell.tsx`, `AlertsCenter.tsx`, `useAutoMarkNotificationsRead.ts`) chỉ set `is_read = true` mà KHÔNG set `read_at`. Hiện đã có 2 dòng `is_read=true` nhưng `read_at IS NULL`. Cần bịt rò rỉ ở client + backfill dữ liệu cũ.
+### 1.1 Bổ sung cột vào `notifications`
+- `action_required boolean NOT NULL DEFAULT false`
+- `action_status text` — enum mềm: `pending | in_progress | completed | dismissed | overdue` (CHECK constraint cho phép NULL khi `action_required = false`).
+- `action_due_at timestamptz NULL`
+- `related_entity_type text NULL` (đã có `entity_type` cũ — giữ tương thích, copy sang nếu thiếu).
+- `related_entity_id uuid NULL` (tương tự).
+- (`action_completed_at`, `action_completed_by` đã tồn tại từ migration trước — chỉ dùng lại.)
+- Index: `(user_id, action_status) WHERE action_required = true AND action_status IN ('pending','in_progress','overdue')`.
 
-Ngoài ra chưa có cột `action_completed_at` để phân biệt "đã đọc" vs "đã xử lý".
+### 1.2 Trigger `notifications_init_action_fields` (BEFORE INSERT)
+Tự bật `action_required = true` và set deadline cho các loại sau, dựa vào `priority`:
+- `FOLLOW_UP_OVERDUE`, `LEAD_NEW_ASSIGNED` → due_at = now() + 24h.
+- `PAYMENT_DUE`, `PAYMENT_OVERDUE`, `AR_OVERDUE` → due_at = now() + 48h.
+- `TRANSACTION_APPROVAL`, `BUDGET_SETTLEMENT_PENDING`, `LEAVE_REQUEST_NEW`, `CONTRACT_APPROVAL` → due_at = now() + 72h.
+- `ACTION_COMPLETED`, `*_RESULT`, `*_APPROVED`, `*_REJECTED`, `MENTION`, `BROADCAST`, `TEST_PUSH` → action_required = false (mặc định).
+- Khi `action_required = true` và `action_status` chưa set ⇒ `action_status := 'pending'`.
+- Copy `entity_type/entity_id` sang `related_entity_type/related_entity_id` nếu rỗng.
 
-## 2. Thay đổi Database (1 migration)
+### 1.3 Trigger `notifications_sync_action_status` (BEFORE UPDATE)
+- Khi `action_status` chuyển sang `completed` mà `action_completed_at` NULL ⇒ stamp `now()` + `auth.uid()`, đồng thời `is_read = true`, `read_at = COALESCE(read_at, now())`.
+- Khi `action_status` chuyển sang `dismissed` ⇒ stamp tương tự nhưng KHÔNG bắt buộc `is_read`.
+- Không tự đẩy `action_status = completed` chỉ vì `is_read` đổi (phải tách bạch).
 
-- Thêm cột `action_completed_at timestamptz NULL` và `action_completed_by uuid NULL` vào `notifications`.
-- Tạo trigger `BEFORE UPDATE` tự set `read_at = now()` khi `is_read` chuyển từ `false → true` mà client quên gửi `read_at` (an toàn nhiều lớp).
-- Backfill: `UPDATE notifications SET read_at = COALESCE(read_at, created_at) WHERE is_read = true AND read_at IS NULL;`
-- Tạo 2 RPC SECURITY DEFINER cho dashboard admin (chỉ ADMIN/SUPER_ADMIN/HR_MANAGER được gọi, kiểm tra qua `has_role`):
-  - `rpc_notification_unread_by_user()` → trả về `user_id, full_name, department, unread_total, unread_high_critical, oldest_unread_at`.
-  - `rpc_notification_critical_overdue()` → các notification `priority IN ('high','critical')` chưa đọc > 24h, kèm tên người nhận.
-- Index hỗ trợ: `CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = false;`
-- KHÔNG động vào RLS hiện tại (mỗi user vẫn chỉ thấy notification của mình; admin xem qua RPC SECURITY DEFINER).
+### 1.4 RPC mới
+- `rpc_notification_set_action_status(p_id uuid, p_status text, p_note text default null)`:
+  - SECURITY DEFINER, kiểm tra `user_id = auth.uid()` HOẶC `has_any_role(auth.uid(), ARRAY['ADMIN','SUPER_ADMIN','HR_MANAGER'])`.
+  - Cho phép transition: pending↔in_progress, *→completed, *→dismissed.
+- `rpc_notification_overview()`:
+  - SECURITY DEFINER, ADMIN/SUPER_ADMIN/HR_MANAGER only.
+  - Trả về 4 KPI: tổng đã gửi 7 ngày, chưa đọc, action pending/in_progress, action overdue.
+- `run_action_escalation()`:
+  - Quét `action_required = true AND action_status IN ('pending','in_progress')` mà:
+    - `priority IN ('high','critical')` AND `created_at < now() - 24h` AND `is_read = false`, hoặc
+    - `action_due_at IS NOT NULL AND action_due_at < now()` ⇒ set `action_status = 'overdue'` và bắn `ESCALATION_LV1` cho Manager cùng phòng + ADMIN.
+  - Chống nhân bản: chỉ tạo escalation 1 lần/notification (cờ `escalation_level >= 1`).
 
-## 3. Sửa rule mark-read ở client
+### 1.5 Cron
+- Thêm pg_cron job 30 phút/lần gọi `run_action_escalation()`.
+- Backfill: với row đang `is_read = true` mà chưa có `action_completed_at` — không tự stamp; chỉ set `action_required = false` cho những type không nằm trong danh sách 1.2.
 
-**Bỏ auto-mark khi mở dropdown** — hành vi hiện tại đã đúng (chỉ mark khi click row hoặc bấm "Đánh dấu tất cả"). Chuẩn hóa lại payload:
+## 2. Frontend / logic
 
-- `NotificationBell.tsx` (2 chỗ update): đổi sang `.update({ is_read: true, read_at: new Date().toISOString() })`.
-- `AlertsCenter.tsx` (2 chỗ update): tương tự.
-- `useAutoMarkNotificationsRead.ts`: cùng cách. Hook này chỉ chạy khi user mở trang chi tiết entity → vẫn đúng tinh thần "chỉ mark khi xem chi tiết".
+### 2.1 Helper mới `src/lib/notificationActions.ts`
+- `markActionInProgress(id)`, `markActionCompleted(id)`, `dismissAction(id)` — tất cả dùng RPC `rpc_notification_set_action_status`.
+- Giữ `markNotificationRead.ts` riêng cho hành động "đọc".
 
-Tạo helper `src/lib/markNotificationRead.ts` để 4 chỗ trên dùng chung, tránh lệch payload sau này.
+### 2.2 `NotificationBell.tsx` & `AlertsCenter.tsx`
+- Click row: chỉ gọi `markNotificationRead(id)` rồi điều hướng tới entity. **Không** gọi complete.
+- Hiển thị badge:
+  - "Cần xử lý" nếu `action_required && action_status IN ('pending','in_progress')`.
+  - "Quá hạn" nếu `action_status = 'overdue'`.
+- Bộ lọc mới ở `AlertsCenter`: Tất cả | Chưa đọc | Cần xử lý | Quá hạn.
 
-## 4. Trang Lịch sử thông báo (`SettingsNotificationHistoryTab.tsx`)
+### 2.3 Module nghiệp vụ — chỗ set `completed` thật
+Chỉ set khi nghiệp vụ thật xảy ra (không thêm UI mới, chỉ gắn hook):
+- `CareHistoryFormDialog` lưu mới với `lead_id` ⇒ complete tất cả notification `type IN ('FOLLOW_UP_OVERDUE','LEAD_NEW_ASSIGNED')` thuộc lead đó của user hiện tại.
+- `PaymentFormDialog` lưu mới ⇒ complete `PAYMENT_DUE`/`PAYMENT_OVERDUE`/`AR_OVERDUE` của booking.
+- `ApprovalTab` (finance) khi approve/reject ⇒ complete `TRANSACTION_APPROVAL`/`BUDGET_SETTLEMENT_PENDING` của record.
+- `LeaveManagement` approve/reject ⇒ complete `LEAVE_REQUEST_NEW`.
+- `ContractDetailDialog` approve ⇒ complete `CONTRACT_APPROVAL`.
+- Các điểm này gọi 1 helper chung `completeActionsForEntity(entityType, entityId, types?)`.
 
-- Thêm cột **"Đã đọc lúc"** hiển thị `read_at` (format `dd/MM/yyyy HH:mm`); nếu `is_read=false` hiển thị thời lượng chưa đọc bằng `formatDistanceToNow(created_at)` kèm icon đồng hồ.
-- Filter trạng thái: dropdown `Tất cả | Chưa đọc | Đã đọc` (đặt cạnh filter loại hiện có), áp `.eq('is_read', ...)` ở query.
-- Badge cảnh báo SLA: nếu `priority IN ('high','critical')` và `is_read=false` và `now - created_at > 24h` → badge đỏ "Quá 24h chưa đọc".
-- Mở rộng limit lên 100 và thêm phân trang đơn giản (Trước/Sau, 50/page) vì thêm filter sẽ cần xem nhiều hơn.
+### 2.4 `SettingsNotificationStatsTab.tsx`
+- Đổi sang dùng `rpc_notification_overview` cho 4 card KPI: Đã gửi (7d) / Chưa đọc / Cần xử lý / Quá hạn.
+- Giữ 2 bảng cũ (overdue + top user).
 
-## 5. Dashboard Admin — tab thống kê mới
+### 2.5 `SettingsNotificationHistoryTab.tsx`
+- Thêm cột "Trạng thái xử lý" hiển thị badge `action_status` (chỉ với row có `action_required = true`).
+- Filter mới "Trạng thái xử lý".
 
-Tạo `src/components/settings/SettingsNotificationStatsTab.tsx` đặt cạnh tab Lịch sử trong `Settings.tsx` (chỉ ADMIN/SUPER_ADMIN/HR_MANAGER thấy):
+## 3. Bằng chứng nghiệm thu sẽ chạy
 
-- **Card 1 — Tổng quan**: tổng chưa đọc toàn hệ thống, tổng critical/high quá 24h, số nhân sự có ≥1 chưa đọc.
-- **Card 2 — Critical/High quá hạn 24h**: bảng từ `rpc_notification_critical_overdue` (người nhận, loại, tiêu đề, tạo lúc, số giờ trễ).
-- **Card 3 — Top 10 nhân sự nhiều chưa đọc nhất**: từ `rpc_notification_unread_by_user` order by `unread_total DESC`, kèm cột `unread_high_critical` và `oldest_unread_at`.
-- Nút "Tải lại" + auto refetch 60s.
+```sql
+-- 1. Cột mới tồn tại
+SELECT column_name FROM information_schema.columns 
+WHERE table_name='notifications' 
+  AND column_name IN ('action_required','action_status','action_due_at','related_entity_type','related_entity_id');
 
-## 6. Tách rõ "đã đọc" vs "đã xử lý"
+-- 2. INSERT FOLLOW_UP_OVERDUE → action_required=true, action_status='pending', action_due_at≈now+24h
+-- 3. UPDATE action_status='completed' → action_completed_at, action_completed_by, is_read auto-set
+-- 4. Click bell trên FE → is_read=true, action_status KHÔNG đổi
+-- 5. CareHistory mới → action_status='completed' cho FOLLOW_UP của lead đó
+-- 6. run_action_escalation() chạy → row quá hạn chuyển 'overdue' + sinh ESCALATION_LV1
+```
 
-- Document trong tooltip cột trạng thái: "Đã đọc = đã xem, KHÔNG đồng nghĩa đã xử lý".
-- Cột `action_completed_at` mới sẵn sàng cho các loại action-required (PAYMENT_DUE, FOLLOW_UP_OVERDUE, TRANSACTION_APPROVAL...). Lần này chỉ tạo cột + 1 RPC `rpc_notification_complete_action(notification_id)` để các module sau gọi khi user thật sự hoàn thành công việc. Không đổi UI module nghiệp vụ trong scope này (sẽ làm ở các task riêng khi cần).
-
-## 7. Bằng chứng nghiệm thu sẽ chạy sau khi implement
-
-- `SELECT count(*) FILTER (WHERE is_read AND read_at IS NULL)` → phải = 0 sau backfill.
-- Click 1 notification trên bell → query lại row đó: `is_read=true`, `read_at` xấp xỉ `now()`.
-- Mở dropdown bell mà KHÔNG click → unread count không đổi.
-- Login bằng Sale → query `notifications` chỉ ra của chính mình (RLS đã có sẵn, chỉ verify lại).
-- Login Admin → tab thống kê hiển thị danh sách top unread.
-
-## Files dự kiến chạm
-
-- Migration mới: cột + trigger + 2 RPC + backfill + index.
-- `src/lib/markNotificationRead.ts` (mới)
-- `src/components/NotificationBell.tsx`
-- `src/pages/AlertsCenter.tsx`
-- `src/hooks/useAutoMarkNotificationsRead.ts`
-- `src/components/settings/SettingsNotificationHistoryTab.tsx`
-- `src/components/settings/SettingsNotificationStatsTab.tsx` (mới)
-- `src/pages/Settings.tsx` (gắn tab mới)
+## 4. Files dự kiến chạm
+- Migration mới (cột + 2 trigger + 3 RPC + cron + backfill).
+- `src/lib/notificationActions.ts` (mới).
+- `src/components/NotificationBell.tsx`.
+- `src/pages/AlertsCenter.tsx`.
+- `src/components/settings/SettingsNotificationStatsTab.tsx`.
+- `src/components/settings/SettingsNotificationHistoryTab.tsx`.
+- `src/components/leads/CareHistoryFormDialog.tsx`.
+- `src/components/payments/PaymentFormDialog.tsx`.
+- `src/components/finance/ApprovalTab.tsx`.
+- `src/pages/LeaveManagement.tsx`.
+- `src/components/contracts/ContractDetailDialog.tsx`.
