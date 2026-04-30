@@ -1,63 +1,115 @@
-## Bug root cause
+## Mục tiêu
 
-`/reset-password` rerun-exchange-code race:
+Tách trang **Settings → Thống kê thông báo** thành 3 section, có filter đầy đủ và bảng audit chi tiết từng notification. Admin/CEO biết được mỗi nhân sự đã đọc/xử lý thông báo nào.
 
-1. Supabase Go API redirects back to `https://app.saigonholiday.vn/reset-password?code=XXX` (PKCE flow).
-2. `supabase-js` v2 với `detectSessionInUrl: true` (mặc định) **tự động** exchange `?code=XXX` ngay khi import client → fires `SIGNED_IN` → `AuthContext` set session.
-3. `ResetPassword.tsx` `useEffect` đọc lại `?code=XXX` từ `window.location.search` (URL chưa được clean) và gọi `supabase.auth.exchangeCodeForSession(code)` lần thứ hai.
-4. Code đã bị consumed → trả lỗi `invalid request: code verifier not found / Auth session missing` → component gọi `markExpired(error.message)` → hiện màn "Liên kết không hợp lệ".
+---
 
-User thấy: bấm link Gmail → màn báo "Liên kết đã hết hạn", dù link còn fresh và session thực ra đã được tạo thành công.
+## Section 1 — KPI tổng (clickable)
 
-Phụ trợ: nếu user đã login trên cùng browser, supabase tự exchange xong nhưng URL còn `?code=` → màn báo lỗi vẫn hiện ra che mất form.
+Giữ 4 card hiện có (Đã gửi 7d / Chưa đọc / Cần xử lý / Quá hạn). Mỗi card gắn `onClick` set một preset filter cho Section 3:
 
-## Phạm vi sửa
+| Card | Preset filter Section 3 |
+|---|---|
+| Đã gửi 7 ngày | range = 7d, reset filter khác |
+| Chưa đọc | read_status = `unread` |
+| Cần xử lý | action_status ∈ {`pending`, `in_progress`} |
+| Quá hạn xử lý | action_status = `overdue` |
 
-### 1. `src/pages/ResetPassword.tsx` — Sửa logic init
+Card được chọn highlight border `border-primary`. Auto scroll xuống Section 3.
 
-Bỏ việc tự gọi `exchangeCodeForSession`. Thay bằng:
+---
 
-- Lắng nghe `onAuthStateChange` cho 2 events: `PASSWORD_RECOVERY` (hash flow) và `SIGNED_IN` (PKCE flow — supabase-js tự exchange xong sẽ fire event này).
-- Trên mount: `await supabase.auth.getSession()`. Nếu đã có session → ready ngay.
-- Nếu URL có `?code=` hoặc hash `type=recovery` mà chưa có session → đợi event tối đa 8s rồi mới mark expired.
-- Sau khi mark ready, dùng `window.history.replaceState` để xóa `?code=...` khỏi URL (tránh re-trigger nếu user F5).
-- Thông điệp expired bằng tiếng Việt, không paste raw error message từ Supabase (gây hoang mang khi nó là "Auth session missing").
-- Sau khi `updateUser({ password })` thành công: cập nhật `must_change_password=false`, `signOut`, redirect về `/login` kèm toast "Đã đổi mật khẩu thành công, vui lòng đăng nhập lại".
+## Section 2 — Tình trạng đọc theo nhân sự
 
-### 2. `src/contexts/AuthContext.tsx` — Không phá flow recovery
+Dùng RPC `rpc_notification_stats_by_user` (đã chạy được). Bổ sung cột **Email**, **Vai trò**, nút **"Xem chi tiết"**.
 
-Hiện tại `RECOVERY_PATHS` đã bao gồm `/reset-password` nên `SIGNED_OUT` sau khi user submit không bị toast "Phiên kết thúc". Giữ nguyên. Bổ sung:
+Vì RPC hiện trả `full_name, email, department` chưa có `role`, sẽ cập nhật RPC join thêm `profiles.role`.
 
-- Trong `onAuthStateChange`, nếu `event === "PASSWORD_RECOVERY"` thì **không** chạy `syncAuthState` (tránh trigger query profiles → mustChangePassword redirect). Để `ResetPassword.tsx` xử lý độc lập.
-- Trên path `/reset-password`, **không** redirect về `/first-login-change-password` cả khi `mustChangePassword=true`. (`ProtectedRoutes` không bao `/reset-password` rồi, nhưng phòng trường hợp user đã có session active mở link recovery.)
+Click "Xem chi tiết" → set `userFilter = user_id` cho Section 3 + scroll xuống.
 
-### 3. `src/lib/authRedirect.ts` — Giữ nguyên
+---
 
-`getResetPasswordUrl()` đã trả `${window.location.origin}/reset-password`, đúng cho cả production `app.saigonholiday.vn`, published `saigon-holiday-nexus.lovable.app`, và preview `id-preview--*.lovable.app`.
+## Section 3 — Bảng audit chi tiết notification (mới)
 
-### 4. Supabase Auth URL Configuration — Người dùng cần verify
+### Data source
+Query trực tiếp từ client:
+```ts
+supabase.from('notifications')
+  .select(`
+    id, user_id, type, title, message, priority,
+    created_at, is_read, read_at,
+    action_required, action_status, action_due_at, action_completed_at,
+    related_entity_type, related_entity_id, entity_type, entity_id, action_url,
+    profiles:user_id ( full_name, email, department, role )
+  `)
+  .order('created_at', { ascending: false })
+  .limit(500);
+```
 
-Đây là cấu hình ngoài code, AI không tự sửa được. Sau khi push code, user cần vào
-**Supabase Dashboard → Authentication → URL Configuration** và đảm bảo:
+RLS hiện tại của `notifications` chỉ cho user đọc record của mình → cần **RPC mới** `rpc_notification_audit_list(p_range, p_user_id, p_department, p_type, p_group, p_read_status, p_action_status, p_search)` chạy `SECURITY DEFINER`, gate bằng `has_role(auth.uid(), 'ADMIN'/'SUPER_ADMIN'/'HR_MANAGER'/'GDKD'/'MANAGER')`. Trả về tối đa 500 dòng theo filter, kèm `full_name/email/department/role` từ `profiles`.
 
-- **Site URL:** `https://app.saigonholiday.vn`
-- **Redirect URLs** chứa đầy đủ:
-  - `https://app.saigonholiday.vn/reset-password`
-  - `https://app.saigonholiday.vn/**` (wildcard cho phép mọi sub-path)
-  - `https://saigon-holiday-nexus.lovable.app/reset-password`
-  - `https://saigon-holiday-nexus.lovable.app/**`
-  - `https://id-preview--1632605d-2e2c-4155-8254-0b9de359ce51.lovable.app/reset-password`
+### Filter bar (8 control)
+1. **Khoảng thời gian** (Select): 7/30/90/all
+2. **Nhân sự** (Combobox search): `Tất cả` + danh sách từ profiles active
+3. **Phòng ban** (Select): Tất cả / SALE / OPS / ACC / HR / MKT / MANAGEMENT
+4. **Loại thông báo** (Select): liệt kê 21 type có trong DB + `Tất cả`
+5. **Nhóm thông báo** (Select) — mapping client-side:
+   - `Lead/CRM`: FOLLOW_UP, FOLLOW_UP_OVERDUE, LEAD_FORGOTTEN, LEAD_NO_SCHEDULE, LEAD_ASSIGNED, LEAD_WON, NEW_ONLINE_LEAD, ESCALATION_LV1
+   - `Booking/Tour`: BOOKING_DEPARTURE_NEAR, TRAVEL_DATE_NEAR, TOUR_DEPARTURE
+   - `Tài chính`: PAYMENT_DUE, PAYMENT_OVERDUE, PAYMENT_RECEIVED, TRANSACTION_APPROVAL, TRANSACTION_APPROVED, TRANSACTION_REJECTED, BUDGET_ESTIMATE_PENDING, BUDGET_SETTLEMENT_PENDING, CASHFLOW_NEGATIVE
+   - `Nhân sự`: LEAVE_REQUEST_NEW, LEAVE_REQUEST_RESULT, BIRTHDAY, COMPANY_ANNIVERSARY, NEW_EMPLOYEE
+   - `Hợp đồng`: CONTRACT_APPROVAL_OVERDUE, CONTRACT_EXPIRY
+   - `Hệ thống/Broadcast`: BROADCAST, TEST_PUSH, WELCOME, DAILY_DIGEST, KPI_ACHIEVEMENT, INTERNAL_NOTE
+6. **Trạng thái đọc**: Tất cả / Đã đọc / Chưa đọc / Khẩn chưa đọc (priority ∈ high/critical & !is_read) / Chưa đọc >24h
+7. **Trạng thái xử lý**: Tất cả / Không cần xử lý (action_required=false) / Chờ xử lý / Đang xử lý / Quá hạn / Đã xử lý / **Đã đọc nhưng chưa xử lý** (is_read=true & action_required=true & action_status ∈ pending/in_progress/overdue)
+8. **Ô tìm kiếm** debounce 300ms: ILIKE trên `title`, `message`, `profiles.full_name`, `profiles.email`
 
-Nếu Redirect URL không khớp, Supabase sẽ silently fallback về Site URL và link Gmail sẽ về `/` thay vì `/reset-password` → user thấy như "không vào được màn đổi mật khẩu". Sẽ liệt kê link dashboard cho user click sau khi apply code.
+Có nút **"Xoá lọc"** reset toàn bộ + clear preset từ Section 1/2.
 
-### 5. Email template `recovery.tsx` — Không cần sửa
+### Cột bảng (16 cột — horizontal scroll)
+Người nhận | Email | Phòng ban | Vai trò | Loại | Nhóm | Tiêu đề | Nội dung (truncate 80 ký tự, tooltip full) | Mức độ (badge) | Gửi lúc | Trạng thái đọc | Đọc lúc | Chưa đọc bao lâu | Cần xử lý | Trạng thái xử lý | Xử lý lúc | Entity | Mở
 
-Đã dùng `{confirmationUrl}` (chính là `payload.data.url` từ webhook), Supabase build sẵn URL `…/auth/v1/verify?token=…&type=recovery&redirect_to=…`. Không can thiệp.
+- "Mở" = button link tới `action_url` (nếu có) hoặc dùng `notificationActions.ts` với `related_entity_type/id`.
+- Pagination 50/page client-side (RPC trả tối đa 500 đã filter).
 
-## Acceptance test sau khi sửa
+---
 
-- Gmail → click link → mở thẳng form đổi mật khẩu (không hiện "Liên kết không hợp lệ", không bị đá về `/login`).
-- Đổi mật khẩu → toast thành công → quay về `/login` → đăng nhập bằng mật khẩu mới OK.
-- Mở lại link cũ sau khi đã đổi → màn báo "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại." kèm nút "Quay về đăng nhập".
-- Mở link trong tab ẩn danh trong khi link còn hạn → form đổi mật khẩu hiện ra bình thường.
-- Test cả production `app.saigonholiday.vn` và preview Lovable.
+## Quy tắc nghiệp vụ (giữ nguyên)
+- Click notification chỉ set `is_read=true, read_at=now()`. **Không** đổi `action_status`.
+- `action_status='completed'` chỉ khi nghiệp vụ thực sự hoàn tất qua flow tương ứng.
+- Đã có sẵn trong `markNotificationRead.ts` và `rpc_notification_complete_action` — không sửa.
+
+---
+
+## Thay đổi kỹ thuật
+
+### Migration SQL
+1. **Update** `rpc_notification_stats_by_user`: bổ sung `role` (text) lấy từ `profiles.role`.
+2. **Create** `rpc_notification_audit_list(p_range_days int, p_user_id uuid, p_department text, p_type text, p_group text, p_read_status text, p_action_status text, p_search text)`:
+   - `SECURITY DEFINER`, `SET search_path = public`
+   - Gate: `has_role(auth.uid(),'ADMIN') OR ... 'SUPER_ADMIN' OR 'HR_MANAGER' OR 'GDKD' OR 'MANAGER'`; nếu không có quyền → `RAISE EXCEPTION`.
+   - SELECT từ `notifications n LEFT JOIN profiles p ON p.id = n.user_id`, áp filter động, `ORDER BY n.created_at DESC LIMIT 500`.
+   - GRANT EXECUTE TO authenticated.
+
+### File code
+- **Sửa** `src/components/settings/SettingsNotificationStatsTab.tsx`:
+  - Thêm state `filters` + `presetFromCard`.
+  - Card KPI thành button có active state.
+  - Bảng Section 2: thêm cột Email, Vai trò, nút "Xem chi tiết".
+  - Thêm Section 3 (filter bar + table + pagination) gọi `rpc_notification_audit_list`.
+  - Bỏ widget "Top nhân sự nhiều thông báo chưa đọc" (đã trùng Section 2) — gộp dữ liệu vào Section 2.
+  - Giữ widget "Cao/Khẩn chưa đọc quá 24h" như cảnh báo collapse mặc định.
+- **Tạo** `src/lib/notificationGroups.ts`: hằng số mapping type → group, label tiếng Việt cho type/group, danh sách phòng ban.
+
+### Test nghiệm thu (theo yêu cầu user)
+Sau khi triển khai sẽ chạy SQL `INSERT` 5 notification cho 2 user test, mở trang, chụp kết quả từng filter (FOLLOW_UP_OVERDUE / BROADCAST / "Đã đọc nhưng chưa xử lý" / "Khẩn chưa đọc") để xác nhận DoD.
+
+---
+
+## Definition of Done
+- 3 section riêng biệt, không còn mix vào widget khẩn cấp.
+- KPI card click filter được Section 3.
+- Section 2 có Email, Vai trò, "Xem chi tiết" → đẩy filter sang Section 3.
+- Section 3 có 8 filter + ô tìm kiếm + bảng 16 cột + pagination.
+- Khi KPI "Chưa đọc" > 0, bảng chi tiết với filter "Chưa đọc" không rỗng.
+- RLS giữ nguyên; admin truy cập qua RPC `SECURITY DEFINER`.

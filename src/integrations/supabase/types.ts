@@ -308,6 +308,7 @@ export type Database = {
           flight_dep_time: string | null
           flight_ret_code: string | null
           flight_ret_time: string | null
+          highlights: string | null
           hold_seats: string | null
           id: string
           itinerary_url: string | null
@@ -334,6 +335,7 @@ export type Database = {
           flight_dep_time?: string | null
           flight_ret_code?: string | null
           flight_ret_time?: string | null
+          highlights?: string | null
           hold_seats?: string | null
           id?: string
           itinerary_url?: string | null
@@ -360,6 +362,7 @@ export type Database = {
           flight_dep_time?: string | null
           flight_ret_code?: string | null
           flight_ret_time?: string | null
+          highlights?: string | null
           hold_seats?: string | null
           id?: string
           itinerary_url?: string | null
