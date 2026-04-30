@@ -280,10 +280,11 @@ export default function LeaveManagement() {
             const canDeleteThis =
               showActions && !isCancelled && (canDelete || isMyOwn);
 
+            // FIX 4: Không ai được tự duyệt đơn của chính mình (kể cả ADMIN).
+            // Đơn ADMIN/Manager phải do ADMIN khác hoặc HR_MANAGER duyệt.
             const canApproveThis =
-              showActions && r.status === "PENDING" &&
+              showActions && r.status === "PENDING" && !isMyOwn &&
               (
-                isMyOwn ? isAdmin :
                 isReqManagerLevel ? (isAdmin || userRole === "HR_MANAGER") :
                 (canApprove || isAdmin)
               );
