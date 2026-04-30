@@ -175,14 +175,25 @@ export default function LeadStatusChangeDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Hành động tiếp theo <span className="text-destructive">*</span></Label>
-              <Select value={nextAction} onValueChange={setNextAction}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Kết quả liên hệ <span className="text-destructive">*</span></Label>
+              <Select value={result} onValueChange={setResult}>
+                <SelectTrigger><SelectValue placeholder="Chọn kết quả" /></SelectTrigger>
                 <SelectContent>
-                  {NEXT_ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+                  {RESULT_OPTIONS.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!result && <p className="text-xs text-destructive">Vui lòng chọn kết quả liên hệ</p>}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Hành động tiếp theo <span className="text-destructive">*</span></Label>
+            <Select value={nextAction} onValueChange={setNextAction}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {NEXT_ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
