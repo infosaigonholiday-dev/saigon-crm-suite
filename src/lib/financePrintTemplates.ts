@@ -307,6 +307,7 @@ export function buildAdvanceHtml(d: AdvanceData, co?: PrintCompanyInfo): string 
   <p style="font-size:12px;color:#555;margin-top:16px;font-style:italic">
     Người nhận có trách nhiệm hoàn ứng và quyết toán đầy đủ chứng từ sau khi hoàn thành công việc.
   </p>
+  ${footerBlock(co)}
   <div class="signatures">
     <div class="box"><div class="label">Người nhận tạm ứng</div><div class="meta">(Ký, ghi rõ họ tên)</div></div>
     <div class="box"><div class="label">Kế toán</div><div class="meta">(Ký, ghi rõ họ tên)</div></div>
