@@ -81,6 +81,7 @@ export default function LeadStatusChangeDialog({
 }: Props) {
   const [note, setNote] = useState("");
   const [contactMethod, setContactMethod] = useState("CALL");
+  const [result, setResult] = useState<string>(suggestResult(targetStatus));
   const [nextAction, setNextAction] = useState("Gọi lại");
   const [nextDate, setNextDate] = useState<Date | undefined>();
   const [temperature, setTemperature] = useState<string>(currentTemperature || "warm");
@@ -96,8 +97,9 @@ export default function LeadStatusChangeDialog({
       setTemperature(currentTemperature || "warm");
       setNextAction("Gọi lại");
       setContactMethod("CALL");
+      setResult(suggestResult(targetStatus));
     }
-  }, [open, currentTemperature]);
+  }, [open, currentTemperature, targetStatus]);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -112,7 +114,7 @@ export default function LeadStatusChangeDialog({
         note: note.trim(),
         next_action: nextAction,
         next_contact_date: nextDate ? format(nextDate, "yyyy-MM-dd") : null,
-        result: targetStatus === "WON" ? "BOOKED" : targetStatus === "INTERESTED" ? "INTERESTED" : null,
+        result,
       });
       if (histErr) throw histErr;
 
