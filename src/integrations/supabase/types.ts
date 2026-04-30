@@ -3235,6 +3235,75 @@ export type Database = {
           },
         ]
       }
+      notifications_backup_20260430: {
+        Row: {
+          action_completed_at: string | null
+          action_completed_by: string | null
+          action_due_at: string | null
+          action_required: boolean | null
+          action_status: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          escalated_at: string | null
+          escalation_level: number | null
+          id: string | null
+          is_read: boolean | null
+          message: string | null
+          priority: string | null
+          read_at: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
+          title: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_completed_at?: string | null
+          action_completed_by?: string | null
+          action_due_at?: string | null
+          action_required?: boolean | null
+          action_status?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          priority?: string | null
+          read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_completed_at?: string | null
+          action_completed_by?: string | null
+          action_due_at?: string | null
+          action_required?: boolean | null
+          action_status?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          escalated_at?: string | null
+          escalation_level?: number | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          priority?: string | null
+          read_at?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       office_expenses: {
         Row: {
           amount: number
