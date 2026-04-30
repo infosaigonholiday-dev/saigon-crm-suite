@@ -166,6 +166,9 @@ function BusinessDashboard() {
         )}
       </div>
 
+      {/* Vận hành đoàn / MICE */}
+      <SectionBoundary name="Tour Ops"><TourOpsWidgets /></SectionBoundary>
+
       {/* KPI Cards — Lead performance */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpiCards.map((stat) => (
