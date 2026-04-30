@@ -26,8 +26,8 @@ const RISK_BADGE: Record<string, string> = {
 
 export default function TourFiles() {
   const navigate = useNavigate();
-  const { has } = usePermissions();
-  const canCreate = has("bookings", "create");
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission("bookings", "create");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
