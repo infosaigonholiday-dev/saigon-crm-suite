@@ -13,6 +13,7 @@ import { SettingsAuditLogTab } from "@/components/settings/SettingsAuditLogTab";
 import { SettingsExpenseCategoriesTab } from "@/components/settings/SettingsExpenseCategoriesTab";
 import { SettingsCompanyInfoTab } from "@/components/settings/SettingsCompanyInfoTab";
 import { SettingsNotificationHistoryTab } from "@/components/settings/SettingsNotificationHistoryTab";
+import { SettingsNotificationStatsTab } from "@/components/settings/SettingsNotificationStatsTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
