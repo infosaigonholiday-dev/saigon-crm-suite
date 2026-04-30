@@ -131,7 +131,10 @@ export default function AlertsCenter() {
   };
 
   const handleNotificationClick = async (n: any) => {
-    const link = getEntityLink(n.entity_type, n.entity_id);
+    // Ưu tiên action_url do DB sinh (Prompt #5B)
+    const link =
+      (typeof n.action_url === "string" && n.action_url.length > 1 ? n.action_url : null) ||
+      getEntityLink(n.related_entity_type ?? n.entity_type, n.related_entity_id ?? n.entity_id);
     if (!n.is_read) {
       await supabase
         .from("notifications")
