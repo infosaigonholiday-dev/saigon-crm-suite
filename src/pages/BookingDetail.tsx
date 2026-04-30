@@ -18,6 +18,7 @@ import { PrintConfirmationButton } from "@/components/bookings/PrintConfirmation
 import InternalNotes from "@/components/shared/InternalNotes";
 import { NotesCountBadge } from "@/components/shared/NotesCountBadge";
 import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 type BookingStatus = "PENDING" | "DEPOSITED" | "PAID" | "COMPLETED" | "CANCELLED";
 
@@ -47,9 +48,9 @@ export default function BookingDetail() {
         .from("bookings")
         .select("*, customers(full_name, phone, email)")
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      return data; // null nếu không tìm thấy hoặc bị RLS chặn
     },
     enabled: !!id,
   });
@@ -77,13 +78,13 @@ export default function BookingDetail() {
     );
   }
 
+  // TC12: data===null → forbidden (RLS chặn hoặc đã xoá hoàn toàn).
   if (!booking) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Không tìm thấy booking</p>
-        <Button variant="link" onClick={() => navigate("/dat-tour")}>Quay lại</Button>
-      </div>
-    );
+    return <EntityNotAccessible kind="Booking" backTo="/dat-tour" mode="forbidden" />;
+  }
+  // TC13: booking tồn tại nhưng đã huỷ → banner "đã bị huỷ".
+  if (booking.status === "CANCELLED") {
+    return <EntityNotAccessible kind="Booking" backTo="/dat-tour" mode="cancelled" />;
   }
 
   const status = (booking.status as BookingStatus) ?? "PENDING";

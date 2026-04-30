@@ -29,6 +29,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { PushNotificationCard } from "@/components/PushNotificationCard";
 import { useAutoMarkNotificationsRead } from "@/hooks/useAutoMarkNotificationsRead";
+import { EntityNotAccessible } from "@/components/shared/EntityNotAccessible";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Đang làm", className: "bg-success/15 text-success border-success/30" },
@@ -64,9 +65,9 @@ export default function EmployeeDetail() {
         .from("employees")
         .select("*, departments(name, code)")
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      return data; // null nếu không tìm thấy hoặc bị RLS chặn
     },
   });
 
@@ -92,8 +93,13 @@ export default function EmployeeDetail() {
     return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
+  // TC12: forbidden / không tồn tại
   if (!employee) {
-    return <div className="text-center py-20 text-muted-foreground">Không tìm thấy nhân viên</div>;
+    return <EntityNotAccessible kind="Nhân viên" backTo="/nhan-su" mode="forbidden" />;
+  }
+  // TC13: nhân viên đã nghỉ việc hoặc đã soft-deleted
+  if (employee.status === "RESIGNED" || (employee as any).deleted_at) {
+    return <EntityNotAccessible kind="Nhân viên" backTo="/nhan-su" mode="cancelled" />;
   }
 
   const st = statusLabels[employee.status ?? "ACTIVE"] ?? statusLabels.ACTIVE;

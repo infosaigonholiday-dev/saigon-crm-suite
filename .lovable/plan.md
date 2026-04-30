@@ -1,84 +1,60 @@
 ## Mục tiêu
+Pass TC12 (RLS chặn entity của người khác) + TC13 (entity bị huỷ) bằng cách wire `EntityNotAccessible` vào 5 trang detail.
 
-Nâng cấp 2 tab Settings → Notifications để CEO/Admin thấy rõ ai đã đọc / chưa đọc / xử lý chưa, đồng thời siết lại nguyên tắc "Đã gửi ≠ Đã đọc ≠ Đã xử lý" và bổ sung filter nghiệp vụ.
-
-Hiện trạng (đã có sẵn, không xây lại):
-- DB: `notifications` đủ cột `is_read, read_at, action_required, action_status, action_due_at, action_completed_at, action_completed_by, priority`.
-- Trigger `trg_notifications_set_read_at` tự set `read_at = now()` khi `is_read` flip → giữ nguyên.
-- RLS: `notifications_own` (user thấy của mình) + `admin_full_access` (ADMIN/SUPER_ADMIN thấy hết) → đúng yêu cầu.
-- `markNotificationRead` chỉ update `is_read + read_at`, KHÔNG đụng `action_status` → đúng nguyên tắc.
-- 2 tab Settings: `SettingsNotificationHistoryTab.tsx` + `SettingsNotificationStatsTab.tsx` đã tồn tại nhưng thiếu cột/filter theo yêu cầu mới.
-
-## Phạm vi thay đổi
-
-### 1. Migration SQL (1 file)
-
-**a. Mở RPC stats cho CEO/Management**
-Thêm 2 role được phép gọi 3 RPC stats: `GDKD`, `MANAGER` (ngoài ADMIN/SUPER_ADMIN/HR_MANAGER hiện có) — để CEO/Quản lý xem dashboard tổng hợp.
-
-**b. RPC mới `rpc_notification_stats_by_user()`**
-Trả về đúng spec yêu cầu (1 hàng / nhân sự):
+## Bonus check (đã chạy ✅)
 ```
-user_id, full_name, email, department,
-total_notifications, read_count, unread_count,
-unread_high_critical, pending_actions, overdue_actions,
-last_read_at
+SELECT id, type, priority, action_required FROM notifications WHERE action_url IS NULL;
+→ 2 rows: NEW_ONLINE_LEAD + NEW_EMPLOYEE, cả 2 đều action_required=false, priority=medium ✓
 ```
-Filter: chỉ tính 90 ngày gần nhất để tránh bảng phình. SECURITY DEFINER + check role như trên.
+Đúng ràng buộc `chk_action_url_required` — không có noti high/critical hoặc action_required nào thiếu URL.
 
-**c. View bổ trợ (optional, để query nhanh)**: bỏ qua — query trực tiếp `notifications` qua RLS đã đủ vì admin policy bypass.
+## Phạm vi
 
-### 2. `SettingsNotificationHistoryTab.tsx` — refactor
+### 1. `src/components/shared/EntityNotAccessible.tsx`
+Mở rộng API: thêm prop `mode?: "forbidden" | "cancelled" | "not_found"` (alias mới theo spec). Giữ `reason` cũ cho backward compat. `cancelled` map sang label "đã bị huỷ" với icon riêng.
 
-- **Thêm cột Email người nhận** (lấy từ `profiles.email` đã join sẵn).
-- **Thêm cột "Mức độ"** (low/medium/high/critical) với badge màu.
-- **Tách "Đọc lúc"**: nếu `is_read` → format `read_at`; nếu chưa → "—".
-- **Cột "Chưa đọc bao lâu"**: nếu `is_read=false` → `formatDistanceToNow(created_at)` ("Chưa đọc 3 giờ"); nếu đã đọc → "—".
-- **Trạng thái xử lý** (giữ cột cũ, mở rộng label): `Không cần xử lý / Chờ xử lý / Đang xử lý / Quá hạn / Đã xử lý / Bỏ qua`.
-- **Badge bổ sung trong cột Đọc**:
-  - `is_read=false` → "Chưa đọc"
-  - `is_read=false` + priority high/critical → đỏ "Khẩn chưa đọc"
-  - `is_read=true` + `action_required=true` + status ∈ pending/in_progress → vàng "Đã đọc, chưa xử lý"
-  - `action_status='overdue'` → đỏ "Quá hạn xử lý"
-  - `action_status='completed'` → xanh "Đã xử lý"
-- **Filter mới (preset dropdown)** thay vì 2 select rời:
+### 2. Pattern áp dụng cho 5 file detail
+Vấn đề: query hiện đang `.single()` + `throw error` trong queryFn → component mất khả năng phân biệt PGRST116 vs lỗi khác. Spec đề xuất check `error?.code === 'PGRST116'`, nhưng vì RLS chặn cũng trả về PGRST116 (không có row), ta dùng pattern an toàn hơn:
+
+- Đổi `.single()` → `.maybeSingle()` (tuân theo Lovable rule).
+- queryFn trả về `data` (có thể `null`).
+- Trong component:
+  ```tsx
+  if (isLoading) return <Loader/>;
+  if (!data) return <EntityNotAccessible kind="..." backTo="..." mode="forbidden" />;
+  if (data.status === 'cancelled' /* hoặc CANCELLED / RESIGNED / deleted_at */) 
+    return <EntityNotAccessible kind="..." backTo="..." mode="cancelled" />;
   ```
-  Tất cả | Chưa đọc | Đã đọc | Khẩn chưa đọc |
-  Cần xử lý | Quá hạn xử lý | Đã đọc nhưng chưa xử lý
+
+Lý do dùng `mode="forbidden"` cho `data===null`: an toàn nhất, không lộ tồn tại của entity (info-leak prevention) — vẫn đóng được TC12.
+
+### 3. Map kind / backTo / cancelled-condition
+
+| File | kind | backTo | cancelled check |
+|---|---|---|---|
+| `CustomerDetail.tsx` | "Khách hàng" | `/khach-hang` | (không có status/deleted_at → bỏ qua TC13) |
+| `BookingDetail.tsx` | "Booking" | `/dat-tour` | `data.status === 'CANCELLED'` |
+| `TourFileDetail.tsx` | "Hồ sơ đoàn" | `/ho-so-doan` | `data.status === 'cancelled'` |
+| `EmployeeDetail.tsx` | "Nhân viên" | `/nhan-su` | `data.status === 'RESIGNED' \|\| !!data.deleted_at` |
+| `CampaignDetail.tsx` | "Chiến dịch" | `/chien-dich` | `data.status === 'cancelled'` |
+
+CustomerDetail không có cột huỷ → chỉ wire `mode="forbidden"` (đóng TC12). TC13 cho Customer skip — note rõ trong code comment.
+
+### 4. Verify sau khi wire
+- **TC12**: pick 1 customer của user X, login user Y (Sale), URL `/khach-hang/<X-id>` → `data===null` (RLS chặn) → banner "Bạn không có quyền xem Khách hàng này" + 2 nút.
+- **TC13**: 
+  ```sql
+  UPDATE bookings SET status='CANCELLED' WHERE id='<test-id>';
   ```
-  Map sang query supabase:
-  - `urgent_unread`: `.eq("is_read",false).in("priority",["high","critical"])`
-  - `need_action`: `.eq("action_required",true).in("action_status",["pending","in_progress"])`
-  - `overdue`: `.eq("action_status","overdue")`
-  - `read_unhandled`: `.eq("is_read",true).eq("action_required",true).in("action_status",["pending","in_progress","overdue"])`
-- **Giữ** filter type + search + pagination 50/page hiện có.
-- **Query select** bổ sung field theo spec: thêm `entity_type, related_entity_type, related_entity_id, profiles.email`.
+  → URL `/dat-tour/<id>` → banner "Booking này đã bị huỷ".
 
-### 3. `SettingsNotificationStatsTab.tsx` — bổ sung section mới
-
-Giữ nguyên 4 KPI card + 2 bảng cũ. **Thêm Card mới "Tình trạng đọc theo nhân sự"** dùng RPC `rpc_notification_stats_by_user`, các cột:
-```
-Nhân sự | Email | Tổng TB | Đã đọc | Chưa đọc |
-Khẩn chưa đọc | Action chưa xử lý | Quá hạn | Lần đọc gần nhất
-```
-Sort default: `unread_high_critical DESC, pending_actions DESC`.
-
-### 4. Test nghiệm thu (sau khi build xong, chạy SQL kiểm chứng)
-
-- Insert seed: 2 user A/B với 5 notification theo spec (critical chưa đọc, đã đọc-pending, completed, normal chưa đọc, overdue).
-- Chạy 2 SQL kiểm chứng trong yêu cầu, paste output.
-- Verify RLS: dùng `SET LOCAL role authenticated; SET LOCAL request.jwt.claims = '{"sub":"<sale-uuid>"}'` rồi `SELECT count(*) FROM notifications` — phải chỉ thấy của user đó.
+## Files thay đổi (6)
+- `src/components/shared/EntityNotAccessible.tsx`
+- `src/pages/CustomerDetail.tsx`
+- `src/pages/BookingDetail.tsx`
+- `src/pages/TourFileDetail.tsx`
+- `src/pages/EmployeeDetail.tsx`
+- `src/pages/CampaignDetail.tsx`
 
 ## Không thay đổi
-
-- Logic `markNotificationRead` (đã đúng — chỉ update is_read/read_at).
-- Trigger `trg_notifications_set_read_at`.
-- RLS policies hiện tại.
-- `NotificationBell.tsx` (đã đúng nguyên tắc, chỉ navigate sau khi mark read).
-
-## Files dự kiến tạo/sửa
-
-- `supabase/migrations/<ts>_notification_stats_by_user.sql` (mới)
-- `src/components/settings/SettingsNotificationHistoryTab.tsx` (refactor cột + filter preset)
-- `src/components/settings/SettingsNotificationStatsTab.tsx` (thêm 1 Card mới)
-- `mem://features/notifications/admin-visibility` (mới — lưu nguyên tắc Đã gửi ≠ Đã đọc ≠ Đã xử lý)
+- DB schema, RLS, notification action_url logic, navigation từ NotificationBell.
