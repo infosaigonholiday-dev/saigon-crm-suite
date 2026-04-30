@@ -612,6 +612,45 @@ export type Database = {
           },
         ]
       }
+      broadcast_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          priority: string
+          recipient_ids: string[]
+          sent_by: string
+          sent_count: number
+          target_filter: Json | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          priority?: string
+          recipient_ids?: string[]
+          sent_by: string
+          sent_count?: number
+          target_filter?: Json | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: string
+          recipient_ids?: string[]
+          sent_by?: string
+          sent_count?: number
+          target_filter?: Json | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       budget_estimate_items: {
         Row: {
           category: string
