@@ -691,7 +691,7 @@ export function BudgetSettlementsTab() {
                     actual_amount: it.actual_amount,
                     receipt_url: it.receipt_url,
                   })),
-                });
+                }, printCo);
                 openPrintWindow(html);
               }}
             >
