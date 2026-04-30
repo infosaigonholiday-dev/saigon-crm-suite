@@ -66,8 +66,8 @@ export default function BroadcastNotification() {
   // Form state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [priority, setPriority] = useState<"normal" | "high" | "urgent">("normal");
-  const [url, setUrl] = useState("/");
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
+  const [url, setUrl] = useState("/canh-bao");
   const [mode, setMode] = useState<TargetMode>("all");
   const [includeOfficial, setIncludeOfficial] = useState(true);
   const [includeIntern, setIncludeIntern] = useState(true);
