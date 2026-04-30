@@ -222,14 +222,14 @@ export function SettingsNotificationHistoryTab() {
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
                       Không có thông báo nào khớp tiêu chí
                     </TableCell>
                   </TableRow>
