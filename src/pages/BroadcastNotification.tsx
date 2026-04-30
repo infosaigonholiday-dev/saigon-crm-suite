@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, Send, Megaphone, History, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { validateNotificationUrl, isValidActionUrl } from "@/lib/actionUrl";
+import { Lock } from "lucide-react";
 
 type TargetMode = "all" | "type" | "department" | "role" | "users";
 
@@ -64,8 +66,8 @@ export default function BroadcastNotification() {
   // Form state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [priority, setPriority] = useState<"normal" | "high" | "urgent">("normal");
-  const [url, setUrl] = useState("/");
+  const [priority, setPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
+  const [url, setUrl] = useState("/canh-bao");
   const [mode, setMode] = useState<TargetMode>("all");
   const [includeOfficial, setIncludeOfficial] = useState(true);
   const [includeIntern, setIncludeIntern] = useState(true);
@@ -166,7 +168,7 @@ export default function BroadcastNotification() {
           title: title.trim(),
           message: message.trim(),
           priority,
-          url: url.trim() || "/",
+          url: url.trim() || "/canh-bao",
           target_user_ids: recipientIds,
           target_filter,
         },
@@ -179,8 +181,8 @@ export default function BroadcastNotification() {
       toast.success(`Đã gửi thông báo đến ${data.sent_count} người`);
       setTitle("");
       setMessage("");
-      setPriority("normal");
-      setUrl("/");
+      setPriority("medium");
+      setUrl("/canh-bao");
       setSelectedDepts([]);
       setSelectedRoles([]);
       setSelectedUsers([]);
@@ -218,7 +220,14 @@ export default function BroadcastNotification() {
     );
   }
 
-  const canSubmit = title.trim().length > 0 && message.trim().length > 0 && recipientIds.length > 0 && !sendMutation.isPending;
+  const urlValidation = validateNotificationUrl({ action_url: url, action_required: false, priority });
+  const canSubmit = title.trim().length > 0 && message.trim().length > 0 && recipientIds.length > 0 && !sendMutation.isPending && urlValidation.ok;
+
+  const handleSend = () => {
+    const v = validateNotificationUrl({ action_url: url, action_required: false, priority });
+    if (!v.ok) { toast.error((v as any).error); return; }
+    sendMutation.mutate();
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -255,17 +264,33 @@ export default function BroadcastNotification() {
                     <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="normal">Bình thường</SelectItem>
+                        <SelectItem value="low">Thấp</SelectItem>
+                        <SelectItem value="medium">Bình thường</SelectItem>
                         <SelectItem value="high">Cao</SelectItem>
-                        <SelectItem value="urgent">Khẩn</SelectItem>
+                        <SelectItem value="critical">Khẩn</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Đường dẫn khi click</Label>
-                    <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/" />
+                    <Label className="flex items-center gap-1">
+                      Đường dẫn điều hướng (URL khi user bấm vào thông báo)
+                      {(priority === "high" || priority === "critical") && <span className="text-destructive">*</span>}
+                    </Label>
+                    <Input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="/canh-bao"
+                      className={!urlValidation.ok ? "border-destructive" : ""}
+                    />
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  ℹ️ Hệ thống chỉ điều hướng khi user click. Trạng thái "đã xử lý" chỉ
+                  được set khi entity nghiệp vụ thật thay đổi — KHÔNG phải khi user mở link này.
+                </p>
+                {!urlValidation.ok && (
+                  <p className="text-xs text-destructive">{(urlValidation as any).error}</p>
+                )}
               </CardContent>
             </Card>
 
@@ -404,7 +429,7 @@ export default function BroadcastNotification() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => sendMutation.mutate()}>Gửi ngay</AlertDialogAction>
+                  <AlertDialogAction onClick={handleSend}>Gửi ngay</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -436,8 +461,8 @@ export default function BroadcastNotification() {
                         <TableCell className="font-medium">{h.title}</TableCell>
                         <TableCell className="text-sm">{h.profiles?.full_name || "—"}</TableCell>
                         <TableCell>
-                          <Badge variant={h.priority === "urgent" ? "destructive" : h.priority === "high" ? "default" : "secondary"}>
-                            {h.priority === "urgent" ? "Khẩn" : h.priority === "high" ? "Cao" : "Thường"}
+                          <Badge variant={(h.priority === "urgent" || h.priority === "critical") ? "destructive" : h.priority === "high" ? "default" : "secondary"}>
+                            {(h.priority === "urgent" || h.priority === "critical") ? "Khẩn" : h.priority === "high" ? "Cao" : h.priority === "low" ? "Thấp" : "Thường"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">{h.sent_count}</TableCell>

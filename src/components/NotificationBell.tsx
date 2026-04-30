@@ -118,7 +118,7 @@ export function NotificationBell() {
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
-        .select("id, user_id, type, title, message, entity_type, entity_id, is_read, priority, created_at, action_required, action_status, action_due_at")
+        .select("id, user_id, type, title, message, entity_type, entity_id, related_entity_type, related_entity_id, action_url, is_read, priority, created_at, action_required, action_status, action_due_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -161,11 +161,19 @@ export function NotificationBell() {
     return buckets;
   }, [filtered]);
 
-  const markAsRead = async (id: string, entityId: string | null, entityType: string | null) => {
-    await markNotificationRead(id);
+  const markAsRead = async (n: any) => {
+    await markNotificationRead(n.id);
     queryClient.invalidateQueries({ queryKey: ["notifications-all", user?.id] });
     queryClient.invalidateQueries({ queryKey: ["alerts-badge", user?.id] });
     setOpen(false);
+    // Ưu tiên action_url do DB sinh (Prompt #5B)
+    if (n.action_url && typeof n.action_url === "string" && n.action_url.length > 1) {
+      navigate(n.action_url);
+      return;
+    }
+    // Fallback: legacy entity map
+    const entityType = n.related_entity_type ?? n.entity_type;
+    const entityId = n.related_entity_id ?? n.entity_id;
     if (entityType && entityId) {
       const builder = entityRouteMap[entityType];
       if (builder) { navigate(builder(entityId)); return; }
@@ -236,7 +244,7 @@ export function NotificationBell() {
                         return (
                           <button
                             key={n.id}
-                            onClick={() => markAsRead(n.id, n.entity_id, n.entity_type)}
+                            onClick={() => markAsRead(n)}
                             className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-b last:border-b-0 ${
                               !n.is_read ? "bg-primary/5" : ""
                             }`}

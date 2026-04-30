@@ -120,7 +120,7 @@ export default function CandidateFormDialog({ open, onOpenChange, candidate }: P
             message: `Vị trí: ${result.row.position_applied} — Phòng: ${(result.row as any).departments?.name ?? "—"}`,
             entity_type: "candidate",
             entity_id: result.id,
-            priority: "normal",
+            priority: "medium",
           });
         } catch (e) {
           console.error("Notify candidate new failed:", e);

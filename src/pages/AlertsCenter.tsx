@@ -73,10 +73,10 @@ export default function AlertsCenter() {
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
-        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read")
+        .select("id, type, title, message, entity_type, entity_id, related_entity_type, related_entity_id, action_url, priority, created_at, is_read")
         .eq("user_id", user!.id)
         .eq("is_read", false)
-        .eq("priority", "high")
+        .in("priority", ["high", "critical"])
         .order("created_at", { ascending: false })
         .limit(50);
       return data ?? [];
@@ -95,7 +95,7 @@ export default function AlertsCenter() {
     queryFn: async () => {
       let q = supabase
         .from("notifications")
-        .select("id, type, title, message, entity_type, entity_id, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
+        .select("id, type, title, message, entity_type, entity_id, related_entity_type, related_entity_id, action_url, priority, created_at, is_read, action_required, action_status, action_due_at", { count: "exact" })
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (groupFilter !== "all") {
@@ -131,7 +131,10 @@ export default function AlertsCenter() {
   };
 
   const handleNotificationClick = async (n: any) => {
-    const link = getEntityLink(n.entity_type, n.entity_id);
+    // Ưu tiên action_url do DB sinh (Prompt #5B)
+    const link =
+      (typeof n.action_url === "string" && n.action_url.length > 1 ? n.action_url : null) ||
+      getEntityLink(n.related_entity_type ?? n.entity_type, n.related_entity_id ?? n.entity_id);
     if (!n.is_read) {
       await supabase
         .from("notifications")

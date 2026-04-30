@@ -6,7 +6,7 @@ export type NotifyPayload = {
   message: string;
   entity_type?: string;
   entity_id?: string;
-  priority?: "low" | "normal" | "high";
+  priority?: "low" | "medium" | "high" | "critical";
 };
 
 /**
@@ -32,7 +32,7 @@ export async function notifyUsersByRole(roles: string[], payload: NotifyPayload,
     message: payload.message,
     entity_type: payload.entity_type ?? null,
     entity_id: payload.entity_id ?? null,
-    priority: payload.priority ?? "normal",
+    priority: payload.priority ?? "medium",
     is_read: false,
   }));
   const { error: insErr } = await supabase.from("notifications").insert(rows as any);
@@ -48,7 +48,7 @@ export async function notifyUser(userId: string, payload: NotifyPayload) {
     message: payload.message,
     entity_type: payload.entity_type ?? null,
     entity_id: payload.entity_id ?? null,
-    priority: payload.priority ?? "normal",
+    priority: payload.priority ?? "medium",
     is_read: false,
   } as any);
   if (error) throw error;

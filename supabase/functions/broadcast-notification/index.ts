@@ -16,7 +16,7 @@ const ALLOWED_SENDER_ROLES = ["ADMIN", "GDKD", "MANAGER", "HCNS"];
 interface BroadcastPayload {
   title: string;
   message: string;
-  priority?: "normal" | "high" | "urgent";
+  priority?: "low" | "medium" | "high" | "critical";
   url?: string;
   target_user_ids: string[];
   target_filter?: Record<string, unknown>;
@@ -73,17 +73,24 @@ Deno.serve(async (req) => {
 
     const title = (payload.title || "").trim();
     const message = (payload.message || "").trim();
-    const priority = payload.priority || "normal";
-    const url = (payload.url || "/").trim() || "/";
+    const priority = payload.priority || "medium";
+    // BROADCAST có thể không gắn entity → URL fallback /canh-bao
+    const url = (payload.url && payload.url.trim().length > 1 ? payload.url.trim() : "/canh-bao");
     const targetIds = Array.isArray(payload.target_user_ids)
       ? Array.from(new Set(payload.target_user_ids.filter((x) => typeof x === "string")))
       : [];
 
     if (!title || title.length > 120) return json({ ok: false, error: "Tiêu đề bắt buộc, ≤120 ký tự" }, 400);
     if (!message || message.length > 500) return json({ ok: false, error: "Nội dung bắt buộc, ≤500 ký tự" }, 400);
-    if (!["normal", "high", "urgent"].includes(priority)) return json({ ok: false, error: "Priority không hợp lệ" }, 400);
+    if (!["low", "medium", "high", "critical"].includes(priority)) return json({ ok: false, error: "Priority không hợp lệ" }, 400);
     if (targetIds.length === 0) return json({ ok: false, error: "Chọn ít nhất 1 người nhận" }, 400);
     if (targetIds.length > 500) return json({ ok: false, error: "Tối đa 500 người/lần gửi" }, 400);
+
+    // Validate URL bắt buộc khi priority cao (Prompt #5B layer 2/4: API)
+    if ((priority === "high" || priority === "critical") &&
+        (url === "/" || url === "#" || url.length <= 1)) {
+      return json({ ok: false, error: "Priority Cao/Khẩn bắt buộc URL điều hướng hợp lệ (không được '/', '#' hoặc trống)" }, 400);
+    }
 
     // Server-side scope check: filter targetIds by sender scope
     let scopeQuery = admin
@@ -129,7 +136,7 @@ Deno.serve(async (req) => {
       .single();
     if (bErr) return json({ ok: false, error: bErr.message }, 500);
 
-    // 2) Bulk insert notifications
+    // 2) Bulk insert notifications (URL điều hướng = url broadcast)
     const notifRows = allowedIds.map((uid) => ({
       user_id: uid,
       type: "BROADCAST",
@@ -138,6 +145,7 @@ Deno.serve(async (req) => {
       entity_type: "broadcast",
       entity_id: broadcastRow.id,
       priority,
+      action_url: url,
     }));
 
     const { error: nErr } = await admin.from("notifications").insert(notifRows);
