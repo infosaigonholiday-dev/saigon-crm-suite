@@ -3157,6 +3157,8 @@ export type Database = {
       }
       notifications: {
         Row: {
+          action_completed_at: string | null
+          action_completed_by: string | null
           created_at: string | null
           entity_id: string | null
           entity_type: string | null
@@ -3172,6 +3174,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_completed_at?: string | null
+          action_completed_by?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -3187,6 +3191,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_completed_at?: string | null
+          action_completed_by?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -5098,6 +5104,34 @@ export type Database = {
       }
       rpc_dashboard_ceo: { Args: { p_dept_id?: string }; Returns: Json }
       rpc_dashboard_personal: { Args: { p_user_id: string }; Returns: Json }
+      rpc_notification_complete_action: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
+      rpc_notification_critical_overdue: {
+        Args: never
+        Returns: {
+          created_at: string
+          hours_overdue: number
+          id: string
+          priority: string
+          recipient_name: string
+          title: string
+          type: string
+          user_id: string
+        }[]
+      }
+      rpc_notification_unread_by_user: {
+        Args: never
+        Returns: {
+          department: string
+          full_name: string
+          oldest_unread_at: string
+          unread_high_critical: number
+          unread_total: number
+          user_id: string
+        }[]
+      }
       rpc_send_test_push: { Args: never; Returns: Json }
       send_kpi_achievement_notification: {
         Args: {
