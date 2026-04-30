@@ -33,6 +33,32 @@ const CONTACT_METHODS = [
   { value: "OTHER", label: "Khác" },
 ];
 
+const RESULT_OPTIONS = [
+  { value: "NO_ANSWER", label: "Không bắt máy" },
+  { value: "BUSY", label: "Khách bận" },
+  { value: "NO_NEED", label: "Không nhu cầu" },
+  { value: "ALREADY_TRAVELED", label: "Đã đi rồi" },
+  { value: "HAS_PARTNER", label: "Có đối tác rồi" },
+  { value: "INTERESTED", label: "Quan tâm" },
+  { value: "SENT_PROFILE", label: "Đã gửi profile" },
+  { value: "CALLBACK", label: "Hẹn gọi lại" },
+  { value: "QUOTE_REQUESTED", label: "YC báo giá" },
+  { value: "BOOKED", label: "Đã chốt" },
+];
+
+function suggestResult(status: string): string {
+  switch (status) {
+    case "CONTACTED": return "CALLBACK";
+    case "INTERESTED": return "INTERESTED";
+    case "PROFILE_SENT": return "SENT_PROFILE";
+    case "QUOTE_SENT": return "QUOTE_REQUESTED";
+    case "WON": return "BOOKED";
+    case "LOST": return "NO_NEED";
+    case "NO_ANSWER": return "NO_ANSWER";
+    default: return "CALLBACK";
+  }
+}
+
 const TEMPS = [
   { value: "hot", label: "🔥 Nóng", className: "bg-red-500 hover:bg-red-600 text-white border-red-500" },
   { value: "warm", label: "🌤️ Ấm", className: "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" },
@@ -55,6 +81,7 @@ export default function LeadStatusChangeDialog({
 }: Props) {
   const [note, setNote] = useState("");
   const [contactMethod, setContactMethod] = useState("CALL");
+  const [result, setResult] = useState<string>(suggestResult(targetStatus));
   const [nextAction, setNextAction] = useState("Gọi lại");
   const [nextDate, setNextDate] = useState<Date | undefined>();
   const [temperature, setTemperature] = useState<string>(currentTemperature || "warm");
@@ -70,8 +97,9 @@ export default function LeadStatusChangeDialog({
       setTemperature(currentTemperature || "warm");
       setNextAction("Gọi lại");
       setContactMethod("CALL");
+      setResult(suggestResult(targetStatus));
     }
-  }, [open, currentTemperature]);
+  }, [open, currentTemperature, targetStatus]);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -86,7 +114,7 @@ export default function LeadStatusChangeDialog({
         note: note.trim(),
         next_action: nextAction,
         next_contact_date: nextDate ? format(nextDate, "yyyy-MM-dd") : null,
-        result: targetStatus === "WON" ? "BOOKED" : targetStatus === "INTERESTED" ? "INTERESTED" : null,
+        result,
       });
       if (histErr) throw histErr;
 
@@ -106,8 +134,9 @@ export default function LeadStatusChangeDialog({
 
   const noteValid = note.trim().length >= 10;
   const dateValid = !!nextDate;
+  const resultValid = !!result;
   const lostValid = !isLost || lostReason.trim().length > 0;
-  const canSubmit = noteValid && dateValid && lostValid && !submit.isPending;
+  const canSubmit = noteValid && dateValid && resultValid && lostValid && !submit.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,14 +175,25 @@ export default function LeadStatusChangeDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Hành động tiếp theo <span className="text-destructive">*</span></Label>
-              <Select value={nextAction} onValueChange={setNextAction}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Kết quả liên hệ <span className="text-destructive">*</span></Label>
+              <Select value={result} onValueChange={setResult}>
+                <SelectTrigger><SelectValue placeholder="Chọn kết quả" /></SelectTrigger>
                 <SelectContent>
-                  {NEXT_ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+                  {RESULT_OPTIONS.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!result && <p className="text-xs text-destructive">Vui lòng chọn kết quả liên hệ</p>}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Hành động tiếp theo <span className="text-destructive">*</span></Label>
+            <Select value={nextAction} onValueChange={setNextAction}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {NEXT_ACTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
