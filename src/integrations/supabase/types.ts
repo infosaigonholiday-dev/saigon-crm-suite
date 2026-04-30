@@ -3165,6 +3165,7 @@ export type Database = {
           action_due_at: string | null
           action_required: boolean
           action_status: string | null
+          action_url: string | null
           created_at: string | null
           entity_id: string | null
           entity_type: string | null
@@ -3187,6 +3188,7 @@ export type Database = {
           action_due_at?: string | null
           action_required?: boolean
           action_status?: string | null
+          action_url?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -3209,6 +3211,7 @@ export type Database = {
           action_due_at?: string | null
           action_required?: boolean
           action_status?: string | null
+          action_url?: string | null
           created_at?: string | null
           entity_id?: string | null
           entity_type?: string | null
@@ -5585,6 +5588,10 @@ export type Database = {
         Returns: boolean
       }
       can_create_tour_file: { Args: never; Returns: boolean }
+      generate_action_url: {
+        Args: { p_entity_id: string; p_entity_type: string }
+        Returns: string
+      }
       generate_monthly_cashflow: {
         Args: { p_month: number; p_year: number }
         Returns: undefined
