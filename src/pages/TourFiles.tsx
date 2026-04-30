@@ -26,13 +26,26 @@ const RISK_BADGE: Record<string, string> = {
 
 export default function TourFiles() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission("bookings", "create");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [taskFilter, setTaskFilter] = useState<"all" | "overdue" | "pending_check" | "upcoming" | "missing_doc">("all");
   const [openForm, setOpenForm] = useState(false);
+
+  // Đọc URL params (từ Dashboard widgets)
+  useEffect(() => {
+    if (searchParams.get("overdue") === "true") setTaskFilter("overdue");
+    else if (searchParams.get("pending_check") === "true") setTaskFilter("pending_check");
+    else if (searchParams.get("upcoming") === "true") setTaskFilter("upcoming");
+    else if (searchParams.get("missing_doc")) setTaskFilter("missing_doc");
+    const s = searchParams.get("stage");
+    if (s) setStageFilter(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["tour_files", page, search, stageFilter, typeFilter],
