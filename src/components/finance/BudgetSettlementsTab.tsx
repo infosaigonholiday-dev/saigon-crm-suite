@@ -44,9 +44,13 @@ const getCategoryLabel = (v: string) => ITEM_CATEGORIES.find((c) => c.value === 
 interface SettlementItemForm {
   category: string;
   description: string;
+  unit?: string | null;
+  quantity?: number | null;
+  days?: number | null;
+  unit_price?: number | null;
   estimated_amount: number;
   actual_amount: number;
-  receipt_url: string;
+  receipt_urls: string[];
   sort_order: number;
 }
 
