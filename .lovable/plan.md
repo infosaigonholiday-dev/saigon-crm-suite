@@ -1,223 +1,84 @@
-# Prompt #5B — Quy tắc `action_url` (Điều hướng khi click)
+## Mục tiêu
 
-## Quyết định kiến trúc (đã chốt)
+Nâng cấp 2 tab Settings → Notifications để CEO/Admin thấy rõ ai đã đọc / chưa đọc / xử lý chưa, đồng thời siết lại nguyên tắc "Đã gửi ≠ Đã đọc ≠ Đã xử lý" và bổ sung filter nghiệp vụ.
 
-1. **URL pattern**: dùng route tiếng Việt hiện có (KHÔNG tạo `/leads`, `/customers`, `/finance/*` mới). `generate_action_url()` map sang route thật của app.
-2. **Priority enum**: migrate `normal→medium`, `urgent→critical`, sau đó áp CHECK constraint chỉ cho phép `low/medium/high/critical`. Có backup + rollback plan.
+Hiện trạng (đã có sẵn, không xây lại):
+- DB: `notifications` đủ cột `is_read, read_at, action_required, action_status, action_due_at, action_completed_at, action_completed_by, priority`.
+- Trigger `trg_notifications_set_read_at` tự set `read_at = now()` khi `is_read` flip → giữ nguyên.
+- RLS: `notifications_own` (user thấy của mình) + `admin_full_access` (ADMIN/SUPER_ADMIN thấy hết) → đúng yêu cầu.
+- `markNotificationRead` chỉ update `is_read + read_at`, KHÔNG đụng `action_status` → đúng nguyên tắc.
+- 2 tab Settings: `SettingsNotificationHistoryTab.tsx` + `SettingsNotificationStatsTab.tsx` đã tồn tại nhưng thiếu cột/filter theo yêu cầu mới.
 
-## Hiện trạng (đã verify)
+## Phạm vi thay đổi
 
-- Bảng `notifications` **chưa có cột `action_url`**.
-- Priority hiện chứa: `high (131)`, `normal (20)`, `critical (10)`, `urgent (3)`.
-- UI điều hướng đang map qua `entity_type → route` ở client (`AlertsCenter.getEntityLink`, `NotificationBell`), KHÔNG dùng URL DB.
-- App KHÔNG có `BroadcastNotification` form chứa field URL — cần thêm field URL vào form Broadcast (hoặc form admin tạo noti) để đáp ứng UX yêu cầu.
+### 1. Migration SQL (1 file)
 
-## Bảng map entity → route (route thật của app)
+**a. Mở RPC stats cho CEO/Management**
+Thêm 2 role được phép gọi 3 RPC stats: `GDKD`, `MANAGER` (ngoài ADMIN/SUPER_ADMIN/HR_MANAGER hiện có) — để CEO/Quản lý xem dashboard tổng hợp.
 
-| entity_type | URL pattern (DB sẽ sinh) | Trang đích |
-|---|---|---|
-| `lead` | `/tiem-nang?id=:id` | Leads list, mở detail dialog theo id |
-| `customer` | `/khach-hang/:id` | CustomerDetail |
-| `booking` | `/dat-tour/:id` | BookingDetail |
-| `tour_file` | `/ho-so-doan/:id` | TourFileDetail |
-| `office_expense` | `/tai-chinh?tab=hcns&id=:id` | Finance → tab HCNS, focus expense |
-| `tour_settlement` | `/tai-chinh?tab=quyet-toan&id=:id` | Finance → tab Quyết toán |
-| `supplier_invoice` | `/tai-chinh?tab=payables&id=:id` | Finance → tab Payables |
-| `recurring_expense` | `/tai-chinh?tab=recurring&id=:id` | Finance → tab Recurring |
-| `leave_request` | `/nghi-phep?id=:id` | LeaveManagement, focus đơn |
-| `contract` | `/hop-dong?id=:id` | Contracts list, focus hợp đồng |
-| `campaign` | `/chien-dich/:id` | CampaignDetail |
-| `employee` | `/nhan-su/:id` | EmployeeDetail |
-
-URL list (entity_id NULL + action_required=false + priority IN ('low','medium')):
-- `CASHFLOW_NEGATIVE_ALERT` → `/tai-chinh?tab=cashflow`
-- `BROADCAST` → `/canh-bao`
-
-## Implementation — chia 3 migration + code
-
-### Migration 1: Backup + Migrate priority enum
-
-```sql
--- 1. Backup
-CREATE TABLE notifications_backup_20260430 AS SELECT * FROM notifications;
-
--- 2. Migrate giá trị
-UPDATE notifications SET priority = 'medium'   WHERE priority = 'normal';
-UPDATE notifications SET priority = 'critical' WHERE priority = 'urgent';
-
--- 3. Default mới + CHECK
-ALTER TABLE notifications ALTER COLUMN priority SET DEFAULT 'medium';
-ALTER TABLE notifications
-  ADD CONSTRAINT chk_priority_enum
-  CHECK (priority IN ('low','medium','high','critical'));
+**b. RPC mới `rpc_notification_stats_by_user()`**
+Trả về đúng spec yêu cầu (1 hàng / nhân sự):
 ```
-
-### Migration 2: Thêm `action_url` + `generate_action_url()` + auto-fill trigger
-
-```sql
-ALTER TABLE notifications ADD COLUMN action_url TEXT;
-
-CREATE OR REPLACE FUNCTION generate_action_url(p_entity_type TEXT, p_entity_id UUID)
-RETURNS TEXT LANGUAGE plpgsql IMMUTABLE AS $$
-BEGIN
-  IF p_entity_type IS NULL OR p_entity_id IS NULL THEN RETURN NULL; END IF;
-  RETURN CASE p_entity_type
-    WHEN 'lead'              THEN '/tiem-nang?id='        || p_entity_id::text
-    WHEN 'customer'          THEN '/khach-hang/'          || p_entity_id::text
-    WHEN 'booking'           THEN '/dat-tour/'            || p_entity_id::text
-    WHEN 'tour_file'         THEN '/ho-so-doan/'          || p_entity_id::text
-    WHEN 'office_expense'    THEN '/tai-chinh?tab=hcns&id='       || p_entity_id::text
-    WHEN 'tour_settlement'   THEN '/tai-chinh?tab=quyet-toan&id=' || p_entity_id::text
-    WHEN 'supplier_invoice'  THEN '/tai-chinh?tab=payables&id='   || p_entity_id::text
-    WHEN 'recurring_expense' THEN '/tai-chinh?tab=recurring&id='  || p_entity_id::text
-    WHEN 'leave_request'     THEN '/nghi-phep?id='        || p_entity_id::text
-    WHEN 'contract'          THEN '/hop-dong?id='         || p_entity_id::text
-    WHEN 'campaign'          THEN '/chien-dich/'          || p_entity_id::text
-    WHEN 'employee'          THEN '/nhan-su/'             || p_entity_id::text
-    ELSE NULL
-  END;
-END; $$;
-
-CREATE OR REPLACE FUNCTION auto_fill_action_url() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-  IF NEW.related_entity_type IS NOT NULL AND NEW.related_entity_id IS NOT NULL
-     AND (NEW.action_url IS NULL OR length(trim(NEW.action_url)) <= 1
-          OR NEW.action_url IN ('/','#','/notifications')) THEN
-    NEW.action_url := generate_action_url(NEW.related_entity_type, NEW.related_entity_id);
-  END IF;
-  -- Fallback: nếu chỉ có entity_type/entity_id (cột cũ) thì cũng auto-fill
-  IF NEW.action_url IS NULL AND NEW.entity_type IS NOT NULL AND NEW.entity_id IS NOT NULL THEN
-    NEW.action_url := generate_action_url(NEW.entity_type, NEW.entity_id);
-  END IF;
-  RETURN NEW;
-END; $$;
-
-CREATE TRIGGER trg_notification_auto_url
-  BEFORE INSERT OR UPDATE OF related_entity_type, related_entity_id, entity_type, entity_id, action_url
-  ON notifications FOR EACH ROW EXECUTE FUNCTION auto_fill_action_url();
+user_id, full_name, email, department,
+total_notifications, read_count, unread_count,
+unread_high_critical, pending_actions, overdue_actions,
+last_read_at
 ```
+Filter: chỉ tính 90 ngày gần nhất để tránh bảng phình. SECURITY DEFINER + check role như trên.
 
-### Migration 3: Backfill URL cho data cũ + CHECK constraint
+**c. View bổ trợ (optional, để query nhanh)**: bỏ qua — query trực tiếp `notifications` qua RLS đã đủ vì admin policy bypass.
 
-```sql
--- Backfill 164 noti hiện tại
-UPDATE notifications
-SET action_url = COALESCE(
-  generate_action_url(related_entity_type, related_entity_id),
-  generate_action_url(entity_type, entity_id)
-)
-WHERE action_url IS NULL;
+### 2. `SettingsNotificationHistoryTab.tsx` — refactor
 
--- CHECK chặn URL trống/'/' khi action_required=true HOẶC priority cao
-ALTER TABLE notifications
-  ADD CONSTRAINT chk_action_url_required CHECK (
-    (action_required = false AND priority IN ('low','medium'))
-    OR (
-      action_url IS NOT NULL
-      AND length(trim(action_url)) > 1
-      AND action_url NOT IN ('/', '#', '/notifications')
-    )
-  ) NOT VALID;
--- NOT VALID để không fail nếu còn noti cũ thiếu URL; bật validate sau khi backfill OK:
-ALTER TABLE notifications VALIDATE CONSTRAINT chk_action_url_required;
+- **Thêm cột Email người nhận** (lấy từ `profiles.email` đã join sẵn).
+- **Thêm cột "Mức độ"** (low/medium/high/critical) với badge màu.
+- **Tách "Đọc lúc"**: nếu `is_read` → format `read_at`; nếu chưa → "—".
+- **Cột "Chưa đọc bao lâu"**: nếu `is_read=false` → `formatDistanceToNow(created_at)` ("Chưa đọc 3 giờ"); nếu đã đọc → "—".
+- **Trạng thái xử lý** (giữ cột cũ, mở rộng label): `Không cần xử lý / Chờ xử lý / Đang xử lý / Quá hạn / Đã xử lý / Bỏ qua`.
+- **Badge bổ sung trong cột Đọc**:
+  - `is_read=false` → "Chưa đọc"
+  - `is_read=false` + priority high/critical → đỏ "Khẩn chưa đọc"
+  - `is_read=true` + `action_required=true` + status ∈ pending/in_progress → vàng "Đã đọc, chưa xử lý"
+  - `action_status='overdue'` → đỏ "Quá hạn xử lý"
+  - `action_status='completed'` → xanh "Đã xử lý"
+- **Filter mới (preset dropdown)** thay vì 2 select rời:
+  ```
+  Tất cả | Chưa đọc | Đã đọc | Khẩn chưa đọc |
+  Cần xử lý | Quá hạn xử lý | Đã đọc nhưng chưa xử lý
+  ```
+  Map sang query supabase:
+  - `urgent_unread`: `.eq("is_read",false).in("priority",["high","critical"])`
+  - `need_action`: `.eq("action_required",true).in("action_status",["pending","in_progress"])`
+  - `overdue`: `.eq("action_status","overdue")`
+  - `read_unhandled`: `.eq("is_read",true).eq("action_required",true).in("action_status",["pending","in_progress","overdue"])`
+- **Giữ** filter type + search + pagination 50/page hiện có.
+- **Query select** bổ sung field theo spec: thêm `entity_type, related_entity_type, related_entity_id, profiles.email`.
+
+### 3. `SettingsNotificationStatsTab.tsx` — bổ sung section mới
+
+Giữ nguyên 4 KPI card + 2 bảng cũ. **Thêm Card mới "Tình trạng đọc theo nhân sự"** dùng RPC `rpc_notification_stats_by_user`, các cột:
 ```
-
-### Code changes (4 lớp validate + UX + graceful 404)
-
-**A. Edge functions & helpers — đổi enum priority**
-- `supabase/functions/broadcast-notification/index.ts`: `"normal"|"high"|"urgent"` → `"low"|"medium"|"high"|"critical"`, default `"medium"`.
-- `supabase/functions/daily-reminders/index.ts`: 12 chỗ `priority:"normal"` → `"medium"`.
-- `src/lib/notifyByRole.ts`: type union → 4 giá trị mới, default `"medium"`.
-- `src/pages/Payroll.tsx`, `src/pages/Recruitment.tsx`, `src/components/recruitment/CandidateFormDialog.tsx`: `"normal"` → `"medium"`.
-
-**B. `BroadcastNotification.tsx` — Form admin**
-- Đổi label field URL: **"Đường dẫn điều hướng (URL khi user bấm vào thông báo)"**.
-- Helper text: *"Hệ thống chỉ điều hướng khi user click. Trạng thái 'đã xử lý' chỉ được set khi entity nghiệp vụ thật thay đổi — KHÔNG phải khi user mở link này."*
-- Thêm 2 dropdown: `Entity type` + `Entity` (combobox search). Khi chọn → tự fill `action_url` qua `generateActionUrlClient()` + lock field (read-only, icon 🔒).
-- Bỏ field URL nếu `action_required=false` && `priority IN ('low','medium')`.
-- Đổi priority dropdown: `Thấp / Bình thường / Cao / Khẩn` ứng với `low/medium/high/critical`.
-- Validate submit: nếu `action_required=true` HOẶC priority `high|critical` mà URL rỗng/`/`/`#` → chặn + toast đỏ.
-- Gửi `action_url` + `related_entity_type/related_entity_id` xuống edge function.
-
-**C. `src/lib/actionUrl.ts` (mới)** — single source of truth client-side
-```ts
-export const ENTITY_URL_MAP: Record<string,(id:string)=>string> = {
-  lead: id => `/tiem-nang?id=${id}`,
-  customer: id => `/khach-hang/${id}`,
-  booking: id => `/dat-tour/${id}`,
-  tour_file: id => `/ho-so-doan/${id}`,
-  office_expense: id => `/tai-chinh?tab=hcns&id=${id}`,
-  tour_settlement: id => `/tai-chinh?tab=quyet-toan&id=${id}`,
-  supplier_invoice: id => `/tai-chinh?tab=payables&id=${id}`,
-  recurring_expense: id => `/tai-chinh?tab=recurring&id=${id}`,
-  leave_request: id => `/nghi-phep?id=${id}`,
-  contract: id => `/hop-dong?id=${id}`,
-  campaign: id => `/chien-dich/${id}`,
-  employee: id => `/nhan-su/${id}`,
-};
-export const generateActionUrlClient = (t?:string|null,id?:string|null) =>
-  t && id && ENTITY_URL_MAP[t] ? ENTITY_URL_MAP[t](id) : null;
+Nhân sự | Email | Tổng TB | Đã đọc | Chưa đọc |
+Khẩn chưa đọc | Action chưa xử lý | Quá hạn | Lần đọc gần nhất
 ```
+Sort default: `unread_high_critical DESC, pending_actions DESC`.
 
-**D. `NotificationBell.tsx` + `AlertsCenter.tsx` — ưu tiên `action_url`**
-- Click noti: nếu `n.action_url` có giá trị → `navigate(n.action_url)`. Nếu không, fallback logic cũ.
-- Select query thêm `action_url` + `related_entity_type` + `related_entity_id`.
+### 4. Test nghiệm thu (sau khi build xong, chạy SQL kiểm chứng)
 
-**E. Graceful 404 ở trang đích**
-- `CustomerDetail.tsx`, `BookingDetail.tsx`, `TourFileDetail.tsx`, `EmployeeDetail.tsx`, `CampaignDetail.tsx`: khi query trả PGRST116 (no row) hoặc 403 RLS → render `<EntityNotAccessible kind="..." onBack={...}/>` (component mới) thay vì 404 thô. Phân biệt 2 case: "đã bị xoá/huỷ" vs "không có quyền xem".
-- Component mới: `src/components/shared/EntityNotAccessible.tsx`.
+- Insert seed: 2 user A/B với 5 notification theo spec (critical chưa đọc, đã đọc-pending, completed, normal chưa đọc, overdue).
+- Chạy 2 SQL kiểm chứng trong yêu cầu, paste output.
+- Verify RLS: dùng `SET LOCAL role authenticated; SET LOCAL request.jwt.claims = '{"sub":"<sale-uuid>"}'` rồi `SELECT count(*) FROM notifications` — phải chỉ thấy của user đó.
 
-**F. Trigger entity-cancel huỷ noti** (kế thừa từ Prompt #5)
-- Verify `cancel_notifications_on_entity_cancel` đang chạy cho `bookings.status='cancelled'`, `leads.status='lost'`. Nếu thiếu → bổ sung.
+## Không thay đổi
 
-## Test cases (TC11–TC13)
+- Logic `markNotificationRead` (đã đúng — chỉ update is_read/read_at).
+- Trigger `trg_notifications_set_read_at`.
+- RLS policies hiện tại.
+- `NotificationBell.tsx` (đã đúng nguyên tắc, chỉ navigate sau khi mark read).
 
-| TC | Cách test | Expected |
-|---|---|---|
-| TC11 | Form Broadcast: chọn `action_required=true`, để URL trống → Submit | Frontend chặn + toast đỏ. Thử INSERT trực tiếp DB qua `supabase--read_query` (insert) → CHECK chặn |
-| TC12 | Sale A insert noti URL lead của Sale B → Sale A click | `/tiem-nang?id=...` mở, dialog không load data, hiện "Bạn không có quyền xem Lead này" |
-| TC13 | Cancel 1 booking đã có noti → click noti cũ | Trang `/dat-tour/:id` hiện banner "Booking đã huỷ" + nút quay lại, KHÔNG 404 thô |
+## Files dự kiến tạo/sửa
 
-## Rollback (nếu break)
-
-```sql
--- Khôi phục priority
-UPDATE notifications SET priority='normal'  WHERE priority='medium' AND id IN (SELECT id FROM notifications_backup_20260430 WHERE priority='normal');
-UPDATE notifications SET priority='urgent'  WHERE priority='critical' AND id IN (SELECT id FROM notifications_backup_20260430 WHERE priority='urgent');
-ALTER TABLE notifications DROP CONSTRAINT chk_priority_enum;
-ALTER TABLE notifications DROP CONSTRAINT chk_action_url_required;
-DROP TRIGGER trg_notification_auto_url ON notifications;
-```
-
-Backup table `notifications_backup_20260430` giữ ít nhất 7 ngày sau khi verify pass.
-
-## Verify checklist sau build
-
-**Phần F (5 tiêu chí action_url):**
-- [ ] Label form đúng "Đường dẫn điều hướng..." + helper text
-- [ ] `generate_action_url()` trả đúng pattern cho 12 entity types (test SQL)
-- [ ] Trigger `auto_fill_action_url` fill URL khi insert có entity
-- [ ] CHECK `chk_action_url_required` chặn URL `/` khi action_required=true
-- [ ] Form lock URL field (read-only) khi đã chọn entity
-
-**Phần G (3 test cases):** TC11 ✅ TC12 ✅ TC13 ✅
-
-**Migration verify:**
-- [ ] `SELECT DISTINCT priority FROM notifications` chỉ còn `low/medium/high/critical`
-- [ ] `SELECT count(*) FROM notifications WHERE action_url IS NULL` = 0 (sau backfill)
-- [ ] Badge UI render đúng ở Bell + AlertsCenter
-- [ ] Console không lỗi khi load `/canh-bao`
-
-## Files dự kiến thay đổi
-
-- 3 migrations mới
-- `src/lib/actionUrl.ts` (mới)
-- `src/components/shared/EntityNotAccessible.tsx` (mới)
-- `src/pages/BroadcastNotification.tsx` (form + entity picker + lock URL)
-- `src/components/NotificationBell.tsx` (ưu tiên action_url)
-- `src/pages/AlertsCenter.tsx` (ưu tiên action_url)
-- `src/pages/CustomerDetail.tsx`, `BookingDetail.tsx`, `TourFileDetail.tsx`, `EmployeeDetail.tsx`, `CampaignDetail.tsx` (graceful 404)
-- `src/lib/notifyByRole.ts`, `src/pages/Payroll.tsx`, `src/pages/Recruitment.tsx`, `src/components/recruitment/CandidateFormDialog.tsx` (đổi `"normal"` → `"medium"`)
-- `supabase/functions/broadcast-notification/index.ts`, `supabase/functions/daily-reminders/index.ts` (đổi enum)
-
-Bấm **Approve** để em chạy migration 1 (backup + priority) trước, verify, rồi tiếp migration 2+3 và code.
+- `supabase/migrations/<ts>_notification_stats_by_user.sql` (mới)
+- `src/components/settings/SettingsNotificationHistoryTab.tsx` (refactor cột + filter preset)
+- `src/components/settings/SettingsNotificationStatsTab.tsx` (thêm 1 Card mới)
+- `mem://features/notifications/admin-visibility` (mới — lưu nguyên tắc Đã gửi ≠ Đã đọc ≠ Đã xử lý)
