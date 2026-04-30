@@ -214,11 +214,11 @@ export function BudgetEstimatesTab() {
   const resetForm = () => {
     setFormBookingId("");
     setFormAdvance(0);
-    setFormItems([{ category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0 }]);
+    setFormItems([{ category: "XE", description: "", unit_price: 0, quantity: 1, sort_order: 0, receipt_urls: [] }]);
   };
 
   const addItem = () => {
-    setFormItems([...formItems, { category: "KS", description: "", unit_price: 0, quantity: 1, sort_order: formItems.length }]);
+    setFormItems([...formItems, { category: "KS", description: "", unit_price: 0, quantity: 1, sort_order: formItems.length, receipt_urls: [] }]);
   };
 
   const removeItem = (idx: number) => {
