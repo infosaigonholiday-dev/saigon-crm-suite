@@ -21,6 +21,7 @@ import {
   getTypeLabel,
   getGroupOfType,
 } from "@/lib/notificationGroups";
+import { UserNotificationDetailDialog, type UserNotifPreset } from "./UserNotificationDetailDialog";
 
 type Filters = {
   rangeDays: number | null;
