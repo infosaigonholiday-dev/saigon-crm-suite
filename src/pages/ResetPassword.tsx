@@ -15,81 +15,95 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const resolvedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigate = useNavigate();
+
+  const cleanUrl = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.hash = "";
+      window.history.replaceState({}, document.title, url.pathname);
+    } catch {
+      // ignore
+    }
+  };
 
   const markReady = () => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setReady(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    cleanUrl();
   };
 
-  const markExpired = (reason?: string) => {
+  const markExpired = () => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setExpired(true);
-    setErrorDetail(reason || null);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   };
 
   useEffect(() => {
-    const init = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+    // supabase-js with detectSessionInUrl=true (default) automatically exchanges
+    // the ?code=... or hash tokens. We must NOT call exchangeCodeForSession again
+    // (would consume an already-used code → "invalid request" error).
+    //
+    // Strategy: poll getSession() and listen for SIGNED_IN / PASSWORD_RECOVERY.
 
-      // Case 1: PKCE code exchange
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          markExpired(error.message);
-        } else {
-          markReady();
-        }
-        return;
-      }
+    const hasRecoveryArtifact =
+      window.location.search.includes("code=") ||
+      window.location.hash.includes("type=recovery") ||
+      window.location.hash.includes("access_token=");
 
-      // Case 2: Hash-based recovery (legacy)
-      if (window.location.hash.includes("type=recovery")) {
-        // Give Supabase a moment to process the hash
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          markReady();
-          return;
-        }
-        // Wait for PASSWORD_RECOVERY event below
-        return;
-      }
-
-      // Case 3: Already have an active session (e.g. opened link while logged in)
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         markReady();
-        return;
+        return true;
       }
-
-      // No code, no hash, no session — link is likely invalid or expired
-      // Still wait a short time for auth state change event
+      return false;
     };
 
-    init();
-
-    // Listen for PASSWORD_RECOVERY event (hash-based flow)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    // Listen for auth state events fired by supabase-js after auto-exchange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         markReady();
       }
     });
 
-    // Shorter timeout: 10s instead of 60s since we check all cases upfront
-    timeoutRef.current = setTimeout(() => {
-      if (!resolvedRef.current) {
-        markExpired("Không tìm thấy phiên xác thực. Link có thể đã hết hạn hoặc đã được sử dụng.");
+    // Initial check + retries (supabase-js may take a tick to finish auto-exchange)
+    (async () => {
+      if (await checkSession()) return;
+
+      // If URL has no recovery artifact and no session, mark expired immediately
+      if (!hasRecoveryArtifact) {
+        markExpired();
+        return;
       }
-    }, 10000);
+
+      // Poll every 250ms for up to 8s while supabase-js processes the URL
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        if (resolvedRef.current) {
+          clearInterval(interval);
+          return;
+        }
+        const ok = await checkSession();
+        if (ok || attempts >= 32) {
+          clearInterval(interval);
+          if (!resolvedRef.current && !ok) markExpired();
+        }
+      }, 250);
+
+      timeoutRef.current = setTimeout(() => {
+        clearInterval(interval);
+        if (!resolvedRef.current) markExpired();
+      }, 8500);
+    })();
 
     return () => {
       subscription.unsubscribe();
@@ -157,7 +171,7 @@ export default function ResetPassword() {
               </div>
               <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
               <p className="text-sm text-muted-foreground">
-                {errorDetail || "Liên kết đã hết hạn hoặc không hợp lệ. Vui lòng thử lại."}
+                Link đổi mật khẩu không hợp lệ, đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.
               </p>
               <Button className="w-full" onClick={() => navigate("/login")}>
                 Quay về đăng nhập

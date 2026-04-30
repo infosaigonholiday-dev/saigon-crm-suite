@@ -104,6 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Skip INITIAL_SESSION — we handle it via getSession() below
         if (event === "INITIAL_SESSION") return;
 
+        // PASSWORD_RECOVERY is handled exclusively by /reset-password page.
+        // Skipping here prevents profile fetch + mustChangePassword redirect
+        // from clobbering the recovery flow.
+        if (event === "PASSWORD_RECOVERY") return;
+
+        // While on the recovery page, ignore SIGNED_IN auto-fired by detectSessionInUrl
+        // (the page handles readiness on its own). Profile sync would otherwise
+        // trigger the first-login redirect mid-flow.
+        if (event === "SIGNED_IN" && RECOVERY_PATHS.includes(window.location.pathname)) {
+          if (newSession) setSession(newSession);
+          return;
+        }
+
         if (event === "TOKEN_REFRESHED") {
           if (newSession) {
             setSession(newSession);

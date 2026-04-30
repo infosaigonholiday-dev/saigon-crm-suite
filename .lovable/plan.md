@@ -1,45 +1,63 @@
-## Bug root cause (đã xác nhận bằng SQL)
+## Bug root cause
 
-Khi gọi `public.rpc_notification_stats_by_user()` Postgres báo:
+`/reset-password` rerun-exchange-code race:
 
-```
-ERROR: 42704: type "app_role" does not exist
-QUERY: NOT ( public.has_role(auth.uid(), 'ADMIN'::app_role) OR ... )
-CONTEXT: PL/pgSQL function rpc_notification_stats_by_user() line 3 at IF
-```
+1. Supabase Go API redirects back to `https://app.saigonholiday.vn/reset-password?code=XXX` (PKCE flow).
+2. `supabase-js` v2 với `detectSessionInUrl: true` (mặc định) **tự động** exchange `?code=XXX` ngay khi import client → fires `SIGNED_IN` → `AuthContext` set session.
+3. `ResetPassword.tsx` `useEffect` đọc lại `?code=XXX` từ `window.location.search` (URL chưa được clean) và gọi `supabase.auth.exchangeCodeForSession(code)` lần thứ hai.
+4. Code đã bị consumed → trả lỗi `invalid request: code verifier not found / Auth session missing` → component gọi `markExpired(error.message)` → hiện màn "Liên kết không hợp lệ".
 
-Dự án này dùng **role kiểu `text`** (`has_role(uuid, text)`), KHÔNG có enum `app_role`. RPC vừa được thêm dùng cast `::app_role` nên fail ngay ở dòng IF authorization → toàn bộ function ném exception → React Query nhận lỗi → bảng UI rơi vào nhánh empty và hiển thị "Chưa có dữ liệu thông báo trong 90 ngày", trong khi `rpc_notification_overview` (không có check role kiểu này) vẫn chạy nên KPI vẫn ra số 162 / 86.
+User thấy: bấm link Gmail → màn báo "Liên kết đã hết hạn", dù link còn fresh và session thực ra đã được tạo thành công.
 
-Dữ liệu raw đã verify có đầy đủ (Admin: 47 tb / 46 đã đọc, mai xuân khánh 16/1, …), nên đây là lỗi function chứ không phải lỗi data hay join.
+Phụ trợ: nếu user đã login trên cùng browser, supabase tự exchange xong nhưng URL còn `?code=` → màn báo lỗi vẫn hiện ra che mất form.
 
 ## Phạm vi sửa
 
-### 1. Migration: viết lại `rpc_notification_stats_by_user()`
+### 1. `src/pages/ResetPassword.tsx` — Sửa logic init
 
-- Bỏ mọi cast `::app_role`. Gọi `public.has_role(auth.uid(), 'ADMIN')`, `'SUPER_ADMIN'`, `'HR_MANAGER'`, `'GDKD'`, `'MANAGER'` ở dạng text.
-- Giữ `SECURITY DEFINER`, `SET search_path = public`.
-- Giữ LEFT JOIN profiles → notifications, group theo `p.id`, `HAVING COUNT(n.id) > 0`. Logic này đúng, chỉ phần authorization gây crash.
-- `GRANT EXECUTE ON FUNCTION public.rpc_notification_stats_by_user() TO authenticated;` (đã có PUBLIC nhưng grant lại cho rõ).
-- Đồng thời rà lại 2 RPC liên quan có thể dính cùng lỗi cast: `rpc_notification_critical_overdue`, `rpc_notification_unread_by_user`. Nếu cũng dùng `::app_role`, sửa cùng migration. (Sẽ kiểm tra `pg_get_functiondef` trước khi viết SQL.)
+Bỏ việc tự gọi `exchangeCodeForSession`. Thay bằng:
 
-### 2. UI: `src/components/settings/SettingsNotificationStatsTab.tsx`
+- Lắng nghe `onAuthStateChange` cho 2 events: `PASSWORD_RECOVERY` (hash flow) và `SIGNED_IN` (PKCE flow — supabase-js tự exchange xong sẽ fire event này).
+- Trên mount: `await supabase.auth.getSession()`. Nếu đã có session → ready ngay.
+- Nếu URL có `?code=` hoặc hash `type=recovery` mà chưa có session → đợi event tối đa 8s rồi mới mark expired.
+- Sau khi mark ready, dùng `window.history.replaceState` để xóa `?code=...` khỏi URL (tránh re-trigger nếu user F5).
+- Thông điệp expired bằng tiếng Việt, không paste raw error message từ Supabase (gây hoang mang khi nó là "Auth session missing").
+- Sau khi `updateUser({ password })` thành công: cập nhật `must_change_password=false`, `signOut`, redirect về `/login` kèm toast "Đã đổi mật khẩu thành công, vui lòng đăng nhập lại".
 
-- Trong các `useQuery` cho `rpc_notification_stats_by_user`, `rpc_notification_unread_by_user`, `rpc_notification_critical_overdue`: log `error` ra console và trả về `[]` thay vì để toàn bộ component im lặng.
-- Hiển thị banner cảnh báo phía trên bảng "Tình trạng đọc theo nhân sự" khi:
-  - `byUserFull.length === 0` **và** `Number(overview?.sent_7d ?? 0) > 0`
-  - hoặc query bị error.
-  Nội dung: "Có notification nhưng không tổng hợp được theo nhân sự — RPC `rpc_notification_stats_by_user` lỗi. Xem console để biết chi tiết."
-- Không thay đổi cấu trúc cột; chỉ thêm error surface.
+### 2. `src/contexts/AuthContext.tsx` — Không phá flow recovery
 
-### 3. Verification sau khi apply
+Hiện tại `RECOVERY_PATHS` đã bao gồm `/reset-password` nên `SIGNED_OUT` sau khi user submit không bị toast "Phiên kết thúc". Giữ nguyên. Bổ sung:
 
-- Chạy `SELECT * FROM public.rpc_notification_stats_by_user() LIMIT 5;` → phải trả ra rows (Admin 47/46, …).
-- Mở Settings → Thống kê thông báo bằng tài khoản Admin: bảng "Tình trạng đọc theo nhân sự" có dữ liệu, cột Đã đọc / Chưa đọc / Khẩn chưa đọc / Lần đọc gần nhất hiển thị đúng số đã thấy trong query raw.
-- Đăng nhập một user Sale thường vào trang đó → vẫn nhận `Unauthorized` (RPC raise) và banner cảnh báo hiện ra (đúng hành vi: chỉ Admin/HR/GDKD/Manager xem được).
-- Click 1 notification ở Trung tâm Cảnh báo → kiểm DB `is_read=true`, `read_at` có timestamp, `action_status` không đổi; refresh Stats → `read_count` tăng, `last_read_at` cập nhật.
+- Trong `onAuthStateChange`, nếu `event === "PASSWORD_RECOVERY"` thì **không** chạy `syncAuthState` (tránh trigger query profiles → mustChangePassword redirect). Để `ResetPassword.tsx` xử lý độc lập.
+- Trên path `/reset-password`, **không** redirect về `/first-login-change-password` cả khi `mustChangePassword=true`. (`ProtectedRoutes` không bao `/reset-password` rồi, nhưng phòng trường hợp user đã có session active mở link recovery.)
 
-## Không nằm trong phạm vi
+### 3. `src/lib/authRedirect.ts` — Giữ nguyên
 
-- Không tạo bảng mới, không đổi schema `notifications` / `profiles`.
-- Không đổi UI Lịch sử thông báo và filter — phần đó đã chạy.
-- Không đụng tới logic đánh dấu đã đọc (`markNotificationRead`, trigger `trg_notifications_set_read_at`) vì đã hoạt động đúng.
+`getResetPasswordUrl()` đã trả `${window.location.origin}/reset-password`, đúng cho cả production `app.saigonholiday.vn`, published `saigon-holiday-nexus.lovable.app`, và preview `id-preview--*.lovable.app`.
+
+### 4. Supabase Auth URL Configuration — Người dùng cần verify
+
+Đây là cấu hình ngoài code, AI không tự sửa được. Sau khi push code, user cần vào
+**Supabase Dashboard → Authentication → URL Configuration** và đảm bảo:
+
+- **Site URL:** `https://app.saigonholiday.vn`
+- **Redirect URLs** chứa đầy đủ:
+  - `https://app.saigonholiday.vn/reset-password`
+  - `https://app.saigonholiday.vn/**` (wildcard cho phép mọi sub-path)
+  - `https://saigon-holiday-nexus.lovable.app/reset-password`
+  - `https://saigon-holiday-nexus.lovable.app/**`
+  - `https://id-preview--1632605d-2e2c-4155-8254-0b9de359ce51.lovable.app/reset-password`
+
+Nếu Redirect URL không khớp, Supabase sẽ silently fallback về Site URL và link Gmail sẽ về `/` thay vì `/reset-password` → user thấy như "không vào được màn đổi mật khẩu". Sẽ liệt kê link dashboard cho user click sau khi apply code.
+
+### 5. Email template `recovery.tsx` — Không cần sửa
+
+Đã dùng `{confirmationUrl}` (chính là `payload.data.url` từ webhook), Supabase build sẵn URL `…/auth/v1/verify?token=…&type=recovery&redirect_to=…`. Không can thiệp.
+
+## Acceptance test sau khi sửa
+
+- Gmail → click link → mở thẳng form đổi mật khẩu (không hiện "Liên kết không hợp lệ", không bị đá về `/login`).
+- Đổi mật khẩu → toast thành công → quay về `/login` → đăng nhập bằng mật khẩu mới OK.
+- Mở lại link cũ sau khi đã đổi → màn báo "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại." kèm nút "Quay về đăng nhập".
+- Mở link trong tab ẩn danh trong khi link còn hạn → form đổi mật khẩu hiện ra bình thường.
+- Test cả production `app.saigonholiday.vn` và preview Lovable.
