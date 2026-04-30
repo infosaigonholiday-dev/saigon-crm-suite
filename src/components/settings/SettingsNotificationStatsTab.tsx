@@ -20,6 +20,16 @@ export function SettingsNotificationStatsTab() {
     refetchInterval: 60000,
   });
 
+  const { data: byUserFull = [], isLoading: loadingFull } = useQuery({
+    queryKey: ["notif-stats-by-user-full"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("rpc_notification_stats_by_user");
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    refetchInterval: 60000,
+  });
+
   const { data: overdue = [], isLoading: loadingOverdue } = useQuery({
     queryKey: ["notif-stats-overdue"],
     queryFn: async () => {

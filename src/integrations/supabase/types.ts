@@ -5653,6 +5653,22 @@ export type Database = {
         Args: { p_id: string; p_note?: string; p_status: string }
         Returns: Json
       }
+      rpc_notification_stats_by_user: {
+        Args: never
+        Returns: {
+          department: string
+          email: string
+          full_name: string
+          last_read_at: string
+          overdue_actions: number
+          pending_actions: number
+          read_count: number
+          total_notifications: number
+          unread_count: number
+          unread_high_critical: number
+          user_id: string
+        }[]
+      }
       rpc_notification_unread_by_user: {
         Args: never
         Returns: {

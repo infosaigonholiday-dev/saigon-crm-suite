@@ -47,8 +47,31 @@ const TYPE_LABELS: Record<string, string> = {
   MENTION: "💬 Được nhắc tên",
 };
 
-type ReadStatus = "all" | "unread" | "read";
-type ActionStatusFilter = "all" | "pending" | "in_progress" | "completed" | "dismissed" | "overdue";
+type FilterPreset =
+  | "all"
+  | "unread"
+  | "read"
+  | "urgent_unread"
+  | "need_action"
+  | "overdue"
+  | "read_unhandled";
+
+const FILTER_LABELS: Record<FilterPreset, string> = {
+  all: "Tất cả",
+  unread: "Chưa đọc",
+  read: "Đã đọc",
+  urgent_unread: "🔴 Khẩn chưa đọc",
+  need_action: "⏳ Cần xử lý",
+  overdue: "⚠️ Quá hạn xử lý",
+  read_unhandled: "👁️ Đã đọc nhưng chưa xử lý",
+};
+
+const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
+  low: { label: "Thấp", cls: "bg-gray-50 text-gray-600 border-gray-300" },
+  medium: { label: "TB", cls: "bg-slate-50 text-slate-700 border-slate-300" },
+  high: { label: "Cao", cls: "bg-orange-50 text-orange-700 border-orange-300" },
+  critical: { label: "Khẩn", cls: "bg-red-50 text-red-700 border-red-300" },
+};
 
 const ACTION_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   pending: { label: "Chờ xử lý", cls: "bg-amber-50 text-amber-700 border-amber-300" },
@@ -62,28 +85,50 @@ export function SettingsNotificationHistoryTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [readFilter, setReadFilter] = useState<ReadStatus>("all");
-  const [actionFilter, setActionFilter] = useState<ActionStatusFilter>("all");
+  const [preset, setPreset] = useState<FilterPreset>("all");
   const [page, setPage] = useState(0);
   const [sending, setSending] = useState(false);
 
   const { data: result, isLoading, refetch } = useQuery({
-    queryKey: ["notification-history", typeFilter, readFilter, actionFilter, search, page],
+    queryKey: ["notification-history", typeFilter, preset, search, page],
     queryFn: async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("notifications")
         .select(
-          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, action_required, action_status, action_due_at, action_completed_at, profiles!notifications_user_id_fkey(full_name, email)",
+          "id, type, title, message, user_id, is_read, created_at, read_at, priority, entity_type, related_entity_type, related_entity_id, action_required, action_status, action_due_at, action_completed_at, profiles!notifications_user_id_fkey(full_name, email)",
           { count: "exact" }
         )
         .order("created_at", { ascending: false })
         .range(from, to);
+
       if (typeFilter !== "all") q = q.eq("type", typeFilter);
-      if (readFilter === "unread") q = q.eq("is_read", false);
-      if (readFilter === "read") q = q.eq("is_read", true);
-      if (actionFilter !== "all") q = q.eq("action_required", true).eq("action_status", actionFilter);
+
+      switch (preset) {
+        case "unread":
+          q = q.eq("is_read", false);
+          break;
+        case "read":
+          q = q.eq("is_read", true);
+          break;
+        case "urgent_unread":
+          q = q.eq("is_read", false).in("priority", ["high", "critical"]);
+          break;
+        case "need_action":
+          q = q.eq("action_required", true).in("action_status", ["pending", "in_progress"]);
+          break;
+        case "overdue":
+          q = q.eq("action_status", "overdue");
+          break;
+        case "read_unhandled":
+          q = q
+            .eq("is_read", true)
+            .eq("action_required", true)
+            .in("action_status", ["pending", "in_progress", "overdue"]);
+          break;
+      }
+
       if (search.trim()) q = q.or(`title.ilike.%${search}%,message.ilike.%${search}%`);
       const { data, error, count } = await q;
       if (error) throw error;
@@ -125,13 +170,6 @@ export function SettingsNotificationHistoryTab() {
     }
   };
 
-  const isOverdue24h = (r: any) => {
-    if (r.is_read) return false;
-    if (!["high", "critical"].includes(r.priority)) return false;
-    const ageMs = Date.now() - new Date(r.created_at).getTime();
-    return ageMs > 24 * 60 * 60 * 1000;
-  };
-
   return (
     <div className="space-y-4">
       <Card>
@@ -168,27 +206,14 @@ export function SettingsNotificationHistoryTab() {
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="max-w-xs h-8 text-sm"
             />
-            <Select value={readFilter} onValueChange={(v) => { setReadFilter(v as ReadStatus); setPage(0); }}>
-              <SelectTrigger className="w-40 h-8 text-sm">
-                <SelectValue placeholder="Trạng thái đọc" />
+            <Select value={preset} onValueChange={(v) => { setPreset(v as FilterPreset); setPage(0); }}>
+              <SelectTrigger className="w-56 h-8 text-sm">
+                <SelectValue placeholder="Bộ lọc nhanh" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="unread">Chưa đọc</SelectItem>
-                <SelectItem value="read">Đã đọc</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v as ActionStatusFilter); setPage(0); }}>
-              <SelectTrigger className="w-44 h-8 text-sm">
-                <SelectValue placeholder="Trạng thái xử lý" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Mọi xử lý</SelectItem>
-                <SelectItem value="pending">Chờ xử lý</SelectItem>
-                <SelectItem value="in_progress">Đang xử lý</SelectItem>
-                <SelectItem value="completed">Đã xử lý</SelectItem>
-                <SelectItem value="dismissed">Bỏ qua</SelectItem>
-                <SelectItem value="overdue">Quá hạn</SelectItem>
+                {(Object.keys(FILTER_LABELS) as FilterPreset[]).map((k) => (
+                  <SelectItem key={k} value={k}>{FILTER_LABELS[k]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
@@ -206,51 +231,55 @@ export function SettingsNotificationHistoryTab() {
             </Select>
           </div>
 
-          <div className="border rounded-md">
+          <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[160px]">Loại</TableHead>
-                  <TableHead>Tiêu đề / Nội dung</TableHead>
+                  <TableHead className="w-[150px]">Loại</TableHead>
+                  <TableHead className="min-w-[260px]">Tiêu đề / Nội dung</TableHead>
                   <TableHead className="w-[160px]">Người nhận</TableHead>
-                  <TableHead className="w-[140px]">Tạo lúc</TableHead>
-                  <TableHead className="w-[160px]">Đã đọc lúc</TableHead>
-                  <TableHead className="w-[140px]">Đọc</TableHead>
-                  <TableHead className="w-[140px]">Xử lý</TableHead>
+                  <TableHead className="w-[180px]">Email</TableHead>
+                  <TableHead className="w-[140px]">Gửi lúc</TableHead>
+                  <TableHead className="w-[160px]">Đọc lúc</TableHead>
+                  <TableHead className="w-[160px]">Chưa đọc bao lâu</TableHead>
+                  <TableHead className="w-[90px]">Mức độ</TableHead>
+                  <TableHead className="w-[180px]">Trạng thái</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoading && rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-sm text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-sm text-muted-foreground">
                       Không có thông báo nào khớp tiêu chí
                     </TableCell>
                   </TableRow>
                 )}
                 {rows.map((r: any) => {
                   const typeLabel = TYPE_LABELS[r.type] || r.type;
-                  const recipient = r.profiles?.full_name || r.profiles?.email || "—";
-                  const overdue = isOverdue24h(r);
+                  const recipientName = r.profiles?.full_name || "—";
+                  const recipientEmail = r.profiles?.email || "—";
+                  const isHigh = r.priority === "high" || r.priority === "critical";
+                  const urgentUnread = !r.is_read && isHigh;
+                  const readUnhandled =
+                    r.is_read &&
+                    r.action_required &&
+                    ["pending", "in_progress"].includes(r.action_status);
+                  const overdueAction = r.action_status === "overdue";
+                  const completed = r.action_status === "completed";
+
                   return (
-                    <TableRow key={r.id} className={overdue ? "bg-destructive/5" : ""}>
+                    <TableRow key={r.id} className={urgentUnread || overdueAction ? "bg-destructive/5" : ""}>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                            {typeLabel}
-                          </Badge>
-                          {(r.priority === "high" || r.priority === "critical") && (
-                            <Badge variant="destructive" className="text-[10px]">
-                              {r.priority === "critical" ? "Khẩn" : "Cao"}
-                            </Badge>
-                          )}
-                        </div>
+                        <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                          {typeLabel}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5 max-w-md">
@@ -258,7 +287,10 @@ export function SettingsNotificationHistoryTab() {
                           <p className="text-xs text-muted-foreground line-clamp-1">{r.message}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{recipient}</TableCell>
+                      <TableCell className="text-xs">{recipientName}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        {recipientEmail}
+                      </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {format(new Date(r.created_at), "dd/MM/yyyy HH:mm")}
                       </TableCell>
@@ -268,15 +300,41 @@ export function SettingsNotificationHistoryTab() {
                             {format(new Date(r.read_at), "dd/MM/yyyy HH:mm")}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground inline-flex items-center gap-1">
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {!r.is_read ? (
+                          <span className="inline-flex items-center gap-1 text-amber-700">
                             <Clock className="h-3 w-3" />
                             Chưa đọc {formatDistanceToNow(new Date(r.created_at), { locale: vi })}
                           </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${PRIORITY_LABELS[r.priority]?.cls ?? ""}`}
+                        >
+                          {PRIORITY_LABELS[r.priority]?.label ?? r.priority ?? "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-col gap-1 items-start">
-                          {r.is_read ? (
+                          {/* Read state badge */}
+                          {urgentUnread ? (
+                            <Badge variant="destructive" className="text-[10px]">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Khẩn chưa đọc
+                            </Badge>
+                          ) : !r.is_read ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              <Circle className="h-3 w-3 mr-1" />
+                              Chưa đọc
+                            </Badge>
+                          ) : (
                             <Badge
                               variant="outline"
                               className="text-[10px] bg-blue-50 text-blue-700 border-blue-300"
@@ -284,28 +342,38 @@ export function SettingsNotificationHistoryTab() {
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Đã đọc
                             </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-[10px]">
-                              <Circle className="h-3 w-3 mr-1" />
-                              Chưa đọc
-                            </Badge>
                           )}
-                          {overdue && (
+
+                          {/* Action state badge */}
+                          {!r.action_required ? (
+                            <span className="text-[10px] text-muted-foreground">Không cần xử lý</span>
+                          ) : overdueAction ? (
                             <Badge variant="destructive" className="text-[10px]">
-                              <AlertTriangle className="h-3 w-3 mr-1" />
-                              Quá 24h
+                              Quá hạn xử lý
+                            </Badge>
+                          ) : completed ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-green-50 text-green-700 border-green-300"
+                            >
+                              Đã xử lý
+                            </Badge>
+                          ) : readUnhandled ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-amber-50 text-amber-700 border-amber-300"
+                            >
+                              Đã đọc, chưa xử lý
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${ACTION_STATUS_LABELS[r.action_status]?.cls ?? ""}`}
+                            >
+                              {ACTION_STATUS_LABELS[r.action_status]?.label ?? r.action_status ?? "—"}
                             </Badge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {r.action_required ? (
-                          <Badge variant="outline" className={`text-[10px] ${ACTION_STATUS_LABELS[r.action_status]?.cls ?? ""}`}>
-                            {ACTION_STATUS_LABELS[r.action_status]?.label ?? r.action_status ?? "—"}
-                          </Badge>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">Không cần</span>
-                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -339,10 +407,11 @@ export function SettingsNotificationHistoryTab() {
           </div>
 
           <p className="text-[11px] text-muted-foreground">
-            Chỉ <strong>Quản trị viên</strong> và <strong>Quản trị tối cao</strong> có thể xem trang này.
-            Dữ liệu được lọc tự động theo RLS — Sale/HR chỉ thấy thông báo của chính mình.
+            Chỉ <strong>Quản trị viên / Quản trị tối cao / GĐKD / Manager / HR Manager</strong> xem trang này.
+            Sale/HR thường chỉ thấy thông báo của chính mình theo RLS.
             <br />
-            <strong>Lưu ý:</strong> "Đã đọc" = đã xem thông báo, KHÔNG đồng nghĩa đã hoàn thành công việc.
+            <strong>Nguyên tắc:</strong> "Đã gửi" ≠ "Đã đọc" ≠ "Đã xử lý".
+            Click vào thông báo chỉ đánh dấu đã đọc — KHÔNG tự động hoàn thành công việc.
           </p>
         </CardContent>
       </Card>
