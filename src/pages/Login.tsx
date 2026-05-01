@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import logo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import { getResetPasswordUrl } from "@/lib/authRedirect";
@@ -15,6 +16,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   
 
   // Forgot password state
@@ -31,6 +33,17 @@ export default function Login() {
       return () => clearTimeout(timer);
     }
   }, [forgotSent]);
+
+  // Mở sẵn dialog Quên mật khẩu khi user được redirect từ /reset-password?forgot=1
+  useEffect(() => {
+    if (searchParams.get("forgot") === "1") {
+      setForgotOpen(true);
+      // dọn query để tránh re-open khi user đóng dialog
+      const next = new URLSearchParams(searchParams);
+      next.delete("forgot");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

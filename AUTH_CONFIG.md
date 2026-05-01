@@ -58,5 +58,24 @@ Body PHẢI dùng biến chuẩn của Supabase:
 - **Tupun (ADMIN)** — duy nhất.
 - Mọi yêu cầu đổi Site URL / Redirect URLs / Template phải có ticket + ghi log vào file này.
 
+## 7. Auth Flow — PKCE (BẮT BUỘC)
+
+Project sử dụng **PKCE flow** cho toàn bộ flow Auth (đặc biệt Reset Password).
+
+Cấu hình tại `src/integrations/supabase/client.ts`:
+```ts
+auth: {
+  flowType: 'pkce',
+  detectSessionInUrl: false, // /reset-password tự xử lý exchangeCodeForSession
+}
+```
+
+Hệ quả:
+- Email reset link có dạng `https://app.saigonholiday.vn/reset-password?code=xxx` (query string).
+- KHÔNG dùng dạng cũ `#access_token=...` (hash fragment) — iOS Safari/Gmail thường strip URL fragment khi mở link từ app email → user bị đá về `/login`. PKCE `?code=` không bị strip.
+- Trang `/reset-password` đọc `?code` → gọi `supabase.auth.exchangeCodeForSession(code)` → log `[reset-password] exchangeCodeForSession success` khi thành công.
+
+❌ KHÔNG được đổi `flowType` về `'implicit'` hoặc xoá `detectSessionInUrl: false` — sẽ phá iOS flow.
+
 ---
-_Cập nhật lần cuối: 01/05/2026 — sprint Fix Reset Password + Anti-Regression Guard._
+_Cập nhật lần cuối: 02/05/2026 — sprint Fix Reset Password iOS (PKCE flow)._

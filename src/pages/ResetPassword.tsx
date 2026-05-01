@@ -32,6 +32,8 @@ function cleanUrl() {
   }
 }
 
+const MIN_VERIFY_MS = 2000; // chống flash spinner trên iOS
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,22 +41,40 @@ export default function ResetPassword() {
   const [phase, setPhase] = useState<Phase>("verifying");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const resolvedRef = useRef(false);
+  const startedAtRef = useRef<number>(Date.now());
 
   const navigate = useNavigate();
+
+  const withMinDelay = (fn: () => void) => {
+    const elapsed = Date.now() - startedAtRef.current;
+    const remain = Math.max(0, MIN_VERIFY_MS - elapsed);
+    if (remain === 0) fn();
+    else setTimeout(fn, remain);
+  };
 
   const markReady = () => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setPhase("ready");
-    cleanUrl();
+    withMinDelay(() => {
+      setPhase("ready");
+      cleanUrl();
+    });
   };
 
   const markExpired = (msg?: string) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setErrorMsg(msg ?? "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
-    setPhase("expired");
-    cleanUrl();
+    withMinDelay(() => {
+      setErrorMsg(msg ?? "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
+      setPhase("expired");
+      cleanUrl();
+    });
+  };
+
+  const redirectLogin = () => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    navigate("/login", { replace: true });
   };
 
   useEffect(() => {
@@ -89,8 +109,10 @@ export default function ResetPassword() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
+            console.warn("[reset-password] exchangeCodeForSession failed", error);
             markExpired();
           } else {
+            console.log("[reset-password] exchangeCodeForSession success");
             markReady();
           }
           return;
@@ -105,6 +127,7 @@ export default function ResetPassword() {
           if (error) {
             markExpired();
           } else {
+            console.log("[reset-password] setSession (hash) success");
             markReady();
           }
           return;
@@ -117,8 +140,9 @@ export default function ResetPassword() {
           return;
         }
 
-        // Không có artifact callback nào
-        markExpired();
+        // TC5: Vào /reset-password trực tiếp (không có code/hash/session) → đẩy về /login
+        redirectLogin();
+        return;
       } catch (e) {
         console.error("[reset-password] init error", e);
         markExpired();
@@ -212,9 +236,14 @@ export default function ResetPassword() {
             </div>
             <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
-            <Button className="w-full" onClick={() => navigate("/login")}>
-              Quay về đăng nhập
-            </Button>
+            <div className="space-y-2">
+              <Button className="w-full" onClick={() => navigate("/login?forgot=1")}>
+                Yêu cầu gửi lại liên kết
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/login")}>
+                Quay về đăng nhập
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
