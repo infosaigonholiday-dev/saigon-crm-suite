@@ -72,6 +72,7 @@ export default function Settings() {
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
     showNotifications && { value: "notifications", label: "Thông báo" },
+    { value: "security", label: "Bảo mật" },
     showCompanyInfo && { value: "company", label: "Thông tin công ty" },
     showDepartments && { value: "departments", label: "Phòng ban" },
     showLevels && { value: "levels", label: "Cấp bậc" },
