@@ -142,7 +142,7 @@ export default function ResetPassword() {
 
         // TC5: Vào /reset-password trực tiếp (không có code/hash/session) → đẩy về /login
         redirectLogin();
-        markExpired();
+        return;
       } catch (e) {
         console.error("[reset-password] init error", e);
         markExpired();
