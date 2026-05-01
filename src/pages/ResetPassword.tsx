@@ -78,8 +78,12 @@ export default function ResetPassword() {
   };
 
   useEffect(() => {
-    // Phòng trường hợp Supabase bắn event sớm hơn promise xử lý callback
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // 1. Subscribe onAuthStateChange TRƯỚC khi parse URL — phòng race condition
+    //    (Supabase verify endpoint có thể fire PASSWORD_RECOVERY trước khi promise xử lý xong)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[reset-password] onAuthStateChange event:", event, "hasSession:", !!session);
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         markReady();
       }
@@ -93,12 +97,14 @@ export default function ResetPassword() {
           url.searchParams.get("error_description") ||
           url.searchParams.get("error");
         const hash = parseHash(window.location.hash);
+        const hashError = hash.error_description || hash.error;
 
-        // Lỗi do Supabase trả về trên URL
-        if (errorDesc) {
-          const lower = errorDesc.toLowerCase();
+        // Lỗi do Supabase trả về trên URL (query hoặc hash)
+        const anyError = errorDesc || hashError;
+        if (anyError) {
+          const lower = anyError.toLowerCase();
           const friendly =
-            lower.includes("expired") || lower.includes("invalid")
+            lower.includes("expired") || lower.includes("invalid") || lower.includes("otp")
               ? "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại."
               : "Liên kết không hợp lệ. Vui lòng yêu cầu gửi lại.";
           markExpired(friendly);
@@ -136,20 +142,37 @@ export default function ResetPassword() {
         // Trường hợp 3: Đã có sẵn session (user reload sau khi đã exchange thành công)
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          console.log("[reset-password] existing session found");
           markReady();
           return;
         }
 
-        // TC5: Vào /reset-password trực tiếp (không có code/hash/session) → đẩy về /login
-        redirectLogin();
-        return;
+        // Trường hợp 4: KHÔNG có code/hash/session/error
+        // → Có thể Supabase verify endpoint sẽ fire PASSWORD_RECOVERY event sau 1 nhịp
+        //   (một số version Supabase set session qua storage rồi redirect không kèm ?code=)
+        // → Đợi MIN_VERIFY_MS rồi mới quyết định: nếu URL trần (không param) → /login,
+        //   nếu URL có dấu hiệu callback bị thiếu code → expired.
+        const hadCallbackParams = !!(url.search || url.hash);
+        console.log("[reset-password] no code/hash/session, waiting", MIN_VERIFY_MS, "ms for PASSWORD_RECOVERY event. hadCallbackParams:", hadCallbackParams);
+
+        graceTimer = setTimeout(() => {
+          if (resolvedRef.current) return;
+          if (hadCallbackParams) {
+            markExpired("Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
+          } else {
+            redirectLogin();
+          }
+        }, MIN_VERIFY_MS);
       } catch (e) {
         console.error("[reset-password] init error", e);
         markExpired();
       }
     })();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (graceTimer) clearTimeout(graceTimer);
+    };
   }, []);
 
   const validatePassword = (pwd: string): string | null => {
