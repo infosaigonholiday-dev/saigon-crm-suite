@@ -1,53 +1,101 @@
-# Sort lại danh sách B2B Tours theo trạng thái hết hạn
+# Bộ tài liệu Training Vận hành — docs/training/
 
-## Bối cảnh
-Hiện `enrichedTours` trong `src/pages/B2BTours.tsx` đang sort ASC theo `departure_date` cho TẤT CẢ tour (nulls last). Khi filter "Tất cả" hoặc "Đã hết hạn", các tour quá khứ rất xa lại nằm lẫn lên đầu → Sale phải kéo qua mới thấy tour sắp khởi hành.
+Tạo MỚI folder `docs/training/` (song song và độc lập với folder `Training/` hiện hữu, vốn chỉ dành cho training thao tác CRM cơ bản). Bộ mới này tập trung vào **quy trình vận hành + chế tài + flow liên phòng** theo triết lý 5 bước SGH.
 
-## Yêu cầu sort mới
-- Tour **còn hạn** (`!_expired`): ASC theo `departure_date` — gần khởi hành lên đầu.
-- Tour **hết hạn** (`_expired`): DESC theo `departure_date` — mới hết hạn lên trước.
-- Filter **"Tất cả"**: nhóm còn hạn lên trước (ASC), rồi đến nhóm hết hạn (DESC).
-- Tour không parse được `departure_date` (null): luôn xuống cuối nhóm của nó.
+## 1. Cấu trúc file
 
-## Thay đổi (chỉ 1 file: `src/pages/B2BTours.tsx`)
-
-### 1. Bỏ sort tổng trong `enrichedTours`
-Trong `useMemo` của `enrichedTours`: bỏ `.sort(...)` hiện tại, chỉ giữ phần `.map(...)` để gắn `_dep / _departed / _visaExpired / _expired`. Sort sẽ làm ở `filteredTours` để áp đúng theo từng filter mode.
-
-### 2. Sort trong `filteredTours`
-Viết 2 helper local:
-
-```ts
-const cmpAsc = (a, b) => {
-  if (!a._dep && !b._dep) return 0;
-  if (!a._dep) return 1;       // null xuống cuối
-  if (!b._dep) return -1;
-  return a._dep.getTime() - b._dep.getTime();
-};
-const cmpDesc = (a, b) => {
-  if (!a._dep && !b._dep) return 0;
-  if (!a._dep) return 1;       // null vẫn xuống cuối
-  if (!b._dep) return -1;
-  return b._dep.getTime() - a._dep.getTime();
-};
+```
+docs/training/
+├── index.html                       Mục lục + sơ đồ tổng + 5 bước
+├── 00_TONG_QUAN.html                Overview, sơ đồ phòng ban, Chu trình 5 bước
+├── 01_SALE.html                     Phòng Kinh doanh
+├── 02_DIEU_HANH.html                Phòng Điều hành
+├── 03_KE_TOAN.html                  Phòng Kế toán
+├── 04_HCNS.html                     Phòng HCNS
+├── 05_MARKETING.html                Phòng Marketing
+├── 06_QUAN_LY_CEO_GDKD.html         CEO + GĐKD
+├── 07_FLOW_LIEN_PHONG.html          Sơ đồ luồng phối hợp 6 luồng chính
+├── 08_HUONG_DAN_TAI_KHOAN.html      Đăng nhập, reset pass, đổi pass, push
+├── 09_CHE_TAI_KY_LUAT.html          Khung chế tài 5 bậc
+├── 10_FAQ_LOI_THUONG_GAP.html       Top 20 FAQ
+└── _shared.css                      (KHÔNG tạo — inline CSS theo yêu cầu)
 ```
 
-Logic mới của `filteredTours`:
-- `expiryFilter === "active"`: `enrichedTours.filter(!_expired).sort(cmpAsc)`
-- `expiryFilter === "expired"`: `enrichedTours.filter(_expired).sort(cmpDesc)`
-- `expiryFilter === "all"`: 
-  - `active = enriched.filter(!_expired).sort(cmpAsc)`
-  - `expired = enriched.filter(_expired).sort(cmpDesc)`
-  - return `[...active, ...expired]`
+Mỗi file **HTML tự chứa** (inline `<style>` trong `<head>`) → mở offline được, in PDF được, < 200KB.
 
-Pagination client-side đã có sẵn — slice trên kết quả mới này, không cần đổi gì.
+## 2. Template chuẩn cho mọi file
 
-## Test
-- TC1 "Còn hạn": tour gần nhất (ví dụ 12/05/2026) lên đầu, xa nhất xuống cuối.
-- TC2 "Đã hết hạn": tour mới hết hạn (ví dụ 30/04/2026) lên đầu, tour 01/2026 xuống cuối.
-- TC3 "Tất cả": nửa trên là tour còn hạn ASC, nửa dưới là tour hết hạn DESC, ranh giới rõ ràng tại `today`.
-- TC4: tour không có `departure_date` luôn ở cuối nhóm tương ứng.
-- TC5: Pagination + reload + filter market/dest/month vẫn hoạt động.
+Mỗi file gồm:
+- `<header>`: logo text "SGH CRM" gradient + tiêu đề + ngày cập nhật `01/05/2026`
+- `<aside class="sidebar">`: navigation cố định bên trái với link tới 11 file còn lại + table-of-contents nội bộ (anchor `#section-id`)
+- `<main>`: nội dung chính
+- Khối callout: `.box-warn` (vàng), `.box-danger` (đỏ), `.box-success` (xanh), `.box-info` (xanh dương)
+- `<footer>`: "Phiên bản 1.0 — 01/05/2026 — Cập nhật: HCNS phối hợp IT"
+- `@media print`: ẩn sidebar + header sticky, đổi màu nền trắng, ép A4 width 210mm, page-break-inside avoid cho mỗi `<section>`
+- `@media (max-width: 768px)`: sidebar trở thành menu trượt với nút hamburger
 
-## Không làm
-- Không đụng schema, không đụng các filter khác, không đụng badge/booking guard đã làm trước đó.
+## 3. Triết lý 5 bước SGH (lặp trong mọi file phòng ban)
+
+```text
+[1 Phân công]→[2 Thực thi]→[3 Rà soát]→[4 Đối chiếu]→[5 Chuẩn hóa]
+```
+
+Mỗi file phòng ban có 1 section "Chu trình 5 bước áp dụng cho [phòng X]" với bảng cụ thể: Bước → Hoạt động cụ thể → Minh chứng cần nộp → Module CRM dùng → KPI đo.
+
+## 4. Nội dung trọng tâm từng file
+
+| File | Điểm khác biệt cốt lõi |
+|------|------------------------|
+| **00_TONG_QUAN** | Sơ đồ tổ chức, 22 roles tổng quan, 5 bước, nguyên tắc "minh chứng > lời hứa" |
+| **01_SALE** | Lead Kanban 5 cột + badge nhiệt độ 🔥🟡❄️, deadline mặc định: phản hồi lead trong 4h, follow-up trong 24h, lead lạnh > 7 ngày auto-cảnh báo |
+| **02_DIEU_HANH** | Hồ sơ Tour + tour_tasks workflow, deadline phân HDV trước khởi hành 5 ngày, upload chứng từ NCC bắt buộc |
+| **03_KE_TOAN** | **Phân quyền nhạy cảm**: KETOAN xem Lợi nhuận, GDKD KHÔNG xem (highlight box-danger). Duyệt 2 lớp HCNS→KT, dự toán/quyết toán escalate 48h/72h |
+| **04_HCNS** | Tuyển dụng Kanban 7 cột, onboarding modal, payroll 5-stage. Nhập chi phí HCNS → pending_approval → KT duyệt |
+| **05_MARKETING** | Campaigns module, milestone auto-recalc, bàn giao lead về Sale (deadline 24h) |
+| **06_QUAN_LY_CEO_GDKD** | CEO: full quyền + duyệt cuối Quyết toán/Lương/Phiếu chi. **GDKD: chỉ xem doanh thu nhánh, KHÔNG thấy lợi nhuận** (box-danger). Audit log read-only |
+| **07_FLOW_LIEN_PHONG** | 6 sơ đồ flow ASCII với bảng "ai gửi / ai nhận / deadline / minh chứng / chỉ số" |
+| **08_HUONG_DAN_TAI_KHOAN** | Reset password flow Resend mới (KHÔNG đề cập Supabase Auth Hook). Mật khẩu mặc định "sgh123456", link reset valid 1h + 1 lần dùng. Push notification setup |
+| **09_CHE_TAI_KY_LUAT** | 5 mức vi phạm (1 cho mỗi bước chu trình) + bậc kỷ luật từ "Nhắc nhở" → "Đề xuất xét lại vai trò" (KHÔNG đề xuất sa thải/phạt tiền tự động) |
+| **10_FAQ** | 20 câu hỏi với câu trả lời ngắn + link tới file chi tiết |
+
+## 5. Sơ đồ flow liên phòng (file 07)
+
+6 flow chính, mỗi flow có sơ đồ ASCII + bảng metadata:
+
+```text
+1) MKT → SALE        (lead chuyển giao, deadline 24h)
+2) SALE → ĐIỀU HÀNH  (booking confirmed → tạo hồ sơ tour, deadline 4h)
+3) ĐIỀU HÀNH → KT    (chi phí tour → duyệt, deadline 48h)
+4) SALE → KT         (thu cọc/thanh toán, real-time)
+5) HCNS → KT         (chi phí lương → duyệt, deadline tháng)
+6) TẤT CẢ → CEO      (báo cáo + duyệt cuối)
+```
+
+## 6. Quy ước nội dung — CẤM
+
+- KHÔNG hardcode credential thật, URL Supabase, OneSignal App ID
+- KHÔNG show screenshot có data KH thật (dùng tên giả: "Anh Minh", "Chị Lan")
+- KHÔNG đề xuất sa thải / phạt tiền tự động trong file Chế tài
+- KHÔNG ghi tên nhân sự thật
+
+## 7. Verify checklist (chạy sau khi tạo)
+
+1. `ls docs/training/ | wc -l` → 12 file
+2. Mở `index.html` trong trình duyệt → tất cả 11 link ăn đúng
+3. `grep -l "Phân công.*Thực thi.*Rà soát.*Đối chiếu.*Chuẩn hóa" docs/training/0[1-6]*.html` → 6 file
+4. `grep "GDKD.*KHÔNG.*lợi nhuận\|GDKD.*không.*lợi nhuận" docs/training/03_KE_TOAN.html docs/training/06_QUAN_LY_CEO_GDKD.html` → match
+5. `grep -c "1 lần dùng\|1 giờ" docs/training/08_HUONG_DAN_TAI_KHOAN.html` → ≥ 2
+6. Wordcount mỗi file > 800 từ, file size < 200KB
+
+## 8. Phạm vi KHÔNG đụng
+
+- KHÔNG sửa folder `Training/` cũ (giữ song song)
+- KHÔNG sửa code app, không sửa DB, không thêm route
+- KHÔNG đụng `AUTH_CONFIG.md`, `eslint.config.js`, edge functions
+
+## Output
+
+Sau khi build xong, tôi sẽ paste:
+- `ls -la docs/training/` (12 file + size)
+- 1 đoạn HTML mẫu của `index.html` để anh thấy giao diện mục lục
+- Snippet phần "Chu trình 5 bước" giống nhau giữa các file phòng ban (verify item 3)
