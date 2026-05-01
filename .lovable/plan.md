@@ -1,65 +1,33 @@
-# Fix Reset Password — Xóa hoàn toàn `exchangeCodeForSession`
+# Thêm nút Đổi Mật Khẩu trong Cài đặt
 
-## Vấn đề
-Console hiện log `[reset-password] exchangeCodeForSession failed AuthApiError: invalid flow state, flow state has expired` + Network 422 `?grant_type=pkce`. Nguyên nhân: `ResetPassword.tsx` vẫn còn nhánh fallback gọi `exchangeCodeForSession(code)` cho URL `?code=...`. Cross-device → không có `code_verifier` ở localStorage → 422.
+## Mục tiêu
+Cho user đăng nhập đổi mật khẩu trực tiếp trong Cài đặt mà không cần qua flow email reset.
 
-Theo yêu cầu: **XÓA HOÀN TOÀN** mọi `exchangeCodeForSession`, chỉ dùng `verifyOtp` cho mọi loại token có trong URL.
+## File mới: `src/components/settings/SettingsSecurityTab.tsx`
+Component tab "Bảo mật":
+- Card "Bảo mật tài khoản" + nút **Đổi mật khẩu** (icon `KeyRound`).
+- Dialog (shadcn) gồm 2 input: Mật khẩu mới, Xác nhận mật khẩu.
+- Validate FE: ≥ 8 ký tự, có ≥ 1 chữ hoa, có ≥ 1 số, hai mật khẩu khớp.
+- Submit → `supabase.auth.updateUser({ password })`. Thành công → `toast.success` + đóng dialog + reset state. KHÔNG logout.
+- Sau khi đổi thành công, best-effort update `profiles.must_change_password = false` (try/catch không chặn flow).
+- Nút submit `disabled` khi `loading`. Có spinner.
+- 100% tiếng Việt. Không log password/token.
 
-## Thay đổi — chỉ 1 file: `src/pages/ResetPassword.tsx`
+## Sửa `src/pages/Settings.tsx`
+- Import `SettingsSecurityTab`.
+- Thêm vào danh sách tabs: `{ value: "security", label: "Bảo mật" }` — **luôn hiện cho mọi user** (đặt sau "notifications").
+- Thêm `<TabsContent value="security">` render `<SettingsSecurityTab />`.
 
-### 1. Xóa nhánh `if (code) { exchangeCodeForSession(code) ... }`
-Toàn bộ block xử lý PKCE bị xóa.
+## KHÔNG đổi
+- DB schema (chỉ dùng cột `must_change_password` đã có).
+- `ResetPassword.tsx`, `FirstLoginChangePassword.tsx`.
+- Role/permission/RLS.
+- Không lưu password vào localStorage/log.
 
-### 2. Hợp nhất 3 tên param URL về cùng 1 nhánh `verifyOtp`
-Đọc theo thứ tự ưu tiên: `token_hash` → `token` → `code` (Supabase đặt tên khác nhau tùy version/loại email).
-
-```ts
-const tokenFromUrl =
-  url.searchParams.get("token_hash") ||
-  url.searchParams.get("token") ||
-  url.searchParams.get("code");
-const otpType = url.searchParams.get("type") || "recovery"; // mặc định recovery cho /reset-password
-
-if (tokenFromUrl) {
-  console.log("[reset-password] verifyOtp called with token_hash");
-  const { error } = await supabase.auth.verifyOtp({
-    token_hash: tokenFromUrl,
-    type: "recovery",
-  });
-  if (error) {
-    console.warn("[reset-password] verifyOtp failed", error);
-    const lower = (error.message || "").toLowerCase();
-    const friendly = lower.includes("expired") || lower.includes("invalid") || lower.includes("otp")
-      ? "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại."
-      : "Liên kết không hợp lệ. Vui lòng yêu cầu gửi lại.";
-    markExpired(friendly);
-  } else {
-    console.log("[reset-password] verifyOtp success");
-    markReady();
-  }
-  return;
-}
-```
-
-### 3. Giữ nguyên các nhánh khác
-- `onAuthStateChange` listener (subscribe trước khi parse URL) — fallback PASSWORD_RECOVERY/SIGNED_IN.
-- Nhánh `#access_token=&refresh_token=` → `setSession()`.
-- Nhánh đã có session → `markReady()`.
-- Nhánh URL trần → `MIN_VERIFY_MS=5000ms` rồi redirect `/login`.
-- Nhánh có `error_description` → `markExpired` với message tiếng Việt.
-
-### 4. Kiểm tra lint
-Đảm bảo không còn chuỗi `exchangeCodeForSession` trong file (grep verify sau khi sửa).
-
-## Files KHÔNG đổi
-- `src/integrations/supabase/client.ts` (giữ `flowType: 'pkce'` cho login).
-- `supabase/functions/auth-email-hook/index.ts` (đã đúng — generate `?token_hash=...&type=recovery`).
-- `AUTH_CONFIG.md` mục #7.2: cập nhật bảng — nhánh `?code=` giờ cũng đi qua `verifyOtp` (không còn `exchangeCodeForSession`).
-
-## Verify sau khi áp dụng
-1. `grep exchangeCodeForSession src/pages/ResetPassword.tsx` → KHÔNG match.
-2. Network: click link reset → KHÔNG còn request `?grant_type=pkce`.
-3. Console: thấy `[reset-password] verifyOtp called with token_hash` + `verifyOtp success`.
-4. Cross-device Desktop→iPhone Safari: form đổi pass hiện.
-5. Same-device Desktop: form hiện.
-6. Click link cũ đã dùng: hiện màn "Liên kết đã hết hạn".
+## Test
+- TC1 nút hiện trong Cài đặt (tab Bảo mật).
+- TC2 password < 8 → toast lỗi.
+- TC3 thiếu chữ hoa/số → toast lỗi.
+- TC4 confirm không khớp → toast lỗi.
+- TC5 đổi thành công → toast thành công, dialog đóng.
+- TC6 logout + login bằng pass mới → OK.
