@@ -109,8 +109,10 @@ export default function ResetPassword() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
+            console.warn("[reset-password] exchangeCodeForSession failed", error);
             markExpired();
           } else {
+            console.log("[reset-password] exchangeCodeForSession success");
             markReady();
           }
           return;
@@ -125,6 +127,7 @@ export default function ResetPassword() {
           if (error) {
             markExpired();
           } else {
+            console.log("[reset-password] setSession (hash) success");
             markReady();
           }
           return;
@@ -137,7 +140,8 @@ export default function ResetPassword() {
           return;
         }
 
-        // Không có artifact callback nào
+        // TC5: Vào /reset-password trực tiếp (không có code/hash/session) → đẩy về /login
+        redirectLogin();
         markExpired();
       } catch (e) {
         console.error("[reset-password] init error", e);
