@@ -93,6 +93,8 @@ export default function ResetPassword() {
       try {
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
+        const tokenHash = url.searchParams.get("token_hash");
+        const otpType = url.searchParams.get("type");
         const errorDesc =
           url.searchParams.get("error_description") ||
           url.searchParams.get("error");
@@ -111,7 +113,28 @@ export default function ResetPassword() {
           return;
         }
 
-        // Trường hợp 1: PKCE callback ?code=
+        // Trường hợp 0 (PRIORITY): token_hash từ email — verifyOtp recovery.
+        // Đây là path chính, hoạt động cross-device vì KHÔNG cần code_verifier.
+        if (tokenHash && otpType === "recovery") {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+          if (error) {
+            console.warn("[reset-password] verifyOtp failed", error);
+            const lower = (error.message || "").toLowerCase();
+            const friendly = lower.includes("expired") || lower.includes("invalid") || lower.includes("otp")
+              ? "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại."
+              : "Liên kết không hợp lệ. Vui lòng yêu cầu gửi lại.";
+            markExpired(friendly);
+          } else {
+            console.log("[reset-password] verifyOtp success");
+            markReady();
+          }
+          return;
+        }
+
+        // Trường hợp 1: PKCE callback ?code= (legacy / same-device)
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {

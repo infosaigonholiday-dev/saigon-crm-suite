@@ -58,9 +58,9 @@ Body PHẢI dùng biến chuẩn của Supabase:
 - **Tupun (ADMIN)** — duy nhất.
 - Mọi yêu cầu đổi Site URL / Redirect URLs / Template phải có ticket + ghi log vào file này.
 
-## 7. Auth Flow — PKCE (BẮT BUỘC)
+## 7. Auth Flow — PKCE cho Login, verifyOtp cho Recovery (BẮT BUỘC)
 
-Project sử dụng **PKCE flow** cho toàn bộ flow Auth (đặc biệt Reset Password).
+Project sử dụng **PKCE flow** cho login flow chính, và **verifyOtp(token_hash)** cho password recovery (cross-device safe).
 
 Cấu hình tại `src/integrations/supabase/client.ts`:
 ```ts
@@ -75,22 +75,33 @@ Hệ quả:
 - KHÔNG dùng dạng cũ `#access_token=...` (hash fragment) — iOS Safari/Gmail thường strip URL fragment khi mở link từ app email → user bị đá về `/login`. PKCE `?code=` không bị strip.
 - Trang `/reset-password` đọc `?code` → gọi `supabase.auth.exchangeCodeForSession(code)` → log `[reset-password] exchangeCodeForSession success` khi thành công.
 
-### 7.1 Ba nhánh redirect mà `/reset-password` phải xử lý
+### 7.1 Recovery flow — verifyOtp(token_hash), KHÔNG dùng PKCE
 
-Tuỳ Supabase server version + cấu hình template, sau khi `/auth/v1/verify?token=pkce_xxx&type=recovery&redirect_to=...` verify xong, redirect về `/reset-password` có thể rơi vào **1 trong 3 case**:
+**Vấn đề PKCE với recovery:** PKCE lưu `code_verifier` ở `localStorage` của device đã gọi `resetPasswordForEmail`. Nếu user gửi email từ Desktop nhưng click link trên iPhone → iPhone không có verifier → `exchangeCodeForSession` LUÔN fail. Đây là use-case chính của recovery (cross-device) → PKCE không phù hợp.
 
-| Case | URL trả về | Cách xử lý |
+**Giải pháp:**
+- Edge function `auth-email-hook` (file `supabase/functions/auth-email-hook/index.ts`) override `confirmationUrl` cho `emailType === 'recovery'`: build link app trực tiếp `https://app.saigonholiday.vn/reset-password?token_hash={hash}&type=recovery` thay vì dùng `payload.data.url` (link `/auth/v1/verify?token=pkce_...`).
+- `ResetPassword.tsx` ưu tiên đọc `?token_hash=` + `?type=recovery` → gọi `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`. Token này tự là proof-of-possession (chỉ ai có inbox mới đọc được) → không cần code_verifier → cross-device OK.
+
+### 7.2 Các nhánh fallback `/reset-password` vẫn xử lý
+
+Để tương thích ngược (email pending trong inbox user, hoặc Supabase server version khác), `ResetPassword.tsx` xử lý theo thứ tự ưu tiên:
+
+| # | URL trả về | Cách xử lý |
 |---|---|---|
-| (a) PKCE chuẩn | `/reset-password?code=xxx` | `exchangeCodeForSession(code)` |
-| (b) Implicit fallback | `/reset-password#access_token=...&refresh_token=...&type=recovery` | `setSession({access_token, refresh_token})` |
-| (c) Session-only redirect | `/reset-password` (không kèm gì) | Server đã set session qua storage → đợi event `PASSWORD_RECOVERY` từ `onAuthStateChange` fire trong vòng `MIN_VERIFY_MS` (5000ms). KHÔNG redirect về `/login` ngay. |
+| 0 | `/reset-password?token_hash=...&type=recovery` | **`verifyOtp` — path chính** |
+| 1 | `/reset-password?code=xxx` | `exchangeCodeForSession(code)` (legacy PKCE same-device) |
+| 2 | `/reset-password#access_token=...&refresh_token=...` | `setSession(...)` |
+| 3 | `/reset-password` (không kèm gì) — đã có session | đợi `PASSWORD_RECOVERY` event trong `MIN_VERIFY_MS` (5000ms) |
+| 4 | `/reset-password` trần, không session, không param | redirect `/login` |
+| 5 | có dấu hiệu callback nhưng thiếu cả `token_hash` và `code` | `phase = expired` |
 
-Quy tắc bắt buộc trong `ResetPassword.tsx`:
-- `onAuthStateChange` PHẢI subscribe **trước** khi parse URL (race condition).
-- `MIN_VERIFY_MS = 5000ms` để đủ time cho case (c) trên iOS chậm.
-- Chỉ redirect `/login` khi URL trần (`!url.search && !url.hash`) sau timeout. Nếu có dấu hiệu callback nhưng thiếu code → `phase = expired` (không silently về login).
+Quy tắc bắt buộc:
+- `onAuthStateChange` PHẢI subscribe **trước** khi parse URL (race condition safety).
+- `MIN_VERIFY_MS = 5000ms` cho iOS chậm.
+- Giữ `flowType: 'pkce'` + `detectSessionInUrl: false` ở `client.ts` — không đổi (vì login flow vẫn cần PKCE).
 
-❌ KHÔNG được đổi `flowType` về `'implicit'` hoặc xoá `detectSessionInUrl: false` — sẽ phá iOS flow.
+❌ KHÔNG xoá nhánh `?code=` ở ResetPassword — giữ làm safety net cho email pending trong inbox của user.
 
 ---
-_Cập nhật lần cuối: 02/05/2026 — sprint Fix Reset Password (PKCE flow + 3-branch redirect handling)._
+_Cập nhật lần cuối: 02/05/2026 — sprint Fix Reset Password Cross-Device (chuyển recovery sang verifyOtp(token_hash), giữ PKCE cho login)._
