@@ -1,180 +1,59 @@
-# Anti-Regression Guards — Reset Password Flow
+# Fix B2B Tours List — Ẩn/đánh dấu tour đã hết hạn
 
-Mục tiêu: bọc kiến trúc reset password mới (edge function `send-recovery-email` + Resend + `verifyOtp(token_hash)`) bằng 4 lớp bảo vệ. **Không sửa logic đang chạy** — chỉ ADD guards.
+## Bối cảnh
+Trong `LKH Tour 2026` (`src/pages/B2BTours.tsx`), tour có ngày khởi hành đã qua hoặc visa hết hạn vẫn hiển thị → Sale có thể quote nhầm. Cần thêm filter trạng thái + badge cảnh báo + disable booking cho tour đã khởi hành.
 
----
+**Lưu ý dữ liệu**: cột `departure_date` và `visa_deadline` trong `b2b_tours` là **text dạng `dd/MM/yyyy`** (không phải ISO date). Vì vậy không thể filter ở Supabase bằng `.gte()` — phải parse và filter ở client sau khi fetch.
 
-## 1. Cập nhật `AUTH_CONFIG.md` (mục #7)
+## Thay đổi
+Chỉ sửa 1 file: `src/pages/B2BTours.tsx`. Không đụng các module khác, không xóa data.
 
-Thêm section **mới** ở đầu mục #7 (giữ nguyên 7.1 / 7.2 phía dưới):
+### 1. Helper parse ngày `dd/MM/yyyy`
+Thêm hàm `parseVnDate(s: string | null): Date | null` (return `null` nếu rỗng/sai format).
+Thêm `today` = `new Date()` reset về 00:00 để so sánh ngày.
 
-```
-### ⚠️ KIẾN TRÚC RESET PASSWORD — DO NOT MODIFY
+### 2. Tính trạng thái mỗi tour
+Cho mỗi tour:
+- `departed = parseVnDate(departure_date) < today`
+- `visaExpired = visa_deadline && parseVnDate(visa_deadline) < today`
+- `expired = departed || visaExpired` (dùng cho filter "Còn hạn / Đã hết hạn")
 
-Sprint 02/05/2026: chuyển hoàn toàn sang Resend + edge function tự custom,
-KHÔNG còn dùng Supabase Auth Email flow cho recovery. Lý do: Supabase Free
-plan không cho dùng Auth Hook reliably + iOS cross-device fail với PKCE.
+### 3. State filter mode + persist localStorage
+- Thêm state `expiryFilter: "active" | "expired" | "all"`, default `"active"`.
+- Khởi tạo từ `localStorage.getItem("b2b_tours_expiry_filter")` (fallback `"active"`).
+- `useEffect` ghi lại vào localStorage khi đổi.
+- Khi đổi filter → reset `page = 0`.
 
-❌ TUYỆT ĐỐI KHÔNG:
-- Gọi `supabase.auth.resetPasswordForEmail()` ở Login.tsx (hoặc bất kỳ đâu)
-- Bật "Send email hook" trong Supabase Dashboard → Auth → Hooks
-- Sửa Email Template "Reset Password" trong Supabase Dashboard
-- Dùng `exchangeCodeForSession()` trong ResetPassword.tsx
-- Set `flowType: 'pkce'` cho recovery flow (PKCE chỉ dùng cho login)
-- Dùng link dạng `https://<ref>.supabase.co/auth/v1/verify?token=pkce_...`
+### 4. Cách filter — chuyển sang client-side
+Vì 3 cột date là text `dd/MM/yyyy`, không filter được ở Postgres. Giải pháp:
+- Bỏ `range()` server-side cho query chính, lấy đầy đủ tour theo các filter còn lại (market/dest/month/search) — bảng b2b_tours hiện không lớn (vài trăm dòng).
+- Sau khi fetch, filter theo `expiryFilter` ở client, rồi tự phân trang client-side `PAGE_SIZE = 20`.
+- Bỏ luôn query `b2b-tours-count` riêng, dùng `filteredTours.length` để tính `totalPages`.
 
-✅ PHẢI:
-- Login.tsx → `supabase.functions.invoke('send-recovery-email', { body: { email } })`
-- ResetPassword.tsx → `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`
-- Email gửi từ Resend, From: `Saigon Holiday CRM <noreply@saigonholiday.vn>`
-- Link format: `https://app.saigonholiday.vn/reset-password?token_hash=<hash>&type=recovery`
+(Nếu sau này dữ liệu lớn lên thì tách cột `departure_date_iso` ở DB; phạm vi task này không đụng DB.)
 
-Vi phạm sẽ bị chặn bởi: ESLint rule (`eslint.config.js`),
-Playwright e2e (`tests/auth/reset-password.spec.ts`), và edge function
-`check-auth-health` (chạy thủ công khi nghi ngờ regression).
-```
+### 5. UI dropdown filter
+Thêm 1 `Select` ở hàng filter (đổi grid từ `md:grid-cols-4` → `md:grid-cols-5`):
+- "Còn hạn" (default) / "Đã hết hạn" / "Tất cả"
 
----
+### 6. Badges trên từng dòng
+- Cột **Ngày đi**: nếu `departed` → thêm `<Badge variant="secondary" className="bg-gray-200 text-gray-700">ĐÃ KHỞI HÀNH</Badge>` cạnh ngày.
+- Cột **Hạn Visa**: nếu `visaExpired` → đổi badge hiện tại thành đỏ `bg-red-50 text-red-700 border-red-200` với text `VISA HẾT HẠN` (kèm ngày).
 
-## 2. ESLint guards (`eslint.config.js`)
+### 7. Nút Booking
+- Nếu `departed` → `<Button disabled>` bọc trong `Tooltip` với content `"Tour đã hết hạn, không thể tạo booking"`.
+- Nếu chỉ `visaExpired` (departure còn) → vẫn click được (chỉ cảnh báo qua badge).
+- Cần wrap disabled button trong `<span>` để Tooltip hoạt động (Radix yêu cầu).
 
-Thêm 1 block override **chỉ áp dụng cho `Login.tsx` + `ResetPassword.tsx`** (giữ nguyên rule `localhost` global hiện có):
+## Test (sẽ chạy & paste kết quả)
+- TC1: default load → chỉ tour `departure_date >= today` AND visa OK.
+- TC2: chọn "Tất cả" → hiện hết, badge đúng.
+- TC3: tour visa hết hạn, departure còn → badge đỏ "VISA HẾT HẠN", Booking vẫn click được.
+- TC4: tour đã khởi hành → badge xám "ĐÃ KHỞI HÀNH", Booking disabled + tooltip.
+- TC5: đổi filter sang "Tất cả", reload trang → vẫn ở "Tất cả" (localStorage).
+- Verify SQL: confirm hôm nay 01/05/2026 các tour `OS5N5D-260430-03` (01/05 00:05) bị ẩn ở "Còn hạn"; `LG5N4D-260512-01` (visa 06/05) vẫn hiện vì visa chưa qua; v.v.
 
-```js
-{
-  files: ["src/pages/Login.tsx", "src/pages/ResetPassword.tsx"],
-  rules: {
-    "no-restricted-syntax": [
-      "error",
-      // giữ rule localhost cũ
-      {
-        selector: "Literal[value=/localhost:[0-9]+/]",
-        message: "Không hardcode localhost — dùng getAppBaseUrl()",
-      },
-      {
-        selector: "MemberExpression[property.name='resetPasswordForEmail']",
-        message: "Recovery dùng supabase.functions.invoke('send-recovery-email') — xem AUTH_CONFIG.md mục #7",
-      },
-      {
-        selector: "MemberExpression[property.name='exchangeCodeForSession']",
-        message: "Recovery dùng verifyOtp(token_hash) — xem AUTH_CONFIG.md mục #7",
-      },
-      {
-        selector: "Property[key.name='flowType'][value.value='pkce']",
-        message: "Recovery KHÔNG dùng PKCE — xem AUTH_CONFIG.md mục #7",
-      },
-    ],
-  },
-},
-```
-
-Rule `localhost` global vẫn giữ ở block trước đó cho phần còn lại của codebase.
-
----
-
-## 3. Playwright e2e (`tests/auth/reset-password.spec.ts` — NEW)
-
-3 test case (chạy headless trên Preview URL):
-
-```ts
-import { test, expect } from "@playwright/test";
-
-const APP = "https://id-preview--1632605d-2e2c-4155-8254-0b9de359ce51.lovable.app";
-
-test.describe("Reset password — anti-regression", () => {
-  test("TC1: forgot password gọi send-recovery-email, KHÔNG gọi /auth/v1/recover", async ({ page }) => {
-    const calls: string[] = [];
-    page.on("request", (r) => calls.push(r.url()));
-
-    await page.goto(`${APP}/login?forgot=1`);
-    await page.getByLabel(/email/i).first().fill("qa-guard@example.com");
-    await page.getByRole("button", { name: /gửi|reset|đặt lại/i }).click();
-    await page.waitForTimeout(2000);
-
-    expect(calls.some((u) => u.includes("/functions/v1/send-recovery-email"))).toBe(true);
-    expect(calls.some((u) => u.includes("/auth/v1/recover"))).toBe(false);
-    expect(calls.some((u) => u.includes("/auth/v1/otp"))).toBe(false);
-  });
-
-  test("TC2: ResetPassword.tsx source KHÔNG chứa exchangeCodeForSession", async () => {
-    const fs = await import("node:fs/promises");
-    const src = await fs.readFile("src/pages/ResetPassword.tsx", "utf8");
-    expect(src).not.toMatch(/exchangeCodeForSession/);
-    expect(src).toMatch(/verifyOtp/);
-  });
-
-  test("TC3: Login.tsx source KHÔNG chứa resetPasswordForEmail", async () => {
-    const fs = await import("node:fs/promises");
-    const src = await fs.readFile("src/pages/Login.tsx", "utf8");
-    expect(src).not.toMatch(/resetPasswordForEmail/);
-    expect(src).toMatch(/send-recovery-email/);
-  });
-});
-```
-
-Lưu ý: TC2/TC3 thay thế cho yêu cầu "verify URL phải có domain app.saigonholiday.vn" và "Console phải log [reset-password] verifyOtp" — vì cả 2 đòi hỏi inbox email thật + click link cross-device, không thể tự động hoá trong CI. Dùng source-grep + network-assert đạt cùng mục đích regression-guard.
-
----
-
-## 4. Edge function `check-auth-health` (NEW)
-
-`supabase/functions/check-auth-health/index.ts` — CORS, `verify_jwt = false`, GET only. Trả về JSON status:
-
-```json
-{
-  "ok": true,
-  "checks": {
-    "send_recovery_email_deployed": true,
-    "send_recovery_email_responds_200": true,
-    "resend_api_key_present": true,
-    "service_role_key_present": true,
-    "from_email": "Saigon Holiday CRM <noreply@saigonholiday.vn>",
-    "app_base_url": "https://app.saigonholiday.vn"
-  },
-  "warnings": []
-}
-```
-
-Logic:
-1. Check env: `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` có set không.
-2. Tự gọi `${SUPABASE_URL}/functions/v1/send-recovery-email` với email test `healthcheck@saigonholiday.vn` → kỳ vọng status 200 (rate-limit hoặc generateLink-error vẫn trả 200 theo design).
-3. Trả về JSON tổng hợp + warnings nếu có check fail.
-
-Không tự verify "hook list empty" vì Supabase Management API yêu cầu PAT — out of scope. Thay vào đó: warning text nhắc admin kiểm tra Dashboard manual khi gọi endpoint.
-
-Add vào `supabase/config.toml`:
-```toml
-[functions.check-auth-health]
-verify_jwt = false
-```
-
----
-
-## 5. Verify (sẽ paste bằng chứng thực tế trong response sau khi build)
-
-| # | Lệnh | Kỳ vọng |
-|---|---|---|
-| V1 | `grep "DO NOT MODIFY" AUTH_CONFIG.md` | Có match |
-| V2 | `bun run lint` (code hiện tại) | 0 error |
-| V3 | Tạm thêm `supabase.auth.resetPasswordForEmail("x")` vào Login.tsx → `bun run lint` | Báo error đỏ, revert ngay |
-| V4 | `bunx playwright test tests/auth/reset-password.spec.ts` | 3/3 pass |
-| V5 | `curl https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/check-auth-health` | JSON `ok: true` |
-
----
-
-## Files thay đổi
-
-- **Sửa**: `AUTH_CONFIG.md` (thêm section DO NOT MODIFY ở đầu mục #7)
-- **Sửa**: `eslint.config.js` (thêm block override cho 2 file)
-- **Sửa**: `supabase/config.toml` (thêm `[functions.check-auth-health]`)
-- **Tạo mới**: `tests/auth/reset-password.spec.ts`
-- **Tạo mới**: `supabase/functions/check-auth-health/index.ts`
-
-## KHÔNG đụng
-
-- `supabase/functions/send-recovery-email/index.ts`
-- `src/pages/ResetPassword.tsx`
-- `src/pages/Login.tsx` (logic — chỉ ESLint cover)
-- `src/integrations/supabase/client.ts` (giữ `flowType: 'pkce'` cho login)
-
-Confirm "OK build" để em chuyển sang default mode và thực thi + paste evidence.
+## Không làm
+- Không thay đổi schema `b2b_tours`.
+- Không sửa `B2BTourDetailSheet`, `Quotations`, `Bookings`.
+- Không xóa data hết hạn.
