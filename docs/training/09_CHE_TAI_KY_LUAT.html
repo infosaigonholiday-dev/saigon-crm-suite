@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chế tài & Kỷ luật — SGH CRM</title>
+<style>
+:root{
+  --bg:#f7f5f1; --ink:#1a1a1a; --ink2:#4a4a4a; --muted:#6b6b6b;
+  --line:#e5e0d8; --surface:#ffffff; --brand:#E8963A; --brand-deep:#b8721f;
+  --ok:#1f7a3a; --warn:#a86a00; --danger:#b3261e; --info:#0b5fb3;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.65}
+a{color:var(--brand-deep);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside.sidebar{background:#1a1a1a;color:#e8e4dd;padding:20px 16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+aside .brand .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+aside .brand .t{font-weight:700;font-size:14px;letter-spacing:.5px}
+aside .brand .s{font-size:11px;color:#a8a39a}
+aside nav a{display:block;color:#cdc7bd;font-size:13px;padding:7px 10px;border-radius:6px;margin-bottom:2px;border-left:3px solid transparent}
+aside nav a:hover{background:#262626;color:#fff;text-decoration:none}
+aside nav a.active{background:#2a2a2a;color:var(--brand);border-left-color:var(--brand);font-weight:600}
+aside .toc-title{margin:18px 10px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#7a7468}
+main{padding:28px 36px 60px;max-width:1080px;width:100%}
+header.page-head{border-bottom:2px solid var(--brand);padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+header.page-head h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
+header.page-head .meta{font-size:12px;color:var(--muted);text-align:right}
+section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+section h2{font-size:19px;color:var(--brand-deep);margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+section h3{font-size:16px;margin:14px 0 6px;color:var(--ink)}
+section h4{font-size:14px;margin:12px 0 4px;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px}
+section p{margin:8px 0}
+section ul,section ol{margin:8px 0 8px 22px}
+section li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f0eadf;font-weight:700;color:var(--ink)}
+tr:nth-child(even) td{background:#fbf9f5}
+code,pre{font-family:'Consolas','Monaco',monospace;font-size:13px}
+pre{background:#1a1a1a;color:#e8e4dd;padding:14px;border-radius:8px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.5}
+.box{border-left:4px solid;padding:12px 16px;margin:12px 0;border-radius:6px;font-size:14px}
+.box-info{background:#e8f1fb;border-color:var(--info);color:#063871}
+.box-success{background:#e7f4ec;border-color:var(--ok);color:#0e4a23}
+.box-warn{background:#fff5dc;border-color:var(--warn);color:#5a3a00}
+.box-danger{background:#fbe7e6;border-color:var(--danger);color:#5e110d}
+.box strong{display:block;margin-bottom:4px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0;padding:14px;background:#fbf9f5;border:1px dashed var(--line);border-radius:8px}
+.flow .step{padding:8px 14px;background:var(--brand);color:#fff;border-radius:6px;font-weight:600;font-size:13px;white-space:nowrap}
+.flow .arrow{color:var(--ink2);font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#f0eadf;color:var(--ink2);margin-right:4px}
+.tag.hot{background:#fbe0d4;color:#a13a0d}
+.tag.warm{background:#fff3c4;color:#7a5a00}
+.tag.cold{background:#dde9f3;color:#0b3e6e}
+.cycle{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.cycle .step{background:#fff;border:2px solid var(--brand);border-radius:8px;padding:12px;text-align:center}
+.cycle .step .n{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;line-height:26px;margin-bottom:6px}
+.cycle .step .t{font-weight:700;font-size:13px;color:var(--brand-deep)}
+.cycle .step .d{font-size:11px;color:var(--muted);margin-top:4px}
+footer.page-foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+.menu-toggle{display:none;position:fixed;top:14px;left:14px;z-index:99;background:var(--brand);color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;left:-280px;width:260px;transition:left .2s;z-index:50;box-shadow:2px 0 12px rgba(0,0,0,.3)}
+  aside.sidebar.open{left:0}
+  main{padding:60px 18px 40px}
+  .menu-toggle{display:block}
+  .cycle{grid-template-columns:1fr 1fr}
+  header.page-head{flex-direction:column;align-items:flex-start}
+}
+@media print{
+  @page{size:A4;margin:14mm}
+  html,body{background:#fff;color:#000;font-size:11pt}
+  .layout{display:block}
+  aside.sidebar,.menu-toggle{display:none !important}
+  main{padding:0;max-width:100%}
+  section{break-inside:avoid;page-break-inside:avoid;border:1px solid #ccc;background:#fff}
+  header.page-head{break-after:avoid}
+  pre{background:#f0f0f0;color:#000;border:1px solid #ccc}
+  .box{background:#fff !important;color:#000 !important;border:1px solid #888}
+  a{color:#000;text-decoration:underline}
+  .cycle .step{border-color:#888}
+  .flow .step{background:#666}
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menu</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo">SGH</div>
+    <div>
+      <div class="t">SGH CRM</div>
+      <div class="s">Training & SOP</div>
+    </div>
+  </div>
+  <div class="toc-title">Tài liệu</div>
+  <nav>
+    <a href="index.html">Mục lục</a><a href="00_TONG_QUAN.html">00. Tổng quan</a><a href="01_SALE.html">01. Sale</a><a href="02_DIEU_HANH.html">02. Điều hành</a><a href="03_KE_TOAN.html">03. Kế toán</a><a href="04_HCNS.html">04. HCNS</a><a href="05_MARKETING.html">05. Marketing</a><a href="06_QUAN_LY_CEO_GDKD.html">06. CEO & GĐKD</a><a href="07_FLOW_LIEN_PHONG.html">07. Flow liên phòng</a><a href="08_HUONG_DAN_TAI_KHOAN.html">08. Tài khoản</a><a href="09_CHE_TAI_KY_LUAT.html" class="active">09. Chế tài</a><a href="10_FAQ_LOI_THUONG_GAP.html">10. FAQ</a>
+  </nav>
+  <div class="toc-title" style="margin-top:24px">Hỗ trợ</div>
+  <div style="font-size:12px;color:#a8a39a;padding:0 10px;line-height:1.6">
+    Câu hỏi vận hành: liên hệ <strong style="color:var(--brand)">HCNS</strong>.<br>
+    Câu hỏi kỹ thuật: liên hệ <strong style="color:var(--brand)">IT</strong>.
+  </div>
+</aside>
+<main>
+<header class="page-head">
+  <div>
+    <h1>Chế tài & Kỷ luật</h1>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">Saigon Holiday Travel — Tài liệu nội bộ</div>
+  </div>
+  <div class="meta">
+    Cập nhật: <strong>01/05/2026</strong><br>
+    Phiên bản: <strong>1.0</strong>
+  </div>
+</header>
+<section>
+<h2>1. Triết lý chế tài</h2>
+<p>Khung kỷ luật của SGH được thiết kế <strong>bám sát Chu trình 5 bước</strong>. Mục tiêu KHÔNG phải là phạt, mà là <strong>uốn nắn hành vi</strong> để mọi nhân sự cùng vận hành theo chuẩn.</p>
+<div class="box box-info"><strong>Nguyên tắc cơ bản</strong>
+Chế tài chỉ áp dụng khi <strong>có bằng chứng trên CRM</strong> (audit log, notification log, missing entry).<br>
+Mọi mức xử lý đều phải có biên bản ghi nhận, không "phạt miệng".</div>
+</section>
+
+<section>
+<h2>2. Khung 5 vi phạm theo 5 bước chu trình</h2>
+<table>
+<thead><tr><th style="width:140px">Bước</th><th>Hành vi vi phạm</th><th>Mức xử lý lần 1</th><th>Mức xử lý tái phạm</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>1. Phân công</strong></td>
+  <td>Nhận task không phản hồi trong 4 giờ làm việc</td>
+  <td>Cảnh báo qua chuông CRM + email cấp trên</td>
+  <td>Trừ 5% KPI tháng + ghi vào nhật ký quản lý</td>
+</tr>
+<tr>
+  <td><strong>2. Thực thi</strong></td>
+  <td>Cập nhật trạng thái không kèm minh chứng / ghi chú</td>
+  <td>Task tự động bị reject; deadline tính từ đầu</td>
+  <td>Cảnh cáo email + đào tạo lại quy trình</td>
+</tr>
+<tr>
+  <td><strong>3. Rà soát</strong></td>
+  <td>Quản lý bỏ qua thông báo > 24 giờ cho task critical</td>
+  <td>Hệ thống auto-escalate lên cấp trên trực tiếp + email cảnh báo</td>
+  <td>Họp đánh giá năng lực quản lý + đề xuất hỗ trợ</td>
+</tr>
+<tr>
+  <td><strong>4. Đối chiếu</strong></td>
+  <td>Kết quả thực tế lệch kế hoạch > 20% mà không báo cáo trước</td>
+  <td>Bắt buộc tổ chức cuộc họp giải trình + biên bản</td>
+  <td>Ghi vào hồ sơ + xem xét điều chỉnh KPI</td>
+</tr>
+<tr>
+  <td><strong>5. Chuẩn hóa</strong></td>
+  <td>Lỗi cùng loại lặp lại ≥ 3 lần trong 1 quý</td>
+  <td>Đào tạo lại bắt buộc + ghi vào hồ sơ cá nhân</td>
+  <td>Đề xuất xét lại vai trò (HCNS quyết)</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>3. Bậc kỷ luật (theo thứ tự tăng dần)</h2>
+<div class="flow">
+  <span class="step">① Nhắc nhở</span><span class="arrow">→</span>
+  <span class="step">② Cảnh cáo email</span><span class="arrow">→</span>
+  <span class="step">③ Trừ KPI</span><span class="arrow">→</span>
+  <span class="step">④ Trừ thưởng</span><span class="arrow">→</span>
+  <span class="step">⑤ Đào tạo lại</span><span class="arrow">→</span>
+  <span class="step">⑥ Quyết định kỷ luật chính thức</span>
+</div>
+<table>
+<thead><tr><th>Bậc</th><th>Áp dụng khi</th><th>Người ra quyết định</th></tr></thead>
+<tbody>
+<tr><td>① Nhắc nhở</td><td>Vi phạm lần đầu mức nhẹ</td><td>Trưởng phòng / Cấp trên trực tiếp</td></tr>
+<tr><td>② Cảnh cáo email</td><td>Tái phạm trong 30 ngày</td><td>Trưởng phòng + cc HCNS</td></tr>
+<tr><td>③ Trừ KPI tháng</td><td>Vi phạm có ảnh hưởng kết quả nhóm</td><td>Trưởng phòng + HR Manager</td></tr>
+<tr><td>④ Trừ thưởng quý</td><td>Vi phạm gây thiệt hại đo lường được</td><td>HR Manager + CEO</td></tr>
+<tr><td>⑤ Đào tạo lại bắt buộc</td><td>Lỗi lặp ≥ 3 lần cùng loại</td><td>HR Manager</td></tr>
+<tr><td>⑥ Quyết định chính thức / đề xuất xét lại vai trò</td><td>Vi phạm nghiêm trọng / lặp nhiều bậc</td><td>HCNS đề xuất, CEO duyệt</td></tr>
+</tbody>
+</table>
+<div class="box box-danger"><strong>KHÔNG áp dụng tự động</strong>
+Tài liệu này KHÔNG đề xuất hình thức sa thải, KHÔNG đề xuất phạt tiền tự động qua hệ thống.<br>
+Mức cao nhất là <strong>"đề xuất xét lại vai trò"</strong> — quyết định cuối cùng do HCNS + CEO căn cứ Bộ luật Lao động và HĐLĐ.</div>
+</section>
+
+<section>
+<h2>4. Quy trình xử lý vi phạm</h2>
+<ol>
+  <li><strong>Phát hiện</strong>: hệ thống tự cảnh báo HOẶC quản lý ghi nhận.</li>
+  <li><strong>Xác minh</strong>: kiểm tra audit log + ghi chú liên quan trên CRM.</li>
+  <li><strong>Đối thoại</strong>: cấp trên trực tiếp gặp NV, lắng nghe lý do.</li>
+  <li><strong>Quyết định mức</strong>: theo bảng bậc kỷ luật + lịch sử vi phạm.</li>
+  <li><strong>Ghi nhận</strong>: lưu biên bản trong hồ sơ HCNS (module Employees → tab History).</li>
+  <li><strong>Theo dõi</strong>: kiểm tra cải thiện trong 30/60/90 ngày tiếp theo.</li>
+</ol>
+</section>
+
+<section>
+<h2>5. Quyền khiếu nại</h2>
+<p>Mọi quyết định kỷ luật đều có quyền khiếu nại trong vòng 7 ngày làm việc:</p>
+<ul>
+  <li>Khiếu nại lần 1: gửi HR Manager.</li>
+  <li>Khiếu nại lần 2 (nếu chưa thoả): gửi CEO.</li>
+  <li>Quyết định CEO là cuối cùng trong nội bộ công ty.</li>
+</ul>
+</section>
+
+<section>
+<h2>6. Bảo vệ NV trung thực</h2>
+<div class="box box-success"><strong>Whistleblower protection</strong>
+NV chủ động báo cáo lỗi của bản thân hoặc đồng nghiệp <strong>trước khi hệ thống phát hiện</strong> — được giảm nhẹ 1 bậc kỷ luật.<br>
+NV báo cáo gian lận / vi phạm nghiêm trọng — được bảo mật danh tính.</div>
+</section>
+<footer class="page-foot">Phiên bản 1.0 — 01/05/2026 — Cập nhật: HCNS phối hợp IT</footer>
+</main>
+</div>
+</body>
+</html>
