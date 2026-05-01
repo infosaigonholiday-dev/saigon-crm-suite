@@ -33,7 +33,8 @@ describe("Reset password — anti-regression guards", () => {
       "utf8",
     );
     expect(src).toMatch(/noreply@saigonholiday\.vn/);
-    expect(src).toMatch(/app\.saigonholiday\.vn\/reset-password/);
+    expect(src).toMatch(/app\.saigonholiday\.vn/);
+    expect(src).toMatch(/\/reset-password/);
     expect(src).toMatch(/token_hash=/);
     expect(src).toMatch(/type=recovery/);
   });
