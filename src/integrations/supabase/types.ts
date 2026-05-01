@@ -5651,6 +5651,7 @@ export type Database = {
         Args: { p_month: number; p_year: number }
         Returns: undefined
       }
+      generate_unique_booking_code: { Args: { base: string }; Returns: string }
       get_default_permissions_for_role: {
         Args: { p_role: string }
         Returns: string[]

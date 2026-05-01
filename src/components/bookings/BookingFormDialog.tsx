@@ -223,36 +223,67 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        code: form.code.trim(),
-        customer_id: form.customer_id,
-        sale_id: user?.id ?? null,
-        pax_total: paxTotal,
-        pax_details: {
-          adults: Number(form.adults || 0),
-          children: Number(form.children || 0),
-          infants: Number(form.infants || 0),
-          price_adl: Number(form.price_adl || 0),
-          price_chd: Number(form.price_chd || 0),
-          price_inf: Number(form.price_inf || 0),
-          ...(prefillData?.tour_code ? { tour_code: prefillData.tour_code } : {}),
-        },
-        total_value: total,
-        deposit_amount: deposit,
-        deposit_due_at: form.deposit_due_at || null,
-        remaining_due_at: form.remaining_due_at || null,
-        departure_date: form.departure_date || null,
-        return_date: form.return_date || null,
-        status: "PENDING",
-        booking_type: form.booking_type || "retail",
-        tour_name_manual: form.tour_name_manual.trim() || null,
+      const baseCode = form.code.trim();
+
+      // Bước 1: Sinh mã unique từ DB (advisory lock chống race)
+      const { data: safeCode, error: rpcErr } = await supabase
+        .rpc("generate_unique_booking_code", { base: baseCode });
+      if (rpcErr) throw rpcErr;
+      const finalCode = (safeCode as string) || baseCode;
+
+      if (finalCode !== baseCode) {
+        toast.info("Mã booking đã tồn tại", {
+          description: `Hệ thống đã tự sinh mã mới: ${finalCode}`,
+        });
+      }
+
+      const buildPayload = (code: string) => {
+        const payload: any = {
+          code,
+          customer_id: form.customer_id,
+          sale_id: user?.id ?? null,
+          pax_total: paxTotal,
+          pax_details: {
+            adults: Number(form.adults || 0),
+            children: Number(form.children || 0),
+            infants: Number(form.infants || 0),
+            price_adl: Number(form.price_adl || 0),
+            price_chd: Number(form.price_chd || 0),
+            price_inf: Number(form.price_inf || 0),
+            ...(prefillData?.tour_code ? { tour_code: prefillData.tour_code } : {}),
+          },
+          total_value: total,
+          deposit_amount: deposit,
+          deposit_due_at: form.deposit_due_at || null,
+          remaining_due_at: form.remaining_due_at || null,
+          departure_date: form.departure_date || null,
+          return_date: form.return_date || null,
+          status: "PENDING",
+          booking_type: form.booking_type || "retail",
+          tour_name_manual: form.tour_name_manual.trim() || null,
+        };
+        if (form.tour_source === "quote") payload.quote_id = form.quote_id;
+        if (form.tour_source === "package") payload.tour_package_id = form.tour_package_id;
+        return payload;
       };
 
-      if (form.tour_source === "quote") payload.quote_id = form.quote_id;
-      if (form.tour_source === "package") payload.tour_package_id = form.tour_package_id;
+      // Bước 2: Insert
+      let { error } = await supabase.from("bookings").insert(buildPayload(finalCode));
 
-      const { error } = await supabase.from("bookings").insert(payload);
-      if (error) throw error;
+      // Bước 3: Race rất hiếm — retry 1 lần với mã mới
+      if (error && (error as any).code === "23505") {
+        const { data: retryCode, error: retryRpcErr } = await supabase
+          .rpc("generate_unique_booking_code", { base: baseCode });
+        if (retryRpcErr) throw retryRpcErr;
+        const newCode = (retryCode as string) || baseCode;
+        toast.info("Mã booking đã tồn tại", {
+          description: `Hệ thống đang tạo mã mới: ${newCode}`,
+        });
+        const retry = await supabase.from("bookings").insert(buildPayload(newCode));
+        if (retry.error) throw retry.error;
+      } else if (error) {
+        throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bookings"] });
@@ -260,7 +291,14 @@ export default function BookingFormDialog({ open, onOpenChange, prefillData }: P
       onOpenChange(false);
     },
     onError: (err: any) => {
-      toast.error("Lỗi", { description: err.message });
+      const code = err?.code;
+      if (code === "23505") {
+        toast.error("Mã booking đã tồn tại", {
+          description: "Vui lòng đổi mã hoặc thử lại — hệ thống sẽ tự sinh mã mới.",
+        });
+      } else {
+        toast.error("Lỗi tạo booking", { description: err?.message || "Đã xảy ra lỗi không xác định" });
+      }
     },
   });
 
