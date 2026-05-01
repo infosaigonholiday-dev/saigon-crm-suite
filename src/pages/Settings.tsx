@@ -117,6 +117,7 @@ export default function Settings() {
             </div>
           </TabsContent>
         )}
+        <TabsContent value="security" className="mt-4"><SettingsSecurityTab /></TabsContent>
         {showCompanyInfo && (
           <TabsContent value="company" className="mt-4"><SettingsCompanyInfoTab /></TabsContent>
         )}
