@@ -217,12 +217,22 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Build confirmationUrl.
+  // Đặc biệt với 'recovery': bỏ qua link mặc định `/auth/v1/verify?token=pkce_...`
+  // (PKCE yêu cầu code_verifier ở localStorage cùng device → fail cross-device).
+  // Thay bằng link app trực tiếp với token_hash để FE tự gọi `verifyOtp({type:'recovery'})`.
+  let confirmationUrl: string = payload.data.url
+  const tokenHash = (payload.data as any).token_hash as string | undefined
+  if (emailType === 'recovery' && tokenHash) {
+    confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+  }
+
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
     siteUrl: `https://${ROOT_DOMAIN}`,
     recipient: payload.data.email,
-    confirmationUrl: payload.data.url,
+    confirmationUrl,
     token: payload.data.token,
     email: payload.data.email,
     newEmail: payload.data.new_email,
