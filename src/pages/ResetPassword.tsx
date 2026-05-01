@@ -113,12 +113,11 @@ export default function ResetPassword() {
           return;
         }
 
-        // PRIORITY: verifyOtp cho mọi token có trong URL (token_hash | token | code).
-        // CHỈ dùng verifyOtp — KHÔNG còn exchangeCodeForSession (PKCE fail cross-device).
-        // Token tự là proof-of-possession (chỉ ai có inbox đọc được) → không cần code_verifier.
+        // Recovery flow: chỉ dùng verifyOtp cho mọi token trong URL (token_hash | token | code).
+        // Token tự là proof-of-possession (chỉ ai có inbox đọc được) → cross-device an toàn.
         const tokenFromUrl = tokenHash || url.searchParams.get("token") || code;
         if (tokenFromUrl) {
-          console.log("[reset-password] verifyOtp called with token_hash");
+          console.log("[reset-password] verifyOtp called");
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenFromUrl,
             type: "recovery",
