@@ -59,11 +59,11 @@ export default function Login() {
     e.preventDefault();
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: getResetPasswordUrl(),
+    const { error } = await supabase.functions.invoke("send-recovery-email", {
+      body: { email: forgotEmail.trim().toLowerCase() },
     });
     if (error) {
-      toast.error("Lỗi", { description: error.message });
+      toast.error("Lỗi", { description: "Không thể gửi email lúc này. Vui lòng thử lại sau." });
     } else {
       setForgotSent(true);
     }
