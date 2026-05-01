@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAQ — Lỗi thường gặp — SGH CRM</title>
+<style>
+:root{
+  --bg:#f7f5f1; --ink:#1a1a1a; --ink2:#4a4a4a; --muted:#6b6b6b;
+  --line:#e5e0d8; --surface:#ffffff; --brand:#E8963A; --brand-deep:#b8721f;
+  --ok:#1f7a3a; --warn:#a86a00; --danger:#b3261e; --info:#0b5fb3;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.65}
+a{color:var(--brand-deep);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside.sidebar{background:#1a1a1a;color:#e8e4dd;padding:20px 16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+aside .brand .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+aside .brand .t{font-weight:700;font-size:14px;letter-spacing:.5px}
+aside .brand .s{font-size:11px;color:#a8a39a}
+aside nav a{display:block;color:#cdc7bd;font-size:13px;padding:7px 10px;border-radius:6px;margin-bottom:2px;border-left:3px solid transparent}
+aside nav a:hover{background:#262626;color:#fff;text-decoration:none}
+aside nav a.active{background:#2a2a2a;color:var(--brand);border-left-color:var(--brand);font-weight:600}
+aside .toc-title{margin:18px 10px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#7a7468}
+main{padding:28px 36px 60px;max-width:1080px;width:100%}
+header.page-head{border-bottom:2px solid var(--brand);padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+header.page-head h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
+header.page-head .meta{font-size:12px;color:var(--muted);text-align:right}
+section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+section h2{font-size:19px;color:var(--brand-deep);margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+section h3{font-size:16px;margin:14px 0 6px;color:var(--ink)}
+section h4{font-size:14px;margin:12px 0 4px;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px}
+section p{margin:8px 0}
+section ul,section ol{margin:8px 0 8px 22px}
+section li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f0eadf;font-weight:700;color:var(--ink)}
+tr:nth-child(even) td{background:#fbf9f5}
+code,pre{font-family:'Consolas','Monaco',monospace;font-size:13px}
+pre{background:#1a1a1a;color:#e8e4dd;padding:14px;border-radius:8px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.5}
+.box{border-left:4px solid;padding:12px 16px;margin:12px 0;border-radius:6px;font-size:14px}
+.box-info{background:#e8f1fb;border-color:var(--info);color:#063871}
+.box-success{background:#e7f4ec;border-color:var(--ok);color:#0e4a23}
+.box-warn{background:#fff5dc;border-color:var(--warn);color:#5a3a00}
+.box-danger{background:#fbe7e6;border-color:var(--danger);color:#5e110d}
+.box strong{display:block;margin-bottom:4px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0;padding:14px;background:#fbf9f5;border:1px dashed var(--line);border-radius:8px}
+.flow .step{padding:8px 14px;background:var(--brand);color:#fff;border-radius:6px;font-weight:600;font-size:13px;white-space:nowrap}
+.flow .arrow{color:var(--ink2);font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#f0eadf;color:var(--ink2);margin-right:4px}
+.tag.hot{background:#fbe0d4;color:#a13a0d}
+.tag.warm{background:#fff3c4;color:#7a5a00}
+.tag.cold{background:#dde9f3;color:#0b3e6e}
+.cycle{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.cycle .step{background:#fff;border:2px solid var(--brand);border-radius:8px;padding:12px;text-align:center}
+.cycle .step .n{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;line-height:26px;margin-bottom:6px}
+.cycle .step .t{font-weight:700;font-size:13px;color:var(--brand-deep)}
+.cycle .step .d{font-size:11px;color:var(--muted);margin-top:4px}
+footer.page-foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+.menu-toggle{display:none;position:fixed;top:14px;left:14px;z-index:99;background:var(--brand);color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;left:-280px;width:260px;transition:left .2s;z-index:50;box-shadow:2px 0 12px rgba(0,0,0,.3)}
+  aside.sidebar.open{left:0}
+  main{padding:60px 18px 40px}
+  .menu-toggle{display:block}
+  .cycle{grid-template-columns:1fr 1fr}
+  header.page-head{flex-direction:column;align-items:flex-start}
+}
+@media print{
+  @page{size:A4;margin:14mm}
+  html,body{background:#fff;color:#000;font-size:11pt}
+  .layout{display:block}
+  aside.sidebar,.menu-toggle{display:none !important}
+  main{padding:0;max-width:100%}
+  section{break-inside:avoid;page-break-inside:avoid;border:1px solid #ccc;background:#fff}
+  header.page-head{break-after:avoid}
+  pre{background:#f0f0f0;color:#000;border:1px solid #ccc}
+  .box{background:#fff !important;color:#000 !important;border:1px solid #888}
+  a{color:#000;text-decoration:underline}
+  .cycle .step{border-color:#888}
+  .flow .step{background:#666}
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menu</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo">SGH</div>
+    <div>
+      <div class="t">SGH CRM</div>
+      <div class="s">Training & SOP</div>
+    </div>
+  </div>
+  <div class="toc-title">Tài liệu</div>
+  <nav>
+    <a href="index.html">Mục lục</a><a href="00_TONG_QUAN.html">00. Tổng quan</a><a href="01_SALE.html">01. Sale</a><a href="02_DIEU_HANH.html">02. Điều hành</a><a href="03_KE_TOAN.html">03. Kế toán</a><a href="04_HCNS.html">04. HCNS</a><a href="05_MARKETING.html">05. Marketing</a><a href="06_QUAN_LY_CEO_GDKD.html">06. CEO & GĐKD</a><a href="07_FLOW_LIEN_PHONG.html">07. Flow liên phòng</a><a href="08_HUONG_DAN_TAI_KHOAN.html">08. Tài khoản</a><a href="09_CHE_TAI_KY_LUAT.html">09. Chế tài</a><a href="10_FAQ_LOI_THUONG_GAP.html" class="active">10. FAQ</a>
+  </nav>
+  <div class="toc-title" style="margin-top:24px">Hỗ trợ</div>
+  <div style="font-size:12px;color:#a8a39a;padding:0 10px;line-height:1.6">
+    Câu hỏi vận hành: liên hệ <strong style="color:var(--brand)">HCNS</strong>.<br>
+    Câu hỏi kỹ thuật: liên hệ <strong style="color:var(--brand)">IT</strong>.
+  </div>
+</aside>
+<main>
+<header class="page-head">
+  <div>
+    <h1>FAQ — Lỗi thường gặp</h1>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">Saigon Holiday Travel — Tài liệu nội bộ</div>
+  </div>
+  <div class="meta">
+    Cập nhật: <strong>01/05/2026</strong><br>
+    Phiên bản: <strong>1.0</strong>
+  </div>
+</header>
+<section>
+<h2>Top 20 câu hỏi thường gặp</h2>
+<p>Tra cứu nhanh các tình huống phổ biến trên SGH CRM. Nếu không tìm thấy câu trả lời, liên hệ HCNS (nghiệp vụ) hoặc IT (kỹ thuật).</p>
+<div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q1. Tôi không nhận được email reset mật khẩu, phải làm sao?</div>
+<div style="font-size:14px;color:var(--ink2)">1) Kiểm tra Spam / Promotions. 2) Đợi 2–3 phút. 3) Request link mới. 4) Vẫn không có → liên hệ HCNS để xác nhận email công ty đúng và account đang active.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q2. Tôi không thấy menu X (ví dụ Tài chính, Bảng lương, Chiến dịch)</div>
+<div style="font-size:14px;color:var(--ink2)">Menu được ẩn theo phân quyền role. Đây là thiết kế có chủ ý. Nếu công việc của bạn cần menu đó, liên hệ HCNS đề xuất cấp quyền.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q3. Tạo booking báo lỗi 'mã trùng'</div>
+<div style="font-size:14px;color:var(--ink2)">Mã booking auto-sinh từ hệ thống. Refresh trang (Ctrl+F5) và tạo lại. Nếu vẫn lỗi sau 2-3 lần — báo IT, có thể là race condition trong DB.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q4. Push notification không kêu / không hiện</div>
+<div style="font-size:14px;color:var(--ink2)">Kiểm tra: (1) đã bật trong Cài đặt CRM, (2) trình duyệt cho phép notification, (3) OS cho phép notification cho trình duyệt, (4) trên iPhone phải Add to Home Screen mới nhận push.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q5. Tôi không thấy lead của mình</div>
+<div style="font-size:14px;color:var(--ink2)">Kiểm tra: (1) filter trên Kanban có lọc nhầm không, (2) lead có thể đã được chuyển owner — liên hệ Sale Manager.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q6. GĐKD báo không thấy báo cáo Lợi nhuận</div>
+<div style="font-size:14px;color:var(--ink2)">Đây là ĐÚNG SPEC, không phải bug. GĐKD chỉ xem Doanh thu nhánh, không xem Lợi nhuận. Chỉ KETOAN và CEO xem được Lợi nhuận. Không cấp quyền thêm.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q7. Cách xuất báo cáo ra Excel?</div>
+<div style="font-size:14px;color:var(--ink2)">Module Nhân sự đã có nút 'Xuất Excel'. Tài chính: dùng Ctrl+A → Ctrl+C → paste vào Excel (hoặc chờ bản cập nhật có nút Export chính thức). Bookings/Leads có nút Export trong toolbar.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q8. Cách import Excel hàng loạt (lead, KH, chi phí)?</div>
+<div style="font-size:14px;color:var(--ink2)">Mỗi module có Excel template riêng. Vào module → bấm 'Import Excel' → tải template → điền data → upload. Hệ thống preview trước khi import thật.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q9. Quên mật khẩu trên iPhone, link reset không mở được trong app</div>
+<div style="font-size:14px;color:var(--ink2)">Mở link reset trong Safari (KHÔNG mở trong webview của Mail). Sau khi đặt mật khẩu xong, mở app CRM lại để đăng nhập.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q10. Ảnh không upload được</div>
+<div style="font-size:14px;color:var(--ink2)">Kiểm tra: (1) file < 10MB, (2) định dạng JPG/PNG/WEBP, (3) mạng ổn định. Nếu file lớn → resize trước khi upload.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q11. Phiếu chi đã gửi duyệt nhưng KT chưa duyệt sau 2 ngày</div>
+<div style="font-size:14px;color:var(--ink2)">Sau 48h hệ thống tự nhắc KT, sau 72h auto escalate CEO. Bạn có thể tag KT trong ghi chú phiếu để nhắc khéo.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q12. Tôi muốn xoá 1 lead / KH / booking</div>
+<div style="font-size:14px;color:var(--ink2)">Nhân viên thường chỉ soft-delete (đánh dấu ẩn). Hard delete chỉ ADMIN làm được. Liên hệ Manager nếu cần xoá vĩnh viễn.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q13. Tôi xoá nhầm 1 entity, có khôi phục được không?</div>
+<div style="font-size:14px;color:var(--ink2)">Soft-deleted entity vẫn trong DB. Liên hệ ADMIN để restore. Audit log lưu lại ai xoá lúc nào.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q14. Quyết toán không submit được</div>
+<div style="font-size:14px;color:var(--ink2)">Kiểm tra mọi tour_task có upload chứng từ NCC chưa. Hệ thống chặn submit nếu thiếu chứng từ bắt buộc.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q15. Tour mai khởi hành nhưng chưa phân HDV</div>
+<div style="font-size:14px;color:var(--ink2)">Cảnh báo đỏ trên dashboard OPS + CEO. Phải phân HDV trước khởi hành 5 ngày — đây là deadline cứng. Hỏi DIEUHAN ngay.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q16. Bảng lương đã CEO duyệt nhưng NV chưa thấy</div>
+<div style="font-size:14px;color:var(--ink2)">Refresh trang. Nếu vẫn không thấy — kiểm tra status payroll record của NV đó (có thể đang exclude). Báo HCNS.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q17. Cách @mention đồng nghiệp trong ghi chú?</div>
+<div style="font-size:14px;color:var(--ink2)">Trong ô ghi chú nội bộ, gõ @ → dropdown hiện danh sách NV → chọn → người được tag nhận notification ngay.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q18. Notification gửi rồi nhưng người nhận nói chưa thấy</div>
+<div style="font-size:14px;color:var(--ink2)">3 trạng thái khác nhau: Đã gửi ≠ Đã đọc ≠ Đã xử lý. Vào Cài đặt → Notification Stats kiểm tra cụ thể từng NV.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q19. Đăng nhập báo 'Account inactive'</div>
+<div style="font-size:14px;color:var(--ink2)">Tài khoản bị HCNS deactivate (offboarding hoặc tạm khoá). Liên hệ HCNS để xác nhận tình trạng.</div>
+</div><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:10px">
+<div style="font-weight:700;color:var(--brand-deep);margin-bottom:6px">Q20. Màn hình trắng / lỗi 'Something went wrong'</div>
+<div style="font-size:14px;color:var(--ink2)">1) Ctrl+F5 refresh. 2) Xoá cache trình duyệt. 3) Thử trình duyệt khác. 4) Vẫn lỗi → chụp màn hình + URL đang lỗi → gửi IT.</div>
+</div>
+</section>
+
+<section>
+<h2>Vẫn không giải quyết được?</h2>
+<table>
+<thead><tr><th>Loại vấn đề</th><th>Liên hệ</th></tr></thead>
+<tbody>
+<tr><td>Tài khoản, phân quyền, đăng nhập, reset password</td><td>HCNS</td></tr>
+<tr><td>Quy trình nghiệp vụ phòng ban</td><td>Trưởng phòng tương ứng</td></tr>
+<tr><td>Lỗi kỹ thuật, màn hình trắng, không submit được</td><td>IT</td></tr>
+<tr><td>Vấn đề tài chính, báo cáo</td><td>Kế toán Trưởng</td></tr>
+<tr><td>Khiếu nại, chế tài</td><td>HR Manager → CEO (lần 2)</td></tr>
+</tbody>
+</table>
+</section>
+<footer class="page-foot">Phiên bản 1.0 — 01/05/2026 — Cập nhật: HCNS phối hợp IT</footer>
+</main>
+</div>
+</body>
+</html>
