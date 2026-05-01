@@ -17,5 +17,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    flowType: 'pkce',
+    // Tắt auto-detect để trang /reset-password chủ động
+    // exchangeCodeForSession / setSession tường minh, tránh race
+    // với AuthProvider khi xử lý link recovery từ email.
+    detectSessionInUrl: false,
   }
 });
