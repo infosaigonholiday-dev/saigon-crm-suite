@@ -1,53 +1,45 @@
-## Phát hiện quan trọng
+## Tóm tắt
 
-Bug KHÔNG nằm ở Supabase Email Template Dashboard. Code hiện tại đã đúng kiến trúc — chỉ chưa được deploy/active.
+KHÔNG làm theo 4 bước anh yêu cầu. Lý do: hook `auth-email-hook` trong project là **Lovable-managed hook**, ký bằng `LOVABLE_API_KEY`. Việc anh tự enable "Send Email Hook" trong Supabase Dashboard và paste secret riêng sẽ tạo **2 hook chồng nhau** → email hỏng.
 
-**Bằng chứng:**
-- `supabase/functions/auth-email-hook/index.ts` line 224-228: ĐÃ override `confirmationUrl` cho `emailType === 'recovery'` thành `https://app.saigonholiday.vn/reset-password?token_hash={RAW_TOKEN}&type=recovery` — đây chính xác là giải pháp user yêu cầu.
-- Template `recovery.tsx` ĐÃ render `<Button href={confirmationUrl}>` → link trong email = link app trực tiếp.
-- `ResetPassword.tsx` ĐÃ chỉ dùng `verifyOtp({ token_hash, type: 'recovery' })`, không còn `exchangeCodeForSession`.
-- **Edge function logs trả về EMPTY** → Supabase Auth chưa gọi `auth-email-hook` lần nào → hook chưa active → Supabase đang gửi template mặc định (`supabase.co/auth/v1/verify?token=pkce_...`).
+## Vấn đề đang xảy ra
 
-→ Lý do thực sự URL email vẫn `supabase.co/auth/v1/verify?...`: **Auth Email Hook chưa được kích hoạt trên project**. Phải deploy edge function để Lovable Cloud tự động register hook với Supabase Auth.
+- Lovable backend đã đăng ký hook tự động qua kênh riêng (Cloud → Emails). Function verify chữ ký bằng `LOVABLE_API_KEY` (đã có sẵn trong Edge Secrets).
+- Anh vào Supabase Dashboard → Authentication → Hooks → Send Email Hook → enable trỏ về URL `auth-email-hook` với secret `v1,whsec_...` tự generate.
+- Hệ quả khi Supabase Auth gửi email recovery:
+  - Supabase gọi hook với chữ ký dùng secret của anh (`whsec_...`).
+  - Function verify bằng `LOVABLE_API_KEY` → **mismatch → reject 401**.
+  - Email recovery không đi qua queue → user không nhận mail HOẶC Supabase fallback gửi mail mặc định (link `supabase.co/auth/v1/verify`) → bug cross-device iOS tái xuất.
 
-## Kế hoạch thực thi
+## Action plan (3 bước)
 
-### 1. Deploy lại `auth-email-hook`
-Force redeploy để Lovable Cloud register Auth Email Hook với Supabase. Sau khi deploy, Supabase Auth sẽ gọi edge function này thay vì gửi email mặc định.
+### Bước 1 — Anh tự làm trong Supabase Dashboard (em không có quyền)
 
-### 2. Verify hook đã active bằng test thực tế
-Trigger 1 lần `resetPasswordForEmail` (qua màn `Login → Quên mật khẩu`) → đọc `auth-email-hook` logs:
-- Phải thấy log `Received auth event { emailType: 'recovery', ... }`
-- Phải thấy log `Auth email enqueued`
-- Nếu KHÔNG có log → hook chưa active → cần kiểm tra Cloud → Emails dashboard
+1. Mở https://supabase.com/dashboard/project/aneazkhnqkkpqtcxunqd/auth/hooks
+2. Tìm mục **Send Email Hook**.
+3. Bấm **Disable** (hoặc Delete). Không cần lưu lại secret — vứt đi.
+4. Confirm với em là đã disable.
 
-### 3. Verify URL trong email mới
-Sau khi nhận email reset, URL phải có dạng:
-```
-https://app.saigonholiday.vn/reset-password?token_hash=pkce_xxxxxxxxxx&type=recovery
-```
-KHÔNG phải `https://aneazkhnqkkpqtcxunqd.supabase.co/auth/v1/verify?token=pkce_...`.
+### Bước 2 — Em verify domain đang active
 
-### 4. Defensive guard trong edge function (phòng trường hợp `token_hash` undefined)
-Hiện tại line 226: `if (emailType === 'recovery' && tokenHash)` — nếu Supabase không gửi `token_hash` trong payload thì fallback về `payload.data.url` (link Supabase verify) → bug tái xuất.
+Em gọi `check_email_domain_status` để confirm `notify.app.saigonholiday.vn` đang ở state `active`. Nếu chưa active → báo anh chờ DNS verify trong Cloud → Emails.
 
-Bổ sung: nếu `emailType === 'recovery'` mà `tokenHash` falsy → log warning rõ ràng `[auth-email-hook] WARNING: recovery payload missing token_hash, falling back to default URL — cross-device flow will fail` để debug nhanh nếu sau deploy vẫn lỗi.
+### Bước 3 — Test thực tế
 
-### 5. Cập nhật `AUTH_CONFIG.md`
-Sửa section #3 (Email Template): xác nhận **KHÔNG cần** sửa template Supabase Dashboard — toàn bộ override link recovery do `auth-email-hook` đảm nhiệm. Ghi rõ Tupun không cần đụng tới Email Templates ở Supabase nữa.
+Sau khi anh disable hook thủ công + domain active:
+1. Mở `/login` → bấm "Quên mật khẩu" → nhập email anh.
+2. Em check log `auth-email-hook` xem có nhận event `Received auth event { emailType: 'recovery' }` không.
+3. Em check `email_send_log` xem có row `template_name='recovery'`, `status='sent'` không.
+4. Anh mở email trên iPhone → confirm link dạng `https://app.saigonholiday.vn/reset-password?token_hash=...&type=recovery` (KHÔNG phải `supabase.co/auth/v1/verify`).
+5. Click link → form đổi mật khẩu hiện ra.
 
-## File thay đổi
-- `supabase/functions/auth-email-hook/index.ts` — thêm warning log khi `token_hash` thiếu
-- `AUTH_CONFIG.md` — cập nhật ghi chú template
-- Deploy `auth-email-hook` qua tool
+## Những gì KHÔNG làm
 
-## Test acceptance
-- TC1 iPhone Safari: click link reset từ email mới → form đổi pass hiện ✅
-- TC2 iPhone Gmail app: tương tự ✅
-- TC3 Desktop Chrome: tương tự ✅
-- TC4 Link cũ (đã reset rồi): hiện màn "Liên kết đã hết hạn" ✅
-- Edge function logs có entry `Received auth event { emailType: 'recovery' }` ✅
-- URL email là `app.saigonholiday.vn/reset-password?token_hash=...` (KHÔNG qua `supabase.co`) ✅
+- ❌ Không lưu secret `whsec_...` vào Edge Function Secrets.
+- ❌ Không sửa `auth-email-hook/index.ts` để verify chữ ký Supabase native — sẽ phá Lovable pipeline.
+- ❌ Không deploy lại function (không cần — code đã đúng).
+- ❌ Không tạo hook Supabase native song song với Lovable hook.
 
-## Lưu ý cho Tupun
-Sau khi tôi deploy xong, Tupun **KHÔNG cần** vào Supabase Dashboard sửa Email Template. Nếu hook không active sau deploy, sẽ phải vào **Cloud → Emails** trong Lovable kiểm tra trạng thái domain `notify.app.saigonholiday.vn` đã verified chưa.
+## Tại sao approach này đúng
+
+`AUTH_CONFIG.md` mục #3 đã ghi rõ: link recovery được override bởi Lovable-managed `auth-email-hook` → build link app trực tiếp với `token_hash` → cross-device safe. Pipeline này chỉ chạy khi Supabase forward event qua **Lovable backend**, không phải qua hook thủ công của anh.
