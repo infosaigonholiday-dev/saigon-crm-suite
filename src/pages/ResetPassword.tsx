@@ -94,7 +94,7 @@ export default function ResetPassword() {
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
         const tokenHash = url.searchParams.get("token_hash");
-        const otpType = url.searchParams.get("type");
+        // type param không dùng — luôn verify với type 'recovery' cho route /reset-password
         const errorDesc =
           url.searchParams.get("error_description") ||
           url.searchParams.get("error");
