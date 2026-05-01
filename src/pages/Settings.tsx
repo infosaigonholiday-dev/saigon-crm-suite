@@ -15,6 +15,7 @@ import { SettingsCompanyInfoTab } from "@/components/settings/SettingsCompanyInf
 import { SettingsNotificationHistoryTab } from "@/components/settings/SettingsNotificationHistoryTab";
 import { SettingsNotificationStatsTab } from "@/components/settings/SettingsNotificationStatsTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { SettingsSecurityTab } from "@/components/settings/SettingsSecurityTab";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HR_MANAGER", "HCNS"];
