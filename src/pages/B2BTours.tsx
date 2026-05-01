@@ -91,7 +91,7 @@ export default function B2BTours() {
     queryFn: async () => {
       let q = supabase
         .from("b2b_tours")
-        .select("id, tour_code, target_market, destination, thang, departure_date, return_date, price_adl, price_chd, price_inf, commission_adl, commission_chd, commission_inf, available_seats, hold_seats, notes, visa_deadline, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, itinerary_url")
+        .select("id, tour_code, target_market, destination, thang, departure_date, return_date, price_adl, price_chd, price_inf, commission_adl, commission_chd, commission_inf, available_seats, hold_seats, notes, visa_deadline, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, itinerary_url, highlights")
         .order("departure_date", { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (filterMarket !== "all") q = q.eq("target_market", filterMarket);
@@ -176,6 +176,7 @@ export default function B2BTours() {
                     <TableRow>
                       <TableHead>Mã Tour</TableHead>
                       <TableHead>Điểm đến</TableHead>
+                      <TableHead className="min-w-[220px]">Điểm Nổi Bật</TableHead>
                       <TableHead>Ngày đi</TableHead>
                       <TableHead>Ngày về</TableHead>
                       <TableHead className="text-right">Giá ADL</TableHead>
@@ -191,6 +192,27 @@ export default function B2BTours() {
                       <TableRow key={t.id}>
                         <TableCell className="font-mono text-xs font-medium">{t.tour_code}</TableCell>
                         <TableCell>{t.destination ?? "—"}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const items = (t.highlights ?? "")
+                              .split("|")
+                              .map((s) => s.trim())
+                              .filter(Boolean);
+                            if (items.length === 0) return <span className="text-muted-foreground">—</span>;
+                            const shown = items.slice(0, 4);
+                            const rest = items.length - shown.length;
+                            return (
+                              <div className="flex flex-wrap gap-1" title={items.join(" • ")}>
+                                {shown.map((h, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs font-normal">{h}</Badge>
+                                ))}
+                                {rest > 0 && (
+                                  <Badge variant="outline" className="text-xs font-normal bg-muted/40">+{rest}</Badge>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-xs">
                           {t.departure_date ?? "—"}
                           {t.flight_dep_time && <span className="text-muted-foreground ml-1">• {t.flight_dep_time}</span>}
@@ -225,7 +247,7 @@ export default function B2BTours() {
                       </TableRow>
                     ))}
                     {tours.length === 0 && (
-                      <TableRow><TableCell colSpan={10} className="text-center py-12 text-muted-foreground">Chưa có tour nào trong kho</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={11} className="text-center py-12 text-muted-foreground">Chưa có tour nào trong kho</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>

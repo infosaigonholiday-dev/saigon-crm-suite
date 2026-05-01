@@ -98,7 +98,7 @@ export default function BookingConfirmationPrint() {
     queryFn: async () => {
       const { data } = await supabase
         .from("b2b_tours")
-        .select("tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes")
+        .select("tour_code, destination, departure_date, return_date, flight_dep_code, flight_dep_time, flight_ret_code, flight_ret_time, visa_deadline, notes, highlights")
         .eq("tour_code", b2bTourCode!)
         .maybeSingle();
       return data;
@@ -218,9 +218,16 @@ export default function BookingConfirmationPrint() {
       ? [b2bTour.flight_ret_code, b2bTour.flight_ret_time].filter(Boolean).join(" • ")
       : "";
 
-    // Highlights: parse từ notes (split nhiều ký tự)
+    // Highlights: ưu tiên cột `highlights` (split bằng `|`), fallback `notes`
     let highlights: string[] = [];
-    if (b2bTour?.notes) {
+    const rawHighlights = (b2bTour as any)?.highlights as string | null | undefined;
+    if (rawHighlights && rawHighlights.trim()) {
+      highlights = rawHighlights
+        .split("|")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .slice(0, 12);
+    } else if (b2bTour?.notes) {
       highlights = String(b2bTour.notes)
         .split(/[\n\r;•]+|(?:^|\s)-\s+/g)
         .map((s) => s.trim().replace(/^[-•*]\s*/, ""))
