@@ -1,49 +1,32 @@
-## Bối cảnh
+# Hiển thị "Điểm Nổi Bật" cho B2B Tour
 
-PKCE flow + `exchangeCodeForSession` + `PASSWORD_RECOVERY` listener + popup hết hạn ĐÃ được implement đầy đủ trong sprint trước (`client.ts`, `ResetPassword.tsx`, `Login.tsx`). Tôi xác nhận bằng grep:
+Cột `highlights` (text, phân cách `|`) đã được thêm vào bảng `b2b_tours`. Print template `public/print/booking-confirmation.html` đã sẵn block `data-field="highlights_list"`. Chỉ cần 2 thay đổi code.
 
-- `flowType: 'pkce'` + `detectSessionInUrl: false` → đã có
-- `Login.tsx` đã gọi `resetPasswordForEmail(..., { redirectTo: getResetPasswordUrl() })`
-- `ResetPassword.tsx` đã đọc `?code`, gọi `exchangeCodeForSession`, có 4 phase UI
+## 1. `src/pages/B2BTours.tsx` — thêm cột "Điểm Nổi Bật"
 
-Sprint này chỉ cần **5 chỉnh sửa nhỏ** để khớp 100% BẢNG.
+- Thêm `highlights` vào `select(...)` của query `b2b-tours` (dòng 94).
+- Thêm `<TableHead>Điểm Nổi Bật</TableHead>` vào header (sau cột "Điểm đến").
+- Thêm `<TableCell>` render danh sách: split chuỗi `highlights` bằng `|`, trim, bỏ rỗng → render dạng các `<Badge variant="outline">` xếp `flex flex-wrap gap-1`. Nếu rỗng → `—`. Giới hạn hiển thị 4 mục đầu, dư thì `+N`, hover (title) hiện full để không vỡ layout.
+- Cập nhật `colSpan` của row "Chưa có tour nào" từ 10 → 11.
+- Cập nhật type `B2BTour` trong `src/components/b2b-tours/B2BTourDetailSheet.tsx` (chỉ thêm field `highlights?: string | null`) để TS không báo lỗi — không sửa UI sheet.
 
-## Thay đổi
+## 2. `src/pages/BookingConfirmationPrint.tsx` — nạp highlights vào phiếu in
 
-### 1. `src/pages/ResetPassword.tsx`
+- Mở rộng `select` của query `print-b2b-tour` (dòng ~107) để lấy thêm `highlights`.
+- Thay logic build `highlights: string[]` (dòng 222-228):
+  - Ưu tiên: nếu `b2bTour.highlights` có giá trị → split bằng `|`, trim, bỏ rỗng, slice 12.
+  - Fallback (giữ tương thích cũ): nếu không có `highlights` mà có `notes` → giữ logic split cũ bằng `\n;•-`.
+- Phần `dataMap` (dòng 259) giữ nguyên: chỉ gắn `highlights_list` khi mảng > 0 — template HTML đã tự render.
 
-- Thêm `console.log("[reset-password] exchangeCodeForSession success")` sau khi PKCE exchange thành công (Verify #3).
-- Thêm "delay tối thiểu 2s" cho phase `verifying` để chống flash trên iOS chậm (UI #1): track `startedAt`, nếu resolve sớm hơn 2s thì `setTimeout` phần còn lại.
-- **TC5**: nếu URL không có `?code`, không có hash token, KHÔNG có session → `navigate("/login", { replace: true })` thay vì hiển thị phase `expired`. Phase `expired` CHỈ dành cho link đã dùng / hết hạn (có `error_description` hoặc `exchangeCodeForSession` fail).
-- Phase `expired`: thêm nút thứ 2 **"Yêu cầu gửi lại link"** → `navigate("/login")` và pre-open dialog Quên mật khẩu (đặt query `?forgot=1`).
+## Kỹ thuật
 
-### 2. `src/pages/Login.tsx`
+- Không đổi schema DB, không đổi RLS, không sửa edge function.
+- Không động đến print template HTML (đã hỗ trợ sẵn `highlights_list`).
+- File `src/integrations/supabase/types.ts` đã tự động có cột `highlights` (đã grep thấy) → query select hợp lệ.
 
-- `useEffect` đọc `searchParams.get("forgot") === "1"` → tự động `setForgotOpen(true)` để hỗ trợ flow "Yêu cầu lại" từ ResetPassword.
+## Test
 
-### 3. `AUTH_CONFIG.md`
-
-- Thêm section **"7. Auth Flow"** ghi rõ:
-  > Project dùng **PKCE flow** (`flowType: 'pkce'` trong `supabase/client.ts`). Email reset link có dạng `?code=xxx` (không phải `#access_token=`) — bắt buộc để iOS Safari/Gmail không strip URL fragment.
-
-### 4. Không đổi
-
-- `client.ts`: giữ nguyên (đã PKCE).
-- DB schema: không đổi.
-- Edge functions: không đổi.
-
-## Test sau khi sửa
-
-| TC | Hành vi mong đợi |
-|---|---|
-| TC1 iOS Safari/Gmail | Link `?code=...` → spinner 2s → form đổi pass |
-| TC2 Android Chrome | Form đổi pass |
-| TC3 Desktop | Form đổi pass + console log "exchangeCodeForSession success" |
-| TC4 Link đã dùng | Phase `expired` + 2 nút (Đăng nhập / Yêu cầu lại) |
-| TC5 Vào `/reset-password` trực tiếp | Redirect `/login` ngay |
-
-## File chạm
-
-- `src/pages/ResetPassword.tsx` (chính)
-- `src/pages/Login.tsx` (auto-open forgot dialog khi `?forgot=1`)
-- `AUTH_CONFIG.md` (thêm section PKCE)
+1. Vào `/lkh-tour-2026`: cột "Điểm Nổi Bật" hiển thị các badge tách bằng `|`.
+2. Tạo booking từ 1 tour có `highlights` → mở phiếu in → mục "Điểm Nổi Bật" liệt kê đúng từng item.
+3. Tour không có `highlights` nhưng có `notes` → vẫn render như cũ (fallback).
+4. Tour không có cả 2 → mục highlights ẩn (template có sẵn behavior này).
