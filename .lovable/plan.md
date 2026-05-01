@@ -1,64 +1,115 @@
 ## Bug
 
-URL email Supabase: `supabase.co/auth/v1/verify?token=pkce_xxx&type=recovery&redirect_to=.../reset-password`
+`duplicate key value violates unique constraint "bookings_code_key"` xảy ra khi:
+- Sale tạo booking từ tour B2B lần 2 (code prefill = `BK-${tour_code}` cố định, không tự tăng).
+- Hoặc 2 tab/2 user submit cùng base code → race condition.
 
-Sau khi server verify, redirect về `/reset-password` trong **3 trường hợp** khác nhau tuỳ version/config Supabase:
-- (a) Kèm `?code=xxx` (PKCE chuẩn) — code hiện đã handle
-- (b) Kèm `#access_token=...&type=recovery` (implicit fallback) — code hiện đã handle
-- (c) **KHÔNG kèm gì cả** — server đã set session qua storage event và fire `PASSWORD_RECOVERY` qua `onAuthStateChange`. Đây là case đang fail.
+## Root cause
 
-Code hiện tại ở case (c): không có code, không có hash, `getSession()` lúc mount trả về null (event chưa fire) → gọi `redirectLogin()` ngay → đá user về `/login`.
+`src/components/bookings/BookingFormDialog.tsx` line 80 + 254:
+- Code được prefill `BK-${prefillData.tour_code}` từ B2B tour, KHÔNG check DB trước khi insert.
+- Insert thẳng → vi phạm unique `bookings_code_key`.
 
-## Files sửa
+DB hiện có sẵn pattern `-01`, `-02` (vd `BK-OS5N5D-260430-03`), nhưng chỉ là gõ tay → không nhất quán.
 
-Chỉ 1 file: `src/pages/ResetPassword.tsx`
+Dialog **chỉ tạo mới** (không có prop edit) → KHÔNG cần thêm logic edit-mode. (TC3 sẽ pass mặc định vì không có path edit qua dialog này.)
 
-`client.ts` giữ nguyên (`flowType: 'pkce'`, `detectSessionInUrl: false`) — không đổi vì còn ảnh hưởng các flow khác.
+## Thay đổi
 
-## Logic sửa (useEffect mount)
+### 1. Migration (SQL — apply qua Supabase SQL Editor)
 
-```text
-1. Subscribe onAuthStateChange TRƯỚC tất cả mọi thứ
-   → khi nhận PASSWORD_RECOVERY hoặc SIGNED_IN có session → markReady()
+Tạo file `supabase/migrations/20260501090000_generate_unique_booking_code.sql`:
 
-2. Tăng MIN_VERIFY_MS: 2000 → 5000ms
+```sql
+CREATE OR REPLACE FUNCTION public.generate_unique_booking_code(base TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  clean_base TEXT;
+  candidate TEXT;
+  max_suffix INT;
+  next_suffix INT;
+  base_pattern TEXT;
+BEGIN
+  clean_base := trim(base);
+  IF clean_base IS NULL OR clean_base = '' THEN
+    RAISE EXCEPTION 'base code không được rỗng';
+  END IF;
 
-3. Parse URL:
-   - Nếu có error_description / error → markExpired() ngay (link hỏng)
-   - Nếu có ?code= → exchangeCodeForSession → markReady/markExpired
-   - Nếu có #access_token= → setSession → markReady/markExpired
-   - Nếu đã có session sẵn (getSession) → markReady
+  -- Strip -NN nếu base truyền vào sẵn có suffix
+  clean_base := regexp_replace(clean_base, '-\d{2,}$', '');
 
-4. Nếu chưa resolve được (không code/hash/session/error):
-   → KHÔNG redirect ngay
-   → setTimeout 5s đợi PASSWORD_RECOVERY event fire
-   → Sau 5s vẫn chưa resolve:
-       - Check URL: nếu user vào /reset-password "trần" (không param gì) → redirectLogin()
-       - Nếu URL có dấu hiệu callback (vd path khớp + có search/hash khác) nhưng không có code → markExpired()
-   → Phân biệt bằng cờ `hadCallbackParams = !!(code || hash.access_token || url.search || url.hash)`
+  -- Advisory lock chống race 2 tab cùng tạo
+  PERFORM pg_advisory_xact_lock(hashtext('booking_code:' || clean_base));
 
-5. Cleanup: clear timeout + unsubscribe khi unmount hoặc khi đã resolve
+  base_pattern := '^' || regexp_replace(clean_base, '([.+*?^$()\[\]{}|\\])', '\\\1', 'g') || '-\d{2,}$';
+
+  SELECT COALESCE(MAX((regexp_match(code, '-(\d{2,})$'))[1]::INT), 0)
+    INTO max_suffix FROM bookings WHERE code ~ base_pattern;
+
+  -- Base trần còn trống và không có biến thể → dùng base
+  IF max_suffix = 0 AND NOT EXISTS (SELECT 1 FROM bookings WHERE code = clean_base) THEN
+    RETURN clean_base;
+  END IF;
+
+  next_suffix := max_suffix + 1;
+  candidate := clean_base || '-' || lpad(next_suffix::TEXT, 2, '0');
+  WHILE EXISTS (SELECT 1 FROM bookings WHERE code = candidate) LOOP
+    next_suffix := next_suffix + 1;
+    candidate := clean_base || '-' || lpad(next_suffix::TEXT, 2, '0');
+  END LOOP;
+  RETURN candidate;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.generate_unique_booking_code(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.generate_unique_booking_code(TEXT) TO authenticated;
 ```
 
-## Verify checklist
+### 2. `src/components/bookings/BookingFormDialog.tsx`
 
-| TC | Bước | Kỳ vọng |
+**`mutationFn`** (line 224-256):
+- Bước 1: Gọi `supabase.rpc('generate_unique_booking_code', { base: form.code.trim() })` → lấy `safeCode`.
+- Bước 2: Nếu `safeCode !== form.code.trim()` → toast info "Mã đã tồn tại, hệ thống dùng `safeCode`".
+- Bước 3: Insert với `code: safeCode`.
+- Bước 4: Bắt `error.code === '23505'` (race rất hiếm sau RPC) → retry 1 lần với `generate_unique_booking_code` again. Nếu vẫn fail → toast tiếng Việt "Mã booking đã tồn tại, vui lòng thử lại".
+
+**`onError`** (line 262-264): map message tiếng Anh sang tiếng Việt:
+- `23505` → "Mã booking đã tồn tại, hệ thống đang tạo mã mới"
+- Khác → giữ message gốc nhưng prefix "Lỗi:".
+
+Nút Lưu đã có `disabled={mutation.isPending}` + spinner (line 527-530) → TC5 đã pass, không cần sửa.
+
+### 3. KHÔNG sửa
+
+- `BookingFormDialog` không có mode edit → không cần phân biệt create/update.
+- `B2BTours.tsx` chỉ truyền `prefillData.tour_code` xuống dialog → không cần đổi.
+- Không xóa unique constraint, không đổi schema khác.
+
+## Verify
+
+| TC | Cách test | Kỳ vọng |
 |---|---|---|
-| TC1 | Click link mới <60s từ email Supabase | Form đổi pass hiện. Console log `PASSWORD_RECOVERY` HOẶC `exchangeCodeForSession success` |
-| TC2 | Click link cũ đã dùng | Phase `expired`, message "Liên kết đã hết hạn" |
-| TC3 | Vào `/reset-password` trực tiếp (URL trần) | Redirect `/login` sau ~5s grace period |
-| TC4 | Test iOS Safari | Vào được form (không flash login) |
-| TC5 | Test iOS Gmail app → mở link | Vào được form |
+| TC1 | Tạo booking từ tour B2B `OS5N5D-260430` lần 1 | Code = `BK-OS5N5D-260430` (hoặc `-04` nếu DB đã có -01..-03) |
+| TC2 | Tạo lần 2 cùng tour | Code tự tăng suffix, không lỗi 23505 |
+| TC3 | Edit booking | Không qua dialog này → không insert mới (đã pass mặc định) |
+| TC4 | Code trùng sẵn | RPC trả mã mới, toast info hiện |
+| TC5 | Double-click Lưu | Nút disabled sau click 1 (đã có) |
+| TC6 | Lỗi tiếng Việt | onError map 23505 → "Mã booking đã tồn tại..." |
+| TC7 | Sau lưu | `qc.invalidateQueries(["bookings"])` đã có → list refresh |
+| TC8 | Race 2 tab | `pg_advisory_xact_lock` serialize 2 RPC call → 2 code khác nhau |
 
-## Rủi ro & ràng buộc
+## Bước apply migration
 
-- Không đổi `client.ts` — giữ `flowType: pkce`, `detectSessionInUrl: false`
-- Không đổi `AuthContext.tsx` — đã skip `PASSWORD_RECOVERY` đúng
-- TC3 sẽ chậm hơn (5s thay vì instant) — chấp nhận đánh đổi để fix iOS
-- Cập nhật `AUTH_CONFIG.md` mục #7: bổ sung note về case (c) "URL không kèm code/hash, đợi PASSWORD_RECOVERY event"
+Sau khi approve plan này:
+1. Tôi sẽ tạo file migration + sửa `BookingFormDialog.tsx`.
+2. **User cần apply migration**: mở SQL Editor Supabase, paste nội dung file `.sql`, run.
+   (Trong agent mode kế tiếp tôi sẽ dùng migration tool tự động — không cần thao tác tay.)
 
-## Deliverables
+## Files
 
-1. `src/pages/ResetPassword.tsx` — refactor `useEffect` mount theo logic trên
-2. `AUTH_CONFIG.md` — thêm note case (c) vào mục #7
-3. Báo kết quả test thực tế (console log + screenshot phase)
+- `supabase/migrations/20260501090000_generate_unique_booking_code.sql` (mới)
+- `src/components/bookings/BookingFormDialog.tsx` (sửa mutationFn + onError)
