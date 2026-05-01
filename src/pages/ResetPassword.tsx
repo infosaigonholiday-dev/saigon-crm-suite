@@ -113,35 +113,25 @@ export default function ResetPassword() {
           return;
         }
 
-        // Trường hợp 0 (PRIORITY): token_hash từ email — verifyOtp recovery.
-        // Đây là path chính, hoạt động cross-device vì KHÔNG cần code_verifier.
-        if (tokenHash && otpType === "recovery") {
+        // PRIORITY: verifyOtp cho mọi token có trong URL (token_hash | token | code).
+        // CHỈ dùng verifyOtp — KHÔNG còn exchangeCodeForSession (PKCE fail cross-device).
+        // Token tự là proof-of-possession (chỉ ai có inbox đọc được) → không cần code_verifier.
+        const tokenFromUrl = tokenHash || url.searchParams.get("token") || code;
+        if (tokenFromUrl) {
+          console.log("[reset-password] verifyOtp called with token_hash");
           const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
+            token_hash: tokenFromUrl,
             type: "recovery",
           });
           if (error) {
             console.warn("[reset-password] verifyOtp failed", error);
             const lower = (error.message || "").toLowerCase();
-            const friendly = lower.includes("expired") || lower.includes("invalid") || lower.includes("otp")
+            const friendly = lower.includes("expired") || lower.includes("invalid") || lower.includes("otp") || lower.includes("flow state")
               ? "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại."
               : "Liên kết không hợp lệ. Vui lòng yêu cầu gửi lại.";
             markExpired(friendly);
           } else {
             console.log("[reset-password] verifyOtp success");
-            markReady();
-          }
-          return;
-        }
-
-        // Trường hợp 1: PKCE callback ?code= (legacy / same-device)
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.warn("[reset-password] exchangeCodeForSession failed", error);
-            markExpired();
-          } else {
-            console.log("[reset-password] exchangeCodeForSession success");
             markReady();
           }
           return;
