@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const ALLOWED_ROLES = ["ADMIN", "HCNS", "HR_MANAGER"];
 const DEFAULT_PASSWORD = "sgh123456";
+const PRODUCTION_URL = "https://app.saigonholiday.vn";
 const PUBLISHED_URL = "https://saigon-holiday-nexus.lovable.app";
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -17,14 +18,22 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
+function safeRedirectOrigin(rawOrigin: string | null | undefined): string {
+  const origin = (rawOrigin || "").replace(/\/+$/, "");
+  if (!origin) return PRODUCTION_URL;
+  // Không bao giờ gửi link localhost cho user qua email
+  if (/localhost|127\.0\.0\.1/i.test(origin)) return PRODUCTION_URL;
+  return origin;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/+$/, "") || PUBLISHED_URL;
-    const resetRedirectUrl = `${origin}/reset-password`;
+    const rawOrigin = req.headers.get("origin") || req.headers.get("referer") || "";
+    const resetRedirectUrl = `${safeRedirectOrigin(rawOrigin)}/reset-password`;
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return jsonResponse({ error: "Unauthorized" }, 401);

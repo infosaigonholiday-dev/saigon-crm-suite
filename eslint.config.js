@@ -5,7 +5,16 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      "src/test/**",
+      "playwright*",
+      "vite.config.ts",
+      "vitest.config.ts",
+      "supabase/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -21,6 +30,15 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/localhost:[0-9]+/]",
+          message:
+            "Không hardcode localhost — dùng getAppBaseUrl() từ @/lib/getAppBaseUrl",
+        },
+      ],
     },
   },
 );
+
