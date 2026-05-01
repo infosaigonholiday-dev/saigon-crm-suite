@@ -8,113 +8,138 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+type Phase = "verifying" | "expired" | "ready" | "success";
+
+function parseHash(hash: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const clean = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!clean) return out;
+  for (const part of clean.split("&")) {
+    const [k, v] = part.split("=");
+    if (k) out[decodeURIComponent(k)] = decodeURIComponent(v ?? "");
+  }
+  return out;
+}
+
+function cleanUrl() {
+  try {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.hash = "";
+    window.history.replaceState({}, document.title, url.pathname);
+  } catch {
+    // ignore
+  }
+}
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [expired, setExpired] = useState(false);
+  const [phase, setPhase] = useState<Phase>("verifying");
+  const [errorMsg, setErrorMsg] = useState<string>("");
   const resolvedRef = useRef(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigate = useNavigate();
-
-  const cleanUrl = () => {
-    try {
-      const url = new URL(window.location.href);
-      url.search = "";
-      url.hash = "";
-      window.history.replaceState({}, document.title, url.pathname);
-    } catch {
-      // ignore
-    }
-  };
 
   const markReady = () => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setReady(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setPhase("ready");
     cleanUrl();
   };
 
-  const markExpired = () => {
+  const markExpired = (msg?: string) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setExpired(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setErrorMsg(msg ?? "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
+    setPhase("expired");
+    cleanUrl();
   };
 
   useEffect(() => {
-    // supabase-js with detectSessionInUrl=true (default) automatically exchanges
-    // the ?code=... or hash tokens. We must NOT call exchangeCodeForSession again
-    // (would consume an already-used code → "invalid request" error).
-    //
-    // Strategy: poll getSession() and listen for SIGNED_IN / PASSWORD_RECOVERY.
-
-    const hasRecoveryArtifact =
-      window.location.search.includes("code=") ||
-      window.location.hash.includes("type=recovery") ||
-      window.location.hash.includes("access_token=");
-
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        markReady();
-        return true;
-      }
-      return false;
-    };
-
-    // Listen for auth state events fired by supabase-js after auto-exchange
+    // Phòng trường hợp Supabase bắn event sớm hơn promise xử lý callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         markReady();
       }
     });
 
-    // Initial check + retries (supabase-js may take a tick to finish auto-exchange)
     (async () => {
-      if (await checkSession()) return;
+      try {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        const errorDesc =
+          url.searchParams.get("error_description") ||
+          url.searchParams.get("error");
+        const hash = parseHash(window.location.hash);
 
-      // If URL has no recovery artifact and no session, mark expired immediately
-      if (!hasRecoveryArtifact) {
-        markExpired();
-        return;
-      }
-
-      // Poll every 250ms for up to 8s while supabase-js processes the URL
-      let attempts = 0;
-      const interval = setInterval(async () => {
-        attempts++;
-        if (resolvedRef.current) {
-          clearInterval(interval);
+        // Lỗi do Supabase trả về trên URL
+        if (errorDesc) {
+          const lower = errorDesc.toLowerCase();
+          const friendly =
+            lower.includes("expired") || lower.includes("invalid")
+              ? "Liên kết đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại."
+              : "Liên kết không hợp lệ. Vui lòng yêu cầu gửi lại.";
+          markExpired(friendly);
           return;
         }
-        const ok = await checkSession();
-        if (ok || attempts >= 32) {
-          clearInterval(interval);
-          if (!resolvedRef.current && !ok) markExpired();
-        }
-      }, 250);
 
-      timeoutRef.current = setTimeout(() => {
-        clearInterval(interval);
-        if (!resolvedRef.current) markExpired();
-      }, 8500);
+        // Trường hợp 1: PKCE callback ?code=
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            markExpired();
+          } else {
+            markReady();
+          }
+          return;
+        }
+
+        // Trường hợp 2: hash callback #access_token=...&refresh_token=...&type=recovery
+        if (hash.access_token && hash.refresh_token) {
+          const { error } = await supabase.auth.setSession({
+            access_token: hash.access_token,
+            refresh_token: hash.refresh_token,
+          });
+          if (error) {
+            markExpired();
+          } else {
+            markReady();
+          }
+          return;
+        }
+
+        // Trường hợp 3: Đã có sẵn session (user reload sau khi đã exchange thành công)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          markReady();
+          return;
+        }
+
+        // Không có artifact callback nào
+        markExpired();
+      } catch (e) {
+        console.error("[reset-password] init error", e);
+        markExpired();
+      }
     })();
 
-    return () => {
-      subscription.unsubscribe();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
+    return () => subscription.unsubscribe();
   }, []);
+
+  const validatePassword = (pwd: string): string | null => {
+    if (pwd.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự";
+    if (!/[A-Z]/.test(pwd)) return "Mật khẩu phải có ít nhất 1 chữ hoa";
+    if (!/[0-9]/.test(pwd)) return "Mật khẩu phải có ít nhất 1 số";
+    return null;
+  };
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("Mật khẩu phải có ít nhất 8 ký tự");
+    const validationError = validatePassword(password);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
     if (password !== confirmPassword) {
@@ -130,20 +155,24 @@ export default function ResetPassword() {
     }
 
     // Update profile: must_change_password = false
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
-        .from("profiles")
-        .update({ must_change_password: false })
-        .eq("id", user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", user.id);
+      }
+    } catch (e) {
+      console.warn("[reset-password] update profile failed", e);
     }
 
-    setSuccess(true);
     await supabase.auth.signOut();
+    setPhase("success");
     setLoading(false);
   };
 
-  if (success) {
+  if (phase === "success") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">
@@ -160,33 +189,32 @@ export default function ResetPassword() {
     );
   }
 
-  if (!ready) {
-    if (expired) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-sm">
-            <CardContent className="pt-6 text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-                <span className="text-destructive text-xl">✕</span>
-              </div>
-              <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
-              <p className="text-sm text-muted-foreground">
-                Link đổi mật khẩu không hợp lệ, đã hết hạn hoặc đã được sử dụng. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.
-              </p>
-              <Button className="w-full" onClick={() => navigate("/login")}>
-                Quay về đăng nhập
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+  if (phase === "verifying") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-            <p className="text-sm text-muted-foreground">Đang xác thực liên kết...</p>
+            <p className="text-sm text-muted-foreground">Đang xác thực liên kết đặt lại mật khẩu...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (phase === "expired") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+              <span className="text-destructive text-xl">✕</span>
+            </div>
+            <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
+            <p className="text-sm text-muted-foreground">{errorMsg}</p>
+            <Button className="w-full" onClick={() => navigate("/login")}>
+              Quay về đăng nhập
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -201,7 +229,9 @@ export default function ResetPassword() {
             SH
           </div>
           <CardTitle className="text-xl">Đặt mật khẩu mới</CardTitle>
-          <p className="text-sm text-muted-foreground">Nhập mật khẩu mới cho tài khoản của bạn (tối thiểu 8 ký tự)</p>
+          <p className="text-sm text-muted-foreground">
+            Mật khẩu mới tối thiểu 8 ký tự, có 1 chữ hoa và 1 số
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReset} className="space-y-4">
@@ -215,6 +245,8 @@ export default function ResetPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                disabled={loading}
+                autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
@@ -226,6 +258,8 @@ export default function ResetPassword() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                disabled={loading}
+                autoComplete="new-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
