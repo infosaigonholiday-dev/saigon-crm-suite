@@ -15,6 +15,7 @@ import { SettingsCompanyInfoTab } from "@/components/settings/SettingsCompanyInf
 import { SettingsNotificationHistoryTab } from "@/components/settings/SettingsNotificationHistoryTab";
 import { SettingsNotificationStatsTab } from "@/components/settings/SettingsNotificationStatsTab";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { SettingsSecurityTab } from "@/components/settings/SettingsSecurityTab";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 const HR_ROLES = ["HR_MANAGER", "HCNS"];
@@ -71,6 +72,7 @@ export default function Settings() {
   const tabs = [
     showAccounts && { value: "accounts", label: "Tài khoản" },
     showNotifications && { value: "notifications", label: "Thông báo" },
+    { value: "security", label: "Bảo mật" },
     showCompanyInfo && { value: "company", label: "Thông tin công ty" },
     showDepartments && { value: "departments", label: "Phòng ban" },
     showLevels && { value: "levels", label: "Cấp bậc" },
@@ -115,6 +117,7 @@ export default function Settings() {
             </div>
           </TabsContent>
         )}
+        <TabsContent value="security" className="mt-4"><SettingsSecurityTab /></TabsContent>
         {showCompanyInfo && (
           <TabsContent value="company" className="mt-4"><SettingsCompanyInfoTab /></TabsContent>
         )}
