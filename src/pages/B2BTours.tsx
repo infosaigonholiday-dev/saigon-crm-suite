@@ -131,28 +131,36 @@ export default function B2BTours() {
 
   const today = useMemo(() => getTodayStart(), []);
 
-  // Compute expiry status + sort by departure ascending (nulls last).
+  // Compute expiry status (sort handled per-filter below).
   const enrichedTours = useMemo(() => {
-    return allTours
-      .map((t) => {
-        const dep = parseVnDate(t.departure_date);
-        const visa = parseVnDate(t.visa_deadline);
-        const departed = dep ? dep.getTime() < today.getTime() : false;
-        const visaExpired = visa ? visa.getTime() < today.getTime() : false;
-        return { ...t, _dep: dep, _departed: departed, _visaExpired: visaExpired, _expired: departed || visaExpired };
-      })
-      .sort((a, b) => {
-        if (!a._dep && !b._dep) return 0;
-        if (!a._dep) return 1;
-        if (!b._dep) return -1;
-        return a._dep.getTime() - b._dep.getTime();
-      });
+    return allTours.map((t) => {
+      const dep = parseVnDate(t.departure_date);
+      const visa = parseVnDate(t.visa_deadline);
+      const departed = dep ? dep.getTime() < today.getTime() : false;
+      const visaExpired = visa ? visa.getTime() < today.getTime() : false;
+      return { ...t, _dep: dep, _departed: departed, _visaExpired: visaExpired, _expired: departed || visaExpired };
+    });
   }, [allTours, today]);
 
   const filteredTours = useMemo(() => {
-    if (expiryFilter === "all") return enrichedTours;
-    if (expiryFilter === "expired") return enrichedTours.filter((t) => t._expired);
-    return enrichedTours.filter((t) => !t._expired);
+    // Null _dep luôn xuống cuối nhóm
+    const cmpAsc = (a: typeof enrichedTours[number], b: typeof enrichedTours[number]) => {
+      if (!a._dep && !b._dep) return 0;
+      if (!a._dep) return 1;
+      if (!b._dep) return -1;
+      return a._dep.getTime() - b._dep.getTime();
+    };
+    const cmpDesc = (a: typeof enrichedTours[number], b: typeof enrichedTours[number]) => {
+      if (!a._dep && !b._dep) return 0;
+      if (!a._dep) return 1;
+      if (!b._dep) return -1;
+      return b._dep.getTime() - a._dep.getTime();
+    };
+    const active = enrichedTours.filter((t) => !t._expired).sort(cmpAsc);
+    const expired = enrichedTours.filter((t) => t._expired).sort(cmpDesc);
+    if (expiryFilter === "active") return active;
+    if (expiryFilter === "expired") return expired;
+    return [...active, ...expired];
   }, [enrichedTours, expiryFilter]);
 
   const totalCount = filteredTours.length;
