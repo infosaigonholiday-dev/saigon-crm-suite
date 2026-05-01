@@ -1,45 +1,59 @@
-## Tóm tắt
+# Plan: Recovery Email qua Resend (bypass Supabase Auth Hook)
 
-KHÔNG làm theo 4 bước anh yêu cầu. Lý do: hook `auth-email-hook` trong project là **Lovable-managed hook**, ký bằng `LOVABLE_API_KEY`. Việc anh tự enable "Send Email Hook" trong Supabase Dashboard và paste secret riêng sẽ tạo **2 hook chồng nhau** → email hỏng.
+## Bối cảnh
+- Supabase Free plan → không enable được Send Email Hook native.
+- Domain `saigonholiday.vn` đã verified trên Resend (DKIM/SPF/MX OK).
+- API key đã có: `re_cYy59t8X_L3fxGPZQckKbLvVQzxkLKYdD` → sẽ lưu vào Supabase Edge Function Secrets.
 
-## Vấn đề đang xảy ra
+## Việc sẽ làm
 
-- Lovable backend đã đăng ký hook tự động qua kênh riêng (Cloud → Emails). Function verify chữ ký bằng `LOVABLE_API_KEY` (đã có sẵn trong Edge Secrets).
-- Anh vào Supabase Dashboard → Authentication → Hooks → Send Email Hook → enable trỏ về URL `auth-email-hook` với secret `v1,whsec_...` tự generate.
-- Hệ quả khi Supabase Auth gửi email recovery:
-  - Supabase gọi hook với chữ ký dùng secret của anh (`whsec_...`).
-  - Function verify bằng `LOVABLE_API_KEY` → **mismatch → reject 401**.
-  - Email recovery không đi qua queue → user không nhận mail HOẶC Supabase fallback gửi mail mặc định (link `supabase.co/auth/v1/verify`) → bug cross-device iOS tái xuất.
+### 1. Tạo edge function mới `send-recovery-email`
+File: `supabase/functions/send-recovery-email/index.ts`
 
-## Action plan (3 bước)
+Logic:
+- Nhận `{ email }` từ frontend (public, no JWT — vì user chưa login).
+- Validate email bằng Zod.
+- Dùng service_role client gọi `supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://app.saigonholiday.vn/reset-password' } })`.
+- Nếu user không tồn tại → vẫn return 200 (chống user enumeration), KHÔNG gửi mail.
+- Render HTML template tiếng Việt brand Saigon Holiday (màu #E8963A, link recovery).
+- POST trực tiếp `https://api.resend.com/emails` với header `Authorization: Bearer ${RESEND_API_KEY}`, From: `Saigon Holiday CRM <noreply@saigonholiday.vn>`.
+- Log vào console (Edge Function logs) để debug.
+- Rate limit nhẹ: 1 request / email / 60s (in-memory Map, đủ cho phase này).
+- `verify_jwt = false` trong `supabase/config.toml`.
 
-### Bước 1 — Anh tự làm trong Supabase Dashboard (em không có quyền)
+### 2. Sửa `src/pages/Login.tsx`
+- Tìm handler "Quên mật khẩu" hiện tại đang gọi `supabase.auth.resetPasswordForEmail(...)`.
+- Đổi sang `supabase.functions.invoke('send-recovery-email', { body: { email } })`.
+- Toast tiếng Việt: "Nếu email tồn tại, link reset đã được gửi. Vui lòng kiểm tra hộp thư (kể cả Spam)."
 
-1. Mở https://supabase.com/dashboard/project/aneazkhnqkkpqtcxunqd/auth/hooks
-2. Tìm mục **Send Email Hook**.
-3. Bấm **Disable** (hoặc Delete). Không cần lưu lại secret — vứt đi.
-4. Confirm với em là đã disable.
+### 3. Sửa `src/pages/ResetPassword.tsx` (nếu cần)
+- Verify route đã handle `?token_hash=...&type=recovery` qua `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`.
+- Nếu chưa, bổ sung.
 
-### Bước 2 — Em verify domain đang active
+### 4. Add secret `RESEND_API_KEY`
+- Trigger UI add_secret cho anh paste key vào.
 
-Em gọi `check_email_domain_status` để confirm `notify.app.saigonholiday.vn` đang ở state `active`. Nếu chưa active → báo anh chờ DNS verify trong Cloud → Emails.
+## Sau khi code xong — hướng dẫn anh
 
-### Bước 3 — Test thực tế
+### A. Add RESEND_API_KEY
+Em sẽ trigger dialog → anh paste `re_cYy59t8X_L3fxGPZQckKbLvVQzxkLKYdD` → Save. Edge function tự pickup.
 
-Sau khi anh disable hook thủ công + domain active:
-1. Mở `/login` → bấm "Quên mật khẩu" → nhập email anh.
-2. Em check log `auth-email-hook` xem có nhận event `Received auth event { emailType: 'recovery' }` không.
-3. Em check `email_send_log` xem có row `template_name='recovery'`, `status='sent'` không.
-4. Anh mở email trên iPhone → confirm link dạng `https://app.saigonholiday.vn/reset-password?token_hash=...&type=recovery` (KHÔNG phải `supabase.co/auth/v1/verify`).
-5. Click link → form đổi mật khẩu hiện ra.
+### B. Xóa hook Supabase Dashboard
+1. https://supabase.com/dashboard/project/aneazkhnqkkpqtcxunqd/auth/hooks
+2. Tìm "Send Email Hook" → toggle OFF → Save.
+3. Xác nhận status: Disabled.
 
-## Những gì KHÔNG làm
+### C. Test plan
+1. **Desktop Chrome**: Login page → Quên mật khẩu → nhập email admin → check inbox → click link → đổi password → login lại.
+2. **iPhone Safari**: Mở app.saigonholiday.vn → Quên mật khẩu → mở mail trong Mail app → click link → confirm mở đúng Safari → reset OK.
+3. **iPhone Gmail app**: Tương tự, click link trong Gmail app → confirm chuyển sang Safari/in-app browser → reset OK.
+4. Check Edge Function logs: `send-recovery-email` có log `email sent successfully, resend_id=...`.
+5. Check Resend dashboard → Emails → thấy delivery status `Delivered`.
 
-- ❌ Không lưu secret `whsec_...` vào Edge Function Secrets.
-- ❌ Không sửa `auth-email-hook/index.ts` để verify chữ ký Supabase native — sẽ phá Lovable pipeline.
-- ❌ Không deploy lại function (không cần — code đã đúng).
-- ❌ Không tạo hook Supabase native song song với Lovable hook.
+## Kỹ thuật chi tiết
+- Edge function dùng `verify_jwt = false` (public endpoint).
+- `generateLink` trả về `action_link` chứa `token_hash` — em parse và build URL `https://app.saigonholiday.vn/reset-password?token_hash=...&type=recovery`.
+- CORS: allow origin `*` (hoặc whitelist `app.saigonholiday.vn` + preview).
+- Error handling: log đủ chi tiết nhưng response ra ngoài chỉ generic message.
 
-## Tại sao approach này đúng
-
-`AUTH_CONFIG.md` mục #3 đã ghi rõ: link recovery được override bởi Lovable-managed `auth-email-hook` → build link app trực tiếp với `token_hash` → cross-device safe. Pipeline này chỉ chạy khi Supabase forward event qua **Lovable backend**, không phải qua hook thủ công của anh.
+Confirm "OK" → em switch build mode và code ngay.
