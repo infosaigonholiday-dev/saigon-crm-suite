@@ -223,8 +223,13 @@ async function handleWebhook(req: Request): Promise<Response> {
   // Thay bằng link app trực tiếp với token_hash để FE tự gọi `verifyOtp({type:'recovery'})`.
   let confirmationUrl: string = payload.data.url
   const tokenHash = (payload.data as any).token_hash as string | undefined
-  if (emailType === 'recovery' && tokenHash) {
-    confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+  if (emailType === 'recovery') {
+    if (tokenHash) {
+      confirmationUrl = `https://${ROOT_DOMAIN}/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+      console.log('[auth-email-hook] recovery URL overridden to app /reset-password with token_hash', { run_id })
+    } else {
+      console.warn('[auth-email-hook] WARNING: recovery payload missing token_hash, falling back to default URL — cross-device flow will fail', { run_id, fallbackUrl: confirmationUrl })
+    }
   }
 
   // Build template props from payload.data (HookData structure)
