@@ -31,12 +31,20 @@ Dev local (chỉ giữ khi cần test):
 
 ## 3. Email Template — Reset Password
 
-Body PHẢI dùng biến chuẩn của Supabase:
+**KHÔNG cần** sửa template Reset Password trong Supabase Dashboard. Toàn bộ link recovery được override bởi edge function `auth-email-hook` (file `supabase/functions/auth-email-hook/index.ts`).
+
+Cụ thể: với `emailType === 'recovery'`, hook bỏ qua `payload.data.url` (link `https://aneazkhnqkkpqtcxunqd.supabase.co/auth/v1/verify?token=pkce_...`) và build link app trực tiếp:
 ```
-{{ .ConfirmationURL }}
+https://app.saigonholiday.vn/reset-password?token_hash=<RAW_PKCE_TOKEN>&type=recovery
 ```
 
-❌ KHÔNG tự nối `{{ .SiteURL }}/...` — sẽ phá flow PKCE và dễ rớt query params.
+Lý do: link `/auth/v1/verify` redirect qua Supabase rồi consume token → FE chỉ nhận UUID code, không phải token_hash gốc → `verifyOtp` fail. Override này gửi token_hash GỐC từ email thẳng vào FE → cross-device an toàn (không cần code_verifier ở localStorage), iOS Safari ITP không block (không có cross-domain redirect).
+
+Nếu Tupun lỡ sửa template Dashboard cũng không sao — `auth-email-hook` vẫn override. Giữ Dashboard ở mặc định (`{{ .ConfirmationURL }}`) để đỡ nhầm lẫn.
+
+❌ KHÔNG bao giờ tự nối `{{ .SiteURL }}/...` thủ công trong template — sẽ mất `token_hash`.
+
+⚠️ **Điều kiện bắt buộc để override hoạt động**: Auth Email Hook PHẢI active. Kiểm tra: vào **Cloud → Emails** trong Lovable, đảm bảo domain `notify.app.saigonholiday.vn` ở trạng thái `active` (DNS verified). Nếu hook không active, Supabase sẽ gửi email mặc định (link `supabase.co/auth/v1/verify`) → bug cross-device tái xuất.
 
 ## 4. Code rules (đã enforce)
 
