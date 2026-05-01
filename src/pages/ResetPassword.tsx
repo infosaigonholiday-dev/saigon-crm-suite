@@ -32,7 +32,7 @@ function cleanUrl() {
   }
 }
 
-const MIN_VERIFY_MS = 2000; // chống flash spinner trên iOS
+const MIN_VERIFY_MS = 5000; // chống flash spinner + đợi PASSWORD_RECOVERY event fire trên iOS
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
