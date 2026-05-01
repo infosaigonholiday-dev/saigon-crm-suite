@@ -68,6 +68,29 @@ Nếu Tupun lỡ sửa template Dashboard cũng không sao — `auth-email-hook`
 
 ## 7. Auth Flow — PKCE cho Login, verifyOtp cho Recovery (BẮT BUỘC)
 
+### ⚠️ KIẾN TRÚC RESET PASSWORD — DO NOT MODIFY
+
+Sprint 02/05/2026: chuyển hoàn toàn sang Resend + edge function tự custom, KHÔNG còn dùng Supabase Auth Email flow cho recovery. Lý do: Supabase Free plan không cho dùng Auth Hook reliably + iOS cross-device fail với PKCE.
+
+❌ TUYỆT ĐỐI KHÔNG:
+- Gọi `supabase.auth.resetPasswordForEmail()` ở `Login.tsx` (hoặc bất kỳ đâu trong FE)
+- Bật "Send email hook" trong Supabase Dashboard → Auth → Hooks
+- Sửa Email Template "Reset Password" trong Supabase Dashboard
+- Dùng `exchangeCodeForSession()` trong `ResetPassword.tsx`
+- Set `flowType: 'pkce'` cho recovery flow (PKCE chỉ dùng cho login chính)
+- Dùng link dạng `https://<ref>.supabase.co/auth/v1/verify?token=pkce_...`
+
+✅ PHẢI:
+- `Login.tsx` → `supabase.functions.invoke('send-recovery-email', { body: { email } })`
+- `ResetPassword.tsx` → `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`
+- Email gửi từ Resend, From: `Saigon Holiday CRM <noreply@saigonholiday.vn>`
+- Link format: `https://app.saigonholiday.vn/reset-password?token_hash=<hash>&type=recovery`
+
+Vi phạm sẽ bị chặn bởi: ESLint rule (`eslint.config.js` — block files `Login.tsx` + `ResetPassword.tsx`), Playwright e2e (`tests/auth/reset-password.spec.ts`), và edge function `check-auth-health` (gọi thủ công khi nghi ngờ regression).
+
+---
+
+
 Project sử dụng **PKCE flow** cho login flow chính, và **verifyOtp(token_hash)** cho password recovery (cross-device safe).
 
 Cấu hình tại `src/integrations/supabase/client.ts`:
