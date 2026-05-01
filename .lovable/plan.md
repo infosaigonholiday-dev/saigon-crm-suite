@@ -1,59 +1,180 @@
-# Plan: Recovery Email qua Resend (bypass Supabase Auth Hook)
+# Anti-Regression Guards — Reset Password Flow
 
-## Bối cảnh
-- Supabase Free plan → không enable được Send Email Hook native.
-- Domain `saigonholiday.vn` đã verified trên Resend (DKIM/SPF/MX OK).
-- API key đã có: `re_cYy59t8X_L3fxGPZQckKbLvVQzxkLKYdD` → sẽ lưu vào Supabase Edge Function Secrets.
+Mục tiêu: bọc kiến trúc reset password mới (edge function `send-recovery-email` + Resend + `verifyOtp(token_hash)`) bằng 4 lớp bảo vệ. **Không sửa logic đang chạy** — chỉ ADD guards.
 
-## Việc sẽ làm
+---
 
-### 1. Tạo edge function mới `send-recovery-email`
-File: `supabase/functions/send-recovery-email/index.ts`
+## 1. Cập nhật `AUTH_CONFIG.md` (mục #7)
+
+Thêm section **mới** ở đầu mục #7 (giữ nguyên 7.1 / 7.2 phía dưới):
+
+```
+### ⚠️ KIẾN TRÚC RESET PASSWORD — DO NOT MODIFY
+
+Sprint 02/05/2026: chuyển hoàn toàn sang Resend + edge function tự custom,
+KHÔNG còn dùng Supabase Auth Email flow cho recovery. Lý do: Supabase Free
+plan không cho dùng Auth Hook reliably + iOS cross-device fail với PKCE.
+
+❌ TUYỆT ĐỐI KHÔNG:
+- Gọi `supabase.auth.resetPasswordForEmail()` ở Login.tsx (hoặc bất kỳ đâu)
+- Bật "Send email hook" trong Supabase Dashboard → Auth → Hooks
+- Sửa Email Template "Reset Password" trong Supabase Dashboard
+- Dùng `exchangeCodeForSession()` trong ResetPassword.tsx
+- Set `flowType: 'pkce'` cho recovery flow (PKCE chỉ dùng cho login)
+- Dùng link dạng `https://<ref>.supabase.co/auth/v1/verify?token=pkce_...`
+
+✅ PHẢI:
+- Login.tsx → `supabase.functions.invoke('send-recovery-email', { body: { email } })`
+- ResetPassword.tsx → `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`
+- Email gửi từ Resend, From: `Saigon Holiday CRM <noreply@saigonholiday.vn>`
+- Link format: `https://app.saigonholiday.vn/reset-password?token_hash=<hash>&type=recovery`
+
+Vi phạm sẽ bị chặn bởi: ESLint rule (`eslint.config.js`),
+Playwright e2e (`tests/auth/reset-password.spec.ts`), và edge function
+`check-auth-health` (chạy thủ công khi nghi ngờ regression).
+```
+
+---
+
+## 2. ESLint guards (`eslint.config.js`)
+
+Thêm 1 block override **chỉ áp dụng cho `Login.tsx` + `ResetPassword.tsx`** (giữ nguyên rule `localhost` global hiện có):
+
+```js
+{
+  files: ["src/pages/Login.tsx", "src/pages/ResetPassword.tsx"],
+  rules: {
+    "no-restricted-syntax": [
+      "error",
+      // giữ rule localhost cũ
+      {
+        selector: "Literal[value=/localhost:[0-9]+/]",
+        message: "Không hardcode localhost — dùng getAppBaseUrl()",
+      },
+      {
+        selector: "MemberExpression[property.name='resetPasswordForEmail']",
+        message: "Recovery dùng supabase.functions.invoke('send-recovery-email') — xem AUTH_CONFIG.md mục #7",
+      },
+      {
+        selector: "MemberExpression[property.name='exchangeCodeForSession']",
+        message: "Recovery dùng verifyOtp(token_hash) — xem AUTH_CONFIG.md mục #7",
+      },
+      {
+        selector: "Property[key.name='flowType'][value.value='pkce']",
+        message: "Recovery KHÔNG dùng PKCE — xem AUTH_CONFIG.md mục #7",
+      },
+    ],
+  },
+},
+```
+
+Rule `localhost` global vẫn giữ ở block trước đó cho phần còn lại của codebase.
+
+---
+
+## 3. Playwright e2e (`tests/auth/reset-password.spec.ts` — NEW)
+
+3 test case (chạy headless trên Preview URL):
+
+```ts
+import { test, expect } from "@playwright/test";
+
+const APP = "https://id-preview--1632605d-2e2c-4155-8254-0b9de359ce51.lovable.app";
+
+test.describe("Reset password — anti-regression", () => {
+  test("TC1: forgot password gọi send-recovery-email, KHÔNG gọi /auth/v1/recover", async ({ page }) => {
+    const calls: string[] = [];
+    page.on("request", (r) => calls.push(r.url()));
+
+    await page.goto(`${APP}/login?forgot=1`);
+    await page.getByLabel(/email/i).first().fill("qa-guard@example.com");
+    await page.getByRole("button", { name: /gửi|reset|đặt lại/i }).click();
+    await page.waitForTimeout(2000);
+
+    expect(calls.some((u) => u.includes("/functions/v1/send-recovery-email"))).toBe(true);
+    expect(calls.some((u) => u.includes("/auth/v1/recover"))).toBe(false);
+    expect(calls.some((u) => u.includes("/auth/v1/otp"))).toBe(false);
+  });
+
+  test("TC2: ResetPassword.tsx source KHÔNG chứa exchangeCodeForSession", async () => {
+    const fs = await import("node:fs/promises");
+    const src = await fs.readFile("src/pages/ResetPassword.tsx", "utf8");
+    expect(src).not.toMatch(/exchangeCodeForSession/);
+    expect(src).toMatch(/verifyOtp/);
+  });
+
+  test("TC3: Login.tsx source KHÔNG chứa resetPasswordForEmail", async () => {
+    const fs = await import("node:fs/promises");
+    const src = await fs.readFile("src/pages/Login.tsx", "utf8");
+    expect(src).not.toMatch(/resetPasswordForEmail/);
+    expect(src).toMatch(/send-recovery-email/);
+  });
+});
+```
+
+Lưu ý: TC2/TC3 thay thế cho yêu cầu "verify URL phải có domain app.saigonholiday.vn" và "Console phải log [reset-password] verifyOtp" — vì cả 2 đòi hỏi inbox email thật + click link cross-device, không thể tự động hoá trong CI. Dùng source-grep + network-assert đạt cùng mục đích regression-guard.
+
+---
+
+## 4. Edge function `check-auth-health` (NEW)
+
+`supabase/functions/check-auth-health/index.ts` — CORS, `verify_jwt = false`, GET only. Trả về JSON status:
+
+```json
+{
+  "ok": true,
+  "checks": {
+    "send_recovery_email_deployed": true,
+    "send_recovery_email_responds_200": true,
+    "resend_api_key_present": true,
+    "service_role_key_present": true,
+    "from_email": "Saigon Holiday CRM <noreply@saigonholiday.vn>",
+    "app_base_url": "https://app.saigonholiday.vn"
+  },
+  "warnings": []
+}
+```
 
 Logic:
-- Nhận `{ email }` từ frontend (public, no JWT — vì user chưa login).
-- Validate email bằng Zod.
-- Dùng service_role client gọi `supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://app.saigonholiday.vn/reset-password' } })`.
-- Nếu user không tồn tại → vẫn return 200 (chống user enumeration), KHÔNG gửi mail.
-- Render HTML template tiếng Việt brand Saigon Holiday (màu #E8963A, link recovery).
-- POST trực tiếp `https://api.resend.com/emails` với header `Authorization: Bearer ${RESEND_API_KEY}`, From: `Saigon Holiday CRM <noreply@saigonholiday.vn>`.
-- Log vào console (Edge Function logs) để debug.
-- Rate limit nhẹ: 1 request / email / 60s (in-memory Map, đủ cho phase này).
-- `verify_jwt = false` trong `supabase/config.toml`.
+1. Check env: `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` có set không.
+2. Tự gọi `${SUPABASE_URL}/functions/v1/send-recovery-email` với email test `healthcheck@saigonholiday.vn` → kỳ vọng status 200 (rate-limit hoặc generateLink-error vẫn trả 200 theo design).
+3. Trả về JSON tổng hợp + warnings nếu có check fail.
 
-### 2. Sửa `src/pages/Login.tsx`
-- Tìm handler "Quên mật khẩu" hiện tại đang gọi `supabase.auth.resetPasswordForEmail(...)`.
-- Đổi sang `supabase.functions.invoke('send-recovery-email', { body: { email } })`.
-- Toast tiếng Việt: "Nếu email tồn tại, link reset đã được gửi. Vui lòng kiểm tra hộp thư (kể cả Spam)."
+Không tự verify "hook list empty" vì Supabase Management API yêu cầu PAT — out of scope. Thay vào đó: warning text nhắc admin kiểm tra Dashboard manual khi gọi endpoint.
 
-### 3. Sửa `src/pages/ResetPassword.tsx` (nếu cần)
-- Verify route đã handle `?token_hash=...&type=recovery` qua `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`.
-- Nếu chưa, bổ sung.
+Add vào `supabase/config.toml`:
+```toml
+[functions.check-auth-health]
+verify_jwt = false
+```
 
-### 4. Add secret `RESEND_API_KEY`
-- Trigger UI add_secret cho anh paste key vào.
+---
 
-## Sau khi code xong — hướng dẫn anh
+## 5. Verify (sẽ paste bằng chứng thực tế trong response sau khi build)
 
-### A. Add RESEND_API_KEY
-Em sẽ trigger dialog → anh paste `re_cYy59t8X_L3fxGPZQckKbLvVQzxkLKYdD` → Save. Edge function tự pickup.
+| # | Lệnh | Kỳ vọng |
+|---|---|---|
+| V1 | `grep "DO NOT MODIFY" AUTH_CONFIG.md` | Có match |
+| V2 | `bun run lint` (code hiện tại) | 0 error |
+| V3 | Tạm thêm `supabase.auth.resetPasswordForEmail("x")` vào Login.tsx → `bun run lint` | Báo error đỏ, revert ngay |
+| V4 | `bunx playwright test tests/auth/reset-password.spec.ts` | 3/3 pass |
+| V5 | `curl https://aneazkhnqkkpqtcxunqd.supabase.co/functions/v1/check-auth-health` | JSON `ok: true` |
 
-### B. Xóa hook Supabase Dashboard
-1. https://supabase.com/dashboard/project/aneazkhnqkkpqtcxunqd/auth/hooks
-2. Tìm "Send Email Hook" → toggle OFF → Save.
-3. Xác nhận status: Disabled.
+---
 
-### C. Test plan
-1. **Desktop Chrome**: Login page → Quên mật khẩu → nhập email admin → check inbox → click link → đổi password → login lại.
-2. **iPhone Safari**: Mở app.saigonholiday.vn → Quên mật khẩu → mở mail trong Mail app → click link → confirm mở đúng Safari → reset OK.
-3. **iPhone Gmail app**: Tương tự, click link trong Gmail app → confirm chuyển sang Safari/in-app browser → reset OK.
-4. Check Edge Function logs: `send-recovery-email` có log `email sent successfully, resend_id=...`.
-5. Check Resend dashboard → Emails → thấy delivery status `Delivered`.
+## Files thay đổi
 
-## Kỹ thuật chi tiết
-- Edge function dùng `verify_jwt = false` (public endpoint).
-- `generateLink` trả về `action_link` chứa `token_hash` — em parse và build URL `https://app.saigonholiday.vn/reset-password?token_hash=...&type=recovery`.
-- CORS: allow origin `*` (hoặc whitelist `app.saigonholiday.vn` + preview).
-- Error handling: log đủ chi tiết nhưng response ra ngoài chỉ generic message.
+- **Sửa**: `AUTH_CONFIG.md` (thêm section DO NOT MODIFY ở đầu mục #7)
+- **Sửa**: `eslint.config.js` (thêm block override cho 2 file)
+- **Sửa**: `supabase/config.toml` (thêm `[functions.check-auth-health]`)
+- **Tạo mới**: `tests/auth/reset-password.spec.ts`
+- **Tạo mới**: `supabase/functions/check-auth-health/index.ts`
 
-Confirm "OK" → em switch build mode và code ngay.
+## KHÔNG đụng
+
+- `supabase/functions/send-recovery-email/index.ts`
+- `src/pages/ResetPassword.tsx`
+- `src/pages/Login.tsx` (logic — chỉ ESLint cover)
+- `src/integrations/supabase/client.ts` (giữ `flowType: 'pkce'` cho login)
+
+Confirm "OK build" để em chuyển sang default mode và thực thi + paste evidence.

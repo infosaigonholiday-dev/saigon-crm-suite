@@ -7,3 +7,5 @@ project_id = "aneazkhnqkkpqtcxunqd"
     verify_jwt = false
   [functions.send-recovery-email]
     verify_jwt = false
+  [functions.check-auth-health]
+    verify_jwt = false
