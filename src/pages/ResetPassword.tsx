@@ -32,6 +32,8 @@ function cleanUrl() {
   }
 }
 
+const MIN_VERIFY_MS = 2000; // chống flash spinner trên iOS
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,22 +41,40 @@ export default function ResetPassword() {
   const [phase, setPhase] = useState<Phase>("verifying");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const resolvedRef = useRef(false);
+  const startedAtRef = useRef<number>(Date.now());
 
   const navigate = useNavigate();
+
+  const withMinDelay = (fn: () => void) => {
+    const elapsed = Date.now() - startedAtRef.current;
+    const remain = Math.max(0, MIN_VERIFY_MS - elapsed);
+    if (remain === 0) fn();
+    else setTimeout(fn, remain);
+  };
 
   const markReady = () => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setPhase("ready");
-    cleanUrl();
+    withMinDelay(() => {
+      setPhase("ready");
+      cleanUrl();
+    });
   };
 
   const markExpired = (msg?: string) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    setErrorMsg(msg ?? "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
-    setPhase("expired");
-    cleanUrl();
+    withMinDelay(() => {
+      setErrorMsg(msg ?? "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại từ màn hình đăng nhập.");
+      setPhase("expired");
+      cleanUrl();
+    });
+  };
+
+  const redirectLogin = () => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    navigate("/login", { replace: true });
   };
 
   useEffect(() => {
