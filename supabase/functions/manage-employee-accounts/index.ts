@@ -78,6 +78,30 @@ Deno.serve(async (req) => {
       let createdUserId: string | null = null;
 
       try {
+        // 🛡️ PRE-CHECK: phát hiện profile mồ côi (profile có email này nhưng không có auth.users tương ứng)
+        // Nguyên nhân: legacy data, edge function chạy nửa chừng, hoặc auth user bị xóa thủ công
+        // Nếu không cleanup, trigger on_auth_user_created sẽ fail vì profiles_email_key duplicate
+        // → toàn bộ transaction createUser rollback → "Database error creating new user" 500
+        const normalizedEmail = email.trim().toLowerCase();
+        const { data: existingProfile } = await adminClient
+          .from("profiles")
+          .select("id, email")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (existingProfile) {
+          const { data: existingAuth } = await adminClient.auth.admin.getUserById(existingProfile.id);
+          if (!existingAuth?.user) {
+            // Profile mồ côi → tự cleanup trước khi tạo mới
+            console.log(`[create] Cleaning up dangling profile ${existingProfile.id} for email ${normalizedEmail}`);
+            await adminClient.from("employees").update({ profile_id: null }).eq("profile_id", existingProfile.id);
+            await adminClient.from("notifications").delete().eq("user_id", existingProfile.id);
+            await adminClient.from("profiles").delete().eq("id", existingProfile.id);
+          } else {
+            return jsonResponse({ error: "Email này đã được đăng ký trong hệ thống" }, 400);
+          }
+        }
+
         const { data: authUser, error: createError } =
           await adminClient.auth.admin.createUser({
             email,
