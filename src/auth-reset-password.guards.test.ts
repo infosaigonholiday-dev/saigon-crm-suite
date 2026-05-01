@@ -12,7 +12,7 @@ import path from "node:path";
  * `check-auth-health` (gọi thủ công).
  */
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = process.cwd();
 
 describe("Reset password — anti-regression guards", () => {
   it("TC1: Login.tsx dùng send-recovery-email, KHÔNG dùng resetPasswordForEmail", () => {
