@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hướng dẫn Tài khoản — SGH CRM</title>
+<style>
+:root{
+  --bg:#f7f5f1; --ink:#1a1a1a; --ink2:#4a4a4a; --muted:#6b6b6b;
+  --line:#e5e0d8; --surface:#ffffff; --brand:#E8963A; --brand-deep:#b8721f;
+  --ok:#1f7a3a; --warn:#a86a00; --danger:#b3261e; --info:#0b5fb3;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.65}
+a{color:var(--brand-deep);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside.sidebar{background:#1a1a1a;color:#e8e4dd;padding:20px 16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+aside .brand .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+aside .brand .t{font-weight:700;font-size:14px;letter-spacing:.5px}
+aside .brand .s{font-size:11px;color:#a8a39a}
+aside nav a{display:block;color:#cdc7bd;font-size:13px;padding:7px 10px;border-radius:6px;margin-bottom:2px;border-left:3px solid transparent}
+aside nav a:hover{background:#262626;color:#fff;text-decoration:none}
+aside nav a.active{background:#2a2a2a;color:var(--brand);border-left-color:var(--brand);font-weight:600}
+aside .toc-title{margin:18px 10px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#7a7468}
+main{padding:28px 36px 60px;max-width:1080px;width:100%}
+header.page-head{border-bottom:2px solid var(--brand);padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+header.page-head h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
+header.page-head .meta{font-size:12px;color:var(--muted);text-align:right}
+section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+section h2{font-size:19px;color:var(--brand-deep);margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+section h3{font-size:16px;margin:14px 0 6px;color:var(--ink)}
+section h4{font-size:14px;margin:12px 0 4px;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px}
+section p{margin:8px 0}
+section ul,section ol{margin:8px 0 8px 22px}
+section li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f0eadf;font-weight:700;color:var(--ink)}
+tr:nth-child(even) td{background:#fbf9f5}
+code,pre{font-family:'Consolas','Monaco',monospace;font-size:13px}
+pre{background:#1a1a1a;color:#e8e4dd;padding:14px;border-radius:8px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.5}
+.box{border-left:4px solid;padding:12px 16px;margin:12px 0;border-radius:6px;font-size:14px}
+.box-info{background:#e8f1fb;border-color:var(--info);color:#063871}
+.box-success{background:#e7f4ec;border-color:var(--ok);color:#0e4a23}
+.box-warn{background:#fff5dc;border-color:var(--warn);color:#5a3a00}
+.box-danger{background:#fbe7e6;border-color:var(--danger);color:#5e110d}
+.box strong{display:block;margin-bottom:4px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0;padding:14px;background:#fbf9f5;border:1px dashed var(--line);border-radius:8px}
+.flow .step{padding:8px 14px;background:var(--brand);color:#fff;border-radius:6px;font-weight:600;font-size:13px;white-space:nowrap}
+.flow .arrow{color:var(--ink2);font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#f0eadf;color:var(--ink2);margin-right:4px}
+.tag.hot{background:#fbe0d4;color:#a13a0d}
+.tag.warm{background:#fff3c4;color:#7a5a00}
+.tag.cold{background:#dde9f3;color:#0b3e6e}
+.cycle{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.cycle .step{background:#fff;border:2px solid var(--brand);border-radius:8px;padding:12px;text-align:center}
+.cycle .step .n{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;line-height:26px;margin-bottom:6px}
+.cycle .step .t{font-weight:700;font-size:13px;color:var(--brand-deep)}
+.cycle .step .d{font-size:11px;color:var(--muted);margin-top:4px}
+footer.page-foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+.menu-toggle{display:none;position:fixed;top:14px;left:14px;z-index:99;background:var(--brand);color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;left:-280px;width:260px;transition:left .2s;z-index:50;box-shadow:2px 0 12px rgba(0,0,0,.3)}
+  aside.sidebar.open{left:0}
+  main{padding:60px 18px 40px}
+  .menu-toggle{display:block}
+  .cycle{grid-template-columns:1fr 1fr}
+  header.page-head{flex-direction:column;align-items:flex-start}
+}
+@media print{
+  @page{size:A4;margin:14mm}
+  html,body{background:#fff;color:#000;font-size:11pt}
+  .layout{display:block}
+  aside.sidebar,.menu-toggle{display:none !important}
+  main{padding:0;max-width:100%}
+  section{break-inside:avoid;page-break-inside:avoid;border:1px solid #ccc;background:#fff}
+  header.page-head{break-after:avoid}
+  pre{background:#f0f0f0;color:#000;border:1px solid #ccc}
+  .box{background:#fff !important;color:#000 !important;border:1px solid #888}
+  a{color:#000;text-decoration:underline}
+  .cycle .step{border-color:#888}
+  .flow .step{background:#666}
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menu</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo">SGH</div>
+    <div>
+      <div class="t">SGH CRM</div>
+      <div class="s">Training & SOP</div>
+    </div>
+  </div>
+  <div class="toc-title">Tài liệu</div>
+  <nav>
+    <a href="index.html">Mục lục</a><a href="00_TONG_QUAN.html">00. Tổng quan</a><a href="01_SALE.html">01. Sale</a><a href="02_DIEU_HANH.html">02. Điều hành</a><a href="03_KE_TOAN.html">03. Kế toán</a><a href="04_HCNS.html">04. HCNS</a><a href="05_MARKETING.html">05. Marketing</a><a href="06_QUAN_LY_CEO_GDKD.html">06. CEO & GĐKD</a><a href="07_FLOW_LIEN_PHONG.html">07. Flow liên phòng</a><a href="08_HUONG_DAN_TAI_KHOAN.html" class="active">08. Tài khoản</a><a href="09_CHE_TAI_KY_LUAT.html">09. Chế tài</a><a href="10_FAQ_LOI_THUONG_GAP.html">10. FAQ</a>
+  </nav>
+  <div class="toc-title" style="margin-top:24px">Hỗ trợ</div>
+  <div style="font-size:12px;color:#a8a39a;padding:0 10px;line-height:1.6">
+    Câu hỏi vận hành: liên hệ <strong style="color:var(--brand)">HCNS</strong>.<br>
+    Câu hỏi kỹ thuật: liên hệ <strong style="color:var(--brand)">IT</strong>.
+  </div>
+</aside>
+<main>
+<header class="page-head">
+  <div>
+    <h1>Hướng dẫn Tài khoản</h1>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">Saigon Holiday Travel — Tài liệu nội bộ</div>
+  </div>
+  <div class="meta">
+    Cập nhật: <strong>01/05/2026</strong><br>
+    Phiên bản: <strong>1.0</strong>
+  </div>
+</header>
+<section>
+<h2>1. Đăng nhập lần đầu</h2>
+<ol>
+  <li>Mở trình duyệt (Chrome/Safari/Edge) → truy cập <code>https://app.saigonholiday.vn</code></li>
+  <li>HCNS đã gửi cho bạn email và mật khẩu mặc định (thường là <code>sgh123456</code>).</li>
+  <li>Nhập email + mật khẩu mặc định → bấm "Đăng nhập".</li>
+  <li>Hệ thống <strong>buộc đổi mật khẩu mới</strong> ngay lần đăng nhập đầu tiên.</li>
+  <li>Đặt mật khẩu mới: <strong>tối thiểu 8 ký tự, ít nhất 1 chữ hoa, 1 chữ số</strong>.</li>
+  <li>Ký xác nhận NDA (popup) → bắt đầu sử dụng.</li>
+</ol>
+<div class="box box-warn"><strong>Bảo mật</strong>Không chia sẻ mật khẩu với ai — kể cả đồng nghiệp. Nếu nghi ngờ tài khoản bị lộ, đổi mật khẩu ngay.</div>
+</section>
+
+<section>
+<h2>2. Quên mật khẩu — Reset password</h2>
+<p>Nếu bạn quên mật khẩu, KHÔNG cần liên hệ HCNS, hãy làm theo các bước sau:</p>
+<ol>
+  <li>Vào trang đăng nhập <code>https://app.saigonholiday.vn/login</code></li>
+  <li>Bấm link <strong>"Quên mật khẩu?"</strong> bên dưới form.</li>
+  <li>Nhập email công ty của bạn → bấm "Gửi link đặt lại".</li>
+  <li>Mở hộp thư email → tìm email từ <strong>noreply@saigonholiday.vn</strong> với tiêu đề "Đặt lại mật khẩu".</li>
+  <li>Bấm vào link trong email — nó sẽ mở trang đặt mật khẩu mới.</li>
+  <li>Đặt mật khẩu mới (8+ ký tự, 1 hoa, 1 số) → bấm "Cập nhật".</li>
+  <li>Đăng nhập lại với mật khẩu mới.</li>
+</ol>
+<div class="box box-danger"><strong>Lưu ý quan trọng về link reset</strong>
+Link đặt lại mật khẩu chỉ có hiệu lực <strong>1 giờ</strong> kể từ khi gửi.<br>
+Link chỉ <strong>dùng được 1 lần duy nhất</strong>. Sau khi click hoặc hết hạn, link sẽ vô hiệu — phải request link mới.<br>
+Không chuyển tiếp link reset cho người khác.</div>
+<div class="box box-warn"><strong>Không nhận được email?</strong>
+1. Kiểm tra Spam / Quảng cáo / Promotions.<br>
+2. Đợi 2–3 phút (email có thể trễ).<br>
+3. Vẫn không thấy → request lại; nếu vẫn không có → liên hệ HCNS.</div>
+</section>
+
+<section>
+<h2>3. Đổi mật khẩu chủ động trong app</h2>
+<p>Khi vẫn nhớ mật khẩu hiện tại nhưng muốn đổi (ví dụ: đổi định kỳ 3 tháng/lần):</p>
+<ol>
+  <li>Đăng nhập vào CRM.</li>
+  <li>Vào menu <strong>Cài đặt → Bảo mật (Security)</strong>.</li>
+  <li>Tab "Đổi mật khẩu" → nhập mật khẩu cũ + mật khẩu mới.</li>
+  <li>Bấm "Cập nhật" → hoàn tất.</li>
+</ol>
+</section>
+
+<section>
+<h2>4. Bật thông báo Push</h2>
+<h3>Trên trình duyệt máy tính (Chrome/Edge)</h3>
+<ol>
+  <li>Vào <strong>Cài đặt → Thông báo</strong> trong CRM.</li>
+  <li>Bấm "Bật thông báo Push" → trình duyệt hỏi quyền → bấm "Cho phép".</li>
+  <li>Hệ thống hiện toast "Đã đăng ký thành công" → từ giờ nhận push ngay cả khi không mở CRM.</li>
+</ol>
+<h3>Trên điện thoại</h3>
+<ol>
+  <li><strong>iPhone (iOS 16.4+)</strong>: mở CRM trong Safari → bấm Share → "Add to Home Screen" → mở app từ home screen → bật Push trong CRM.</li>
+  <li><strong>Android</strong>: mở CRM trong Chrome → menu 3 chấm → "Add to Home Screen" → mở app → bật Push.</li>
+</ol>
+<div class="box box-info"><strong>Push không hoạt động?</strong>Kiểm tra: (1) trình duyệt cập nhật mới nhất, (2) đã cho phép notification ở cấp OS, (3) thử tắt/bật lại trong Cài đặt CRM.</div>
+</section>
+
+<section>
+<h2>5. Đọc & xử lý thông báo</h2>
+<p>Trên góc phải header có <strong>icon chuông 🔔</strong> với badge số đỏ:</p>
+<ul>
+  <li>Bấm chuông → danh sách thông báo gần nhất.</li>
+  <li>Bấm vào 1 thông báo → CRM mở thẳng entity liên quan (lead, booking, phiếu chi...) và <strong>tự đánh dấu đã đọc</strong>.</li>
+  <li>Filter theo loại: Lead, Booking, Tài chính, HCNS, System.</li>
+  <li>Cấp Quản lý (CEO/Admin/GDKD/Manager) xem thêm <strong>Notification History / Stats</strong> — biết NV nào đã đọc, đã xử lý.</li>
+</ul>
+<div class="box box-info"><strong>3 trạng thái thông báo</strong>
+<strong>Đã gửi</strong> ≠ <strong>Đã đọc</strong> ≠ <strong>Đã xử lý</strong>. Quản lý phân biệt rõ — đừng nói "tôi đã gửi rồi" mà entity chưa được xử lý trên CRM.</div>
+</section>
+
+<section>
+<h2>6. Đăng xuất đúng cách</h2>
+<ol>
+  <li>Bấm avatar góc phải header → "Đăng xuất".</li>
+  <li>Nếu dùng máy chung — luôn đăng xuất sau khi xong việc.</li>
+  <li>Không tick "Remember me" trên thiết bị không phải của mình.</li>
+</ol>
+</section>
+
+<section>
+<h2>7. Bảo mật tài khoản — Best practices</h2>
+<ul>
+  <li>Đổi mật khẩu định kỳ 3 tháng/lần.</li>
+  <li>Không dùng chung mật khẩu với các dịch vụ khác.</li>
+  <li>Không lưu mật khẩu trong note/Zalo/Excel.</li>
+  <li>Nếu nghi ngờ bị lộ → đổi mật khẩu ngay + báo HCNS.</li>
+  <li>Không cài extension trình duyệt lạ — có thể đánh cắp session.</li>
+</ul>
+</section>
+<footer class="page-foot">Phiên bản 1.0 — 01/05/2026 — Cập nhật: HCNS phối hợp IT</footer>
+</main>
+</div>
+</body>
+</html>

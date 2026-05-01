@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phòng Kinh doanh (Sale) — SGH CRM</title>
+<style>
+:root{
+  --bg:#f7f5f1; --ink:#1a1a1a; --ink2:#4a4a4a; --muted:#6b6b6b;
+  --line:#e5e0d8; --surface:#ffffff; --brand:#E8963A; --brand-deep:#b8721f;
+  --ok:#1f7a3a; --warn:#a86a00; --danger:#b3261e; --info:#0b5fb3;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Segoe UI','Roboto','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.65}
+a{color:var(--brand-deep);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside.sidebar{background:#1a1a1a;color:#e8e4dd;padding:20px 16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+aside .brand .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+aside .brand .t{font-weight:700;font-size:14px;letter-spacing:.5px}
+aside .brand .s{font-size:11px;color:#a8a39a}
+aside nav a{display:block;color:#cdc7bd;font-size:13px;padding:7px 10px;border-radius:6px;margin-bottom:2px;border-left:3px solid transparent}
+aside nav a:hover{background:#262626;color:#fff;text-decoration:none}
+aside nav a.active{background:#2a2a2a;color:var(--brand);border-left-color:var(--brand);font-weight:600}
+aside .toc-title{margin:18px 10px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#7a7468}
+main{padding:28px 36px 60px;max-width:1080px;width:100%}
+header.page-head{border-bottom:2px solid var(--brand);padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+header.page-head h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
+header.page-head .meta{font-size:12px;color:var(--muted);text-align:right}
+section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+section h2{font-size:19px;color:var(--brand-deep);margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+section h3{font-size:16px;margin:14px 0 6px;color:var(--ink)}
+section h4{font-size:14px;margin:12px 0 4px;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px}
+section p{margin:8px 0}
+section ul,section ol{margin:8px 0 8px 22px}
+section li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f0eadf;font-weight:700;color:var(--ink)}
+tr:nth-child(even) td{background:#fbf9f5}
+code,pre{font-family:'Consolas','Monaco',monospace;font-size:13px}
+pre{background:#1a1a1a;color:#e8e4dd;padding:14px;border-radius:8px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.5}
+.box{border-left:4px solid;padding:12px 16px;margin:12px 0;border-radius:6px;font-size:14px}
+.box-info{background:#e8f1fb;border-color:var(--info);color:#063871}
+.box-success{background:#e7f4ec;border-color:var(--ok);color:#0e4a23}
+.box-warn{background:#fff5dc;border-color:var(--warn);color:#5a3a00}
+.box-danger{background:#fbe7e6;border-color:var(--danger);color:#5e110d}
+.box strong{display:block;margin-bottom:4px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0;padding:14px;background:#fbf9f5;border:1px dashed var(--line);border-radius:8px}
+.flow .step{padding:8px 14px;background:var(--brand);color:#fff;border-radius:6px;font-weight:600;font-size:13px;white-space:nowrap}
+.flow .arrow{color:var(--ink2);font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#f0eadf;color:var(--ink2);margin-right:4px}
+.tag.hot{background:#fbe0d4;color:#a13a0d}
+.tag.warm{background:#fff3c4;color:#7a5a00}
+.tag.cold{background:#dde9f3;color:#0b3e6e}
+.cycle{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.cycle .step{background:#fff;border:2px solid var(--brand);border-radius:8px;padding:12px;text-align:center}
+.cycle .step .n{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;line-height:26px;margin-bottom:6px}
+.cycle .step .t{font-weight:700;font-size:13px;color:var(--brand-deep)}
+.cycle .step .d{font-size:11px;color:var(--muted);margin-top:4px}
+footer.page-foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+.menu-toggle{display:none;position:fixed;top:14px;left:14px;z-index:99;background:var(--brand);color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;left:-280px;width:260px;transition:left .2s;z-index:50;box-shadow:2px 0 12px rgba(0,0,0,.3)}
+  aside.sidebar.open{left:0}
+  main{padding:60px 18px 40px}
+  .menu-toggle{display:block}
+  .cycle{grid-template-columns:1fr 1fr}
+  header.page-head{flex-direction:column;align-items:flex-start}
+}
+@media print{
+  @page{size:A4;margin:14mm}
+  html,body{background:#fff;color:#000;font-size:11pt}
+  .layout{display:block}
+  aside.sidebar,.menu-toggle{display:none !important}
+  main{padding:0;max-width:100%}
+  section{break-inside:avoid;page-break-inside:avoid;border:1px solid #ccc;background:#fff}
+  header.page-head{break-after:avoid}
+  pre{background:#f0f0f0;color:#000;border:1px solid #ccc}
+  .box{background:#fff !important;color:#000 !important;border:1px solid #888}
+  a{color:#000;text-decoration:underline}
+  .cycle .step{border-color:#888}
+  .flow .step{background:#666}
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menu</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo">SGH</div>
+    <div>
+      <div class="t">SGH CRM</div>
+      <div class="s">Training & SOP</div>
+    </div>
+  </div>
+  <div class="toc-title">Tài liệu</div>
+  <nav>
+    <a href="index.html">Mục lục</a><a href="00_TONG_QUAN.html">00. Tổng quan</a><a href="01_SALE.html" class="active">01. Sale</a><a href="02_DIEU_HANH.html">02. Điều hành</a><a href="03_KE_TOAN.html">03. Kế toán</a><a href="04_HCNS.html">04. HCNS</a><a href="05_MARKETING.html">05. Marketing</a><a href="06_QUAN_LY_CEO_GDKD.html">06. CEO & GĐKD</a><a href="07_FLOW_LIEN_PHONG.html">07. Flow liên phòng</a><a href="08_HUONG_DAN_TAI_KHOAN.html">08. Tài khoản</a><a href="09_CHE_TAI_KY_LUAT.html">09. Chế tài</a><a href="10_FAQ_LOI_THUONG_GAP.html">10. FAQ</a>
+  </nav>
+  <div class="toc-title" style="margin-top:24px">Hỗ trợ</div>
+  <div style="font-size:12px;color:#a8a39a;padding:0 10px;line-height:1.6">
+    Câu hỏi vận hành: liên hệ <strong style="color:var(--brand)">HCNS</strong>.<br>
+    Câu hỏi kỹ thuật: liên hệ <strong style="color:var(--brand)">IT</strong>.
+  </div>
+</aside>
+<main>
+<header class="page-head">
+  <div>
+    <h1>Phòng Kinh doanh (Sale)</h1>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">Saigon Holiday Travel — Tài liệu nội bộ</div>
+  </div>
+  <div class="meta">
+    Cập nhật: <strong>01/05/2026</strong><br>
+    Phiên bản: <strong>1.0</strong>
+  </div>
+</header>
+<section>
+<h2>1. Vai trò phòng Kinh doanh</h2>
+<p>Phòng Kinh doanh là <strong>đầu vào doanh thu</strong> của công ty. Mọi lead, báo giá, booking, hợp đồng đều bắt nguồn từ phòng này. Chỉ tiêu cốt lõi: <strong>tốc độ phản hồi</strong>, <strong>tỷ lệ chuyển đổi</strong>, <strong>doanh số</strong>.</p>
+</section>
+
+<section>
+<h2>2. Vai trò (Roles) trong phòng</h2>
+<table>
+<thead><tr><th>Role</th><th>Quyền</th><th>Phạm vi dữ liệu</th></tr></thead>
+<tbody>
+<tr><td><code>GDKD</code> — Giám đốc Kinh doanh</td><td>Toàn bộ nghiệp vụ Sale + duyệt báo giá lớn + xem báo cáo doanh thu nhánh</td><td>Department (toàn nhánh kinh doanh)</td></tr>
+<tr><td><code>SALE_MANAGER</code></td><td>Quản lý team, phân lead, duyệt quote</td><td>Department (team mình)</td></tr>
+<tr><td><code>SALE_DOMESTIC / OUTBOUND / INBOUND / MICE</code></td><td>Tạo lead, báo giá, booking; xem KH của mình</td><td>Personal</td></tr>
+<tr><td><code>INTERN_SALE_*</code></td><td>Hỗ trợ — không tự duyệt quote, mọi action cần Senior duyệt</td><td>Personal (giới hạn)</td></tr>
+</tbody>
+</table>
+<div class="box box-danger"><strong>Phân quyền nhạy cảm</strong>GĐKD <strong>KHÔNG xem được lợi nhuận tour</strong>. Chỉ thấy doanh thu. Lợi nhuận thuộc quyền KETOAN + CEO.</div>
+</section>
+
+<section>
+<h2>3. Module sử dụng + đường dẫn</h2>
+<table>
+<thead><tr><th>Module</th><th>Menu</th><th>Dùng để</th></tr></thead>
+<tbody>
+<tr><td>Kho Data</td><td>Sidebar → Kho Data</td><td>Pool data thô — chuyển thành Lead khi qualify</td></tr>
+<tr><td>Lead Kanban</td><td>Sidebar → Tiềm năng</td><td>5 cột: Mới → Quan tâm → Đang báo giá → Thành công → Không TC</td></tr>
+<tr><td>Khách hàng</td><td>Sidebar → Khách hàng</td><td>KH đã chốt — lịch sử booking, ghi chú nội bộ</td></tr>
+<tr><td>Báo giá</td><td>Sidebar → Báo giá</td><td>Tạo quote, gửi KH, theo dõi phản hồi</td></tr>
+<tr><td>Đặt tour</td><td>Sidebar → Đặt tour</td><td>Tạo booking, theo dõi cọc, bàn giao Điều hành</td></tr>
+<tr><td>Hợp đồng</td><td>Sidebar → Hợp đồng</td><td>Tạo từ booking, ký số, lưu file</td></tr>
+<tr><td>Tour B2B</td><td>Sidebar → LKH Tour 2026</td><td>Bảng giá tour B2B nội bộ — Sale tham chiếu khi quote</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>4. Quy trình hằng ngày</h2>
+<h3>Đầu giờ (8h00 – 8h30)</h3>
+<ul>
+  <li>Mở menu <strong>Tiềm năng</strong> → xem badge đỏ — lead nào cần follow-up hôm nay.</li>
+  <li>Mở chuông 🔔 → xem thông báo qua đêm (lead mới phân, quote chờ phản hồi).</li>
+  <li>Mở menu <strong>Cảnh báo</strong> → xử lý các lead lạnh > 7 ngày.</li>
+</ul>
+<h3>Trong ngày</h3>
+<ul>
+  <li>Tiếp nhận lead mới → <strong>phản hồi trong 4 giờ</strong> (deadline cứng).</li>
+  <li>Qualify lead bằng badge nhiệt độ: <span class="tag hot">🔥 Nóng</span> <span class="tag warm">🟡 Ấm</span> <span class="tag cold">❄️ Lạnh</span></li>
+  <li>Mỗi lần đổi trạng thái → <strong>bắt buộc ghi chú</strong> (CRM chặn nếu trống).</li>
+  <li>Khách chốt → kéo card sang "Thành công" → hệ thống tự convert sang Customer.</li>
+  <li>Tạo Booking → bàn giao Điều hành (xem file 07 — Flow liên phòng).</li>
+</ul>
+<h3>Cuối ngày</h3>
+<ul>
+  <li>Đảm bảo mọi lead đã liên hệ trong ngày có ghi chú đầy đủ.</li>
+  <li>Đặt lịch follow-up cho ngày tiếp theo (nếu chưa).</li>
+</ul>
+</section>
+
+<section>
+<h2>5. Quy trình hằng tuần</h2>
+<ul>
+  <li><strong>Thứ 2</strong>: GĐKD họp 30 phút — review pipeline, phân lead mới.</li>
+  <li><strong>Thứ 6</strong>: Sale tự review báo cáo cá nhân: số lead, conversion, doanh số.</li>
+  <li><strong>Cuối tháng</strong>: GĐKD xuất báo cáo Sales Performance, gửi CEO.</li>
+</ul>
+</section>
+
+<section>
+<h2>6. KPI & Trách nhiệm</h2>
+<table>
+<thead><tr><th>Chỉ số</th><th>Mục tiêu chuẩn</th><th>Cảnh báo CRM</th></tr></thead>
+<tbody>
+<tr><td>Thời gian phản hồi lead mới</td><td>≤ 4 giờ</td><td>Quá 4h → notify Sale + Manager</td></tr>
+<tr><td>Lead có lịch follow-up</td><td>100% trong 24h sau khi nhận</td><td>Quá 48h → notify Manager</td></tr>
+<tr><td>Lead lạnh không liên hệ</td><td>0 lead > 7 ngày</td><td>> 7 ngày → cảnh báo Sale; > 14 ngày → cảnh báo CEO</td></tr>
+<tr><td>Tỷ lệ chuyển đổi Lead → WON</td><td>≥ 15% (theo nhánh)</td><td>Báo cáo cuối tháng</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="cycle">
+<h2>Chu trình 5 bước SGH áp dụng cho Phòng Kinh doanh (Sale)</h2>
+<p>Toàn bộ nhân sự SGH vận hành theo <strong>Chu trình Quản trị Thực thi 5 bước</strong>: Phân công → Thực thi → Rà soát → Đối chiếu kết quả → Chuẩn hóa cải tiến. Quản trị bằng <strong>trách nhiệm, kết quả và minh chứng</strong> — không quản trị bằng lời hứa.</p>
+<div class="cycle">
+  <div class="step"><div class="n">1</div><div class="t">Phân công</div><div class="d">Giao việc rõ người, rõ deadline</div></div>
+  <div class="step"><div class="n">2</div><div class="t">Thực thi</div><div class="d">Làm — kèm minh chứng</div></div>
+  <div class="step"><div class="n">3</div><div class="t">Rà soát</div><div class="d">Quản lý kiểm tra tiến độ</div></div>
+  <div class="step"><div class="n">4</div><div class="t">Đối chiếu</div><div class="d">So sánh kế hoạch vs kết quả</div></div>
+  <div class="step"><div class="n">5</div><div class="t">Chuẩn hóa</div><div class="d">Rút kinh nghiệm — cập nhật SOP</div></div>
+</div>
+<h3>Bảng triển khai cho Phòng Kinh doanh (Sale)</h3>
+<table>
+<thead><tr><th style="width:120px">Bước</th><th>Hoạt động cụ thể</th><th>Minh chứng cần nộp</th><th>Module CRM</th><th>KPI đo</th></tr></thead>
+<tbody><tr><td><strong>1. Phân công</strong></td><td>GĐKD/Manager phân lead cho Sale qua menu Lead</td><td>Lead có owner; thông báo gửi đến Sale</td><td><code>leads, raw_contacts</code></td><td>Số lead/người/tuần</td></tr><tr><td><strong>2. Thực thi</strong></td><td>Sale gọi/nhắn → cập nhật trạng thái Kanban + ghi chú bắt buộc</td><td>Care history entry; đổi cột Kanban</td><td><code>leads, care_history</code></td><td>% lead có ghi chú trong 24h</td></tr><tr><td><strong>3. Rà soát</strong></td><td>Hệ thống tự cảnh báo lead lạnh > 7 ngày; GĐKD review tuần</td><td>Notification; báo cáo Sales Performance</td><td><code>notifications, kpi</code></td><td>Số lead bỏ quên</td></tr><tr><td><strong>4. Đối chiếu</strong></td><td>So sánh quote gửi vs booking thành công (Plan vs Reality)</td><td>Báo cáo conversion; lý do LOST</td><td><code>leads, bookings</code></td><td>Tỷ lệ chuyển đổi %</td></tr><tr><td><strong>5. Chuẩn hóa</strong></td><td>Cập nhật template báo giá, kịch bản phản hồi từ insight LOST</td><td>SOP mới upload module Quy trình</td><td><code>department_sops</code></td><td>Số template chuẩn hóa/quý</td></tr></tbody>
+</table>
+<div class="box box-info"><strong>Nguyên tắc bất biến</strong>Không có minh chứng = chưa làm. Mọi cập nhật trạng thái phải kèm ghi chú/file/lịch sử thao tác trên CRM.</div>
+</section>
+
+<section>
+<h2>7. Lỗi thường gặp</h2>
+<ul>
+  <li><strong>Không kéo được card Lead</strong>: kiểm tra mạng → reload trang. Nếu vẫn lỗi, role có thể bị thiếu quyền update.</li>
+  <li><strong>Không thấy lead của mình</strong>: lead có thể đã được chuyển owner — kiểm tra với Manager.</li>
+  <li><strong>Tạo booking báo "mã trùng"</strong>: hệ thống auto-sinh mã, refresh và tạo lại. Nếu vẫn trùng — báo IT.</li>
+  <li><strong>Báo giá không gửi được email</strong>: kiểm tra email khách đã đúng định dạng. Liên hệ HCNS nếu vẫn lỗi.</li>
+</ul>
+</section>
+
+<section>
+<h2>8. Liên hệ hỗ trợ</h2>
+<ul>
+  <li>Lỗi quy trình nghiệp vụ → <strong>SALE_MANAGER / GĐKD</strong></li>
+  <li>Lỗi tài khoản, phân quyền → <strong>HCNS</strong></li>
+  <li>Lỗi kỹ thuật, màn hình trắng → <strong>IT</strong></li>
+</ul>
+</section>
+<footer class="page-foot">Phiên bản 1.0 — 01/05/2026 — Cập nhật: HCNS phối hợp IT</footer>
+</main>
+</div>
+</body>
+</html>

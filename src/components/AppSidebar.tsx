@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileText, CalendarDays,
   FileSignature, DollarSign, UserCog, BarChart3, Settings,
-  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus, Target, Megaphone, Briefcase,
+  CalendarOff, Banknote, Package, Route, Hotel, Building2, BookOpen, Database, AlertTriangle, UserPlus, Target, Megaphone, Briefcase, GraduationCap,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo.jpg";
@@ -112,6 +112,13 @@ export function AppSidebar() {
   const guideItems: MenuItem[] = [
     { title: "Hướng dẫn", url: "/huong-dan", icon: BookOpen },
   ];
+
+  // Training docs — chỉ hiện cho cấp quản lý + ADMIN (bộ tài liệu đang rà soát nội dung nhạy cảm)
+  const TRAINING_ROLES = ["ADMIN", "CEO", "GDKD", "HR_MANAGER", "KETOAN", "DIEUHAN", "MANAGER", "SALE_MANAGER", "MARKETING_MANAGER"];
+  const canSeeTraining = !!userRole && TRAINING_ROLES.some((r) => userRole.toUpperCase().includes(r));
+  const trainingItems: MenuItem[] = canSeeTraining
+    ? [{ title: "Tài liệu Training", url: "/training", icon: GraduationCap }]
+    : [];
 
   const settingsItems: MenuItem[] = [
     { title: "Cài đặt", url: "/cai-dat", icon: Settings, moduleKey: "settings" },
@@ -246,6 +253,7 @@ export function AppSidebar() {
                 {renderItems(visibleSop)}
                 {renderItems(visibleSettings)}
                 {renderItems(visibleGuide)}
+                {trainingItems.length > 0 && renderItems(trainingItems)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
