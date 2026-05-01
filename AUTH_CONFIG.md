@@ -83,25 +83,24 @@ Hệ quả:
 - Edge function `auth-email-hook` (file `supabase/functions/auth-email-hook/index.ts`) override `confirmationUrl` cho `emailType === 'recovery'`: build link app trực tiếp `https://app.saigonholiday.vn/reset-password?token_hash={hash}&type=recovery` thay vì dùng `payload.data.url` (link `/auth/v1/verify?token=pkce_...`).
 - `ResetPassword.tsx` ưu tiên đọc `?token_hash=` + `?type=recovery` → gọi `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })`. Token này tự là proof-of-possession (chỉ ai có inbox mới đọc được) → không cần code_verifier → cross-device OK.
 
-### 7.2 Các nhánh fallback `/reset-password` vẫn xử lý
+### 7.2 Các nhánh `/reset-password` xử lý
 
-Để tương thích ngược (email pending trong inbox user, hoặc Supabase server version khác), `ResetPassword.tsx` xử lý theo thứ tự ưu tiên:
+`ResetPassword.tsx` **CHỈ dùng `verifyOtp`** cho mọi token trong URL — KHÔNG còn `exchangeCodeForSession` (đã xóa hoàn toàn vì PKCE fail cross-device với lỗi `invalid flow state, flow state has expired` / 422 `?grant_type=pkce`).
 
 | # | URL trả về | Cách xử lý |
 |---|---|---|
-| 0 | `/reset-password?token_hash=...&type=recovery` | **`verifyOtp` — path chính** |
-| 1 | `/reset-password?code=xxx` | `exchangeCodeForSession(code)` (legacy PKCE same-device) |
-| 2 | `/reset-password#access_token=...&refresh_token=...` | `setSession(...)` |
-| 3 | `/reset-password` (không kèm gì) — đã có session | đợi `PASSWORD_RECOVERY` event trong `MIN_VERIFY_MS` (5000ms) |
-| 4 | `/reset-password` trần, không session, không param | redirect `/login` |
-| 5 | có dấu hiệu callback nhưng thiếu cả `token_hash` và `code` | `phase = expired` |
+| 0 | `?token_hash=...` HOẶC `?token=...` HOẶC `?code=...` | **`verifyOtp({ token_hash: <bất kỳ>, type: 'recovery' })`** — path duy nhất |
+| 1 | `#access_token=...&refresh_token=...` | `setSession(...)` |
+| 2 | `/reset-password` (đã có session) | đợi `PASSWORD_RECOVERY` trong `MIN_VERIFY_MS` (5000ms) |
+| 3 | URL trần, không session, không param | redirect `/login` |
+| 4 | có `error_description` / `error` | `phase = expired` |
 
 Quy tắc bắt buộc:
 - `onAuthStateChange` PHẢI subscribe **trước** khi parse URL (race condition safety).
 - `MIN_VERIFY_MS = 5000ms` cho iOS chậm.
-- Giữ `flowType: 'pkce'` + `detectSessionInUrl: false` ở `client.ts` — không đổi (vì login flow vẫn cần PKCE).
+- Giữ `flowType: 'pkce'` + `detectSessionInUrl: false` ở `client.ts` — không đổi (login flow vẫn cần PKCE).
 
-❌ KHÔNG xoá nhánh `?code=` ở ResetPassword — giữ làm safety net cho email pending trong inbox của user.
+❌ KHÔNG được thêm lại `exchangeCodeForSession` ở ResetPassword — sẽ lặp lại bug cross-device.
 
 ---
 _Cập nhật lần cuối: 02/05/2026 — sprint Fix Reset Password Cross-Device (chuyển recovery sang verifyOtp(token_hash), giữ PKCE cho login)._
