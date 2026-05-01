@@ -33,6 +33,7 @@ export interface B2BTour {
   notes: string | null;
   visa_deadline: string | null;
   itinerary_url: string | null;
+  highlights?: string | null;
 }
 
 const fmtVnd = (v: number | null | undefined) =>
