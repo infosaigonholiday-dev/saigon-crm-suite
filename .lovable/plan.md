@@ -1,59 +1,53 @@
-# Fix B2B Tours List — Ẩn/đánh dấu tour đã hết hạn
+# Sort lại danh sách B2B Tours theo trạng thái hết hạn
 
 ## Bối cảnh
-Trong `LKH Tour 2026` (`src/pages/B2BTours.tsx`), tour có ngày khởi hành đã qua hoặc visa hết hạn vẫn hiển thị → Sale có thể quote nhầm. Cần thêm filter trạng thái + badge cảnh báo + disable booking cho tour đã khởi hành.
+Hiện `enrichedTours` trong `src/pages/B2BTours.tsx` đang sort ASC theo `departure_date` cho TẤT CẢ tour (nulls last). Khi filter "Tất cả" hoặc "Đã hết hạn", các tour quá khứ rất xa lại nằm lẫn lên đầu → Sale phải kéo qua mới thấy tour sắp khởi hành.
 
-**Lưu ý dữ liệu**: cột `departure_date` và `visa_deadline` trong `b2b_tours` là **text dạng `dd/MM/yyyy`** (không phải ISO date). Vì vậy không thể filter ở Supabase bằng `.gte()` — phải parse và filter ở client sau khi fetch.
+## Yêu cầu sort mới
+- Tour **còn hạn** (`!_expired`): ASC theo `departure_date` — gần khởi hành lên đầu.
+- Tour **hết hạn** (`_expired`): DESC theo `departure_date` — mới hết hạn lên trước.
+- Filter **"Tất cả"**: nhóm còn hạn lên trước (ASC), rồi đến nhóm hết hạn (DESC).
+- Tour không parse được `departure_date` (null): luôn xuống cuối nhóm của nó.
 
-## Thay đổi
-Chỉ sửa 1 file: `src/pages/B2BTours.tsx`. Không đụng các module khác, không xóa data.
+## Thay đổi (chỉ 1 file: `src/pages/B2BTours.tsx`)
 
-### 1. Helper parse ngày `dd/MM/yyyy`
-Thêm hàm `parseVnDate(s: string | null): Date | null` (return `null` nếu rỗng/sai format).
-Thêm `today` = `new Date()` reset về 00:00 để so sánh ngày.
+### 1. Bỏ sort tổng trong `enrichedTours`
+Trong `useMemo` của `enrichedTours`: bỏ `.sort(...)` hiện tại, chỉ giữ phần `.map(...)` để gắn `_dep / _departed / _visaExpired / _expired`. Sort sẽ làm ở `filteredTours` để áp đúng theo từng filter mode.
 
-### 2. Tính trạng thái mỗi tour
-Cho mỗi tour:
-- `departed = parseVnDate(departure_date) < today`
-- `visaExpired = visa_deadline && parseVnDate(visa_deadline) < today`
-- `expired = departed || visaExpired` (dùng cho filter "Còn hạn / Đã hết hạn")
+### 2. Sort trong `filteredTours`
+Viết 2 helper local:
 
-### 3. State filter mode + persist localStorage
-- Thêm state `expiryFilter: "active" | "expired" | "all"`, default `"active"`.
-- Khởi tạo từ `localStorage.getItem("b2b_tours_expiry_filter")` (fallback `"active"`).
-- `useEffect` ghi lại vào localStorage khi đổi.
-- Khi đổi filter → reset `page = 0`.
+```ts
+const cmpAsc = (a, b) => {
+  if (!a._dep && !b._dep) return 0;
+  if (!a._dep) return 1;       // null xuống cuối
+  if (!b._dep) return -1;
+  return a._dep.getTime() - b._dep.getTime();
+};
+const cmpDesc = (a, b) => {
+  if (!a._dep && !b._dep) return 0;
+  if (!a._dep) return 1;       // null vẫn xuống cuối
+  if (!b._dep) return -1;
+  return b._dep.getTime() - a._dep.getTime();
+};
+```
 
-### 4. Cách filter — chuyển sang client-side
-Vì 3 cột date là text `dd/MM/yyyy`, không filter được ở Postgres. Giải pháp:
-- Bỏ `range()` server-side cho query chính, lấy đầy đủ tour theo các filter còn lại (market/dest/month/search) — bảng b2b_tours hiện không lớn (vài trăm dòng).
-- Sau khi fetch, filter theo `expiryFilter` ở client, rồi tự phân trang client-side `PAGE_SIZE = 20`.
-- Bỏ luôn query `b2b-tours-count` riêng, dùng `filteredTours.length` để tính `totalPages`.
+Logic mới của `filteredTours`:
+- `expiryFilter === "active"`: `enrichedTours.filter(!_expired).sort(cmpAsc)`
+- `expiryFilter === "expired"`: `enrichedTours.filter(_expired).sort(cmpDesc)`
+- `expiryFilter === "all"`: 
+  - `active = enriched.filter(!_expired).sort(cmpAsc)`
+  - `expired = enriched.filter(_expired).sort(cmpDesc)`
+  - return `[...active, ...expired]`
 
-(Nếu sau này dữ liệu lớn lên thì tách cột `departure_date_iso` ở DB; phạm vi task này không đụng DB.)
+Pagination client-side đã có sẵn — slice trên kết quả mới này, không cần đổi gì.
 
-### 5. UI dropdown filter
-Thêm 1 `Select` ở hàng filter (đổi grid từ `md:grid-cols-4` → `md:grid-cols-5`):
-- "Còn hạn" (default) / "Đã hết hạn" / "Tất cả"
-
-### 6. Badges trên từng dòng
-- Cột **Ngày đi**: nếu `departed` → thêm `<Badge variant="secondary" className="bg-gray-200 text-gray-700">ĐÃ KHỞI HÀNH</Badge>` cạnh ngày.
-- Cột **Hạn Visa**: nếu `visaExpired` → đổi badge hiện tại thành đỏ `bg-red-50 text-red-700 border-red-200` với text `VISA HẾT HẠN` (kèm ngày).
-
-### 7. Nút Booking
-- Nếu `departed` → `<Button disabled>` bọc trong `Tooltip` với content `"Tour đã hết hạn, không thể tạo booking"`.
-- Nếu chỉ `visaExpired` (departure còn) → vẫn click được (chỉ cảnh báo qua badge).
-- Cần wrap disabled button trong `<span>` để Tooltip hoạt động (Radix yêu cầu).
-
-## Test (sẽ chạy & paste kết quả)
-- TC1: default load → chỉ tour `departure_date >= today` AND visa OK.
-- TC2: chọn "Tất cả" → hiện hết, badge đúng.
-- TC3: tour visa hết hạn, departure còn → badge đỏ "VISA HẾT HẠN", Booking vẫn click được.
-- TC4: tour đã khởi hành → badge xám "ĐÃ KHỞI HÀNH", Booking disabled + tooltip.
-- TC5: đổi filter sang "Tất cả", reload trang → vẫn ở "Tất cả" (localStorage).
-- Verify SQL: confirm hôm nay 01/05/2026 các tour `OS5N5D-260430-03` (01/05 00:05) bị ẩn ở "Còn hạn"; `LG5N4D-260512-01` (visa 06/05) vẫn hiện vì visa chưa qua; v.v.
+## Test
+- TC1 "Còn hạn": tour gần nhất (ví dụ 12/05/2026) lên đầu, xa nhất xuống cuối.
+- TC2 "Đã hết hạn": tour mới hết hạn (ví dụ 30/04/2026) lên đầu, tour 01/2026 xuống cuối.
+- TC3 "Tất cả": nửa trên là tour còn hạn ASC, nửa dưới là tour hết hạn DESC, ranh giới rõ ràng tại `today`.
+- TC4: tour không có `departure_date` luôn ở cuối nhóm tương ứng.
+- TC5: Pagination + reload + filter market/dest/month vẫn hoạt động.
 
 ## Không làm
-- Không thay đổi schema `b2b_tours`.
-- Không sửa `B2BTourDetailSheet`, `Quotations`, `Bookings`.
-- Không xóa data hết hạn.
+- Không đụng schema, không đụng các filter khác, không đụng badge/booking guard đã làm trước đó.
