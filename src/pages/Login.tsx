@@ -34,6 +34,17 @@ export default function Login() {
     }
   }, [forgotSent]);
 
+  // Mở sẵn dialog Quên mật khẩu khi user được redirect từ /reset-password?forgot=1
+  useEffect(() => {
+    if (searchParams.get("forgot") === "1") {
+      setForgotOpen(true);
+      // dọn query để tránh re-open khi user đóng dialog
+      const next = new URLSearchParams(searchParams);
+      next.delete("forgot");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
