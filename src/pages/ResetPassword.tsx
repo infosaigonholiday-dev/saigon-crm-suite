@@ -236,9 +236,14 @@ export default function ResetPassword() {
             </div>
             <h2 className="text-lg font-semibold">Liên kết không hợp lệ</h2>
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
-            <Button className="w-full" onClick={() => navigate("/login")}>
-              Quay về đăng nhập
-            </Button>
+            <div className="space-y-2">
+              <Button className="w-full" onClick={() => navigate("/login?forgot=1")}>
+                Yêu cầu gửi lại liên kết
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/login")}>
+                Quay về đăng nhập
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
