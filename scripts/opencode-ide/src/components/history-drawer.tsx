@@ -57,9 +57,10 @@ function Body({
   const filtered = (data ?? []).filter((s) => {
     if (!q.trim()) return true;
     const needle = q.toLowerCase();
+    const dir = s.directory || s.location?.directory || "";
     return (
       (s.title || "").toLowerCase().includes(needle) ||
-      (s.directory || "").toLowerCase().includes(needle)
+      dir.toLowerCase().includes(needle)
     );
   });
   const grouped = groupByProject(filtered);
@@ -117,9 +118,9 @@ function Body({
                 )}
               >
                 <div className="text-xs text-fg truncate">{s.title || "(untitled)"}</div>
-                <div className="text-[10px] text-fg-subtle font-mono mt-0.5">
-                  {formatRelativeTime(s.time.updated)} · {s.agent}
-                </div>
+                  <div className="text-[10px] text-fg-subtle font-mono mt-0.5">
+                    {formatRelativeTime(s.time.updated)} · {s.agent ?? "—"}
+                  </div>
               </button>
             ))}
           </div>

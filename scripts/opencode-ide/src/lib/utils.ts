@@ -65,26 +65,34 @@ export function formatPathTail(p: string): string {
 }
 
 /**
- * Group sessions by their `directory` (project root). Sessions
- * without a directory go to an "(unknown)" bucket at the end.
- * Returns entries sorted by most-recently-updated bucket first.
+ * Group sessions by their project directory. opencode 1.17.3 returns
+ * the path under .location.directory (v1) and .directory (v2 spec);
+ * we accept either and bucket accordingly. Sessions without a path
+ * go to "(unknown)".
  */
-export function groupByProject<T extends { directory?: string; time: { updated: number } }>(
-  items: T[]
-) {
+export function getSessionDir<T extends { directory?: string; location?: { directory?: string } }>(
+  item: T
+): string {
+  return item.directory || item.location?.directory || "(unknown)";
+}
+
+export function groupByProject<
+  T extends {
+    directory?: string;
+    location?: { directory?: string };
+    time: { updated: number };
+  }
+>(items: T[]) {
   const groups: Record<string, T[]> = {};
   for (const item of items) {
-    const key = item.directory || "(unknown)";
+    const key = getSessionDir(item);
     if (!groups[key]) groups[key] = [];
     groups[key].push(item);
   }
-  // Sort each bucket's items by updated desc.
   for (const k of Object.keys(groups)) {
     groups[k].sort((a, b) => b.time.updated - a.time.updated);
   }
-  // Sort buckets by their most recent item.
-  const entries = Object.entries(groups).sort(
+  return Object.entries(groups).sort(
     (a, b) => b[1][0].time.updated - a[1][0].time.updated
-  );
-  return entries as [string, T[]][];
+  ) as [string, T[]][];
 }

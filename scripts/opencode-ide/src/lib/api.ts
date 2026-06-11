@@ -39,18 +39,22 @@ export type Tokens = {
 
 export type SessionInfo = {
   id: string;
-  slug: string;
   projectID: string;
-  workspaceID?: string;
-  directory: string;
-  path?: { cwd: string; root: string };
   parentID?: string;
-  title: string;
-  agent?: string;
-  model?: Model;
+  agent?: string | null;
+  model?: Model | null;
   cost: number;
   tokens: Tokens;
-  time: { created: number; updated: number; archived?: number };
+  time: { created: number; updated: number; archived?: number | null };
+  title: string;
+  // The 1.17.3 server returns BOTH .location.directory (v1) and
+  // .directory (v2 spec). We accept either via this union; v1 is
+  // observed in the wild from /api/session.
+  location?: { directory: string; workspaceID?: string | null };
+  directory?: string;
+  subpath?: string | null;
+  slug?: string;
+  path?: { cwd: string; root: string };
 };
 
 // ---- Projected messages ----------------------------------------------------
@@ -207,6 +211,9 @@ export const api = {
   // is a superset of our SessionInfo, so we cast.
   createSession: (body?: { title?: string; agent?: string; model?: string }) =>
     http<SessionInfo>("/session", { method: "POST", body: JSON.stringify(body ?? {}) }),
+  // Single-session lookup. /session/{id} (no /api/) returns the v1
+  // shape (id, slug, directory, version) which we coerce.
+  getSession: (id: string) => http<SessionInfo>(`/session/${id}`),
 
   // ---- Messages ----------------------------------------------------------
   listMessages: (id: string) => http<SessionMessagesResponse>(`/api/session/${id}/message`),

@@ -34,10 +34,13 @@ export function Sidebar({ cwd, activeId, onSelect, onChangeCwd }: Props) {
     const all = data ?? [];
     if (!q.trim()) return all;
     const needle = q.toLowerCase();
-    return all.filter((s) =>
-      (s.title || "(untitled)").toLowerCase().includes(needle) ||
-      (s.directory || "").toLowerCase().includes(needle)
-    );
+    return all.filter((s) => {
+      const dir = s.directory || s.location?.directory || "";
+      return (
+        (s.title || "(untitled)").toLowerCase().includes(needle) ||
+        dir.toLowerCase().includes(needle)
+      );
+    });
   }, [data, q]);
 
   const grouped = useMemo(() => groupByProject(filtered), [filtered]);

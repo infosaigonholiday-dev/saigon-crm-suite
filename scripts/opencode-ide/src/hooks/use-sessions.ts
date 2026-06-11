@@ -25,7 +25,10 @@ export function useSessions(cwd: string) {
       const all = await api.listSessions();
       if (!cwd) return all;
       const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
-      return all.filter((s) => norm(s.directory ?? "") === norm(cwd));
+      return all.filter((s) => {
+        const d = s.directory || s.location?.directory || "";
+        return norm(d) === norm(cwd);
+      });
     },
     refetchInterval: 5000,
     staleTime: 2000,
@@ -44,14 +47,22 @@ export function useSessionStatus() {
 }
 
 /**
- * Look up a single session from the list cache. There's no get-by-id
- * endpoint in opencode 1.17.3, so we reuse the list. Returns null
- * while the list is loading or the id isn't in the list.
+ * Look up a single session. opencode 1.17.3 has /session/{id} (no
+ * /api/ prefix) which returns the v1 Session shape. We treat it as
+ * the source of truth and fall back to the list cache while it loads.
  */
 export function useSession(id: string | null): SessionInfo | null {
-  const { data } = useSessions("");
-  if (!id || !data) return null;
-  return data.find((s) => s.id === id) ?? null;
+  const q = useQuery({
+    queryKey: id ? sessionKeys.byId(id) : ["sessions", "byId", "none"],
+    queryFn: () => api.getSession(id!),
+    enabled: !!id,
+    staleTime: 2000,
+  });
+  if (q.data) return q.data;
+  // Fallback: while the dedicated query is loading, try the list.
+  const { data: list } = useSessions("");
+  if (!id || !list) return null;
+  return list.find((s) => s.id === id) ?? null;
 }
 
 export function useConfig() {
