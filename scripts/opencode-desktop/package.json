@@ -1,0 +1,17 @@
+{
+  "name": "opencode-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Antigravity-style native shell around opencode web",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
