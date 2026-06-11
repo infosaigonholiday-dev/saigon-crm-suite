@@ -29,9 +29,26 @@
 
 const { app, BrowserWindow, Menu, session, shell } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
+const net = require('node:net');
 const { spawn } = require('node:child_process');
 const http = require('node:http');
-const net = require('node:net');
+
+// ---- file logging ----------------------------------------------------------
+// Electron on Windows has no console attached when launched from a
+// non-interactive shell (Start-Process), so we mirror stderr/stdout
+// to a file. Open %TEMP%\opencode-ide-main.log to see what's going on.
+const LOG_FILE = process.env.OPENCODE_IDE_LOG ||
+  path.join(require('node:os').tmpdir(), 'opencode-ide-main.log');
+function logToFile(...parts) {
+  try {
+    const line = `[${new Date().toISOString()}] ${parts.join(' ')}\n`;
+    fs.appendFileSync(LOG_FILE, line);
+  } catch {}
+}
+process.on('uncaughtException', (e) => logToFile('UNCAUGHT', e.stack || e.message));
+process.on('unhandledRejection', (e) => logToFile('UNHANDLED_REJECTION', e?.stack || e?.message || e));
+logToFile('=== opencode-ide main process started ===', `pid=${process.pid}`);
 
 const isDev = !app.isPackaged;
 const SCRIPT_DIR = __dirname;
@@ -52,7 +69,6 @@ for (let i = 0; i < argv.length; i++) {
 
 // Validate cwd up front. If the user passed a dead path, fall back to
 // the repo root so we can at least show a working shell.
-const fs = require('node:fs');
 if (!fs.existsSync(cwdArg)) {
   console.error(`[opencode-ide] cwd does not exist: ${cwdArg}, falling back to ${REPO_ROOT}`);
   cwdArg = REPO_ROOT;
@@ -137,7 +153,11 @@ function startOpencodeServe() {
       cwd: cwdArg,
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false,
+      // On Windows, `opencode` is a `.cmd` shim in %AppData%\Roaming\npm.
+      // Using shell: true lets the OS resolve the shim — otherwise the
+      // direct exec path fails with ENOENT even though `where opencode`
+      // finds the binary just fine.
+      shell: true,
       windowsHide: true,
     });
 
@@ -163,11 +183,13 @@ function startOpencodeServe() {
     opencodeProc.stdout.on('data', (chunk) => {
       const text = chunk.toString();
       process.stdout.write(`[opencode] ${text}`);
+      logToFile(`[opencode stdout] ${text.trim()}`);
       tryMatch(text);
     });
     opencodeProc.stderr.on('data', (chunk) => {
       const text = chunk.toString();
       process.stderr.write(`[opencode] ${text}`);
+      logToFile(`[opencode stderr] ${text.trim()}`);
       // Many CLIs log the "listening" line to stderr; check it too.
       tryMatch(text);
     });
@@ -216,10 +238,18 @@ function startVite() {
     sock.setTimeout(300, () => { sock.destroy(); resolve(undefined); });
   }).then(() => new Promise((resolve, reject) => {
     console.log(`[opencode-ide] starting vite dev server on ${RENDERER_PORT}`);
+    // Spawn the Vite binary directly. The Electron child process
+    // doesn't have npm shims in PATH on Windows, so calling
+    // `npx` / `npx.cmd` fails with ENOENT. We resolve to the
+    // .cmd shim that npm install drops in node_modules\.bin.
+    const viteBin = process.platform === 'win32'
+      ? path.join(SCRIPT_DIR, 'node_modules', '.bin', 'vite.cmd')
+      : path.join(SCRIPT_DIR, 'node_modules', '.bin', 'vite');
+    logToFile(`spawn vite binary at ${viteBin}`);
     viteProc = spawn(
-      'npx',
-      ['--prefix', SCRIPT_DIR, '--no-install', 'vite', '--port', String(RENDERER_PORT), '--strictPort'],
-      { cwd: SCRIPT_DIR, stdio: ['ignore', 'pipe', 'pipe'], shell: false, windowsHide: true }
+      viteBin,
+      ['--port', String(RENDERER_PORT), '--strictPort'],
+      { cwd: SCRIPT_DIR, env: process.env, stdio: ['ignore', 'pipe', 'pipe'], shell: false, windowsHide: true }
     );
     let resolved = false;
     const onChunk = (chunk) => {
@@ -340,15 +370,19 @@ function setupApiProxy() {
 
 // ---- app lifecycle ---------------------------------------------------------
 app.whenReady().then(async () => {
+  logToFile('app ready');
   setupApiProxy();
   createWindow();
+  logToFile('window created');
 
   try {
     // Run in parallel but fail fast on the first error. allSettled
     // silently swallowed vite failures and left the user staring at a
     // blank white window.
     await Promise.all([startOpencodeServe(), startVite()]);
+    logToFile('opencode + vite started');
   } catch (e) {
+    logToFile('STARTUP FAILED', e?.stack || e?.message || e);
     console.error('[opencode-ide] startup failed:', e);
     isQuitting = true; // don't try to auto-restart if the user sees this
     showErrorPage('opencode-ide failed to start', e && e.message ? e.message : String(e));
@@ -359,8 +393,15 @@ app.whenReady().then(async () => {
     ? `http://localhost:${RENDERER_PORT}/`
     : `file://${path.join(SCRIPT_DIR, 'dist', 'index.html')}`;
 
+  logToFile(`loading ${url}`);
   console.log(`[opencode-ide] loading ${url}`);
-  await mainWindow.loadURL(url);
+  try {
+    await mainWindow.loadURL(url);
+    logToFile('loadURL resolved');
+  } catch (e) {
+    logToFile('loadURL REJECTED', e?.stack || e?.message || e);
+    showErrorPage('Failed to load app', e && e.message ? e.message : String(e));
+  }
 });
 
 app.on('window-all-closed', () => {
