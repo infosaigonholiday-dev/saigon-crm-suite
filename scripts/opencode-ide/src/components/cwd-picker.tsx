@@ -11,16 +11,6 @@ type Props = {
   onPick: (cwd: string) => void;
 };
 
-// In a real app, "Browse…" would open a folder picker. Since opencode-ide is
-// web-based and uses the loopback API, we fall back to a typed path. Common
-// dev locations are suggested as quick picks.
-const QUICK_PICKS = [
-  "C:\\Users\\Yoga\\saigon-crm-suite",
-  "C:\\Users\\Yoga",
-  "C:\\dev",
-  "C:\\projects",
-];
-
 export function CwdPicker({ current, recents, onPick }: Props) {
   const [draft, setDraft] = useState(current);
 
@@ -79,21 +69,6 @@ export function CwdPicker({ current, recents, onPick }: Props) {
             </ScrollArea>
           </div>
         )}
-
-        <div className="mt-6">
-          <div className="text-[10px] uppercase tracking-wider text-fg-subtle mb-2">Quick picks</div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {QUICK_PICKS.map((p) => (
-              <button
-                key={p}
-                onClick={() => onPick(p)}
-                className="text-left text-xs font-mono text-fg-muted hover:text-fg hover:bg-bg-hover rounded-md px-2 py-1.5 truncate"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -21,13 +21,6 @@ export function formatRelativeTime(unixMs: number): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function formatTime(unixMs: number): string {
-  return new Date(unixMs).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export function formatDateLabel(unixMs: number): string {
   const d = new Date(unixMs);
   const today = new Date();

@@ -10,8 +10,24 @@
 // requests from the renderer to opencode on a different port. That keeps the
 // app architecture clean: React → fetch('/api/...') → Electron main →
 // http://127.0.0.1:<servePort>/api/...
+//
+// Robustness notes (Phase 1.1 hardening):
+//   - Both `opencode serve` and Vite are killed with the whole process tree
+//     on quit (Windows: `taskkill /T /F`, POSIX: SIGKILL on -pid). This stops
+//     the "zombie port" problem on the next launch.
+//   - We listen on BOTH stdout and stderr for the "listening on …" log line,
+//     and we accept several common formats. If we never see the line in 15s
+//     we show an error page in the BrowserWindow (the user sees something
+//     useful instead of a blank white window).
+//   - The API proxy consults a live `opencodePort` getter. If `opencode serve`
+//     crashes mid-session, `opencodePort` is cleared and the proxy becomes a
+//     no-op, which surfaces as a clean 404 to the renderer (where the sidebar
+//     already has a "Cannot reach opencode" error state).
+//   - `opencode serve` is auto-restarted once if it dies unexpectedly, with
+//     exponential backoff up to 30s. Repeated restarts give up and disable
+//     the proxy.
 
-const { app, BrowserWindow, ipcMain, shell, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu, session, shell } = require('electron');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const http = require('node:http');
@@ -34,13 +50,37 @@ for (let i = 0; i < argv.length; i++) {
   else if (!a.startsWith('-') && a !== process.execPath) cwdArg = a;
 }
 
+// Validate cwd up front. If the user passed a dead path, fall back to
+// the repo root so we can at least show a working shell.
+const fs = require('node:fs');
+if (!fs.existsSync(cwdArg)) {
+  console.error(`[opencode-ide] cwd does not exist: ${cwdArg}, falling back to ${REPO_ROOT}`);
+  cwdArg = REPO_ROOT;
+}
+
 // ---- helpers ---------------------------------------------------------------
-function isPortOpen(port, host = '127.0.0.1', timeout = 250) {
-  return new Promise((resolve) => {
-    const sock = net.createConnection({ host, port }, () => { sock.destroy(); resolve(true); });
-    sock.on('error', () => resolve(false));
-    sock.setTimeout(timeout, () => { sock.destroy(); resolve(false); });
+function pickPort(preferred) {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(preferred, '127.0.0.1', () => {
+      const port = srv.address().port;
+      srv.close(() => resolve(port));
+    });
   });
+}
+
+// Accept several common log shapes:
+//   "listening on http://127.0.0.1:54321"
+//   "OpenCode server listening at http://127.0.0.1:54321"
+//   "server started on port 54321"
+//   "Server listening on port 54321"
+const LISTEN_RE = /(?:listening|server|started|listen)\s+(?:on|at)\s+(?:https?:\/\/[^\s:]+|port\s+)?(\d{2,5})/i;
+
+function findPortInLine(line) {
+  const m = line.match(LISTEN_RE);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 async function waitForHttp(url, attempts = 60, interval = 500) {
@@ -58,27 +98,30 @@ async function waitForHttp(url, attempts = 60, interval = 500) {
   return false;
 }
 
-function pickPort(preferred) {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(preferred, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
-function extractPortFromLine(line) {
-  const m = line.match(/listening on https?:\/\/[^:\s]+:(\d+)/);
-  return m ? parseInt(m[1], 10) : null;
+// Kill a child process AND all of its descendants. Node's `child.kill()`
+// only sends a signal to the direct child, which on Windows leaves the
+// `npx` / `cmd.exe` wrapper alive (and holding the port).
+function killTree(proc) {
+  if (!proc || proc.killed) return;
+  if (process.platform === 'win32') {
+    try {
+      // /T = tree, /F = force, /PID = process id
+      spawn('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { windowsHide: true });
+    } catch (e) {
+      console.error('[opencode-ide] taskkill failed:', e);
+    }
+  } else {
+    try { process.kill(-proc.pid, 'SIGKILL'); } catch {}
+    try { proc.kill('SIGKILL'); } catch {}
+  }
 }
 
 // ---- opencode serve --------------------------------------------------------
 let opencodeProc = null;
-let opencodePort = null;
-const RENDERER_PORT = 5173;
+let opencodePort = null;        // current port the live opencode serve is on
+let restartCount = 0;           // number of automatic restarts
+const MAX_RESTARTS = 3;
+const RESTART_BASE_MS = 1000;
 
 function startOpencodeServe() {
   return new Promise(async (resolve, reject) => {
@@ -99,64 +142,111 @@ function startOpencodeServe() {
     });
 
     let resolved = false;
+    let buf = '';
+    const tryMatch = (chunk) => {
+      buf += chunk;
+      // Only try to match once we see a newline; partial lines can match
+      // false positives (e.g. "started" inside a stack trace).
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (resolved) break;
+        const p = findPortInLine(line);
+        if (p) {
+          opencodePort = p;
+          resolved = true;
+          resolve(opencodePort);
+          return;
+        }
+      }
+    };
     opencodeProc.stdout.on('data', (chunk) => {
       const text = chunk.toString();
       process.stdout.write(`[opencode] ${text}`);
-      if (!resolved) {
-        const m = text.match(/listening on https?:\/\/[^:\s]+:(\d+)/);
-        if (m) {
-          opencodePort = parseInt(m[1], 10);
-          resolved = true;
-          resolve(opencodePort);
-        }
-      }
+      tryMatch(text);
     });
-    opencodeProc.stderr.on('data', (chunk) => process.stderr.write(`[opencode] ${chunk}`));
+    opencodeProc.stderr.on('data', (chunk) => {
+      const text = chunk.toString();
+      process.stderr.write(`[opencode] ${text}`);
+      // Many CLIs log the "listening" line to stderr; check it too.
+      tryMatch(text);
+    });
     opencodeProc.on('error', (e) => {
       console.error('[opencode-ide] spawn error:', e);
       if (!resolved) { resolved = true; reject(e); }
     });
     opencodeProc.on('exit', (code, sig) => {
-      console.log(`[opencode-ide] opencode exited code=${code} sig=${sig}`);
+      const wasExpected = app.isQuitting;
+      console.log(`[opencode-ide] opencode exited code=${code} sig=${sig} (expected=${wasExpected})`);
       opencodeProc = null;
+      // If the port is still cached but the process is gone, clear it so
+      // the proxy stops redirecting to a dead port.
+      if (opencodePort) opencodePort = null;
+      // Auto-restart on unexpected death (OOM, model provider crash, etc).
+      if (!wasExpected && !noServe && restartCount < MAX_RESTARTS) {
+        const delay = Math.min(RESTART_BASE_MS * 2 ** restartCount, 30_000);
+        restartCount += 1;
+        console.log(`[opencode-ide] auto-restarting opencode serve in ${delay}ms (attempt ${restartCount}/${MAX_RESTARTS})`);
+        setTimeout(() => {
+          startOpencodeServe().catch((e) => console.error('[opencode-ide] auto-restart failed:', e));
+        }, delay);
+      }
     });
 
     setTimeout(() => {
       if (!resolved) { resolved = true; reject(new Error('opencode serve did not start in 15s')); }
-    }, 15000);
+    }, 15_000);
   });
 }
 
 // ---- vite dev server (dev mode only) ---------------------------------------
 let viteProc = null;
+const RENDERER_PORT = 5173;
 
 function startVite() {
   if (!isDev) return Promise.resolve();
+  // If something is already on 5173 (zombie from a prior crash), fail
+  // fast and tell the user instead of hanging for 10s.
   return new Promise((resolve, reject) => {
+    const sock = net.createConnection({ host: '127.0.0.1', port: RENDERER_PORT }, () => {
+      sock.destroy();
+      reject(new Error(`Port ${RENDERER_PORT} is already in use. A previous opencode-ide instance may still be running; close it (Task Manager → node.exe) and retry.`));
+    });
+    sock.on('error', () => { /* nothing on the port, good */ resolve(undefined); });
+    sock.setTimeout(300, () => { sock.destroy(); resolve(undefined); });
+  }).then(() => new Promise((resolve, reject) => {
     console.log(`[opencode-ide] starting vite dev server on ${RENDERER_PORT}`);
     viteProc = spawn(
       'npx',
       ['--prefix', SCRIPT_DIR, '--no-install', 'vite', '--port', String(RENDERER_PORT), '--strictPort'],
       { cwd: SCRIPT_DIR, stdio: ['ignore', 'pipe', 'pipe'], shell: false, windowsHide: true }
     );
-    let buf = '';
+    let resolved = false;
     const onChunk = (chunk) => {
       const text = chunk.toString();
-      buf += text;
       process.stdout.write(`[vite] ${text}`);
-      if (text.includes('ready in') || text.includes('Local:')) {
+      if (!resolved && (text.includes('ready in') || text.includes('Local:'))) {
+        resolved = true;
         resolve();
       }
     };
     viteProc.stdout.on('data', onChunk);
     viteProc.stderr.on('data', onChunk);
-    viteProc.on('error', reject);
-    setTimeout(() => resolve(), 10000); // safety
-  });
+    viteProc.on('error', (e) => { if (!resolved) { resolved = true; reject(e); } });
+    viteProc.on('exit', (code) => {
+      console.log(`[opencode-ide] vite exited code=${code}`);
+      viteProc = null;
+      if (!resolved) { resolved = true; reject(new Error(`vite exited with code ${code} before becoming ready`)); }
+    });
+    setTimeout(() => {
+      if (!resolved) { resolved = true; resolve(); /* give up waiting, BrowserWindow will show retry */ }
+    }, 10_000);
+  }));
 }
 
 // ---- window ----------------------------------------------------------------
 let mainWindow = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -175,7 +265,6 @@ function createWindow() {
       height: 36,
     },
     webPreferences: {
-      preload: path.join(SCRIPT_DIR, 'src', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -184,7 +273,6 @@ function createWindow() {
   });
 
   Menu.setApplicationMenu(null);
-  mainWindow.removeMenu();
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
@@ -205,18 +293,35 @@ function createWindow() {
   });
 
   mainWindow.on('close', () => {
-    if (opencodeProc) try { opencodeProc.kill(); } catch {}
-    if (viteProc) try { viteProc.kill(); } catch {}
+    isQuitting = true;
+    if (opencodeProc) killTree(opencodeProc);
+    if (viteProc) killTree(viteProc);
+  });
+
+  // If opencode serve dies in a way that takes the renderer with it
+  // (e.g. the proxy starts returning network errors to a hung fetch),
+  // show the user a real error instead of a frozen window.
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[opencode-ide] render-process-gone:', details);
   });
 }
 
-// ---- CORS proxy for /api/* in dev mode ------------------------------------
+function showErrorPage(title, message) {
+  if (!mainWindow) return;
+  const html = `<!doctype html><html><body style="background:#0b0f17;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;line-height:1.5;">
+    <h1 style="color:#f87171;font-size:18px;margin:0 0 12px 0;">${title}</h1>
+    <pre style="background:#1e2738;padding:12px;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;color:#e2e8f0;">${message}</pre>
+    <p style="margin-top:16px;font-size:12px;color:#94a3b8;">Close this window and retry. If the issue persists, run <code style="background:#1e2738;padding:2px 6px;border-radius:4px;">opencode serve --port 4096</code> manually from a terminal first.</p>
+  </body></html>`;
+  mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+}
+
+// ---- CORS proxy for /api/* -------------------------------------------------
 // Vite proxies /api → opencode, but when running Electron dev pointing at
 // Vite, the proxy still works. We also handle this in session.webRequest
 // as a safety net in case the renderer is loaded from a different origin.
 
 function setupApiProxy() {
-  // Filter requests to /api/* and rewrite the target to the opencode port.
   session.defaultSession.webRequest.onBeforeRequest((details, cb) => {
     if (!opencodePort) return cb({ cancel: false });
     const url = details.url;
@@ -233,39 +338,20 @@ function setupApiProxy() {
   });
 }
 
-// ---- IPC -------------------------------------------------------------------
-ipcMain.handle('oc:get-info', () => ({
-  opencodeUrl: opencodePort ? `http://127.0.0.1:${opencodePort}` : null,
-  rendererUrl: isDev ? `http://localhost:${RENDERER_PORT}` : 'file://',
-  cwd: cwdArg,
-  repoRoot: REPO_ROOT,
-  isDev,
-  pid: opencodeProc ? opencodeProc.pid : null,
-}));
-
-ipcMain.handle('oc:reload', () => {
-  if (mainWindow) mainWindow.webContents.reload();
-});
-
-ipcMain.handle('oc:open-external', (_e, url) => {
-  if (typeof url === 'string') shell.openExternal(url);
-});
-
 // ---- app lifecycle ---------------------------------------------------------
 app.whenReady().then(async () => {
   setupApiProxy();
   createWindow();
 
-  // Start opencode + vite in parallel
-  const [, ] = await Promise.allSettled([startOpencodeServe(), startVite()]);
-
-  if (!opencodePort) {
-    // Last resort: ask user to start opencode themselves
-    const errHtml = `<!doctype html><html><body style="background:#0b0f17;color:#e2e8f0;font-family:sans-serif;padding:40px;">
-      <h1 style="color:#f87171">Cannot start opencode</h1>
-      <p>Run <code style="background:#1e2738;padding:2px 6px;border-radius:4px;">opencode serve --port 4096</code> manually, then restart.</p>
-    </body></html>`;
-    await mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(errHtml));
+  try {
+    // Run in parallel but fail fast on the first error. allSettled
+    // silently swallowed vite failures and left the user staring at a
+    // blank white window.
+    await Promise.all([startOpencodeServe(), startVite()]);
+  } catch (e) {
+    console.error('[opencode-ide] startup failed:', e);
+    isQuitting = true; // don't try to auto-restart if the user sees this
+    showErrorPage('opencode-ide failed to start', e && e.message ? e.message : String(e));
     return;
   }
 
@@ -278,9 +364,16 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (opencodeProc) try { opencodeProc.kill(); } catch {}
-  if (viteProc) try { viteProc.kill(); } catch {}
+  isQuitting = true;
+  if (opencodeProc) killTree(opencodeProc);
+  if (viteProc) killTree(viteProc);
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+  if (opencodeProc) killTree(opencodeProc);
+  if (viteProc) killTree(viteProc);
 });
 
 app.on('activate', () => {

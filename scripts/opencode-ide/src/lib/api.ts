@@ -2,8 +2,11 @@
 // The local `opencode serve` process exposes endpoints under /api.
 // Docs come from the OpenAPI spec at /doc.
 //
-// We talk to it over loopback. CORS is configured by the Electron shell
-// (--cors http://localhost:5173) so dev mode works.
+// The Electron main process proxies /api/* from the renderer to the
+// opencode port via session.webRequest. That means the renderer can
+// always use a same-origin fetch (window.location.origin in dev too,
+// because Vite serves on http://localhost:5173 and the proxy rewrites
+// the host). This avoids CORS preflight and "wrong port" surprises.
 
 export type SessionInfo = {
   id: string;
@@ -33,28 +36,11 @@ export type Config = {
   // …truncated; we only use what we display
 };
 
-export type MessagePart =
-  | { type: "text"; text: string }
-  | { type: "reasoning"; text: string }
-  | { type: "tool"; id: string; name: string; input: unknown; output?: string; state?: string }
-  | { type: "file"; mime: string; filename?: string; url: string }
-  | { type: "step-start" }
-  | { type: "step-finish" }
-  | { type: "snapshot"; snapshot: string };
-
-export type Message = {
-  id: string;
-  sessionID: string;
-  role: "user" | "assistant";
-  parentID?: string;
-  parts: MessagePart[];
-  createdAt: number;
-};
-
 const baseUrl = () => {
-  // Vite dev: hardcoded 5173, matches our --strictPort config.
-  // Production: same origin (Electron loads built file://).
-  return import.meta.env.DEV ? "http://127.0.0.1:4096" : window.location.origin;
+  // Same origin always. The Electron main process rewrites /api/* to
+  // the opencode serve port via webRequest.onBeforeRequest, so the
+  // renderer never needs to know the opencode port.
+  return window.location.origin;
 };
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -74,8 +60,6 @@ export const api = {
   createSession: (body?: { title?: string; agent?: string; model?: string }) =>
     http<SessionInfo>("/api/session", { method: "POST", body: JSON.stringify(body ?? {}) }),
   getSession: (id: string) => http<SessionInfo>(`/api/session/${id}`),
-  listMessages: (id: string) => http<{ data: Message[] }>(`/api/session/${id}/message`).then((r) => r.data),
   getSessionStatus: () => http<SessionStatus>("/api/session/status"),
   getConfig: () => http<Config>("/api/config"),
-  abort: (id: string) => http(`/api/session/${id}/abort`, { method: "POST" }),
 };

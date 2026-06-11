@@ -27,3 +27,12 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# opencode-desktop: local artifacts
+scripts/opencode-desktop/node_modules/
+scripts/opencode-desktop/dist/
+.opencode-snapshots/
+
+# TypeScript build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo

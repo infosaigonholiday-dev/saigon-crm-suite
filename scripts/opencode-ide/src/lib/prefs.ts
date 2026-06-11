@@ -4,18 +4,14 @@ const KEY = "opencode-ide:prefs:v1";
 
 export type Prefs = {
   cwd: string;
-  model: string;
   agent: string;
   recentCwds: string[];
-  sidebarWidth: number;
 };
 
 const defaults: Prefs = {
   cwd: "",
-  model: "",
   agent: "build",
   recentCwds: [],
-  sidebarWidth: 288,
 };
 
 export function loadPrefs(): Prefs {

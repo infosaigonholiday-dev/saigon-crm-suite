@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, MessageSquare, Loader2, AlertCircle, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatRelativeTime, groupByDate } from "@/lib/utils";
-import { useSessions, useSessionStatus, sessionKeys } from "@/hooks/use-sessions";
-import { api } from "@/lib/api";
+import { useSessions, useSessionStatus, useCreateSession } from "@/hooks/use-sessions";
 import type { SessionInfo } from "@/lib/api";
 
 type Props = {
@@ -22,15 +20,7 @@ export function Sidebar({ cwd, activeId, onSelect, onChangeCwd }: Props) {
   const [q, setQ] = useState("");
   const { data, isLoading, error, refetch } = useSessions(cwd);
   const { data: status } = useSessionStatus();
-  const qc = useQueryClient();
-
-  const create = useMutation({
-    mutationFn: () => api.createSession({}),
-    onSuccess: (s) => {
-      qc.invalidateQueries({ queryKey: sessionKeys.list(cwd) });
-      onSelect(s.id);
-    },
-  });
+  const create = useCreateSession(cwd, onSelect);
 
   const filtered = useMemo<SessionInfo[]>(() => {
     const all = data ?? [];

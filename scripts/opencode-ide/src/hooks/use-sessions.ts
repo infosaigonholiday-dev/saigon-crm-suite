@@ -1,11 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type SessionInfo } from "@/lib/api";
 
 export const sessionKeys = {
-  all: ["sessions"] as const,
   list: (cwd: string) => ["sessions", "list", cwd] as const,
   detail: (id: string) => ["sessions", "detail", id] as const,
-  messages: (id: string) => ["sessions", "messages", id] as const,
   status: () => ["sessions", "status"] as const,
 };
 
@@ -41,17 +39,25 @@ export function useSession(id: string | null) {
   });
 }
 
-export function useMessages(sessionId: string | null) {
-  return useQuery({
-    queryKey: sessionId ? sessionKeys.messages(sessionId) : ["messages", "none"],
-    queryFn: () => api.listMessages(sessionId!),
-    enabled: !!sessionId,
-    refetchInterval: 1500, // poll while streaming
-  });
-}
-
 export function useConfig() {
   return useQuery({ queryKey: ["config"], queryFn: () => api.getConfig() });
+}
+
+/**
+ * Create-session mutation, shared between the topbar / empty-state button
+ * and the sidebar "+" button. Invalidates the per-cwd session list on
+ * success; caller decides what to do with the new session (navigate,
+ * toast, etc.) via the optional `onCreated` callback.
+ */
+export function useCreateSession(cwd: string, onCreated?: (id: string) => void) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.createSession({}),
+    onSuccess: (s) => {
+      qc.invalidateQueries({ queryKey: sessionKeys.list(cwd) });
+      onCreated?.(s.id);
+    },
+  });
 }
 
 export type { SessionInfo };

@@ -1,17 +1,15 @@
-import { ChevronDown, Folder, Cpu, Bot, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ChevronDown, Folder, Cpu, Bot } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { useConfig, useSessionStatus } from "@/hooks/use-sessions";
 
 type Props = {
   cwd: string;
   onChangeCwd: () => void;
   activeSessionId: string | null;
-  onOpenSettings: () => void;
 };
 
-export function Topbar({ cwd, onChangeCwd, activeSessionId, onOpenSettings }: Props) {
+export function Topbar({ cwd, onChangeCwd, activeSessionId }: Props) {
   const { data: cfg } = useConfig();
   const { data: status } = useSessionStatus();
   const st = activeSessionId ? status?.[activeSessionId]?.type ?? "idle" : "idle";
@@ -50,15 +48,6 @@ export function Topbar({ cwd, onChangeCwd, activeSessionId, onOpenSettings }: Pr
         <span className={st === "busy" ? "animate-pulse-dot mr-1" : "mr-1"}>●</span>
         {st}
       </Badge>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={onOpenSettings} aria-label="Settings">
-            <Settings2 className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Settings</TooltipContent>
-      </Tooltip>
     </div>
   );
 }

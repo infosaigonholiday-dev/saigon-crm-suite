@@ -24,21 +24,7 @@ export function EmptyState({ cwd, onNewSession }: Props) {
         <Button variant="primary" onClick={onNewSession}>
           <MessageSquare className="h-3.5 w-3.5" /> Start a new session
         </Button>
-        <div className="mt-6 grid grid-cols-3 gap-2 text-[11px] text-fg-subtle">
-          <Hint kbd="Ctrl+K" label="Command palette" />
-          <Hint kbd="Ctrl+/" label="Toggle sidebar" />
-          <Hint kbd="Ctrl+Enter" label="Send message" />
-        </div>
       </div>
-    </div>
-  );
-}
-
-function Hint({ kbd, label }: { kbd: string; label: string }) {
-  return (
-    <div className="rounded-md border border-border bg-bg-surface px-2 py-1.5">
-      <kbd className="font-mono text-fg-muted">{kbd}</kbd>
-      <div className="mt-0.5">{label}</div>
     </div>
   );
 }
