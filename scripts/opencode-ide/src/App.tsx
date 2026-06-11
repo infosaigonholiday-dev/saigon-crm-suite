@@ -6,8 +6,19 @@ import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { CwdPicker } from "@/components/cwd-picker";
 import { EmptyState } from "@/components/empty-state";
+import { MessageList } from "@/components/message-list";
+import { ChatComposer } from "@/components/chat-composer";
+import { RightPanel } from "@/components/right-panel";
+import { HistoryDrawer } from "@/components/history-drawer";
 import { loadPrefs, savePrefs, addRecentCwd } from "@/lib/prefs";
-import { sessionKeys, useCreateSession, useSession } from "@/hooks/use-sessions";
+import {
+  sessionKeys,
+  useCreateSession,
+  useMessages,
+  useSession,
+  useSessionEvents,
+  useSessionStatus,
+} from "@/hooks/use-sessions";
 import { toast, Toaster } from "sonner";
 
 const queryClient = new QueryClient({
@@ -30,6 +41,7 @@ function Shell() {
   const [cwd, setCwd] = useState<string>(prefs.cwd);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Single source of truth for the "new session" mutation. Sidebar uses
   // its own copy with a different onCreated (just selects it).
@@ -37,6 +49,10 @@ function Shell() {
     setActiveId(id);
     toast.success("Session created");
   });
+
+  // SSE stream — always-on so the sidebar count + right panel stay
+  // fresh even when no session is selected.
+  useSessionEvents(true);
 
   // When cwd changes, clear the active session and re-fetch the list
   // for the new directory. Use the proper per-cwd key so we don't
@@ -81,7 +97,7 @@ function Shell() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-base text-fg">
-      <aside className="w-72 shrink-0">
+      <aside className="w-64 shrink-0">
         <Sidebar
           cwd={cwd}
           activeId={activeId}
@@ -89,20 +105,37 @@ function Shell() {
           onChangeCwd={() => setPickerOpen(true)}
         />
       </aside>
-      <main className="flex flex-1 flex-col min-w-0">
+      <main className="flex flex-1 flex-col min-w-0 min-h-0">
         <Topbar
           cwd={cwd}
           onChangeCwd={() => setPickerOpen(true)}
           activeSessionId={activeId}
+          onOpenHistory={() => setHistoryOpen(true)}
         />
-        <div className="flex-1 min-h-0">
-          {activeId ? (
-            <SessionView sessionId={activeId} />
-          ) : (
-            <EmptyState cwd={cwd} onNewSession={handleNewSession} />
-          )}
+        <div className="flex flex-1 min-h-0">
+          <div className="flex flex-1 flex-col min-h-0 min-w-0">
+            {activeId ? (
+              <>
+                <SessionPane sessionId={activeId} />
+                <ChatComposer sessionId={activeId} />
+              </>
+            ) : (
+              <EmptyState cwd={cwd} onNewSession={handleNewSession} />
+            )}
+          </div>
+          {activeId && <RightPanel sessionId={activeId} />}
         </div>
       </main>
+      <HistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        cwd={cwd}
+        activeId={activeId}
+        onSelect={(id) => {
+          setActiveId(id);
+          setHistoryOpen(false);
+        }}
+      />
       <Toaster
         theme="dark"
         position="bottom-right"
@@ -118,15 +151,27 @@ function Shell() {
   );
 }
 
-function SessionView({ sessionId }: { sessionId: string }) {
-  const { data: session } = useSession(sessionId);
+/**
+ * Message transcript for a single session. Polls for new messages
+ * while the session is busy; the SSE stream pushes invalidations too
+ * so the polling can back off once the assistant finishes.
+ */
+function SessionPane({ sessionId }: { sessionId: string }) {
+  const session = useSession(sessionId);
+  const { data: messages } = useMessages(sessionId);
+  const { data: status } = useSessionStatus();
+  const busy = status?.[sessionId]?.type === "busy";
+
   return (
-    <div className="h-full flex flex-col items-center justify-center bg-bg-base text-fg-muted">
-      <div className="text-xs font-mono">{sessionId}</div>
-      <div className="text-sm mt-2">{session?.title || "(loading…)"}</div>
-      <div className="text-[10px] text-fg-subtle mt-3 max-w-md text-center">
-        Chat composer is not yet wired in. Pick a session and start talking in the next release.
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="px-4 py-3 border-b border-border bg-bg-base">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-xs text-fg-muted">
+            {session?.title || "Untitled session"}
+          </div>
+        </div>
       </div>
+      <MessageList messages={messages?.data ?? []} busy={busy} />
     </div>
   );
 }
