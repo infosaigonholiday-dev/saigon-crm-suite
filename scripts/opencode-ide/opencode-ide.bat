@@ -79,9 +79,6 @@ echo.
 echo  Vite will proxy /api, /config, /session to the opencode port.
 echo ============================================================
 echo.
-echo  When Vite is ready, open this URL in your browser:
-echo    http://127.0.0.1:5174
-echo.
 
 REM Vite's proxy config (vite.config.ts) reads the opencode port
 REM from %TEMP%\opencode-ide-port.txt. Default to 4096.
@@ -93,7 +90,29 @@ if exist "%TEMP%\opencode-ide-port.txt" (
 )
 echo  (using opencode port %OC_PORT% for the Vite proxy)
 
+REM Wait for Vite to actually be ready before opening the browser.
+REM Poll http://127.0.0.1:5174/ until 200 OK or 10s elapsed.
+echo  Waiting for Vite to come up...
+set "READY=0"
+for /l %%T in (1,1,20) do (
+  if "!READY!"=="0" (
+    powershell -NoProfile -Command ^
+      "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:5174/' -UseBasicParsing -TimeoutSec 1) | Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
+    if not errorlevel 1 set "READY=1"
+    if "!READY!"=="0" timeout /t 1 /nobreak >nul
+  )
+)
+if "!READY!"=="0" (
+  echo  WARNING: Vite did not respond within 10s. Opening browser anyway.
+)
+
+REM Open the browser. 'start ""' keeps the cmd window around so
+REM Vite keeps running; the second "" is the (empty) window title.
 start "" "http://127.0.0.1:5174"
+echo  Opening browser at http://127.0.0.1:5174
+
+REM Now run Vite in the foreground. It keeps running until the user
+REM closes the window or hits Ctrl+C.
 "%VITE%" --port 5174 --host 127.0.0.1
 popd
 endlocal
