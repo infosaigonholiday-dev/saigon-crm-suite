@@ -81,61 +81,66 @@ function Shell() {
     create.mutate();
   };
 
-  if (pickerOpen || !cwd) {
-    return (
-      <CwdPicker
-        current={cwd}
-        recents={prefs.recentCwds}
-        onPick={(p) => {
-          setCwd(p);
-          savePrefs({ cwd: p });
-          setPickerOpen(false);
-        }}
-      />
-    );
-  }
+  // No early return before hooks. We render either the IDE shell OR
+  // the CWD picker at the bottom; hooks above always run so React's
+  // hook count stays stable across renders.
+  const showPicker = pickerOpen || !cwd;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-base text-fg">
-      <aside className="w-64 shrink-0">
-        <Sidebar
-          cwd={cwd}
-          activeId={activeId}
-          onSelect={setActiveId}
-          onChangeCwd={() => setPickerOpen(true)}
+      {showPicker ? (
+        <CwdPicker
+          current={cwd}
+          recents={prefs.recentCwds}
+          onPick={(p) => {
+            setCwd(p);
+            savePrefs({ cwd: p });
+            setPickerOpen(false);
+          }}
         />
-      </aside>
-      <main className="flex flex-1 flex-col min-w-0 min-h-0">
-        <Topbar
-          cwd={cwd}
-          onChangeCwd={() => setPickerOpen(true)}
-          activeSessionId={activeId}
-          onOpenHistory={() => setHistoryOpen(true)}
-        />
-        <div className="flex flex-1 min-h-0">
-          <div className="flex flex-1 flex-col min-h-0 min-w-0">
-            {activeId ? (
-              <>
-                <SessionPane sessionId={activeId} />
-                <ChatComposer sessionId={activeId} />
-              </>
-            ) : (
-              <EmptyState cwd={cwd} onNewSession={handleNewSession} />
-            )}
-          </div>
-          {activeId && <RightPanel sessionId={activeId} />}
-        </div>
-      </main>
-      <HistoryDrawer
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        cwd={cwd}
-        activeId={activeId}
-        onSelect={(id) => {
-          setActiveId(id);
-          setHistoryOpen(false);
-        }}
-      />
+      ) : (
+        <>
+          <aside className="w-64 shrink-0">
+            <Sidebar
+              cwd={cwd}
+              activeId={activeId}
+              onSelect={setActiveId}
+              onChangeCwd={() => setPickerOpen(true)}
+            />
+          </aside>
+          <main className="flex flex-1 flex-col min-w-0 min-h-0">
+            <Topbar
+              cwd={cwd}
+              onChangeCwd={() => setPickerOpen(true)}
+              activeSessionId={activeId}
+              onOpenHistory={() => setHistoryOpen(true)}
+            />
+            <div className="flex flex-1 min-h-0">
+              <div className="flex flex-1 flex-col min-h-0 min-w-0">
+                {activeId ? (
+                  <>
+                    <SessionPane sessionId={activeId} />
+                    <ChatComposer sessionId={activeId} />
+                  </>
+                ) : (
+                  <EmptyState cwd={cwd} onNewSession={handleNewSession} />
+                )}
+              </div>
+              {activeId && <RightPanel sessionId={activeId} />}
+            </div>
+          </main>
+          <HistoryDrawer
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            cwd={cwd}
+            activeId={activeId}
+            onSelect={(id) => {
+              setActiveId(id);
+              setHistoryOpen(false);
+            }}
+          />
+        </>
+      )}
       <Toaster
         theme="dark"
         position="bottom-right"
