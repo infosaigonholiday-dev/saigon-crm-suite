@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FolderSearch, ArrowRight, History } from "lucide-react";
+import { FolderSearch, ArrowRight, History, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { pickCwd } from "@/lib/pick-cwd";
 
 type Props = {
   current: string;
@@ -13,6 +14,17 @@ type Props = {
 
 export function CwdPicker({ current, recents, onPick }: Props) {
   const [draft, setDraft] = useState(current);
+  const [browsing, setBrowsing] = useState(false);
+
+  const handleBrowse = async () => {
+    setBrowsing(true);
+    try {
+      const picked = await pickCwd();
+      if (picked) onPick(picked.path);
+    } finally {
+      setBrowsing(false);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col items-center justify-center bg-bg-base p-8">
@@ -41,10 +53,28 @@ export function CwdPicker({ current, recents, onPick }: Props) {
             className="flex-1 font-mono"
             autoFocus
           />
+          <Button
+            variant="outline"
+            type="button"
+            onClick={handleBrowse}
+            disabled={browsing}
+            aria-label="Browse for folder"
+            title="Open a native folder picker (browses every drive visible to this app)"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+          </Button>
           <Button variant="primary" type="submit" disabled={!draft.trim()}>
             Open <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </form>
+
+        <p className="mt-2 text-[10px] text-fg-subtle text-center">
+          Tip: click <span className="font-mono text-fg-muted">the folder icon</span> to browse all drives in a native picker.
+          {" "}
+          {typeof window !== "undefined" && window.opencodeIDE?.pickCwd
+            ? "Native dialog: enabled."
+            : "Browser mode: shows only folders the browser can read (Documents, Desktop, Downloads, OneDrive)."}
+        </p>
 
         {recents.length > 0 && (
           <div className="mt-6">

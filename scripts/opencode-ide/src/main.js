@@ -27,7 +27,7 @@
 //     exponential backoff up to 30s. Repeated restarts give up and disable
 //     the proxy.
 
-const { app, BrowserWindow, Menu, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const net = require('node:net');
@@ -295,6 +295,7 @@ function createWindow() {
       height: 36,
     },
     webPreferences: {
+      preload: path.join(SCRIPT_DIR, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -366,7 +367,41 @@ function setupApiProxy() {
     }
     cb({ cancel: false });
   });
+
+  // Also rewrite /config and /session/* (no /api/ prefix) since the
+  // renderer hits them through window.location.origin.
+  session.defaultSession.webRequest.onBeforeRequest((details, cb) => {
+    if (!opencodePort) return cb({ cancel: false });
+    const url = details.url;
+    if (/\/(config|session\/status|session\/[^/]+)$/.test(url)) {
+      const m = url.match(/^https?:\/\/[^/]+(\/[^?]+)/);
+      if (m) {
+        return cb({
+          redirectURL: `http://127.0.0.1:${opencodePort}${m[1]}`,
+        });
+      }
+    }
+    cb({ cancel: false });
+  });
 }
+
+// ---- IPC -------------------------------------------------------------------
+// "Pick a project folder" — the native open-folder dialog. Returns
+// the absolute path or null if the user cancelled.
+ipcMain.handle('oc:pick-cwd', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open a project',
+    properties: [
+      'openDirectory',
+      // Show all drives mounted on the system, not just user folders.
+      // On Windows this is C:\, D:\, E:\, network mounts, etc.
+      'showAllFiles',
+    ],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
 
 // ---- app lifecycle ---------------------------------------------------------
 app.whenReady().then(async () => {
