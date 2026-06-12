@@ -66,8 +66,22 @@ if exist ".env" (
 
 REM --- 5) launch electron -----------------------------------------------------
 echo [opencode-ide] starting IDE for: %TARGET%
+
+REM Locate the Electron binary directly. Calling `npx --no-install
+REM electron ...` gets stuck in `npx`'s interactive prompt on
+REM Windows ("Entering npm script environment"), so we go straight
+REM to the binary that npm install drops in node_modules\.bin.
+set "ELECTRON_EXE=%SCRIPT_DIR%node_modules\electron\dist\electron.exe"
+if not exist "%ELECTRON_EXE%" (
+  echo [opencode-ide] electron.exe not found at %ELECTRON_EXE%.
+  echo                  Run once manually:
+  echo                    cd "%SCRIPT_DIR%" ^&^& npm install electron
+  popd
+  exit /b 1
+)
+
 set "ELECTRON_RUN_AS_NODE="
-npx --prefix "%SCRIPT_DIR%" --no-install electron "%SCRIPT_DIR%." "%TARGET%"
+"%ELECTRON_EXE%" "%SCRIPT_DIR%." "%TARGET%"
 set "RC=%ERRORLEVEL%"
 
 popd
