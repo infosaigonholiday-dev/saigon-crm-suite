@@ -1,40 +1,30 @@
 @echo off
-REM opencode-ide launcher
-REM - Loads .env via opencode.ps1
-REM - Spawns `opencode serve` in background (handled by Electron main)
-REM - Spawns Vite dev server (handled by Electron main)
-REM - Opens Electron window that embeds http://localhost:5173
+REM opencode-ide launcher (multi-mode)
+REM ----------------------------------------------------------------
+REM Three launch modes for the Antigravity-style IDE. Pick by passing
+REM the mode as the first argument (default: web).
 REM
-REM Usage:
-REM   scripts\opencode-ide\opencode-ide.bat
-REM   scripts\opencode-ide\opencode-ide.bat "C:\path\to\project"
+REM   scripts\opencode-ide\opencode-ide.bat                (same as `web`)
+REM   scripts\opencode-ide\opencode-ide.bat web            (opencode web, port 5173)
+REM   scripts\opencode-ide\opencode-ide.bat antigravity    (Vite UI, port 5174)
+REM   scripts\opencode-ide\opencode-ide.bat both           (start both, open browser)
+REM
+REM In all modes the renderer needs an `opencode serve` running on a
+REM loopback port. `opencode web` spawns one for you; `antigravity`
+REM mode requires you to run `opencode serve --port 4096` in another
+REM terminal, or we'll try to find one automatically.
 
 setlocal ENABLEEXTENSIONS
 set "SCRIPT_DIR=%~dp0"
-set "REPO_ROOT=%SCRIPT_DIR%..\.."
-pushd "%REPO_ROOT%"
+pushd "%SCRIPT_DIR%"
 
-REM --- 1) sanity check --------------------------------------------------------
-where opencode >nul 2>nul
-if errorlevel 1 (
-  echo [opencode-ide] ERROR: 'opencode' not found in PATH.
-  echo                  Run:  npm install -g opencode-ai
-  popd
-  exit /b 1
-)
+set "MODE=web"
+if not "%~1"=="" set "MODE=%~1"
 
-REM --- 2) determine working dir ----------------------------------------------
-set "TARGET=%REPO_ROOT%"
-if not "%~1"=="" set "TARGET=%~1"
-if not exist "%TARGET%" (
-  echo [opencode-ide] ERROR: folder not found: %TARGET%
-  popd
-  exit /b 1
-)
-
-REM --- 3) install deps once ---------------------------------------------------
-if not exist "%SCRIPT_DIR%node_modules\electron" (
-  echo [opencode-ide] first run, installing electron ^(one-time^) ...
+REM Sanity check: vite must be installed.
+set "VITE=%SCRIPT_DIR%node_modules\.bin\vite.cmd"
+if not exist "%VITE%" (
+  echo [opencode-ide] vite not found. Installing...
   call npm install --no-audit --no-fund --loglevel=error
   if errorlevel 1 (
     echo [opencode-ide] npm install failed.
@@ -42,47 +32,72 @@ if not exist "%SCRIPT_DIR%node_modules\electron" (
     exit /b 1
   )
 )
-if not exist "%SCRIPT_DIR%node_modules\vite" (
-  echo [opencode-ide] first run, installing vite deps ^(one-time^) ...
-  pushd "%SCRIPT_DIR%"
-  call npm install --no-audit --no-fund --loglevel=error
-  if errorlevel 1 (
-    echo [opencode-ide] npm install in opencode-ide failed.
-    popd
-    exit /b 1
-  )
-  popd
+
+REM Sanity check: opencode must be on PATH.
+where opencode >nul 2>nul
+if errorlevel 1 (
+  echo [opencode-ide] WARNING: 'opencode' not found in PATH.
+  echo                  Run: npm install -g opencode-ai
 )
 
-REM --- 4) load .env -----------------------------------------------------------
-if exist ".env" (
-  for /f "usebackq tokens=1* delims==" %%A in (".env") do (
-    set "line=%%A"
-    if not "!line:~0,1!"=="#" if not "%%A"=="" (
-      set "%%A=%%B"
-    )
-  )
-)
-
-REM --- 5) launch electron -----------------------------------------------------
-echo [opencode-ide] starting IDE for: %TARGET%
-
-REM Locate the Electron binary directly. Calling `npx --no-install
-REM electron ...` gets stuck in `npx`'s interactive prompt on
-REM Windows ("Entering npm script environment"), so we go straight
-REM to the binary that npm install drops in node_modules\.bin.
-set "ELECTRON_EXE=%SCRIPT_DIR%node_modules\electron\dist\electron.exe"
-if not exist "%ELECTRON_EXE%" (
-  echo [opencode-ide] electron.exe not found at %ELECTRON_EXE%.
-  echo                  Run once manually:
-  echo                    cd "%SCRIPT_DIR%" ^&^& npm install electron
-  popd
-  exit /b 1
-)
-
-set "ELECTRON_RUN_AS_NODE="
-"%ELECTRON_EXE%" "%SCRIPT_DIR%." "%TARGET%"
-set "RC=%ERRORLEVEL%"
-
+if /i "%MODE%"=="web" goto :web_mode
+if /i "%MODE%"=="antigravity" goto :antigravity_mode
+if /i "%MODE%"=="both" goto :both_mode
+echo [opencode-ide] unknown mode: %MODE%  ^(valid: web ^& antigravity ^& both^)
 popd
-endlocal & exit /b %RC%
+exit /b 1
+
+:web_mode
+echo.
+echo ============================================================
+echo  opencode-ide :: WEB MODE
+echo ============================================================
+echo  Starting opencode web on http://127.0.0.1:5173
+echo  (no Vite UI — uses the official opencode web SPA shell)
+echo ============================================================
+echo.
+echo  When the server is ready, open this URL in your browser:
+echo    http://127.0.0.1:5173
+echo.
+start "" "http://127.0.0.1:5173"
+"opencode" web --port 5173 --hostname 127.0.0.1
+popd
+endlocal
+exit /b %ERRORLEVEL%
+
+:antigravity_mode
+echo.
+echo ============================================================
+echo  opencode-ide :: ANTIGRAVITY MODE
+echo ============================================================
+echo  Starting Vite on http://127.0.0.1:5174
+echo.
+echo  Make sure you have an opencode serve running in another
+echo  terminal:
+echo    opencode serve --port 4096 --hostname 127.0.0.1
+echo ============================================================
+echo.
+echo  When Vite is ready, open this URL in your browser:
+echo    http://127.0.0.1:5174
+echo.
+start "" "http://127.0.0.1:5174"
+"%VITE%" --port 5174 --host 127.0.0.1
+popd
+endlocal
+exit /b %ERRORLEVEL%
+
+:both_mode
+echo.
+echo ============================================================
+echo  opencode-ide :: BOTH MODES
+echo ============================================================
+echo  opencode web  : http://127.0.0.1:5173
+echo  Antigravity UI: http://127.0.0.1:5174
+echo ============================================================
+echo.
+start "" "http://127.0.0.1:5173"
+start "" "http://127.0.0.1:5174"
+"opencode" web --port 5173 --hostname 127.0.0.1
+popd
+endlocal
+exit /b %ERRORLEVEL%
