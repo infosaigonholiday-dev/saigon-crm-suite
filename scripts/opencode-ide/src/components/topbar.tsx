@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Badge } from "@/components/ui/badge";
 import { useConfig, useSessionStatus, useSession } from "@/hooks/use-sessions";
 import { formatPathTail } from "@/lib/utils";
+import type { Config } from "@/lib/api";
 
 type Props = {
   cwd: string;
@@ -12,6 +13,24 @@ type Props = {
   onOpenHistory?: () => void;
   onInstallIDE?: () => void;
 };
+
+/**
+ * opencode 1.17.3 returns the `agent` field as either:
+ *   - a string (the active agent name, eg "build")
+ *   - an object map (eg { plan: {...}, build: {...}, db: {...} }) when the
+ *     /config endpoint returns the full registry
+ * Render defensively: if it's an object, show the first key as the
+ * active agent; otherwise show the string; otherwise "build".
+ */
+function displayAgent(cfg: Config | undefined): string {
+  const a = cfg?.agent as unknown;
+  if (typeof a === "string") return a;
+  if (a && typeof a === "object") {
+    const keys = Object.keys(a as Record<string, unknown>);
+    return keys[0] ?? "build";
+  }
+  return "build";
+}
 
 /**
  * Topbar mimics the Antigravity look: project breadcrumb (clickable,
@@ -47,7 +66,7 @@ export function Topbar({ cwd, onChangeCwd, activeSessionId, onOpenHistory, onIns
       <div className="h-4 w-px bg-border mx-1" />
 
       <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
-        <span>{cfg?.agent ?? "build"}</span>
+        <span>{displayAgent(cfg)}</span>
       </div>
       <div className="h-4 w-px bg-border mx-1" />
       <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
