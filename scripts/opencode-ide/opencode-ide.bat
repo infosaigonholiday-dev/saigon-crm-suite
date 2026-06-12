@@ -75,11 +75,24 @@ echo.
 echo  Make sure you have an opencode serve running in another
 echo  terminal:
 echo    opencode serve --port 4096 --hostname 127.0.0.1
+echo.
+echo  Vite will proxy /api, /config, /session to the opencode port.
 echo ============================================================
 echo.
 echo  When Vite is ready, open this URL in your browser:
 echo    http://127.0.0.1:5174
 echo.
+
+REM Vite's proxy config (vite.config.ts) reads the opencode port
+REM from %TEMP%\opencode-ide-port.txt. Default to 4096.
+set "OC_PORT=4096"
+if exist "%TEMP%\opencode-ide-port.txt" (
+  for /f "usebackq delims=" %%P in ("%TEMP%\opencode-ide-port.txt") do (
+    set "OC_PORT=%%P"
+  )
+)
+echo  (using opencode port %OC_PORT% for the Vite proxy)
+
 start "" "http://127.0.0.1:5174"
 "%VITE%" --port 5174 --host 127.0.0.1
 popd
