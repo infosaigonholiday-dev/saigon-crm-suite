@@ -3791,6 +3791,7 @@ export type Database = {
           id: string
           id_card: string | null
           last_review_date: string | null
+          level: string | null
           next_review_date: string | null
           phone: string | null
           position: string | null
@@ -3824,6 +3825,7 @@ export type Database = {
           id?: string
           id_card?: string | null
           last_review_date?: string | null
+          level?: string | null
           next_review_date?: string | null
           phone?: string | null
           position?: string | null
@@ -3857,6 +3859,7 @@ export type Database = {
           id?: string
           id_card?: string | null
           last_review_date?: string | null
+          level?: string | null
           next_review_date?: string | null
           phone?: string | null
           position?: string | null

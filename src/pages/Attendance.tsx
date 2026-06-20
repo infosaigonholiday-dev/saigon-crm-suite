@@ -295,9 +295,10 @@ export default function Attendance() {
     };
     const rows: (string | number | null | undefined)[][] = [header];
     for (const v of violations) {
-      const chiTiet = v.chi_tiet?.phut
-        ? `${v.chi_tiet.phut} phút${v.chi_tiet?.ngay ? ` ngày ${formatDate(v.chi_tiet.ngay)}` : ""}`
-        : (v.chi_tiet?.ngay ? `ngày ${formatDate(v.chi_tiet.ngay)}` : "");
+      const ct = (v.chi_tiet ?? {}) as { phut?: number; ngay?: string };
+      const chiTiet = ct.phut
+        ? `${ct.phut} phút${ct.ngay ? ` ngày ${formatDate(ct.ngay)}` : ""}`
+        : (ct.ngay ? `ngày ${formatDate(ct.ngay)}` : "");
       rows.push([
         v.employee?.employee_code ?? "",
         v.employee?.full_name ?? "",
